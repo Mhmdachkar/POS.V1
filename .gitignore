@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment files — NEVER commit real credentials
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/settings.json
+
+# Vite cache
+.vite/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Supabase local dev (add supabase/config.toml to version control)
+supabase/.branches/
+supabase/.temp/

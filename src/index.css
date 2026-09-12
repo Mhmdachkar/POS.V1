@@ -1,0 +1,134 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ================================================================
+   VHM POS — Global styles and CSS custom properties
+   Design tokens are defined here; Tailwind config references the
+   same values so utility classes and custom CSS stay in sync.
+   ================================================================ */
+
+@layer base {
+  :root {
+    /* --- Surfaces --- */
+    --color-background: #F6F7F9;
+    --color-surface: #FFFFFF;
+    --color-surface-muted: #F9FAFB;
+
+    /* --- Text --- */
+    --color-text-primary: #111827;
+    --color-text-secondary: #667085;
+    --color-text-muted: #98A2B3;
+
+    /* --- Borders --- */
+    --color-border: #E5E7EB;
+    --color-border-strong: #D0D5DD;
+
+    /* --- Brand / primary action --- */
+    --color-primary: #1570EF;
+    --color-primary-hover: #175CD3;
+    --color-primary-foreground: #FFFFFF;
+    --color-primary-subtle: #EFF8FF;
+
+    /* --- Status colors --- */
+    --color-success: #12B76A;
+    --color-success-bg: #ECFDF3;
+    --color-success-foreground: #027A48;
+
+    --color-warning: #F79009;
+    --color-warning-bg: #FFFAEB;
+    --color-warning-foreground: #B54708;
+
+    --color-danger: #F04438;
+    --color-danger-bg: #FEF3F2;
+    --color-danger-foreground: #B42318;
+
+    --color-info: #2E90FA;
+    --color-info-bg: #EFF8FF;
+    --color-info-foreground: #175CD3;
+
+    /* --- Radii --- */
+    --radius-sm: 8px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 16px;
+
+    /* --- Shadows --- */
+    --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+    --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08);
+    --shadow-lg: 0 8px 24px rgba(16, 24, 40, 0.12);
+
+    /* --- AppRail widths --- */
+    --rail-width-collapsed: 64px;
+    --rail-width-expanded: 220px;
+
+    /* --- TopBar height --- */
+    --topbar-height: 56px;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  #root {
+    height: 100%;
+  }
+
+  /* Tabular numbers for financial values */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+}
+
+@layer components {
+  /* --- Focus ring (replaces browser default outline) --- */
+  .focus-ring {
+    @apply outline-none ring-2 ring-primary ring-offset-2;
+  }
+
+  /* --- Scrollbar styling (Webkit) --- */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: var(--color-border);
+    border-radius: 3px;
+  }
+
+  /* --- Financial value display --- */
+  .financial-value {
+    @apply tabular-nums font-semibold;
+    font-variant-numeric: tabular-nums;
+  }
+}
