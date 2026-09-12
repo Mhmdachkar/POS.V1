@@ -279,6 +279,75 @@ begin
 end;
 $B6$;
 
+-- B7: Duplicate product lines in one cart — aggregate stock check
+-- Verifies FIX 2 from migration 024: the per-item stock check must use
+-- the cumulative total for each product across all cart lines, so that
+-- two lines of the same product that individually fit stock but together
+-- exceed it correctly raise INSUFFICIENT_STOCK (not a raw DB constraint).
+do $B7$
+declare
+  prod_id uuid := 'bbbbbbbb-7777-0000-0000-000000000001';
+begin
+  -- Self-contained test product: 10 pieces
+  insert into products (id, depot_id, category_id, name, current_stock_pieces, is_active)
+  values (
+    prod_id,
+    '00000000-0000-0000-0001-000000000001',
+    '00000000-0000-0000-0002-000000000001',
+    'B7 Dup-Line Test Product',
+    10,
+    true
+  ) on conflict (id) do update set current_stock_pieces = 10;
+
+  insert into product_units (product_id, unit_level, unit_name, conversion_to_base, cost_price_cfa, selling_price_cfa)
+  values (prod_id, 0, 'Unit', 1, 100, 500)
+  on conflict (product_id, unit_level) do update set selling_price_cfa = 500;
+
+  -- Insert seed ledger row so drift invariant holds
+  delete from inventory_transactions where product_id = prod_id;
+  insert into inventory_transactions (
+    depot_id, product_id, quantity_pieces, transaction_type,
+    reference_type, reference_id, created_by
+  ) values (
+    '00000000-0000-0000-0001-000000000001',
+    prod_id, 10, 'RESTOCK', 'stock_entry',
+    '00000000-0000-0000-0004-000000000099',
+    '00000000-0000-0000-0000-000000000001'
+  );
+
+  -- Two lines of qty=7 each (7+7=14 > 10): each individually passes 10>=7,
+  -- but aggregate 14 > 10 must produce INSUFFICIENT_STOCK.
+  begin
+    perform public.complete_sale(
+      p_depot_id            := '00000000-0000-0000-0001-000000000001',
+      p_cart_items          := jsonb_build_array(
+        jsonb_build_object('product_id', prod_id, 'unit_level', 0, 'quantity_in_unit', 7),
+        jsonb_build_object('product_id', prod_id, 'unit_level', 0, 'quantity_in_unit', 7)
+      ),
+      p_amount_tendered_cfa := 9999
+    );
+    raise exception 'B7 FAIL: duplicate lines with aggregate > stock should have raised INSUFFICIENT_STOCK';
+  exception
+    when sqlstate 'P0001' then
+      if sqlerrm not like '%INSUFFICIENT_STOCK%' then
+        raise exception 'B7 FAIL: wrong error code: %', sqlerrm;
+      end if;
+  end;
+
+  -- Stock must be unchanged (no mutation should have occurred)
+  if (select current_stock_pieces from products where id = prod_id) != 10 then
+    raise exception 'B7 FAIL: stock was mutated despite expected INSUFFICIENT_STOCK';
+  end if;
+
+  -- Cleanup
+  delete from inventory_transactions where product_id = prod_id;
+  delete from product_units where product_id = prod_id;
+  delete from products where id = prod_id;
+
+  raise notice 'B7 PASS: duplicate product lines with aggregate > stock → INSUFFICIENT_STOCK, no mutation';
+end;
+$B7$;
+
 -- ──────────────────────────────────────────────────────────────
 -- SECTION C: process_return
 -- ──────────────────────────────────────────────────────────────
@@ -723,6 +792,87 @@ begin
 end;
 $G1$;
 
+-- G2: open_shift rejects negative opening_float_cfa
+do $G2$
+begin
+  begin
+    perform public.open_shift(
+      p_depot_id          := '00000000-0000-0000-0001-000000000001',
+      p_opening_float_cfa := -100
+    );
+    raise exception 'G2 FAIL: negative opening_float should be rejected';
+  exception
+    when sqlstate 'P0001' then
+      if sqlerrm not like '%INVALID_AMOUNT%' then
+        raise exception 'G2 FAIL: expected INVALID_AMOUNT, got: %', sqlerrm;
+      end if;
+  end;
+  raise notice 'G2 PASS: negative opening_float_cfa correctly rejected';
+end;
+$G2$;
+
+-- G3: close_shift rejects negative actual_cash_cfa
+do $G3$
+declare
+  shift_id uuid;
+begin
+  shift_id := (public.open_shift(
+    p_depot_id          := '00000000-0000-0000-0001-000000000001',
+    p_opening_float_cfa := 5000
+  )->>'shift_id')::uuid;
+
+  begin
+    perform public.close_shift(
+      p_shift_id        := shift_id,
+      p_actual_cash_cfa := -1
+    );
+    raise exception 'G3 FAIL: negative actual_cash should be rejected';
+  exception
+    when sqlstate 'P0001' then
+      if sqlerrm not like '%INVALID_AMOUNT%' then
+        raise exception 'G3 FAIL: expected INVALID_AMOUNT, got: %', sqlerrm;
+      end if;
+  end;
+
+  -- Close properly to clean up
+  perform public.close_shift(p_shift_id := shift_id, p_actual_cash_cfa := 5000);
+
+  raise notice 'G3 PASS: negative actual_cash_cfa correctly rejected';
+end;
+$G3$;
+
+-- G4: close_shift on already-closed shift → SHIFT_NOT_OPEN
+do $G4$
+declare
+  shift_id uuid;
+begin
+  shift_id := (public.open_shift(
+    p_depot_id          := '00000000-0000-0000-0001-000000000001',
+    p_opening_float_cfa := 0
+  )->>'shift_id')::uuid;
+
+  -- First close succeeds
+  perform public.close_shift(p_shift_id := shift_id, p_actual_cash_cfa := 0);
+
+  if (select status from shifts where id = shift_id) != 'closed' then
+    raise exception 'G4 FAIL: shift should be closed after first close_shift';
+  end if;
+
+  -- Second close must be rejected
+  begin
+    perform public.close_shift(p_shift_id := shift_id, p_actual_cash_cfa := 0);
+    raise exception 'G4 FAIL: repeated close_shift should raise SHIFT_NOT_OPEN';
+  exception
+    when sqlstate 'P0001' then
+      if sqlerrm not like '%SHIFT_NOT_OPEN%' then
+        raise exception 'G4 FAIL: expected SHIFT_NOT_OPEN, got: %', sqlerrm;
+      end if;
+  end;
+
+  raise notice 'G4 PASS: repeated close_shift correctly rejected with SHIFT_NOT_OPEN';
+end;
+$G4$;
+
 -- ──────────────────────────────────────────────────────────────
 -- SECTION H: Immutability triggers
 -- ──────────────────────────────────────────────────────────────
@@ -825,8 +975,9 @@ do $SUMMARY$
 begin
   raise notice '=========================================';
   raise notice 'Phase 4 RPC Tests — ALL SECTIONS PASSED';
-  raise notice 'Sections: A(drift) B(sale) C(return) D(void)';
-  raise notice '          E(inventory) F(transfer) G(shift)';
+  raise notice 'Sections: A(drift) B(sale,B7=dup-product) C(return) D(void)';
+  raise notice '          E(inventory) F(transfer)';
+  raise notice '          G(shift,G2=neg-float,G3=neg-cash,G4=repeated-close)';
   raise notice '          H(immutability) I(RLS)';
   raise notice '=========================================';
 end;

@@ -229,6 +229,67 @@ else
   log_fail "Inventory drift detected: $IDEM_LEDGER"
 fi
 
+# ─── Test 3: Duplicate product lines in one cart (Scenario C) ────
+echo ""
+echo "--- Test 3: Duplicate product in cart — aggregate stock check ---"
+echo "    product stock=10, cart has two lines of qty=7 (aggregate=14 > 10)"
+echo "    Expected: INSUFFICIENT_STOCK, no mutation"
+
+# Reset stock to 10
+psql "$DB_URL" -c "
+  UPDATE products SET current_stock_pieces = 10 WHERE id = 'cccccccc-0000-0000-0000-000000000001';
+  DELETE FROM inventory_transactions WHERE product_id = 'cccccccc-0000-0000-0000-000000000001';
+  INSERT INTO inventory_transactions (depot_id, product_id, quantity_pieces, transaction_type, reference_type, reference_id, created_by)
+  VALUES ('00000000-0000-0000-0001-000000000001', 'cccccccc-0000-0000-0000-000000000001', 10, 'RESTOCK', 'stock_entry', '00000000-0000-0000-0004-000000000099', '00000000-0000-0000-0000-000000000001');
+" > /dev/null 2>&1
+
+DUP_SQL=$(cat <<'ENDSQL'
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000001","role":"authenticated"}', false);
+SELECT set_config('request.jwt.sub', '00000000-0000-0000-0000-000000000001', false);
+SELECT public.complete_sale(
+  p_depot_id    := '00000000-0000-0000-0001-000000000001'::uuid,
+  p_cart_items  := '[
+    {"product_id":"cccccccc-0000-0000-0000-000000000001","unit_level":0,"quantity_in_unit":7},
+    {"product_id":"cccccccc-0000-0000-0000-000000000001","unit_level":0,"quantity_in_unit":7}
+  ]'::jsonb,
+  p_amount_tendered_cfa := 2800
+);
+ENDSQL
+)
+
+psql "$DB_URL" -c "$DUP_SQL" > "$TMPDIR_TEST/dup.out" 2>&1
+
+STOCK_DUP=$(psql "$DB_URL" -t -c "SELECT current_stock_pieces FROM products WHERE id = 'cccccccc-0000-0000-0000-000000000001'" 2>/dev/null | tr -d ' \n')
+DRIFT_DUP=$(psql "$DB_URL" -t -c "
+  SELECT ABS(p.current_stock_pieces - COALESCE(SUM(it.quantity_pieces), 0))
+  FROM products p
+  LEFT JOIN inventory_transactions it ON it.product_id = p.id
+  WHERE p.id = 'cccccccc-0000-0000-0000-000000000001'
+  GROUP BY p.current_stock_pieces
+" 2>/dev/null | tr -d ' \n')
+
+echo "  Result output: $(grep -o 'INSUFFICIENT_STOCK\|receipt_number' "$TMPDIR_TEST/dup.out" | head -1 || echo '(none matched)')"
+echo "  Stock after: $STOCK_DUP (expected 10, unchanged)"
+
+if grep -q 'INSUFFICIENT_STOCK' "$TMPDIR_TEST/dup.out" 2>/dev/null; then
+  log_pass "Duplicate product lines raised INSUFFICIENT_STOCK"
+else
+  log_fail "Expected INSUFFICIENT_STOCK for duplicate product lines (aggregate 14 > 10)"
+  echo "  dup.out:"; cat "$TMPDIR_TEST/dup.out"
+fi
+
+if [ "$STOCK_DUP" = "10" ]; then
+  log_pass "Stock unchanged (= 10): no mutation occurred before error"
+else
+  log_fail "Stock was mutated — expected 10, got $STOCK_DUP"
+fi
+
+if [ "${DRIFT_DUP:-0}" = "0" ]; then
+  log_pass "Zero inventory drift after duplicate product line test"
+else
+  log_fail "Inventory drift after duplicate product test: $DRIFT_DUP"
+fi
+
 # ─── Cleanup ──────────────────────────────────────────────────
 psql "$DB_URL" -c "
   DELETE FROM inventory_transactions WHERE product_id = 'cccccccc-0000-0000-0000-000000000001';
