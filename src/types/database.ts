@@ -140,6 +140,8 @@ export interface StockTransfer {
   created_by: string
   created_at: string
   completed_at: string | null
+  /** Staff who completed the transfer (null until completed). Added in Phase 2 for audit. */
+  completed_by: string | null
   note: string | null
 }
 
@@ -163,6 +165,8 @@ export interface Shift {
   opening_float_cfa: number
   opened_at: string
   closed_at: string | null
+  /** Staff who closed the shift (may differ from cashier_id if admin closed). Added in Phase 2. */
+  closed_by: string | null
   expected_cash_cfa: number | null
   actual_cash_cfa: number | null
   discrepancy_cfa: number | null
