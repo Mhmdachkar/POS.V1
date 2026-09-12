@@ -315,6 +315,38 @@ export interface AuditLog {
   occurred_at: string
 }
 
+export type InventoryTransactionType =
+  | 'SALE'
+  | 'RETURN'
+  | 'VOID'
+  | 'RESTOCK'
+  | 'ADJUSTMENT'
+  | 'TRANSFER_IN'
+  | 'TRANSFER_OUT'
+
+export type InventoryReferenceType =
+  | 'sale'
+  | 'sale_return'
+  | 'void'
+  | 'stock_entry'
+  | 'inventory_adjustment'
+  | 'stock_transfer'
+
+/** Unified append-only inventory ledger (migration 015). */
+export interface InventoryTransaction {
+  id: string
+  depot_id: string
+  product_id: string
+  /** Signed: negative = stock out */
+  quantity_pieces: number
+  transaction_type: InventoryTransactionType
+  reference_type: InventoryReferenceType
+  reference_id: string
+  created_by: string
+  created_at: string
+  metadata: Record<string, unknown> | null
+}
+
 // ─────────────────────────────────────────────────────────────────
 // Database type (used by Supabase client generic)
 // ─────────────────────────────────────────────────────────────────
@@ -340,6 +372,7 @@ export interface Database {
       sale_return_items: { Row: SaleReturnItem }
       payments: { Row: Payment }
       audit_log: { Row: AuditLog }
+      inventory_transactions: { Row: InventoryTransaction }
     }
     Views: Record<string, never>
     Functions: Record<string, never>

@@ -67,11 +67,31 @@ export interface PaginatedResult<T> {
 /** Stock status derived from current_stock_pieces */
 export type StockStatus = 'out_of_stock' | 'low_stock' | 'healthy'
 
-/** Derive stock status. Threshold is intentionally simple for Phase 1. */
-export function getStockStatus(pieces: number, lowThreshold = 10): StockStatus {
+/**
+ * Phase 7 fixed business rule: Low Stock threshold = 10 pieces.
+ * Do not add a settings column or per-depot threshold.
+ */
+export const LOW_STOCK_THRESHOLD_PIECES = 10
+
+/** Derive stock status from authoritative current_stock_pieces. */
+export function getStockStatus(
+  pieces: number,
+  lowThreshold = LOW_STOCK_THRESHOLD_PIECES,
+): StockStatus {
   if (pieces <= 0) return 'out_of_stock'
   if (pieces <= lowThreshold) return 'low_stock'
   return 'healthy'
+}
+
+/** Inventory list filters — all applied at the query layer before pagination. */
+export interface InventoryListFilters {
+  page: number
+  pageSize: number
+  search: string
+  categoryId: string | null
+  stockStatus: StockStatus | 'all'
+  /** null = All Depots (admin viewing scope only) */
+  depotId: string | null
 }
 
 /** Auth context stored in Zustand */
