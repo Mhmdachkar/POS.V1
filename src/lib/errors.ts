@@ -47,7 +47,7 @@ export type VhmErrorCode =
   | 'INVALID_INPUT'
   | 'UNKNOWN'
 
-const ERROR_MESSAGES: Record<VhmErrorCode, string> = {
+export const ERROR_MESSAGES: Record<VhmErrorCode, string> = {
   INSUFFICIENT_STOCK: 'Not enough stock available for this product.',
   INVALID_PRICE: 'Product has an invalid price configuration. Contact an administrator.',
   INVALID_UNIT: 'Product unit configuration is invalid. Contact an administrator.',
@@ -98,7 +98,13 @@ export interface VhmError {
 /**
  * Parse any Supabase or application error into a VhmError.
  *
- * Handles two error formats:
+ * Handles these formats:
+ *
+ * 0. Already-parsed application error:
+ *    { code: VhmErrorCode, message: string, details? }
+ *    Message is always taken from ERROR_MESSAGES[code], never from the
+ *    incoming object (prevents raw Postgres strings in the UI).
+ *    Postgres codes such as P0001 are not in ERROR_MESSAGES and are ignored.
  *
  * 1. RPC errors (SECURITY DEFINER PostgreSQL functions):
  *    The error.message is a JSON string: '{"code":"INSUFFICIENT_STOCK","details":{...}}'
@@ -108,17 +114,33 @@ export interface VhmError {
  *    The raw value is: { error: { code: string, message: string, details?: {} } }
  *
  * 3. Supabase PostgREST / network errors:
- *    Falls back to UNKNOWN with the raw message.
+ *    Falls back to UNKNOWN.
  */
 export function parseError(raw: unknown): VhmError {
   if (!raw) return { code: 'UNKNOWN', message: ERROR_MESSAGES.UNKNOWN }
 
-  // ── Format 1: RPC structured JSON error ──────────────────────
-  // Supabase surfaces PostgreSQL RAISE EXCEPTION message in error.message
   if (raw && typeof raw === 'object') {
     const obj = raw as Record<string, unknown>
 
-    // Try to parse error.message as JSON (RPC format)
+    // ── Format 0: already-parsed VhmError (thrown by mutation hooks) ──
+    if (
+      typeof obj.code === 'string' &&
+      obj.code in ERROR_MESSAGES &&
+      typeof obj.message === 'string'
+    ) {
+      const code = obj.code as VhmErrorCode
+      return {
+        code,
+        message: ERROR_MESSAGES[code],
+        details:
+          obj.details && typeof obj.details === 'object'
+            ? (obj.details as Record<string, unknown>)
+            : undefined,
+      }
+    }
+
+    // ── Format 1: RPC structured JSON error ──────────────────────
+    // Supabase surfaces PostgreSQL RAISE EXCEPTION message in error.message
     const message = obj['message']
     if (typeof message === 'string' && message.startsWith('{')) {
       try {

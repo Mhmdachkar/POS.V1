@@ -8,9 +8,14 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { parseError } from '@/lib/errors'
-import type { VhmErrorCode } from '@/lib/errors'
+import { ERROR_MESSAGES, parseError } from '@/lib/errors'
+import type { VhmError, VhmErrorCode } from '@/lib/errors'
+import { RestockModal } from '@/pages/inventory/components/RestockModal'
+import { AdjustmentModal } from '@/pages/inventory/components/AdjustmentModal'
+import { clampInventoryPage } from '@/pages/inventory/InventoryPage'
+import { rpc } from '@/lib/rpc'
 import {
   getStockStatus,
   LOW_STOCK_THRESHOLD_PIECES,
@@ -41,6 +46,13 @@ import { productKeys } from '@/hooks/useProducts'
 import { ProductDetailDrawer } from '@/pages/inventory/components/ProductDetailDrawer'
 import { supabase } from '@/lib/supabase'
 import { useProductDetail } from '@/hooks/useProducts'
+
+vi.mock('@/lib/rpc', () => ({
+  rpc: {
+    restockProduct: vi.fn(),
+    adjustInventory: vi.fn(),
+  },
+}))
 
 vi.mock('@/hooks/useProducts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useProducts')>()
@@ -707,5 +719,162 @@ describe('derived unit quantity', () => {
   it('shows 3 decimal places and is display-only math', () => {
     expect(formatDerivedUnitQuantity(124.333, 24)).toBe(5.181)
     expect(formatDerivedUnitQuantity(10, 1)).toBe(10)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────
+// 12. parseError — already-parsed VhmError (closure fix)
+// ─────────────────────────────────────────────────────────────────
+
+describe('parseError — already-parsed VhmError', () => {
+  const codes: VhmErrorCode[] = [
+    'PRODUCT_INACTIVE',
+    'INVALID_QUANTITY',
+    'INVALID_UNIT',
+    'INVALID_DEPOT',
+    'ADJUSTMENT_NEGATIVE_RESULT',
+    'UNAUTHORIZED',
+  ]
+
+  it.each(codes)('preserves %s and uses ERROR_MESSAGES, not UNKNOWN', (code) => {
+    const err = parseError({ code, message: 'ignored' })
+    expect(err.code).toBe(code)
+    expect(err.message).toBe(ERROR_MESSAGES[code])
+    expect(err.code).not.toBe('UNKNOWN')
+    expect(err.message).not.toBe(ERROR_MESSAGES.UNKNOWN)
+  })
+
+  it('does not treat Postgres P0001 as a VhmError', () => {
+    const err = parseError({ code: 'P0001', message: 'raw postgres boom' })
+    expect(err.code).toBe('UNKNOWN')
+    expect(err.message).toBe(ERROR_MESSAGES.UNKNOWN)
+    expect(err.message).not.toContain('postgres')
+  })
+
+  it('maps unknown native Error to UNKNOWN', () => {
+    const err = parseError(new Error('test'))
+    expect(err.code).toBe('UNKNOWN')
+    expect(err.message).toBe(ERROR_MESSAGES.UNKNOWN)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────
+// 13. Modal mutation error path
+// ─────────────────────────────────────────────────────────────────
+
+const activeProduct: ProductWithUnits = {
+  id: 'prod-active',
+  depot_id: 'depot-b',
+  category_id: 'cat-water',
+  name: 'Water 1.5L',
+  photo_url: 'https://placehold.co/40',
+  current_stock_pieces: 40,
+  is_active: true,
+  created_at: '2026-09-01T00:00:00Z',
+  updated_at: '2026-09-01T00:00:00Z',
+  units: [
+    {
+      id: 'u1',
+      product_id: 'prod-active',
+      unit_level: 0,
+      unit_name: 'Piece',
+      conversion_to_base: 1,
+      cost_price_cfa: 100,
+      selling_price_cfa: 150,
+      created_at: '2026-09-01T00:00:00Z',
+      updated_at: '2026-09-01T00:00:00Z',
+    },
+  ],
+}
+
+function renderWithQuery(ui: JSX.Element) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  })
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
+}
+
+describe('RestockModal mutation error path', () => {
+  beforeEach(() => {
+    vi.mocked(rpc.restockProduct).mockReset()
+  })
+
+  it.each([
+    'PRODUCT_INACTIVE',
+    'INVALID_QUANTITY',
+    'INVALID_UNIT',
+  ] as const)('renders mapped %s after RPC error', async (code) => {
+    const vhm: VhmError = { code, message: 'ignored' }
+    vi.mocked(rpc.restockProduct).mockResolvedValue({ data: null, error: vhm })
+
+    const user = userEvent.setup()
+    renderWithQuery(<RestockModal open onClose={() => {}} product={activeProduct} />)
+
+    await user.type(screen.getByRole('spinbutton'), '2')
+    await user.click(screen.getByRole('button', { name: /^restock$/i }))
+
+    expect(await screen.findByText(ERROR_MESSAGES[code])).toBeInTheDocument()
+    expect(screen.queryByText(ERROR_MESSAGES.UNKNOWN)).not.toBeInTheDocument()
+    expect(rpc.restockProduct).toHaveBeenCalled()
+  })
+
+  it('renders UNKNOWN for an unexpected thrown Error', async () => {
+    vi.mocked(rpc.restockProduct).mockRejectedValue(new Error('test'))
+
+    const user = userEvent.setup()
+    renderWithQuery(<RestockModal open onClose={() => {}} product={activeProduct} />)
+
+    await user.type(screen.getByRole('spinbutton'), '2')
+    await user.click(screen.getByRole('button', { name: /^restock$/i }))
+
+    expect(await screen.findByText(ERROR_MESSAGES.UNKNOWN)).toBeInTheDocument()
+  })
+})
+
+describe('AdjustmentModal mutation error path', () => {
+  beforeEach(() => {
+    vi.mocked(rpc.adjustInventory).mockReset()
+  })
+
+  it.each([
+    'PRODUCT_INACTIVE',
+    'INVALID_QUANTITY',
+    'ADJUSTMENT_NEGATIVE_RESULT',
+  ] as const)('renders mapped %s after RPC error', async (code) => {
+    const vhm: VhmError = { code, message: 'ignored' }
+    vi.mocked(rpc.adjustInventory).mockResolvedValue({ data: null, error: vhm })
+
+    const user = userEvent.setup()
+    renderWithQuery(<AdjustmentModal open onClose={() => {}} product={activeProduct} />)
+
+    await user.type(screen.getByRole('spinbutton'), '5')
+    await user.click(screen.getByRole('button', { name: /apply adjustment/i }))
+
+    expect(await screen.findByText(ERROR_MESSAGES[code])).toBeInTheDocument()
+    expect(screen.queryByText(ERROR_MESSAGES.UNKNOWN)).not.toBeInTheDocument()
+    expect(rpc.adjustInventory).toHaveBeenCalled()
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────
+// 14. Page clamp
+// ─────────────────────────────────────────────────────────────────
+
+describe('clampInventoryPage', () => {
+  it('moves page 4 to last valid page when totalPages is 2', () => {
+    expect(clampInventoryPage(4, 2)).toBe(1)
+  })
+
+  it('resets page 1 to 0 when totalPages is 0', () => {
+    expect(clampInventoryPage(1, 0)).toBe(0)
+  })
+
+  it('leaves page 0 unchanged', () => {
+    expect(clampInventoryPage(0, 5)).toBe(0)
+    expect(clampInventoryPage(0, 0)).toBe(0)
+  })
+
+  it('leaves a valid page unchanged', () => {
+    expect(clampInventoryPage(1, 3)).toBe(1)
   })
 })

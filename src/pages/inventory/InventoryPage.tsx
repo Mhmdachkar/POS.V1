@@ -24,6 +24,13 @@ import {
 import { useDepotStore } from '@/stores/depotStore'
 import { ProductDetailDrawer } from './components/ProductDetailDrawer'
 
+export function clampInventoryPage(page: number, totalPages: number): number {
+  if (page <= 0) return 0
+  if (totalPages === 0) return 0
+  if (page >= totalPages) return totalPages - 1
+  return page
+}
+
 type StockFilter = StockStatus | 'all'
 
 const STOCK_FILTERS: Array<{ value: StockFilter; label: string }> = [
@@ -79,6 +86,12 @@ export function InventoryPage() {
   const products = data?.data ?? []
   const totalCount = data?.count ?? 0
   const totalPages = Math.ceil(totalCount / INVENTORY_PAGE_SIZE)
+
+  useEffect(() => {
+    if (isLoading) return
+    const next = clampInventoryPage(page, totalPages)
+    if (next !== page) setPage(next)
+  }, [isLoading, page, totalPages])
 
   const depotName = (depotId: string) =>
     depots?.find((d) => d.id === depotId)?.name ?? '—'
