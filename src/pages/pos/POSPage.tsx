@@ -1,32 +1,81 @@
-import { ShoppingCart } from 'lucide-react'
-import { EmptyState } from '@/components/ui'
-
 /**
- * POSPage — Phase 5 implementation target.
+ * POSPage — Main cashier workspace.
  *
- * Will contain:
- * - Product search bar
- * - Category filter
- * - Product grid (ProductCard components)
- * - Persistent cart panel
- * - Unit selector modal
- * - Checkout flow (inline or separate route)
+ * Two-column layout:
+ *   Left  (flex-1): product search + results grid
+ *   Right (w-96 fixed): cart items + checkout panel
+ *
+ * The left panel is where the cashier searches products and adds them.
+ * The right panel shows the live cart, customer selector, discount,
+ * cash tendered, totals preview, and the Complete Sale button.
+ *
+ * After a successful sale, a modal shows the server-authoritative result
+ * and offers Print Receipt + New Sale.
  *
  * Business rules enforced:
- * - No barcode/scanner UI (Business Rule: NO BARCODE)
- * - Cash only checkout (Business Rule: CASH ONLY)
- * - Walk-in vs customer selection (Business Rule: WALK-IN VS CUSTOMER)
- * - create_sale PostgreSQL RPC with FOR UPDATE locking (Business Rule: TRANSACTION ARCHITECTURE)
+ *   - No barcode / SKU fields
+ *   - Cash-only checkout (no payment method selector)
+ *   - Walk-in vs customer selection
+ *   - Idempotent sale submission (same key reused on retry)
+ *   - Server-authoritative financials replace preview on success
+ *   - Products scoped to the cashier's depot (enforced by RLS)
  */
+
+import { useAuthStore } from '@/stores/authStore'
+import { useDepotStore } from '@/stores/depotStore'
+import { usePOSStore } from '@/stores/posStore'
+import { ProductSearchPanel } from './components/ProductSearchPanel'
+import { CartPanel } from './components/CartPanel'
+import { CheckoutPanel } from './components/CheckoutPanel'
+import { SaleSuccessModal } from './components/SaleSuccessModal'
+
 export function POSPage() {
+  const staff     = useAuthStore((s) => s.staff)
+  const depotId   = useDepotStore((s) => s.currentDepotId)
+
+  const { saleResult, customer, items, shiftId } = usePOSStore((s) => ({
+    saleResult:    s.saleResult,
+    customer:      s.customer,
+    items:         s.items,
+    shiftId:       s.shiftId,
+  }))
+
+  // For cashiers, use their assigned depot.
+  // For admins, use the depot switcher's current depot.
+  const effectiveDepotId =
+    staff?.role === 'cashier' ? staff.depot_id : depotId
+
   return (
-    <div className="flex h-full">
-      <EmptyState
-        icon={<ShoppingCart className="h-8 w-8" />}
-        title="POS — Coming in Phase 5"
-        description="The POS workspace will be implemented in Phase 5 after the database and Edge Functions are set up."
-        className="flex-1"
-      />
+    <div className="flex h-full overflow-hidden bg-background no-print">
+      {/* ── Left: Product search panel ──────────────────────────── */}
+      <div className="flex-1 overflow-hidden border-r border-border">
+        <ProductSearchPanel depotId={effectiveDepotId} />
+      </div>
+
+      {/* ── Right: Cart + Checkout panel ──────────────────────── */}
+      <div className="w-[380px] xl:w-[420px] flex-shrink-0 flex flex-col overflow-hidden bg-surface">
+        {/* Cart items (scrollable) */}
+        <div className="flex-1 overflow-hidden min-h-0">
+          <CartPanel />
+        </div>
+
+        {/* Checkout section (fixed height, scrollable internally if needed) */}
+        <div className="border-t border-border overflow-y-auto max-h-[60vh] scrollbar-thin">
+          <CheckoutPanel
+            depotId={effectiveDepotId}
+            shiftId={shiftId}
+          />
+        </div>
+      </div>
+
+      {/* ── Sale success modal ──────────────────────────────────── */}
+      {saleResult && (
+        <SaleSuccessModal
+          result={saleResult}
+          customer={customer}
+          cartItemCount={items.length}
+        />
+      )}
     </div>
   )
 }

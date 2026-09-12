@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { CartItem, CheckoutTotals } from '@/types'
 import type { Customer } from '@/types/database'
+import type { CompleteSaleResult } from '@/types/rpc'
 
 // ─────────────────────────────────────────────────────────────────
 // Checkout totals helper (display preview only)
@@ -12,10 +13,10 @@ import type { Customer } from '@/types/database'
  * CRITICAL: These are CLIENT-SIDE PREVIEW CALCULATIONS ONLY.
  * They are shown to the cashier for visual feedback.
  * The authoritative amounts are computed server-side inside the
- * create_sale PostgreSQL transaction and returned in the response.
+ * complete_sale PostgreSQL transaction and returned in the response.
  * Never use these values as authoritative financial state.
  */
-function computeTotals(
+export function computeTotals(
   items: CartItem[],
   discountType: 'flat' | 'percent' | null,
   discountValue: number,
@@ -65,10 +66,42 @@ interface POSState {
   // Cash entry
   cashTendered: number
 
-  // ─── Computed display totals (see warning above) ───
+  // Shift (optional — depot-wide ownership model)
+  shiftId: string | null
+
+  // ─── Submission lifecycle ────────────────────────────────────
+  /**
+   * Idempotency key for the current sale attempt.
+   *
+   * LIFECYCLE:
+   *   1. null          → no pending sale attempt
+   *   2. generated UUID → first submit clicked; reused on every retry
+   *   3. cleared        → only when startNewSale() is called (success confirmed)
+   *
+   * NEVER generate a new key on retry — that would create a duplicate sale
+   * if the server already committed the first attempt.
+   */
+  idempotencyKey: string | null
+
+  /** True while the complete_sale RPC is in flight */
+  isSubmitting: boolean
+
+  /**
+   * The server-authoritative sale result after a successful complete_sale.
+   * Replaces the client-side preview. Null until sale is committed.
+   */
+  saleResult: CompleteSaleResult | null
+
+  // ─── Computed display totals (see warning above) ──────────
   totals: CheckoutTotals
 
-  // Actions
+  // ─── Actions ──────────────────────────────────────────────────
+  /**
+   * Add an item to the cart.
+   * If the same product+unit already exists, quantities are MERGED
+   * (not replaced) to prevent accidental duplicate lines.
+   * Different units of the same product remain as distinct lines.
+   */
   addItem: (item: Omit<CartItem, 'line_total_cfa'>) => void
   removeItem: (product_id: string, unit_level: number) => void
   updateQuantity: (product_id: string, unit_level: number, qty: number) => void
@@ -77,7 +110,29 @@ interface POSState {
   setDiscountType: (type: 'flat' | 'percent' | null) => void
   setDiscountValue: (value: number) => void
   setCashTendered: (amount: number) => void
+  setShiftId: (id: string | null) => void
   clearCart: () => void
+
+  /**
+   * Call immediately before the first submit attempt.
+   * Generates a fresh idempotency key if none exists.
+   * Does NOT generate a new key if one is already set (retry safety).
+   */
+  ensureIdempotencyKey: () => string
+
+  /** Mark the sale as submitting (prevents double-click). */
+  setSubmitting: (v: boolean) => void
+
+  /** Store the server-authoritative sale result. */
+  setSaleResult: (result: CompleteSaleResult) => void
+
+  /**
+   * Reset the POS for the next customer.
+   * Called after the cashier explicitly clicks "New Sale".
+   * Clears cart, customer, discount, cash, idempotency key, and sale result.
+   * Preserves depot context and shift.
+   */
+  startNewSale: () => void
 }
 
 const emptyTotals: CheckoutTotals = {
@@ -95,7 +150,7 @@ const emptyTotals: CheckoutTotals = {
  *
  * Manages the cashier's active cart during a POS session.
  * Cart state is session-scoped (not persisted to localStorage).
- * After completing or abandoning a sale, call clearCart().
+ * After completing a sale, call startNewSale() to reset for the next customer.
  */
 export const usePOSStore = create<POSState>()((set, get) => ({
   items: [],
@@ -104,6 +159,10 @@ export const usePOSStore = create<POSState>()((set, get) => ({
   discountType: null,
   discountValue: 0,
   cashTendered: 0,
+  shiftId: null,
+  idempotencyKey: null,
+  isSubmitting: false,
+  saleResult: null,
   totals: emptyTotals,
 
   addItem: (newItem) => {
@@ -114,10 +173,10 @@ export const usePOSStore = create<POSState>()((set, get) => ({
 
     let updatedItems: CartItem[]
     if (existingIdx >= 0) {
-      // Increment quantity of existing line
+      // Merge quantities for same product+unit (prevents accidental duplicate lines)
       updatedItems = items.map((item, idx) => {
         if (idx !== existingIdx) return item
-        const qty = item.quantity_in_unit + 1
+        const qty = item.quantity_in_unit + newItem.quantity_in_unit
         return {
           ...item,
           quantity_in_unit: qty,
@@ -126,7 +185,7 @@ export const usePOSStore = create<POSState>()((set, get) => ({
       })
     } else {
       // Add new line
-      const qty = 1
+      const qty = newItem.quantity_in_unit
       updatedItems = [
         ...items,
         {
@@ -186,9 +245,12 @@ export const usePOSStore = create<POSState>()((set, get) => ({
 
   setDiscountType: (type) => {
     const { items, discountValue, cashTendered } = get()
+    // Reset value when changing type to prevent stale values
+    const newValue = type === null ? 0 : discountValue
     set({
       discountType: type,
-      totals: computeTotals(items, type, discountValue, cashTendered),
+      discountValue: newValue,
+      totals: computeTotals(items, type, newValue, cashTendered),
     })
   },
 
@@ -208,7 +270,29 @@ export const usePOSStore = create<POSState>()((set, get) => ({
     })
   },
 
-  clearCart: () =>
+  setShiftId: (id) => set({ shiftId: id }),
+
+  clearCart: () => {
+    const { discountType, discountValue, cashTendered } = get()
+    set({
+      items: [],
+      totals: computeTotals([], discountType, discountValue, cashTendered),
+    })
+  },
+
+  ensureIdempotencyKey: () => {
+    const existing = get().idempotencyKey
+    if (existing) return existing
+    const key = crypto.randomUUID()
+    set({ idempotencyKey: key })
+    return key
+  },
+
+  setSubmitting: (v) => set({ isSubmitting: v }),
+
+  setSaleResult: (result) => set({ saleResult: result }),
+
+  startNewSale: () =>
     set({
       items: [],
       customer: null,
@@ -216,6 +300,10 @@ export const usePOSStore = create<POSState>()((set, get) => ({
       discountType: null,
       discountValue: 0,
       cashTendered: 0,
+      idempotencyKey: null,
+      isSubmitting: false,
+      saleResult: null,
       totals: emptyTotals,
+      // shiftId preserved intentionally — same shift stays active
     }),
 }))

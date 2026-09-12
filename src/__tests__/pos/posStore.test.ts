@@ -1,0 +1,365 @@
+/**
+ * Unit tests for usePOSStore — POS cart state machine.
+ *
+ * Tests cart operations, idempotency key lifecycle, and state reset.
+ * No Supabase calls — store is pure Zustand state.
+ */
+
+import { describe, it, expect, beforeEach } from 'vitest'
+import { usePOSStore, computeTotals } from '@/stores/posStore'
+import type { CartItem } from '@/types'
+
+// ─── Fixtures ─────────────────────────────────────────────────────
+
+function makeCartItem(overrides: Partial<Omit<CartItem, 'line_total_cfa'>> = {}): Omit<CartItem, 'line_total_cfa'> {
+  return {
+    product_id:       'prod-001',
+    product_name:     'Water Bottle',
+    product_photo_url: '',
+    unit_level:       0,
+    unit_name:        'Piece',
+    quantity_in_unit: 1,
+    unit_price_cfa:   350,
+    cost_price_cfa:   200,
+    conversion_to_base: 1,
+    ...overrides,
+  }
+}
+
+function getStore() {
+  return usePOSStore.getState()
+}
+
+// Reset store before each test
+beforeEach(() => {
+  usePOSStore.getState().startNewSale()
+})
+
+// ─── computeTotals (pure function) ────────────────────────────────
+
+describe('computeTotals', () => {
+  const item1: CartItem = {
+    product_id: 'prod-001',
+    product_name: 'Water',
+    product_photo_url: '',
+    unit_level: 0,
+    unit_name: 'Piece',
+    quantity_in_unit: 10,
+    unit_price_cfa: 350,
+    cost_price_cfa: 200,
+    conversion_to_base: 1,
+    line_total_cfa: 3500,
+  }
+  const item2: CartItem = {
+    ...item1,
+    product_id: 'prod-002',
+    quantity_in_unit: 4,
+    unit_price_cfa: 1500,
+    line_total_cfa: 6000,
+  }
+
+  it('returns zero totals for empty cart', () => {
+    const totals = computeTotals([], null, 0, 0)
+    expect(totals.subtotal_cfa).toBe(0)
+    expect(totals.total_cfa).toBe(0)
+    expect(totals.amount_applied_cfa).toBe(0)
+    expect(totals.change_given_cfa).toBe(0)
+    expect(totals.balance_added_cfa).toBe(0)
+  })
+
+  it('computes subtotal from items', () => {
+    const totals = computeTotals([item1, item2], null, 0, 0)
+    expect(totals.subtotal_cfa).toBe(9500)  // 3500 + 6000
+    expect(totals.total_cfa).toBe(9500)
+  })
+
+  // ── Scenario A: cash > total → change ─────────────────────────
+
+  it('A: cash > total → correct change, zero balance', () => {
+    // 24,500 total, 25,000 tendered
+    const items: CartItem[] = [{ ...item1, quantity_in_unit: 70, line_total_cfa: 24500 }]
+    const totals = computeTotals(items, null, 0, 25000)
+
+    expect(totals.subtotal_cfa).toBe(24500)
+    expect(totals.total_cfa).toBe(24500)
+    expect(totals.amount_applied_cfa).toBe(24500)
+    expect(totals.change_given_cfa).toBe(500)
+    expect(totals.balance_added_cfa).toBe(0)
+  })
+
+  // ── Scenario B: cash < total → balance ────────────────────────
+
+  it('B: cash < total → zero change, balance added', () => {
+    // 24,500 total, 20,000 tendered
+    const items: CartItem[] = [{ ...item1, quantity_in_unit: 70, line_total_cfa: 24500 }]
+    const totals = computeTotals(items, null, 0, 20000)
+
+    expect(totals.subtotal_cfa).toBe(24500)
+    expect(totals.total_cfa).toBe(24500)
+    expect(totals.amount_applied_cfa).toBe(20000)
+    expect(totals.change_given_cfa).toBe(0)
+    expect(totals.balance_added_cfa).toBe(4500)
+  })
+
+  // ── Exact cash ────────────────────────────────────────────────
+
+  it('exact cash → zero change, zero balance', () => {
+    const items: CartItem[] = [{ ...item1, quantity_in_unit: 70, line_total_cfa: 24500 }]
+    const totals = computeTotals(items, null, 0, 24500)
+
+    expect(totals.change_given_cfa).toBe(0)
+    expect(totals.balance_added_cfa).toBe(0)
+    expect(totals.amount_applied_cfa).toBe(24500)
+  })
+
+  // ── Flat discount ─────────────────────────────────────────────
+
+  it('flat discount reduces total correctly', () => {
+    const items: CartItem[] = [{ ...item1, quantity_in_unit: 10, line_total_cfa: 3500 }]
+    const totals = computeTotals(items, 'flat', 500, 3000)
+
+    expect(totals.subtotal_cfa).toBe(3500)
+    expect(totals.discount_amount_cfa).toBe(500)
+    expect(totals.total_cfa).toBe(3000)
+    expect(totals.amount_applied_cfa).toBe(3000)
+    expect(totals.change_given_cfa).toBe(0)
+  })
+
+  it('flat discount capped at subtotal', () => {
+    const items: CartItem[] = [{ ...item1, quantity_in_unit: 1, line_total_cfa: 350 }]
+    const totals = computeTotals(items, 'flat', 9999, 0)
+    // discount capped to subtotal
+    expect(totals.discount_amount_cfa).toBe(350) // min(9999, 350)
+    expect(totals.total_cfa).toBe(0)
+  })
+
+  // ── Percent discount ──────────────────────────────────────────
+
+  it('percent discount computes correctly', () => {
+    const items: CartItem[] = [{ ...item1, quantity_in_unit: 10, line_total_cfa: 3500 }]
+    const totals = computeTotals(items, 'percent', 10, 3500)
+
+    expect(totals.discount_amount_cfa).toBe(350) // 10% of 3500 = 350
+    expect(totals.total_cfa).toBe(3150)
+    expect(totals.amount_applied_cfa).toBe(3150)
+    expect(totals.change_given_cfa).toBe(350)
+  })
+})
+
+// ─── addItem ──────────────────────────────────────────────────────
+
+describe('addItem', () => {
+  it('adds a new item to the cart', () => {
+    getStore().addItem(makeCartItem())
+    const { items } = getStore()
+    expect(items).toHaveLength(1)
+    expect(items[0].product_id).toBe('prod-001')
+    expect(items[0].quantity_in_unit).toBe(1)
+    expect(items[0].line_total_cfa).toBe(350) // 1 × 350
+  })
+
+  it('merges quantities for same product+unit', () => {
+    getStore().addItem(makeCartItem({ quantity_in_unit: 3 }))
+    getStore().addItem(makeCartItem({ quantity_in_unit: 2 }))
+    const { items } = getStore()
+    expect(items).toHaveLength(1)
+    expect(items[0].quantity_in_unit).toBe(5)    // merged: 3 + 2
+    expect(items[0].line_total_cfa).toBe(1750)   // 5 × 350
+  })
+
+  it('keeps distinct lines for same product different units', () => {
+    getStore().addItem(makeCartItem({ unit_level: 0, unit_price_cfa: 350, quantity_in_unit: 2 }))
+    getStore().addItem(makeCartItem({ unit_level: 1, unit_price_cfa: 2100, quantity_in_unit: 1 }))
+    const { items } = getStore()
+    expect(items).toHaveLength(2)
+  })
+
+  it('updates totals after addItem', () => {
+    getStore().addItem(makeCartItem({ quantity_in_unit: 2, unit_price_cfa: 500 }))
+    const { totals } = getStore()
+    expect(totals.subtotal_cfa).toBe(1000) // 2 × 500
+  })
+})
+
+// ─── removeItem ───────────────────────────────────────────────────
+
+describe('removeItem', () => {
+  it('removes the matching item', () => {
+    getStore().addItem(makeCartItem())
+    getStore().addItem(makeCartItem({ product_id: 'prod-002' }))
+    getStore().removeItem('prod-001', 0)
+    const { items } = getStore()
+    expect(items).toHaveLength(1)
+    expect(items[0].product_id).toBe('prod-002')
+  })
+
+  it('updates totals after removeItem', () => {
+    getStore().addItem(makeCartItem({ quantity_in_unit: 3, unit_price_cfa: 1000 }))
+    getStore().removeItem('prod-001', 0)
+    expect(getStore().totals.subtotal_cfa).toBe(0)
+  })
+})
+
+// ─── updateQuantity ───────────────────────────────────────────────
+
+describe('updateQuantity', () => {
+  it('updates the quantity and line total', () => {
+    getStore().addItem(makeCartItem({ quantity_in_unit: 1, unit_price_cfa: 350 }))
+    getStore().updateQuantity('prod-001', 0, 5)
+    const { items } = getStore()
+    expect(items[0].quantity_in_unit).toBe(5)
+    expect(items[0].line_total_cfa).toBe(1750)
+  })
+
+  it('removes item when quantity set to 0', () => {
+    getStore().addItem(makeCartItem())
+    getStore().updateQuantity('prod-001', 0, 0)
+    expect(getStore().items).toHaveLength(0)
+  })
+})
+
+// ─── Customer selection ───────────────────────────────────────────
+
+describe('customer selection', () => {
+  const mockCustomer = {
+    id: 'cust-001',
+    name: 'Ali Hassan',
+    phone: null,
+    address: null,
+    balance_owed_cfa: 0,
+    created_by: 'staff-001',
+    created_at: new Date().toISOString(),
+  }
+
+  it('setCustomer sets customer and isWalkIn=false', () => {
+    getStore().setCustomer(mockCustomer)
+    expect(getStore().customer).toEqual(mockCustomer)
+    expect(getStore().isWalkIn).toBe(false)
+  })
+
+  it('setCustomer(null) sets walk-in', () => {
+    getStore().setCustomer(mockCustomer)
+    getStore().setCustomer(null)
+    expect(getStore().customer).toBeNull()
+    expect(getStore().isWalkIn).toBe(true)
+  })
+
+  it('setWalkIn(true) clears customer', () => {
+    getStore().setCustomer(mockCustomer)
+    getStore().setWalkIn(true)
+    expect(getStore().customer).toBeNull()
+    expect(getStore().isWalkIn).toBe(true)
+  })
+})
+
+// ─── Discount state ───────────────────────────────────────────────
+
+describe('discount state', () => {
+  it('setDiscountType resets value to 0 when type changed to null', () => {
+    getStore().addItem(makeCartItem({ quantity_in_unit: 10, unit_price_cfa: 350 }))
+    getStore().setDiscountType('flat')
+    getStore().setDiscountValue(500)
+    getStore().setDiscountType(null) // clear discount
+    expect(getStore().discountValue).toBe(0)
+    expect(getStore().totals.discount_amount_cfa).toBe(0)
+  })
+})
+
+// ─── Cash tendered ────────────────────────────────────────────────
+
+describe('cashTendered', () => {
+  it('setCashTendered updates totals', () => {
+    getStore().addItem(makeCartItem({ quantity_in_unit: 10, unit_price_cfa: 350 }))
+    getStore().setCashTendered(4000) // subtotal = 3500, tender = 4000
+    const { totals } = getStore()
+    expect(totals.amount_applied_cfa).toBe(3500)
+    expect(totals.change_given_cfa).toBe(500)
+    expect(totals.balance_added_cfa).toBe(0)
+  })
+})
+
+// ─── Idempotency key lifecycle ────────────────────────────────────
+
+describe('idempotency key', () => {
+  it('starts as null', () => {
+    expect(getStore().idempotencyKey).toBeNull()
+  })
+
+  it('ensureIdempotencyKey generates a valid UUID', () => {
+    const key = getStore().ensureIdempotencyKey()
+    expect(key).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    )
+    expect(getStore().idempotencyKey).toBe(key)
+  })
+
+  it('ensureIdempotencyKey returns same key on subsequent calls (retry safety)', () => {
+    const key1 = getStore().ensureIdempotencyKey()
+    const key2 = getStore().ensureIdempotencyKey()
+    expect(key1).toBe(key2)
+  })
+
+  it('startNewSale clears idempotencyKey', () => {
+    getStore().ensureIdempotencyKey()
+    getStore().startNewSale()
+    expect(getStore().idempotencyKey).toBeNull()
+  })
+})
+
+// ─── clearCart ────────────────────────────────────────────────────
+
+describe('clearCart', () => {
+  it('removes all items but keeps customer and discount', () => {
+    const mockCustomer = {
+      id: 'cust-001', name: 'Test', phone: null, address: null,
+      balance_owed_cfa: 0, created_by: 'staff-001',
+      created_at: new Date().toISOString(),
+    }
+    getStore().addItem(makeCartItem())
+    getStore().setCustomer(mockCustomer)
+    getStore().setDiscountType('flat')
+    getStore().clearCart()
+    expect(getStore().items).toHaveLength(0)
+    // Customer and discount persist (clearCart is mid-sale, not new sale)
+    expect(getStore().customer).toEqual(mockCustomer)
+    expect(getStore().discountType).toBe('flat')
+  })
+})
+
+// ─── startNewSale ─────────────────────────────────────────────────
+
+describe('startNewSale', () => {
+  it('resets all per-sale state', () => {
+    const mockCustomer = {
+      id: 'cust-001', name: 'Test', phone: null, address: null,
+      balance_owed_cfa: 0, created_by: 'staff-001',
+      created_at: new Date().toISOString(),
+    }
+    getStore().addItem(makeCartItem())
+    getStore().setCustomer(mockCustomer)
+    getStore().setDiscountType('percent')
+    getStore().setDiscountValue(10)
+    getStore().setCashTendered(5000)
+    getStore().ensureIdempotencyKey()
+
+    getStore().startNewSale()
+
+    const s = getStore()
+    expect(s.items).toHaveLength(0)
+    expect(s.customer).toBeNull()
+    expect(s.isWalkIn).toBe(true)
+    expect(s.discountType).toBeNull()
+    expect(s.discountValue).toBe(0)
+    expect(s.cashTendered).toBe(0)
+    expect(s.idempotencyKey).toBeNull()
+    expect(s.isSubmitting).toBe(false)
+    expect(s.saleResult).toBeNull()
+  })
+
+  it('preserves shiftId across sale reset', () => {
+    getStore().setShiftId('shift-123')
+    getStore().addItem(makeCartItem())
+    getStore().startNewSale()
+    expect(getStore().shiftId).toBe('shift-123')
+  })
+})

@@ -132,3 +132,75 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+/* ================================================================
+   Print styles — Customer Receipt
+   @media print shows ONLY #vhm-receipt and hides everything else.
+   The receipt is minimal and optimised for 80mm thermal paper.
+   ================================================================ */
+
+@media print {
+  /* Hide the entire application shell */
+  body > * { display: none !important; }
+
+  /* Show only the receipt */
+  .print-only { display: block !important; }
+
+  .receipt-paper {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 12pt;
+    width: 76mm;
+    margin: 0 auto;
+    padding: 4mm;
+    color: #000;
+  }
+
+  .receipt-header {
+    text-align: center;
+    margin-bottom: 4mm;
+  }
+
+  .receipt-lot {
+    font-size: 10pt;
+    letter-spacing: 0.05em;
+  }
+
+  .receipt-number {
+    font-size: 14pt;
+    font-weight: bold;
+    letter-spacing: 0.1em;
+    margin-top: 1mm;
+  }
+
+  .receipt-divider {
+    text-align: center;
+    color: #555;
+    margin: 2mm 0;
+    font-size: 9pt;
+  }
+
+  .receipt-customer {
+    text-align: center;
+    font-size: 11pt;
+    margin-bottom: 2mm;
+  }
+
+  .receipt-amount {
+    text-align: center;
+    font-size: 20pt;
+    font-weight: bold;
+    margin: 4mm 0;
+    letter-spacing: 0.05em;
+  }
+
+  .receipt-paid {
+    text-align: center;
+    font-size: 16pt;
+    font-weight: bold;
+    letter-spacing: 0.2em;
+    margin-top: 4mm;
+  }
+
+  /* Hide non-print elements */
+  .no-print { display: none !important; }
+}
