@@ -79,7 +79,8 @@ export interface SaleDetailData extends Sale {
 }
 
 export interface SalesListFilters {
-  depotId: string | null
+  depotId?: string | null
+  customerId?: string
   status?: SaleStatus | null
   search?: string
   page?: number
@@ -125,6 +126,10 @@ async function fetchSalesList(filters: SalesListFilters): Promise<{
 
   if (filters.depotId) {
     q = q.eq('depot_id', filters.depotId)
+  }
+
+  if (filters.customerId) {
+    q = q.eq('customer_id', filters.customerId)
   }
 
   if (filters.status) {

@@ -44,6 +44,7 @@ export type VhmErrorCode =
   | 'DUPLICATE_PRODUCT_NAME'
   | 'STAFF_ALREADY_DEACTIVATED'
   | 'CANNOT_DEACTIVATE_SELF'
+  | 'INVALID_INPUT'
   | 'UNKNOWN'
 
 const ERROR_MESSAGES: Record<VhmErrorCode, string> = {
@@ -84,6 +85,7 @@ const ERROR_MESSAGES: Record<VhmErrorCode, string> = {
   DUPLICATE_PRODUCT_NAME: 'A product with this name already exists in this depot.',
   STAFF_ALREADY_DEACTIVATED: 'This staff account is already deactivated.',
   CANNOT_DEACTIVATE_SELF: 'You cannot deactivate your own account.',
+  INVALID_INPUT: 'Invalid input. Please check your entries and try again.',
   UNKNOWN: 'An unexpected error occurred. Please try again.',
 }
 

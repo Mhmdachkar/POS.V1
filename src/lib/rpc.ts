@@ -34,6 +34,14 @@ import type {
   OpenShiftResult,
   CloseShiftParams,
   CloseShiftResult,
+  CreateCustomerParams,
+  CreateCustomerResult,
+  UpdateCustomerParams,
+  UpdateCustomerResult,
+  DeactivateCustomerParams,
+  DeactivateCustomerResult,
+  ReactivateCustomerParams,
+  ReactivateCustomerResult,
 } from '@/types/rpc'
 
 // ─── Internal helper ────────────────────────────────────────────
@@ -131,4 +139,37 @@ export const rpc = {
    */
   closeShift: (params: CloseShiftParams): Promise<RpcResult<CloseShiftResult>> =>
     callRpc<CloseShiftResult>('close_shift', params),
+
+  // ── Customer management (Phase 6) ──────────────────────────────
+
+  /**
+   * Create a new customer. Roles: cashier, admin.
+   * balance_owed_cfa is always 0 at creation — never supplied by client.
+   * No idempotency key: protect against double-submit via UI isSubmitting guard.
+   */
+  createCustomer: (params: CreateCustomerParams): Promise<RpcResult<CreateCustomerResult>> =>
+    callRpc<CreateCustomerResult>('create_customer', params),
+
+  /**
+   * Update customer name, phone, address. Roles: cashier, admin.
+   * Does NOT update balance_owed_cfa, is_active, or deactivated_at.
+   */
+  updateCustomer: (params: UpdateCustomerParams): Promise<RpcResult<UpdateCustomerResult>> =>
+    callRpc<UpdateCustomerResult>('update_customer', params),
+
+  /**
+   * Soft-deactivate a customer. Admin only.
+   * Outstanding balance is preserved; record_payment() still works on inactive customers.
+   * Idempotent: already-inactive returns current state.
+   */
+  deactivateCustomer: (params: DeactivateCustomerParams): Promise<RpcResult<DeactivateCustomerResult>> =>
+    callRpc<DeactivateCustomerResult>('deactivate_customer', params),
+
+  /**
+   * Restore is_active=true on a deactivated customer. Admin only.
+   * Immediately eligible for new POS credit sales.
+   * Idempotent: already-active returns current state.
+   */
+  reactivateCustomer: (params: ReactivateCustomerParams): Promise<RpcResult<ReactivateCustomerResult>> =>
+    callRpc<ReactivateCustomerResult>('reactivate_customer', params),
 } as const

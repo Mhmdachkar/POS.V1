@@ -180,12 +180,29 @@ export interface Customer {
   address: string | null
   /**
    * Authoritative pooled outstanding balance.
-   * Maintained transactionally by Edge Functions.
+   * Maintained transactionally by RPCs.
    * NEVER derived client-side; always read from server.
    */
   balance_owed_cfa: number
+  /**
+   * FALSE = deactivated. Cannot be used in new sales.
+   * Existing balance remains payable via record_payment() without reactivation.
+   * Historical sales/payments fully preserved.
+   * Added in Phase 6 (migration 025).
+   */
+  is_active: boolean
+  /**
+   * Set when is_active = false. NULL while active.
+   * Added in Phase 6 (migration 025).
+   */
+  deactivated_at: string | null
   created_by: string
   created_at: string
+  /**
+   * Auto-maintained by set_updated_at() trigger.
+   * Added in Phase 6 (migration 025).
+   */
+  updated_at: string
 }
 
 export interface Sale {

@@ -208,3 +208,70 @@ export interface CloseShiftResult {
     return_cash_cfa: number
   }
 }
+
+// ─── create_customer ────────────────────────────────────────────
+
+export interface CreateCustomerParams {
+  p_name:    string
+  p_phone?:  string | null
+  p_address?: string | null
+}
+
+export interface CreateCustomerResult {
+  id: string
+  name: string
+  phone: string | null
+  address: string | null
+  balance_owed_cfa: number   // always 0 at creation
+  is_active: boolean          // always true at creation
+  created_at: string
+  updated_at: string
+}
+
+// ─── update_customer ────────────────────────────────────────────
+
+export interface UpdateCustomerParams {
+  p_customer_id: string
+  p_name:        string
+  p_phone?:      string | null
+  p_address?:    string | null
+}
+
+export interface UpdateCustomerResult {
+  id: string
+  name: string
+  phone: string | null
+  address: string | null
+  balance_owed_cfa: number
+  is_active: boolean
+  updated_at: string
+}
+
+// ─── deactivate_customer ────────────────────────────────────────
+
+export interface DeactivateCustomerParams {
+  p_customer_id: string
+  p_reason?:     string | null
+}
+
+export interface DeactivateCustomerResult {
+  id: string
+  name: string
+  is_active: false
+  deactivated_at: string
+  balance_owed_cfa: number
+  already_inactive: boolean
+}
+
+// ─── reactivate_customer ────────────────────────────────────────
+
+export interface ReactivateCustomerParams {
+  p_customer_id: string
+}
+
+export interface ReactivateCustomerResult {
+  id: string
+  name: string
+  is_active: true
+  already_active: boolean
+}

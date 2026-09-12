@@ -46,8 +46,23 @@ function CreateCustomerForm({ onCreated, onCancel, initialName = '' }: CreateCus
     }
     setNameError('')
     try {
-      const customer = await mutateAsync({ name: name.trim(), phone: phone.trim() || undefined })
-      onCreated(customer)
+      const result = await mutateAsync({
+        p_name:  name.trim(),
+        p_phone: phone.trim() || null,
+      })
+      // Map CreateCustomerResult to the Customer shape expected by the POS store
+      onCreated({
+        id:               result.id,
+        name:             result.name,
+        phone:            result.phone,
+        address:          result.address ?? null,
+        balance_owed_cfa: result.balance_owed_cfa,
+        is_active:        result.is_active,
+        deactivated_at:   null,
+        created_by:       '',
+        created_at:       result.created_at,
+        updated_at:       result.updated_at,
+      })
     } catch {
       setNameError('Failed to create customer. Try again.')
     }
@@ -104,7 +119,9 @@ function CustomerDropdown({ onSelect, onClose }: CustomerDropdownProps) {
   const [showCreate, setShowCreate] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const { data: customers, isLoading } = useCustomerSearch(query, !showCreate)
+  // activeOnly=true: inactive customers cannot be selected for new sales at POS.
+  // Backend enforces this too (complete_sale rejects inactive customer_id).
+  const { data: customers, isLoading } = useCustomerSearch(query, !showCreate, true)
 
   useEffect(() => { inputRef.current?.focus() }, [])
 
