@@ -8,6 +8,12 @@
 
 export type VhmErrorCode =
   | 'INSUFFICIENT_STOCK'
+  | 'INVALID_PRICE'
+  | 'INVALID_UNIT'
+  | 'INVALID_CART'
+  | 'INVALID_DISCOUNT'
+  | 'INVALID_CURRENCY'
+  | 'PRODUCT_NOT_IN_DEPOT'
   | 'PRODUCT_INACTIVE'
   | 'DEPOT_INACTIVE'
   | 'CUSTOMER_REQUIRED'
@@ -42,6 +48,12 @@ export type VhmErrorCode =
 
 const ERROR_MESSAGES: Record<VhmErrorCode, string> = {
   INSUFFICIENT_STOCK: 'Not enough stock available for this product.',
+  INVALID_PRICE: 'Product has an invalid price configuration. Contact an administrator.',
+  INVALID_UNIT: 'Product unit configuration is invalid. Contact an administrator.',
+  INVALID_CART: 'Cart total must be greater than zero.',
+  INVALID_DISCOUNT: 'Invalid discount value. Check the discount type and amount.',
+  INVALID_CURRENCY: 'Invalid display currency. Use CFA or USD.',
+  PRODUCT_NOT_IN_DEPOT: 'Product not found in this depot.',
   PRODUCT_INACTIVE: 'This product is no longer available.',
   DEPOT_INACTIVE: 'This depot is currently inactive.',
   CUSTOMER_REQUIRED: 'A customer must be selected for credit sales.',
@@ -82,12 +94,47 @@ export interface VhmError {
 }
 
 /**
- * Parse an Edge Function error response into a VhmError.
- * Edge Functions return: { error: { code: string, message: string, details?: {} } }
+ * Parse any Supabase or application error into a VhmError.
+ *
+ * Handles two error formats:
+ *
+ * 1. RPC errors (SECURITY DEFINER PostgreSQL functions):
+ *    The error.message is a JSON string: '{"code":"INSUFFICIENT_STOCK","details":{...}}'
+ *    This is raised via: RAISE EXCEPTION '%', jsonb_build_object(...)::text USING ERRCODE='P0001'
+ *
+ * 2. Edge Function errors:
+ *    The raw value is: { error: { code: string, message: string, details?: {} } }
+ *
+ * 3. Supabase PostgREST / network errors:
+ *    Falls back to UNKNOWN with the raw message.
  */
-export function parseEdgeFunctionError(raw: unknown): VhmError {
+export function parseError(raw: unknown): VhmError {
+  if (!raw) return { code: 'UNKNOWN', message: ERROR_MESSAGES.UNKNOWN }
+
+  // ── Format 1: RPC structured JSON error ──────────────────────
+  // Supabase surfaces PostgreSQL RAISE EXCEPTION message in error.message
   if (raw && typeof raw === 'object') {
     const obj = raw as Record<string, unknown>
+
+    // Try to parse error.message as JSON (RPC format)
+    const message = obj['message']
+    if (typeof message === 'string' && message.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(message) as Record<string, unknown>
+        if (parsed.code && typeof parsed.code === 'string') {
+          const code = parsed.code as VhmErrorCode
+          return {
+            code,
+            message: ERROR_MESSAGES[code] ?? message,
+            details: parsed['details'] as Record<string, unknown> | undefined,
+          }
+        }
+      } catch {
+        // Not valid JSON — fall through
+      }
+    }
+
+    // ── Format 2: Edge Function error envelope ────────────────
     const err = obj['error'] as Record<string, unknown> | undefined
     if (err?.code && typeof err.code === 'string') {
       const code = err.code as VhmErrorCode
@@ -98,7 +145,16 @@ export function parseEdgeFunctionError(raw: unknown): VhmError {
       }
     }
   }
+
   return { code: 'UNKNOWN', message: ERROR_MESSAGES.UNKNOWN }
+}
+
+/**
+ * @deprecated Use parseError() instead — handles both RPC and Edge Function errors.
+ * Kept for backwards compatibility with Phase 3 Edge Function callers.
+ */
+export function parseEdgeFunctionError(raw: unknown): VhmError {
+  return parseError(raw)
 }
 
 /** Get a user-friendly message for a known error code. */

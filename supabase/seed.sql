@@ -45,6 +45,15 @@ declare
   -- Product UUIDs (depot_b mirrors)
   prod_water_b   constant uuid := '00000000-0000-0000-0003-000000000011';
   prod_soda_b    constant uuid := '00000000-0000-0000-0003-000000000012';
+
+  -- Stock entry UUIDs (deterministic for idempotent resets)
+  entry_water_a  constant uuid := '00000000-0000-0000-0004-000000000001';
+  entry_soda_a   constant uuid := '00000000-0000-0000-0004-000000000002';
+  entry_rice_a   constant uuid := '00000000-0000-0000-0004-000000000003';
+  entry_water_b  constant uuid := '00000000-0000-0000-0004-000000000011';
+  entry_soda_b   constant uuid := '00000000-0000-0000-0004-000000000012';
+
+  drift_count    int;
 begin
 
   -- ─── Supabase Auth Users (local dev only) ─────────────────────
@@ -180,5 +189,47 @@ begin
     (prod_soda_b,  0, 'Can',     1,  200,   300),
     (prod_soda_b,  1, 'Pack',    6, 1100,  1600)
   on conflict (product_id, unit_level) do nothing;
+
+  -- ─── Seed stock entries ───────────────────────────────────────
+  -- These create the stock_entries business records that back the
+  -- inventory_transactions ledger rows inserted below.
+  -- current_stock_pieces values match the products inserts above.
+  -- unit_level=0 (piece) with conversion_to_base=1 for simplicity.
+  insert into stock_entries (id, product_id, depot_id, unit_level, quantity_in_unit, quantity_pieces, note, entered_by) values
+    (entry_water_a, prod_water_a, depot_a_id, 0, 500,  500,  'Initial seed stock', admin_id),
+    (entry_soda_a,  prod_soda_a,  depot_a_id, 0, 240,  240,  'Initial seed stock', admin_id),
+    (entry_rice_a,  prod_rice_a,  depot_a_id, 0, 80,   80,   'Initial seed stock', admin_id),
+    (entry_water_b, prod_water_b, depot_b_id, 0, 200,  200,  'Initial seed stock', admin_id),
+    (entry_soda_b,  prod_soda_b,  depot_b_id, 0, 100,  100,  'Initial seed stock', admin_id)
+  on conflict (id) do nothing;
+
+  -- ─── Seed inventory_transactions ledger ──────────────────────
+  -- Invariant: SUM(inventory_transactions.quantity_pieces) = products.current_stock_pieces
+  -- Must hold immediately after supabase db reset.
+  -- One RESTOCK row per seeded product with stock > 0.
+  insert into inventory_transactions (depot_id, product_id, quantity_pieces, transaction_type, reference_type, reference_id, created_by, metadata) values
+    (depot_a_id, prod_water_a, 500,  'RESTOCK', 'stock_entry', entry_water_a, admin_id, '{"note":"Initial seed stock"}'::jsonb),
+    (depot_a_id, prod_soda_a,  240,  'RESTOCK', 'stock_entry', entry_soda_a,  admin_id, '{"note":"Initial seed stock"}'::jsonb),
+    (depot_a_id, prod_rice_a,  80,   'RESTOCK', 'stock_entry', entry_rice_a,  admin_id, '{"note":"Initial seed stock"}'::jsonb),
+    (depot_b_id, prod_water_b, 200,  'RESTOCK', 'stock_entry', entry_water_b, admin_id, '{"note":"Initial seed stock"}'::jsonb),
+    (depot_b_id, prod_soda_b,  100,  'RESTOCK', 'stock_entry', entry_soda_b,  admin_id, '{"note":"Initial seed stock"}'::jsonb)
+  on conflict do nothing;
+
+  -- ─── Drift assertion ─────────────────────────────────────────
+  -- Verify inventory_transactions ledger is in sync with products.current_stock_pieces.
+  -- This check runs at the end of every supabase db reset.
+  -- If it fails, the seed data or ledger rows are misconfigured.
+  select count(*) into drift_count
+  from products p
+  left join (
+    select product_id, sum(quantity_pieces) as ledger
+    from inventory_transactions
+    group by product_id
+  ) it on it.product_id = p.id
+  where p.current_stock_pieces != coalesce(it.ledger, 0);
+
+  if drift_count > 0 then
+    raise exception 'SEED ERROR: % product(s) have inventory_transactions ledger drift. Check seed data.', drift_count;
+  end if;
 
 end $$;
