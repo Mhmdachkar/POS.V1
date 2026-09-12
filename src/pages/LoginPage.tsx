@@ -1,15 +1,14 @@
 import { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
-import { useAuthStore } from '@/stores/authStore'
+import { useAuthStore, selectAuthLoadState, selectIsAdmin } from '@/stores/authStore'
 import { LoadingButton } from '@/components/ui'
 import { cn } from '@/lib/cn'
-import type { Staff } from '@/types/database'
 
 // ─────────────────────────────────────────────────────────────────
 // Validation schema
@@ -20,7 +19,10 @@ const loginSchema = z.object({
     .string()
     .min(1, 'Username is required')
     .max(60, 'Username too long')
-    .regex(/^[a-zA-Z0-9._-]+$/, 'Username may only contain letters, numbers, dots, hyphens, and underscores'),
+    .regex(
+      /^[a-zA-Z0-9._-]+$/,
+      'Username may only contain letters, numbers, dots, hyphens, and underscores',
+    ),
   password: z.string().min(1, 'Password is required'),
 })
 
@@ -30,14 +32,41 @@ type LoginFormData = z.infer<typeof loginSchema>
 // LoginPage
 // ─────────────────────────────────────────────────────────────────
 
+/**
+ * LoginPage — username/password entry.
+ *
+ * AUTH FLOW:
+ *   1. User submits username + password.
+ *   2. LoginPage maps username → synthetic email ({username}@vhm-pos.internal).
+ *   3. supabase.auth.signInWithPassword is called.
+ *   4. On success: Supabase fires SIGNED_IN auth state change event.
+ *   5. AuthProvider's onAuthStateChange handler:
+ *        a. Fetches staff record from DB (authoritative).
+ *        b. Checks is_active.
+ *        c. If active:     transitions to 'authorized' → AuthGuard renders app.
+ *        d. If deactivated: transitions to 'deactivated' → AuthGuard renders DeactivatedPage.
+ *   6. LoginPage navigates to the intended route after successful signIn.
+ *
+ * STATE MACHINE INTEGRATION:
+ *   If authLoadState is already 'authorized' (user navigated back to /login
+ *   while logged in), redirect immediately to their home route.
+ *
+ * IMPORTANT: This page does NOT call setSession/setStaff directly.
+ * AuthProvider owns all state transitions. This avoids duplicated
+ * logic and race conditions between the login flow and auth events.
+ *
+ * SECURITY: The synthetic email pattern is an implementation detail.
+ * Real users never see or interact with the @vhm-pos.internal domain.
+ */
 export function LoginPage() {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { setSession, setStaff } = useAuthStore()
+  const navigate    = useNavigate()
+  const location    = useLocation()
   const [showPassword, setShowPassword] = useState(false)
 
-  const from = (location.state as { from?: Location })?.from?.pathname ?? '/'
+  const authLoadState = useAuthStore(selectAuthLoadState)
+  const isAdmin       = useAuthStore(selectIsAdmin)
 
+  // ALL hooks must be called unconditionally before any early returns
   const {
     register,
     handleSubmit,
@@ -47,49 +76,39 @@ export function LoginPage() {
     resolver: zodResolver(loginSchema),
   })
 
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/'
+
+  // Redirect away if already authorized (user navigated back to /login)
+  if (authLoadState === 'authorized') {
+    const defaultHome = isAdmin ? '/dashboard' : from === '/login' ? '/' : from
+    return <Navigate to={defaultHome} replace />
+  }
+
   async function onSubmit(data: LoginFormData) {
-    // Map username → synthetic email used in Supabase Auth
-    // Encapsulated here: real users never see or know the synthetic email.
+    // Map username → synthetic email (never exposed to users)
     const syntheticEmail = `${data.username.toLowerCase()}@vhm-pos.internal`
 
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    const { error: authError } = await supabase.auth.signInWithPassword({
       email: syntheticEmail,
       password: data.password,
     })
 
-    if (authError || !authData.session) {
-      setError('root', {
-        message: 'Invalid username or password.',
-      })
+    if (authError) {
+      // Show a generic error — never expose whether the username exists
+      setError('root', { message: 'Invalid username or password.' })
       return
     }
 
-    // Fetch staff record — verify is_active and get role/depot
-    const { data: staffData, error: staffError } = await supabase
-      .from('staff')
-      .select('*')
-      .eq('id', authData.session.user.id)
-      .single()
-
-    if (staffError || !staffData) {
-      await supabase.auth.signOut()
-      setError('root', { message: 'Account not found. Contact your administrator.' })
-      return
-    }
-
-    const staff = staffData as Staff
-
-    if (!staff.is_active) {
-      await supabase.auth.signOut()
-      setError('root', { message: 'Your account has been deactivated. Contact your administrator.' })
-      return
-    }
-
-    setSession(authData.session)
-    setStaff(staff)
-
-    toast.success(`Welcome back, ${staff.full_name}`)
-    navigate(from, { replace: true })
+    // Success: Supabase fires SIGNED_IN event → AuthProvider handles everything.
+    // AuthProvider will:
+    //   - Fetch staff from DB
+    //   - Set authLoadState to 'authorized' OR 'deactivated'
+    //   - Trigger AuthGuard re-render (app shows or DeactivatedPage shows)
+    //
+    // Navigate optimistically: if staff is deactivated, AuthGuard will
+    // intercept and show DeactivatedPage before protected content renders.
+    toast.success('Signing in…')
+    navigate(from === '/login' ? '/' : from, { replace: true })
   }
 
   return (
@@ -111,10 +130,7 @@ export function LoginPage() {
 
             {/* Username field */}
             <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="username"
-                className="text-sm font-medium text-text-primary"
-              >
+              <label htmlFor="username" className="text-sm font-medium text-text-primary">
                 Username
               </label>
               <input
@@ -142,10 +158,7 @@ export function LoginPage() {
 
             {/* Password field */}
             <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="password"
-                className="text-sm font-medium text-text-primary"
-              >
+              <label htmlFor="password" className="text-sm font-medium text-text-primary">
                 Password
               </label>
               <div className="relative">
@@ -173,11 +186,7 @@ export function LoginPage() {
                   tabIndex={-1}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
               {errors.password && (
