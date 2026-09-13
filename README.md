@@ -218,7 +218,7 @@ Migrations live in `supabase/migrations/` and are applied in order.
 | 5 | Core POS | ⬜ Pending |
 | 6 | Customers + Payments | ⬜ Pending |
 | 7 | Inventory | ⬜ Pending |
-| 8 | Returns + Voids | ⬜ Pending |
+| 8 | Returns + Voids | ✅ Complete |
 | 9 | Transfers | ⬜ Pending |
 | 10 | Shifts | ⬜ Pending |
 | 11 | Admin | ⬜ Pending |

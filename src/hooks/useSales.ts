@@ -102,7 +102,7 @@ export const saleKeys = {
 // Fetch helpers
 // ─────────────────────────────────────────────────────────────────
 
-async function fetchSalesList(filters: SalesListFilters): Promise<{
+export async function fetchSalesList(filters: SalesListFilters): Promise<{
   data: SaleListItem[]
   count: number
 }> {
@@ -111,6 +111,9 @@ async function fetchSalesList(filters: SalesListFilters): Promise<{
   const from = page * pageSize
   const to = from + pageSize - 1
 
+  // Filters are applied before order/range so pagination is on the
+  // filtered set (PostgREST also does this; the JS call order must
+  // match for filter-aware clients and tests).
   let q = supabase
     .from('sales')
     .select(
@@ -121,8 +124,6 @@ async function fetchSalesList(filters: SalesListFilters): Promise<{
       `,
       { count: 'exact' },
     )
-    .order('created_at', { ascending: false })
-    .range(from, to)
 
   if (filters.depotId) {
     q = q.eq('depot_id', filters.depotId)
@@ -141,6 +142,8 @@ async function fetchSalesList(filters: SalesListFilters): Promise<{
   }
 
   const { data, error, count } = await q
+    .order('created_at', { ascending: false })
+    .range(from, to)
   if (error) throw error
 
   const items: SaleListItem[] = (data ?? []).map((row: any) => ({

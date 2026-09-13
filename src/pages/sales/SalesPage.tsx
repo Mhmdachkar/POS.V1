@@ -13,17 +13,21 @@
  *   - admin: sees selected depot's sales (or all if no depot selected)
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Receipt, Search } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { SaleStatusBadge, Skeleton, EmptyState } from '@/components/ui'
 import { formatCFA, formatDateTime } from '@/lib/formatters'
 import { useSalesList } from '@/hooks/useSales'
+import { useDepotOptions } from '@/hooks/useInventory'
 import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
 import { usePOSStore } from '@/stores/posStore'
 import { SaleDetailDrawer } from './components/SaleDetailDrawer'
 import type { SaleStatus } from '@/types/database'
+
+/** Receipt-number search debounce. Do not query on every keystroke. */
+export const SALES_SEARCH_DEBOUNCE_MS = 300
 
 // ─────────────────────────────────────────────────────────────────
 // Status filter
@@ -63,6 +67,7 @@ function TableSkeleton() {
 
 export function SalesPage() {
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<SaleStatus | null>(null)
   const [page, setPage] = useState(0)
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null)
@@ -70,17 +75,32 @@ export function SalesPage() {
   const staff     = useAuthStore((s) => s.staff)
   const depotId   = useDepotStore((s) => s.currentDepotId)
   const shiftId   = usePOSStore((s) => s.shiftId)
+  const { data: depots } = useDepotOptions()
 
   const effectiveDepotId =
     staff?.role === 'cashier' ? staff.depot_id : depotId
 
+  const showDepotColumn = staff?.role === 'admin' && depotId === null
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), SALES_SEARCH_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  useEffect(() => {
+    setPage(0)
+  }, [depotId])
+
   const { data, isLoading, isError } = useSalesList({
     depotId: effectiveDepotId,
     status:  statusFilter,
-    search:  search,
+    search:  debouncedSearch,
     page,
     pageSize: 30,
   })
+
+  const depotName = (id: string) =>
+    depots?.find((d) => d.id === id)?.name ?? '—'
 
   const sales = data?.data ?? []
   const totalCount = data?.count ?? 0
@@ -177,9 +197,17 @@ export function SalesPage() {
           <>
             {/* Table header */}
             <div className="sticky top-0 bg-surface-muted border-b border-border">
-              <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-4 py-2">
+              <div className={cn(
+                'grid gap-4 px-4 py-2',
+                showDepotColumn
+                  ? 'grid-cols-[1fr_auto_auto_auto_auto_auto]'
+                  : 'grid-cols-[1fr_auto_auto_auto_auto]',
+              )}>
                 <span className="text-xs font-semibold text-text-secondary uppercase">Receipt</span>
                 <span className="text-xs font-semibold text-text-secondary uppercase">Status</span>
+                {showDepotColumn && (
+                  <span className="text-xs font-semibold text-text-secondary uppercase">Depot</span>
+                )}
                 <span className="text-xs font-semibold text-text-secondary uppercase">Customer</span>
                 <span className="text-xs font-semibold text-text-secondary uppercase text-right">Total</span>
                 <span className="text-xs font-semibold text-text-secondary uppercase text-right">Date</span>
@@ -193,7 +221,10 @@ export function SalesPage() {
                 type="button"
                 onClick={() => setSelectedSaleId(sale.id)}
                 className={cn(
-                  'w-full text-left grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-4 py-3',
+                  'w-full text-left grid gap-4 px-4 py-3',
+                  showDepotColumn
+                    ? 'grid-cols-[1fr_auto_auto_auto_auto_auto]'
+                    : 'grid-cols-[1fr_auto_auto_auto_auto]',
                   'border-b border-border hover:bg-surface-muted transition-colors',
                   'focus:outline-none focus:bg-primary-subtle',
                   selectedSaleId === sale.id && 'bg-primary-subtle',
@@ -205,6 +236,11 @@ export function SalesPage() {
                 <span>
                   <SaleStatusBadge status={sale.status} />
                 </span>
+                {showDepotColumn && (
+                  <span className="text-sm text-text-secondary truncate max-w-36">
+                    {depotName(sale.depot_id)}
+                  </span>
+                )}
                 <span className="text-sm text-text-secondary truncate max-w-36">
                   {sale.customer_name ?? <span className="text-text-muted italic">Walk-in</span>}
                 </span>
