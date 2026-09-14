@@ -10,9 +10,9 @@
  */
 
 import { useEffect, useState } from 'react'
-import { Package, Search } from 'lucide-react'
+import { Package, Plus, Search } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import { ActiveBadge, EmptyState, Skeleton, StockStatusBadge } from '@/components/ui'
+import { ActiveBadge, Button, EmptyState, Skeleton, StockStatusBadge } from '@/components/ui'
 import { formatDate, formatPieces } from '@/lib/formatters'
 import { getStockStatus, type StockStatus } from '@/types'
 import {
@@ -22,7 +22,9 @@ import {
   useInventoryList,
 } from '@/hooks/useInventory'
 import { useDepotStore } from '@/stores/depotStore'
+import { useAuthStore } from '@/stores/authStore'
 import { ProductDetailDrawer } from './components/ProductDetailDrawer'
+import { ProductFormModal } from './components/ProductFormModal'
 
 export function clampInventoryPage(page: number, totalPages: number): number {
   if (page <= 0) return 0
@@ -63,8 +65,11 @@ export function InventoryPage() {
   const [stockStatus, setStockStatus] = useState<StockFilter>('all')
   const [page, setPage] = useState(0)
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
+  const [showCreate, setShowCreate] = useState(false)
 
   const currentDepotId = useDepotStore((s) => s.currentDepotId)
+  const isAdmin = useAuthStore((s) => s.staff?.role === 'admin')
+  const canCreateProduct = isAdmin && currentDepotId !== null
   const { data: categories } = useCategories()
   const { data: depots } = useDepotOptions()
 
@@ -144,6 +149,12 @@ export function InventoryPage() {
               />
             </div>
 
+            {canCreateProduct && (
+              <Button className="gap-1.5 flex-shrink-0" onClick={() => setShowCreate(true)}>
+                <Plus className="h-4 w-4" />
+                New Product
+              </Button>
+            )}
             <select
               value={categoryId ?? ''}
               onChange={handleCategoryChange}
@@ -291,6 +302,11 @@ export function InventoryPage() {
       <ProductDetailDrawer
         productId={selectedProductId}
         onClose={() => setSelectedProductId(null)}
+      />
+      <ProductFormModal
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        depotId={currentDepotId}
       />
     </div>
   )

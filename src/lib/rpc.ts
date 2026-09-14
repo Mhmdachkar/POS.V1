@@ -30,6 +30,17 @@ import type {
   CreateTransferDraftResult,
   CompleteTransferParams,
   CompleteTransferResult,
+  AdminInsertStaffParams,
+  AdminUpdateStaffParams,
+  StaffRowResult,
+  CreateDepotParams,
+  UpdateDepotParams,
+  CreateCategoryParams,
+  UpdateCategoryParams,
+  CreateProductParams,
+  UpdateProductParams,
+  UpdateBusinessSettingsParams,
+  AdminDashboardSummary,
   OpenShiftParams,
   OpenShiftResult,
   CloseShiftParams,
@@ -172,4 +183,63 @@ export const rpc = {
    */
   reactivateCustomer: (params: ReactivateCustomerParams): Promise<RpcResult<ReactivateCustomerResult>> =>
     callRpc<ReactivateCustomerResult>('reactivate_customer', params),
+
+  adminInsertStaff: (params: AdminInsertStaffParams): Promise<RpcResult<StaffRowResult>> =>
+    callRpc<StaffRowResult>('admin_insert_staff', params),
+
+  adminUpdateStaffRow: (params: AdminUpdateStaffParams): Promise<RpcResult<StaffRowResult>> =>
+    callRpc<StaffRowResult>('admin_update_staff_row', params),
+
+  adminDeactivateStaffRow: (staffId: string): Promise<RpcResult<StaffRowResult>> =>
+    callRpc<StaffRowResult>('admin_deactivate_staff_row', { p_staff_id: staffId }),
+
+  adminReactivateStaffRow: (staffId: string): Promise<RpcResult<StaffRowResult>> =>
+    callRpc<StaffRowResult>('admin_reactivate_staff_row', { p_staff_id: staffId }),
+
+  adminGetStaffRow: (staffId: string): Promise<RpcResult<StaffRowResult>> =>
+    callRpc<StaffRowResult>('admin_get_staff_row', { p_staff_id: staffId }),
+
+  createDepot: (params: CreateDepotParams): Promise<RpcResult<import('@/types/database').Depot>> =>
+    callRpc('create_depot', params),
+
+  updateDepot: (params: UpdateDepotParams): Promise<RpcResult<import('@/types/database').Depot>> =>
+    callRpc('update_depot', params),
+
+  deactivateDepot: (depotId: string): Promise<RpcResult<import('@/types/database').Depot>> =>
+    callRpc('deactivate_depot', { p_depot_id: depotId }),
+
+  reactivateDepot: (depotId: string): Promise<RpcResult<import('@/types/database').Depot>> =>
+    callRpc('reactivate_depot', { p_depot_id: depotId }),
+
+  createCategory: (params: CreateCategoryParams): Promise<RpcResult<import('@/types/database').Category>> =>
+    callRpc('create_category', params),
+
+  updateCategory: (params: UpdateCategoryParams): Promise<RpcResult<import('@/types/database').Category>> =>
+    callRpc('update_category', params),
+
+  deactivateCategory: (categoryId: string): Promise<RpcResult<import('@/types/database').Category>> =>
+    callRpc('deactivate_category', { p_category_id: categoryId }),
+
+  reactivateCategory: (categoryId: string): Promise<RpcResult<import('@/types/database').Category>> =>
+    callRpc('reactivate_category', { p_category_id: categoryId }),
+
+  createProduct: (params: CreateProductParams): Promise<RpcResult<import('@/types').ProductWithUnits>> =>
+    callRpc('create_product', params),
+
+  updateProduct: (params: UpdateProductParams): Promise<RpcResult<import('@/types').ProductWithUnits>> =>
+    callRpc('update_product', params),
+
+  deactivateProduct: (productId: string): Promise<RpcResult<import('@/types/database').Product>> =>
+    callRpc('deactivate_product', { p_product_id: productId }),
+
+  reactivateProduct: (productId: string): Promise<RpcResult<import('@/types/database').Product>> =>
+    callRpc('reactivate_product', { p_product_id: productId }),
+
+  updateBusinessSettings: (
+    params: UpdateBusinessSettingsParams,
+  ): Promise<RpcResult<import('@/types/database').BusinessSettings>> =>
+    callRpc('update_business_settings', params),
+
+  adminDashboardSummary: (depotId: string | null): Promise<RpcResult<AdminDashboardSummary>> =>
+    callRpc<AdminDashboardSummary>('admin_dashboard_summary', { p_depot_id: depotId }),
 } as const

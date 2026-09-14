@@ -275,3 +275,157 @@ export interface ReactivateCustomerResult {
   is_active: true
   already_active: boolean
 }
+
+// ─── Phase 11 admin ─────────────────────────────────────────────
+
+export type AdminStaffRole = 'admin' | 'cashier' | 'depot_staff'
+
+export interface StaffRowResult {
+  id: string
+  username: string
+  full_name: string
+  role: AdminStaffRole
+  depot_id: string | null
+  is_active: boolean
+  deactivated_at: string | null
+  created_at: string
+  already_inactive?: boolean
+  already_active?: boolean
+}
+
+export interface AdminInsertStaffParams {
+  p_staff_id: string
+  p_username: string
+  p_full_name: string
+  p_role: AdminStaffRole
+  p_depot_id: string | null
+}
+
+export interface AdminUpdateStaffParams {
+  p_staff_id: string
+  p_full_name: string
+  p_role: AdminStaffRole
+  p_depot_id: string | null
+}
+
+export interface CreateDepotParams {
+  p_name: string
+  p_location: string
+  p_code: string
+}
+
+export interface UpdateDepotParams {
+  p_depot_id: string
+  p_name: string
+  p_location: string
+}
+
+export interface CreateCategoryParams {
+  p_name: string
+  p_parent_id?: string | null
+}
+
+export interface UpdateCategoryParams {
+  p_category_id: string
+  p_name: string
+}
+
+export interface ProductUnitInput {
+  unit_level: 0 | 1 | 2
+  unit_name: string
+  conversion_to_base: number
+  cost_price_cfa: number
+  selling_price_cfa: number
+}
+
+export interface CreateProductParams {
+  p_depot_id: string
+  p_category_id: string
+  p_name: string
+  p_photo_url: string
+  p_units: ProductUnitInput[]
+}
+
+export interface UpdateProductParams {
+  p_product_id: string
+  p_category_id: string
+  p_name: string
+  p_photo_url: string
+  p_units: ProductUnitInput[]
+}
+
+export interface UpdateBusinessSettingsParams {
+  p_business_name: string
+  p_logo_url: string | null
+  p_cfa_to_usd_rate: number
+}
+
+export interface DashboardTopProduct {
+  product_id: string
+  name: string
+  net_pieces: number
+}
+
+export interface DashboardHourlySale {
+  hour: number
+  sales_cfa: number
+}
+
+export interface DashboardLowStockItem {
+  product_id: string
+  name: string
+  depot_id: string
+  current_stock_pieces: number
+}
+
+export interface DashboardShiftDiscrepancy {
+  shift_id: string
+  depot_id: string
+  discrepancy_cfa: number
+  closed_at: string
+}
+
+export interface AdminDashboardSummary {
+  sales_cfa: number
+  gross_profit_cfa: number
+  txn_count: number
+  avg_sale_cfa: number
+  top_products: DashboardTopProduct[]
+  hourly_sales: DashboardHourlySale[]
+  action_required: {
+    low_stock: DashboardLowStockItem[]
+    outstanding_balances_count: number
+    shift_discrepancies: DashboardShiftDiscrepancy[]
+    exchange_rate: {
+      cfa_to_usd_rate: number
+      rate_updated_at: string
+    }
+  }
+}
+
+export interface CreateStaffEdgePayload {
+  username: string
+  full_name: string
+  role: AdminStaffRole
+  depot_id: string | null
+  password: string
+}
+
+export interface UpdateStaffEdgePayload {
+  staff_id: string
+  full_name: string
+  role: AdminStaffRole
+  depot_id: string | null
+}
+
+export interface StaffLifecycleEdgeResult {
+  success: true
+  applied: boolean
+  reconciled: boolean
+  staff: StaffRowResult
+}
+
+export interface CreateStaffEdgeResult {
+  success: true
+  staff: StaffRowResult
+}

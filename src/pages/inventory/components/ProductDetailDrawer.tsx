@@ -7,8 +7,8 @@
  */
 
 import { useState } from 'react'
-import { PackagePlus, SlidersHorizontal } from 'lucide-react'
-import { ActiveBadge, Button, Drawer, Skeleton, StockStatusBadge } from '@/components/ui'
+import { PackagePlus, Pencil, SlidersHorizontal, UserCheck, UserX } from 'lucide-react'
+import { ActiveBadge, Button, ConfirmDialog, Drawer, LoadingButton, Skeleton, StockStatusBadge } from '@/components/ui'
 import { formatCFA, formatDateTime, formatPieces } from '@/lib/formatters'
 import { getStockStatus } from '@/types'
 import { useProductDetail } from '@/hooks/useProducts'
@@ -19,8 +19,13 @@ import {
   useDepotOptions,
   useInventoryActivity,
 } from '@/hooks/useInventory'
+import { parseError } from '@/lib/errors'
+import { useDeactivateProduct, useReactivateProduct } from '@/hooks/useAdminProducts'
+import { useAuthStore } from '@/stores/authStore'
+import { useDepotStore } from '@/stores/depotStore'
 import { RestockModal } from './RestockModal'
 import { AdjustmentModal } from './AdjustmentModal'
+import { ProductFormModal } from './ProductFormModal'
 
 function SectionHeader({ title }: { title: string }) {
   return (
@@ -47,6 +52,15 @@ interface ProductDetailDrawerProps {
 export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerProps) {
   const [showRestock, setShowRestock] = useState(false)
   const [showAdjust, setShowAdjust] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
+  const [confirmDeactivate, setConfirmDeactivate] = useState(false)
+  const [adminError, setAdminError] = useState('')
+
+  const isAdmin = useAuthStore((s) => s.staff?.role === 'admin')
+  const currentDepotId = useDepotStore((s) => s.currentDepotId)
+  const canMutateProduct = isAdmin && currentDepotId !== null
+  const { mutateAsync: deactivateProduct, isPending: deactivating } = useDeactivateProduct()
+  const { mutateAsync: reactivateProduct, isPending: reactivating } = useReactivateProduct()
 
   const { data: product, isLoading } = useProductDetail(productId)
   const { data: activity, isLoading: loadingActivity } = useInventoryActivity(productId)
@@ -190,6 +204,17 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
               {inactive && (
                 <p className="text-sm text-warning-foreground">{INACTIVE_PRODUCT_MESSAGE}</p>
               )}
+              {adminError && (
+                <div className="rounded-md bg-danger-bg border border-danger/20 px-3 py-2">
+                  <p className="text-sm text-danger">{adminError}</p>
+                </div>
+              )}
+              {canMutateProduct && (
+                <Button variant="secondary" className="w-full gap-2" onClick={() => setShowEdit(true)}>
+                  <Pencil className="h-4 w-4" />
+                  Edit Product
+                </Button>
+              )}
               <Button
                 className="w-full gap-2"
                 onClick={() => setShowRestock(true)}
@@ -209,6 +234,35 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
                 <SlidersHorizontal className="h-4 w-4" />
                 Adjust Inventory
               </Button>
+              {canMutateProduct && product.is_active && (
+                <LoadingButton
+                  variant="ghost"
+                  className="w-full gap-2 text-warning-foreground hover:bg-warning-bg"
+                  onClick={() => setConfirmDeactivate(true)}
+                  loading={deactivating}
+                >
+                  <UserX className="h-4 w-4" />
+                  Deactivate Product
+                </LoadingButton>
+              )}
+              {canMutateProduct && !product.is_active && (
+                <LoadingButton
+                  variant="ghost"
+                  className="w-full gap-2 text-success-foreground hover:bg-success-bg"
+                  onClick={async () => {
+                    setAdminError('')
+                    try {
+                      await reactivateProduct(product.id)
+                    } catch (err) {
+                      setAdminError(parseError(err).message)
+                    }
+                  }}
+                  loading={reactivating}
+                >
+                  <UserCheck className="h-4 w-4" />
+                  Reactivate Product
+                </LoadingButton>
+              )}
             </div>
           </div>
         )}
@@ -228,6 +282,33 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
           product={product}
         />
       )}
+      {product && (
+        <ProductFormModal
+          open={showEdit}
+          onClose={() => setShowEdit(false)}
+          depotId={product.depot_id}
+          product={product}
+        />
+      )}
+      <ConfirmDialog
+        open={confirmDeactivate}
+        onClose={() => setConfirmDeactivate(false)}
+        onConfirm={async () => {
+          if (!product) return
+          setAdminError('')
+          try {
+            await deactivateProduct(product.id)
+            setConfirmDeactivate(false)
+          } catch (err) {
+            setAdminError(parseError(err).message)
+            setConfirmDeactivate(false)
+          }
+        }}
+        title="Deactivate product?"
+        message="Allowed even with stock. Blocked only if this product is on a pending transfer."
+        confirmLabel="Deactivate"
+        isLoading={deactivating}
+      />
     </>
   )
 }

@@ -44,6 +44,24 @@ export type VhmErrorCode =
   | 'DUPLICATE_PRODUCT_NAME'
   | 'STAFF_ALREADY_DEACTIVATED'
   | 'CANNOT_DEACTIVATE_SELF'
+  | 'LAST_ADMIN_REQUIRED'
+  | 'STAFF_HAS_OPEN_SHIFT'
+  | 'AUTH_SYNC_FAILED'
+  | 'STAFF_ROLE_SLOT_TAKEN'
+  | 'USERNAME_TAKEN'
+  | 'DEPOT_HAS_ACTIVE_STAFF'
+  | 'DEPOT_HAS_OPEN_SHIFTS'
+  | 'DEPOT_HAS_PENDING_TRANSFERS'
+  | 'DEPOT_CODE_CONFLICT'
+  | 'CATEGORY_HAS_ACTIVE_CHILDREN'
+  | 'CATEGORY_HAS_ACTIVE_PRODUCTS'
+  | 'CATEGORY_INACTIVE'
+  | 'PRODUCT_IN_PENDING_TRANSFER'
+  | 'INVALID_PHOTO_URL'
+  | 'INVALID_LOGO_URL'
+  | 'INVALID_EXCHANGE_RATE'
+  | 'UNIT_LEVEL_REQUIRED'
+  | 'INVALID_CONVERSION'
   | 'INVALID_INPUT'
   | 'UNKNOWN'
 
@@ -85,6 +103,24 @@ export const ERROR_MESSAGES: Record<VhmErrorCode, string> = {
   DUPLICATE_PRODUCT_NAME: 'A product with this name already exists in this depot.',
   STAFF_ALREADY_DEACTIVATED: 'This staff account is already deactivated.',
   CANNOT_DEACTIVATE_SELF: 'You cannot deactivate your own account.',
+  LAST_ADMIN_REQUIRED: 'The last active admin cannot be deactivated or demoted.',
+  STAFF_HAS_OPEN_SHIFT: 'This staff member has an open shift. Close the shift before deactivating.',
+  AUTH_SYNC_FAILED: 'The account was updated but login access could not be synced. Retry from the current staff status.',
+  STAFF_ROLE_SLOT_TAKEN: 'This depot already has an active staff member in that role.',
+  USERNAME_TAKEN: 'That username is already taken.',
+  DEPOT_HAS_ACTIVE_STAFF: 'This depot still has active staff assigned.',
+  DEPOT_HAS_OPEN_SHIFTS: 'This depot has open shifts. Close them before deactivating.',
+  DEPOT_HAS_PENDING_TRANSFERS: 'This depot has pending transfers.',
+  DEPOT_CODE_CONFLICT: 'A depot with this code already exists.',
+  CATEGORY_HAS_ACTIVE_CHILDREN: 'This category has active child categories.',
+  CATEGORY_HAS_ACTIVE_PRODUCTS: 'This category still has active products.',
+  CATEGORY_INACTIVE: 'This category is inactive.',
+  PRODUCT_IN_PENDING_TRANSFER: 'This product is on a pending transfer.',
+  INVALID_PHOTO_URL: 'Product photo must be an HTTPS URL.',
+  INVALID_LOGO_URL: 'Logo must be an HTTPS URL.',
+  INVALID_EXCHANGE_RATE: 'Enter a valid CFA per USD rate greater than zero.',
+  UNIT_LEVEL_REQUIRED: 'Each product needs a base unit (level 0).',
+  INVALID_CONVERSION: 'Unit conversion must be a positive number. The base unit conversion must be 1.',
   INVALID_INPUT: 'Invalid input. Please check your entries and try again.',
   UNKNOWN: 'An unexpected error occurred. Please try again.',
 }
