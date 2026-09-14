@@ -429,3 +429,120 @@ export interface CreateStaffEdgeResult {
   success: true
   staff: StaffRowResult
 }
+
+// ─── Phase 12 reports ───────────────────────────────────────────
+
+export interface AdminReportParams {
+  p_depot_id: string | null
+  p_start_date: string
+  p_end_date: string
+}
+
+export interface SalesReportProductRow {
+  product_id: string
+  name: string
+  net_pieces: number
+  net_revenue_cfa: number
+}
+
+export interface SalesReportReturnRow {
+  return_id: string
+  sale_id: string
+  depot_id: string
+  refund_amount_cfa: number
+  cash_refunded_cfa: number
+  balance_adjustment_cfa: number
+  created_at: string
+}
+
+export interface AdminSalesReport {
+  sales_activity_cfa: number
+  returns_activity_cfa: number
+  net_sales_cfa: number
+  transaction_count: number
+  average_sale_cfa: number
+  gross_profit_cfa: number
+  product_performance: SalesReportProductRow[]
+  returns: SalesReportReturnRow[]
+  start_date: string
+  end_date: string
+}
+
+export interface InventoryStockRow {
+  product_id: string
+  name: string
+  depot_id: string
+  current_stock_pieces: number
+  unit_cost_cfa?: number
+  value_cfa?: number
+}
+
+export interface InventoryMovementRow {
+  transaction_type: string
+  quantity_pieces: number
+}
+
+export interface AdminInventoryReport {
+  inventory_value_cfa: number
+  current_stock: InventoryStockRow[]
+  low_stock: InventoryStockRow[]
+  out_of_stock: InventoryStockRow[]
+  period_movement: InventoryMovementRow[]
+  start_date: string
+  end_date: string
+}
+
+export interface CustomerBalanceRow {
+  customer_id: string
+  name: string
+  balance_owed_cfa: number
+  is_active: boolean
+}
+
+export interface CustomerPaymentRow {
+  payment_id: string
+  customer_id: string
+  amount_cfa: number
+  recorded_at: string
+  shift_id: string | null
+}
+
+export interface AdminCustomersReport {
+  outstanding_total_cfa: number
+  outstanding_count: number
+  credit_activity_cfa: number
+  credit_activity_count: number
+  payment_activity_cfa: number
+  payment_activity_count: number
+  unattributed_payment_activity_cfa: number
+  unattributed_payment_activity_count: number
+  customers_with_balance: CustomerBalanceRow[]
+  payments: CustomerPaymentRow[]
+  unattributed_payments: CustomerPaymentRow[]
+  balances_are_global: boolean
+  start_date: string
+  end_date: string
+}
+
+export interface CashShiftReportRow {
+  shift_id: string
+  depot_id: string
+  cashier_id: string
+  status: string
+  opened_at: string
+  closed_at: string | null
+  opening_float_cfa: number
+  expected_cash_cfa: number | null
+  actual_cash_cfa: number | null
+  discrepancy_cfa: number | null
+}
+
+export interface AdminCashReport {
+  closed_shifts: CashShiftReportRow[]
+  open_shifts: CashShiftReportRow[]
+  closed_expected_total_cfa: number
+  closed_actual_total_cfa: number
+  closed_discrepancy_total_cfa: number
+  start_date: string
+  end_date: string
+}

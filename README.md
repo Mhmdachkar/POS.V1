@@ -222,7 +222,7 @@ Migrations live in `supabase/migrations/` and are applied in order.
 | 9 | Transfers | ⬜ Pending |
 | 10 | Shifts | ✅ Complete |
 | 11 | Admin | ✅ Complete |
-| 12 | Reports + Audit | ⬜ Pending |
+| 12 | Reports + Audit | ✅ Complete |
 | 13 | Hardening + Testing | ⬜ Pending |
 
 ---

@@ -1,25 +1,255 @@
+import { useMemo, useState } from 'react'
 import { ClipboardList } from 'lucide-react'
-import { EmptyState } from '@/components/ui'
+import { cn } from '@/lib/cn'
+import { EmptyState, Skeleton } from '@/components/ui'
+import { formatDateTime } from '@/lib/formatters'
+import { downloadCsv } from '@/lib/csvExport'
+import {
+  AUDIT_ACTIONS,
+  AUDIT_ENTITY_TYPES,
+  useAuditLog,
+} from '@/hooks/useAuditLog'
+import { useStaffList } from '@/hooks/useStaff'
+import {
+  REPORT_PRESET_LABELS,
+  resolveReportDateRange,
+  type ReportPreset,
+} from '@/lib/reportDates'
+import { useDepotStore } from '@/stores/depotStore'
+import { useDepotOptions } from '@/hooks/useInventory'
+import { AuditDetailDrawer } from './components/AuditDetailDrawer'
+import type { AuditLogRow } from '@/hooks/useAuditLog'
 
-/**
- * AuditPage — Phase 12 implementation target.
- *
- * Will contain:
- * - Audit log timeline (actor, action, entity, timestamp)
- * - Before/after detail drawer
- * - Filters: action type, actor, date range, depot, entity type
- *
- * Audit log is append-only. No UPDATE or DELETE allowed by any role.
- * Raw SQL errors and internal field names are never exposed to users.
- */
+const PRESETS: ReportPreset[] = ['today', 'yesterday', 'this_week', 'this_month', 'custom']
+
 export function AuditPage() {
+  const [preset, setPreset] = useState<ReportPreset>('this_week')
+  const [customStart, setCustomStart] = useState('')
+  const [customEnd, setCustomEnd] = useState('')
+  const [action, setAction] = useState<string>('')
+  const [entityType, setEntityType] = useState<string>('')
+  const [actorId, setActorId] = useState<string>('')
+  const [entityId, setEntityId] = useState('')
+  const [page, setPage] = useState(0)
+  const [selected, setSelected] = useState<AuditLogRow | null>(null)
+
+  const depotId = useDepotStore((s) => s.currentDepotId)
+  const depotName = useDepotStore((s) => s.currentDepotName)
+  const { data: depots } = useDepotOptions()
+  const { data: staffList } = useStaffList({
+    page: 0,
+    pageSize: 200,
+    search: '',
+    status: 'active',
+    role: 'all',
+  })
+
+  const range = useMemo(
+    () => resolveReportDateRange(preset, customStart, customEnd),
+    [preset, customStart, customEnd],
+  )
+
+  const pageSize = 50
+  const filters = useMemo(
+    () => ({
+      depotId: depotId ?? null,
+      action: action || null,
+      entityType: entityType || null,
+      actorId: actorId || null,
+      entityIdSearch: entityId,
+      startDate: range.startDate,
+      endDate: range.endDate,
+      page,
+      pageSize,
+    }),
+    [depotId, action, entityType, actorId, entityId, range, page],
+  )
+
+  const { data, isLoading, isError } = useAuditLog(filters)
+  const rows = data?.data ?? []
+  const total = data?.count ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+
+  function exportCsv() {
+    downloadCsv(
+      `audit-log-${range.startDate}_${range.endDate}.csv`,
+      ['Occurred', 'Actor', 'Action', 'Entity type', 'Entity id', 'Depot id'],
+      rows.map((r) => [
+        r.occurred_at,
+        r.actor_name ?? '',
+        r.action,
+        r.entity_type,
+        r.entity_id ?? '',
+        r.depot_id ?? '',
+      ]),
+    )
+  }
+
   return (
-    <div className="p-6">
-      <EmptyState
-        icon={<ClipboardList className="h-8 w-8" />}
-        title="Audit Log — Coming in Phase 12"
-        description="System-wide audit trail will be implemented in Phase 12."
-      />
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="px-6 py-4 border-b border-border bg-surface flex-shrink-0 space-y-4">
+        <div>
+          <h1 className="text-lg font-bold text-text-primary">Audit log</h1>
+          <p className="text-sm text-text-secondary mt-0.5">
+            Append-only system trail · admin only
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {PRESETS.map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => { setPreset(p); setPage(0) }}
+              className={cn(
+                'px-3 py-1.5 rounded-md text-sm font-medium border',
+                preset === p
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-surface border-border text-text-secondary',
+              )}
+            >
+              {REPORT_PRESET_LABELS[p]}
+            </button>
+          ))}
+        </div>
+
+        {preset === 'custom' && (
+          <div className="flex flex-wrap gap-3">
+            <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-9 px-2 border rounded-md text-sm" />
+            <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="h-9 px-2 border rounded-md text-sm" />
+          </div>
+        )}
+
+        <p className="text-xs text-text-muted">
+          {depotId
+            ? `${depotName ?? 'Depot'} — events for this depot only (global events hidden)`
+            : 'All depots — includes global events (null depot)'}
+        </p>
+
+        <div className="flex flex-wrap gap-3">
+          <select
+            value={action}
+            onChange={(e) => { setAction(e.target.value); setPage(0) }}
+            className="h-9 px-2 rounded-md border border-border bg-surface text-sm"
+          >
+            <option value="">All actions</option>
+            {AUDIT_ACTIONS.map((a) => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
+          <select
+            value={entityType}
+            onChange={(e) => { setEntityType(e.target.value); setPage(0) }}
+            className="h-9 px-2 rounded-md border border-border bg-surface text-sm"
+          >
+            <option value="">All entity types</option>
+            {AUDIT_ENTITY_TYPES.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+          <select
+            value={actorId}
+            onChange={(e) => { setActorId(e.target.value); setPage(0) }}
+            className="h-9 px-2 rounded-md border border-border bg-surface text-sm max-w-xs"
+          >
+            <option value="">All actors</option>
+            {(staffList?.data ?? []).map((s) => (
+              <option key={s.id} value={s.id}>{s.full_name}</option>
+            ))}
+          </select>
+          <input
+            type="search"
+            placeholder="Entity id (exact UUID)…"
+            value={entityId}
+            onChange={(e) => { setEntityId(e.target.value); setPage(0) }}
+            className="h-9 px-3 rounded-md border border-border bg-surface text-sm w-64"
+          />
+          <button
+            type="button"
+            onClick={exportCsv}
+            disabled={rows.length === 0}
+            className="h-9 px-3 rounded-md border border-border text-sm hover:bg-surface-muted disabled:opacity-50"
+          >
+            Export CSV
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-auto">
+        {isLoading && (
+          <div className="p-6 space-y-2">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-12" />
+            ))}
+          </div>
+        )}
+        {isError && (
+          <EmptyState icon={<ClipboardList className="h-8 w-8" />} title="Failed to load audit log" />
+        )}
+        {!isLoading && !isError && rows.length === 0 && (
+          <EmptyState icon={<ClipboardList className="h-8 w-8" />} title="No audit events match filters" />
+        )}
+        {!isLoading && rows.length > 0 && (
+          <ul className="divide-y divide-border">
+            {rows.map((row) => (
+              <li key={row.id}>
+                <button
+                  type="button"
+                  onClick={() => setSelected(row)}
+                  className="w-full text-left px-6 py-3 hover:bg-surface-muted transition-colors"
+                >
+                  <p className="text-sm font-medium text-text-primary">
+                    {row.action}
+                    <span className="text-text-muted font-normal">
+                      {' · '}
+                      {row.entity_type}
+                      {row.entity_id ? ` ${row.entity_id.slice(0, 8)}…` : ''}
+                    </span>
+                  </p>
+                  <p className="text-xs text-text-secondary mt-0.5">
+                    {formatDateTime(row.occurred_at)}
+                    {' · '}
+                    {row.actor_name ?? 'System'}
+                    {' · '}
+                    {row.depot_id
+                      ? depots?.find((d) => d.id === row.depot_id)?.name ?? row.depot_id
+                      : 'Global'}
+                  </p>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {totalPages > 1 && (
+        <div className="px-6 py-3 border-t border-border flex items-center justify-between text-sm">
+          <span className="text-text-muted">{total} events</span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={page <= 0}
+              onClick={() => setPage((p) => p - 1)}
+              className="px-3 py-1 border rounded-md disabled:opacity-40"
+            >
+              Previous
+            </button>
+            <span className="tabular-nums px-2">
+              {page + 1} / {totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={page >= totalPages - 1}
+              onClick={() => setPage((p) => p + 1)}
+              className="px-3 py-1 border rounded-md disabled:opacity-40"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
+      <AuditDetailDrawer row={selected} onClose={() => setSelected(null)} />
     </div>
   )
 }

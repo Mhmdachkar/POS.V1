@@ -41,6 +41,11 @@ import type {
   UpdateProductParams,
   UpdateBusinessSettingsParams,
   AdminDashboardSummary,
+  AdminReportParams,
+  AdminSalesReport,
+  AdminInventoryReport,
+  AdminCustomersReport,
+  AdminCashReport,
   OpenShiftParams,
   OpenShiftResult,
   CloseShiftParams,
@@ -242,4 +247,16 @@ export const rpc = {
 
   adminDashboardSummary: (depotId: string | null): Promise<RpcResult<AdminDashboardSummary>> =>
     callRpc<AdminDashboardSummary>('admin_dashboard_summary', { p_depot_id: depotId }),
+
+  adminReportSales: (params: AdminReportParams): Promise<RpcResult<AdminSalesReport>> =>
+    callRpc<AdminSalesReport>('admin_report_sales', params),
+
+  adminReportInventory: (params: AdminReportParams): Promise<RpcResult<AdminInventoryReport>> =>
+    callRpc<AdminInventoryReport>('admin_report_inventory', params),
+
+  adminReportCustomers: (params: AdminReportParams): Promise<RpcResult<AdminCustomersReport>> =>
+    callRpc<AdminCustomersReport>('admin_report_customers', params),
+
+  adminReportCash: (params: AdminReportParams): Promise<RpcResult<AdminCashReport>> =>
+    callRpc<AdminCashReport>('admin_report_cash', params),
 } as const
