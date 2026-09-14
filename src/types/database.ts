@@ -33,6 +33,8 @@ export type DiscountType = 'flat' | 'percent'
 /** payment_type distinguishes a mirrored sale payment from a standalone customer payment. */
 export type PaymentType = 'sale_payment' | 'customer_payment'
 
+export type ShiftStatus = 'open' | 'closed'
+
 // ─────────────────────────────────────────────────────────────────
 // Table row types (match DB columns exactly)
 // ─────────────────────────────────────────────────────────────────
@@ -170,7 +172,7 @@ export interface Shift {
   expected_cash_cfa: number | null
   actual_cash_cfa: number | null
   discrepancy_cfa: number | null
-  status: 'open' | 'closed'
+  status: ShiftStatus
 }
 
 export interface Customer {

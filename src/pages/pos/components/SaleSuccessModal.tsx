@@ -79,9 +79,7 @@ interface SaleSuccessModalProps {
 }
 
 export function SaleSuccessModal({ result, customer, cartItemCount }: SaleSuccessModalProps) {
-  const { startNewSale } = usePOSStore((s) => ({
-    startNewSale: s.startNewSale,
-  }))
+  const startNewSale = usePOSStore((s) => s.startNewSale)
 
   const printRef = useRef<HTMLDivElement>(null)
 

@@ -16,6 +16,7 @@ import { Trash2, Minus, Plus, ShoppingCart } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { Button, EmptyState } from '@/components/ui'
 import { formatCFA } from '@/lib/formatters'
+import { useShallow } from 'zustand/react/shallow'
 import { usePOSStore } from '@/stores/posStore'
 import type { CartItem } from '@/types'
 
@@ -127,13 +128,13 @@ function CartItemRow({ item, onUpdateQty, onRemove }: CartItemRowProps) {
 // ─────────────────────────────────────────────────────────────────
 
 export function CartPanel() {
-  const { items, updateQuantity, removeItem, clearCart, totals } = usePOSStore((s) => ({
+  const { items, updateQuantity, removeItem, clearCart, totals } = usePOSStore(useShallow((s) => ({
     items: s.items,
     updateQuantity: s.updateQuantity,
     removeItem: s.removeItem,
     clearCart: s.clearCart,
     totals: s.totals,
-  }))
+  })))
 
   return (
     <div className="flex flex-col h-full">

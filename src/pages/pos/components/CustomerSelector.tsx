@@ -16,6 +16,7 @@ import { cn } from '@/lib/cn'
 import { Button, LoadingButton } from '@/components/ui'
 import { formatCFA } from '@/lib/formatters'
 import { useCustomerSearch, useCreateCustomer } from '@/hooks/useCustomers'
+import { useShallow } from 'zustand/react/shallow'
 import { usePOSStore } from '@/stores/posStore'
 import type { Customer } from '@/types/database'
 
@@ -212,12 +213,12 @@ export function CustomerSelector() {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
 
-  const { customer, isWalkIn, setCustomer, setWalkIn } = usePOSStore((s) => ({
+  const { customer, isWalkIn, setCustomer, setWalkIn } = usePOSStore(useShallow((s) => ({
     customer: s.customer,
     isWalkIn: s.isWalkIn,
     setCustomer: s.setCustomer,
     setWalkIn: s.setWalkIn,
-  }))
+  })))
 
   // Close dropdown on outside click
   useEffect(() => {

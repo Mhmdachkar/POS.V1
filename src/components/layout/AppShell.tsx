@@ -1,5 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet } from 'react-router-dom'
+import { useDepotOptions } from '@/hooks/useInventory'
+import { useAuthStore } from '@/stores/authStore'
+import { useDepotStore } from '@/stores/depotStore'
 import { AppRail } from './AppRail'
 import { TopBar } from './TopBar'
 
@@ -23,6 +26,26 @@ import { TopBar } from './TopBar'
  */
 export function AppShell() {
   const [railExpanded, setRailExpanded] = useState(false)
+  const staff = useAuthStore((s) => s.staff)
+  const { data: depots } = useDepotOptions()
+  const setAvailableDepots = useDepotStore((s) => s.setAvailableDepots)
+  const setCurrentDepot = useDepotStore((s) => s.setCurrentDepot)
+  const currentDepotId = useDepotStore((s) => s.currentDepotId)
+  const currentDepotName = useDepotStore((s) => s.currentDepotName)
+
+  useEffect(() => {
+    if (!depots) return
+    setAvailableDepots(depots)
+  }, [depots, setAvailableDepots])
+
+  useEffect(() => {
+    if (!staff || staff.role === 'admin' || !staff.depot_id || !depots) return
+    const depot = depots.find((d) => d.id === staff.depot_id)
+    if (!depot) return
+    if (currentDepotId !== depot.id || currentDepotName !== depot.name) {
+      setCurrentDepot(depot.id, depot.name)
+    }
+  }, [staff, depots, currentDepotId, currentDepotName, setCurrentDepot])
 
   return (
     <div className="flex h-full bg-background overflow-hidden">

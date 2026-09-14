@@ -271,14 +271,24 @@ export async function fetchActiveCategories(): Promise<Category[]> {
   return (data ?? []) as Category[]
 }
 
-export async function fetchDepotOptions(): Promise<Array<{ id: string; name: string; code: string }>> {
+export async function fetchDepotOptions(): Promise<Array<{
+  id: string
+  name: string
+  code: string
+  is_active: boolean
+}>> {
   const { data, error } = await supabase
     .from('depots')
     .select('id, name, code, is_active')
     .order('name')
 
   if (error) throw error
-  return (data ?? []) as Array<{ id: string; name: string; code: string }>
+  return (data ?? []) as Array<{
+    id: string
+    name: string
+    code: string
+    is_active: boolean
+  }>
 }
 
 // ─────────────────────────────────────────────────────────────────

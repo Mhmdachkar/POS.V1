@@ -23,6 +23,7 @@ import { Modal, Button, LoadingButton, Input, Textarea } from '@/components/ui'
 import { formatCFA, parseCFAInput } from '@/lib/formatters'
 import { rpc } from '@/lib/rpc'
 import { getErrorMessage } from '@/lib/errors'
+import { clearStalePosShift } from '@/hooks/useShifts'
 import type { SaleDetailData, SaleItemDetail } from '@/hooks/useSales'
 
 // ─────────────────────────────────────────────────────────────────
@@ -225,6 +226,7 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
       })
 
       if (result.error) {
+        clearStalePosShift(result.error.code)
         toast.error(getErrorMessage(result.error.code))
         return
       }

@@ -27,9 +27,11 @@ import { cn } from '@/lib/cn'
 import { LoadingButton } from '@/components/ui'
 import { formatCFA, parseCFAInput } from '@/lib/formatters'
 import { CustomerSelector } from './CustomerSelector'
+import { useShallow } from 'zustand/react/shallow'
 import { usePOSStore } from '@/stores/posStore'
 import { rpc } from '@/lib/rpc'
 import { getErrorMessage } from '@/lib/errors'
+import { clearStalePosShift } from '@/hooks/useShifts'
 import { useQueryClient } from '@tanstack/react-query'
 import { productKeys } from '@/hooks/useProducts'
 import { customerKeys } from '@/hooks/useCustomers'
@@ -76,13 +78,13 @@ function FinancialRow({
 
 function DiscountControl() {
   const { discountType, discountValue, totals, setDiscountType, setDiscountValue } = usePOSStore(
-    (s) => ({
+    useShallow((s) => ({
       discountType: s.discountType,
       discountValue: s.discountValue,
       totals: s.totals,
       setDiscountType: s.setDiscountType,
       setDiscountValue: s.setDiscountValue,
-    }),
+    })),
   )
 
   const validateAndSet = (raw: string) => {
@@ -157,10 +159,10 @@ function DiscountControl() {
 // ─────────────────────────────────────────────────────────────────
 
 function CashInput() {
-  const { cashTendered, setCashTendered } = usePOSStore((s) => ({
+  const { cashTendered, setCashTendered } = usePOSStore(useShallow((s) => ({
     cashTendered: s.cashTendered,
     setCashTendered: s.setCashTendered,
-  }))
+  })))
 
   return (
     <div className="space-y-2">
@@ -221,7 +223,7 @@ export function CheckoutPanel({ depotId, shiftId }: CheckoutPanelProps) {
     ensureIdempotencyKey,
     setSubmitting,
     setSaleResult,
-  } = usePOSStore((s) => ({
+  } = usePOSStore(useShallow((s) => ({
     items:               s.items,
     customer:            s.customer,
     isWalkIn:            s.isWalkIn,
@@ -234,7 +236,7 @@ export function CheckoutPanel({ depotId, shiftId }: CheckoutPanelProps) {
     ensureIdempotencyKey:s.ensureIdempotencyKey,
     setSubmitting:       s.setSubmitting,
     setSaleResult:       s.setSaleResult,
-  }))
+  })))
 
   // ── Local UI validation (server is authoritative) ──────────────
   const isCartEmpty = items.length === 0
@@ -286,9 +288,11 @@ export function CheckoutPanel({ depotId, shiftId }: CheckoutPanelProps) {
       })
 
       if (result.error) {
+        clearStalePosShift(result.error.code)
         const msg = getErrorMessage(result.error.code)
         toast.error(msg)
         // Do NOT clear idempotencyKey — allow retry with same key
+        // Do NOT retry with p_shift_id null after SHIFT_NOT_OPEN
         return
       }
 

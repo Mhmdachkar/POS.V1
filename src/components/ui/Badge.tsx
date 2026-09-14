@@ -1,5 +1,5 @@
 import { cn } from '@/lib/cn'
-import type { SaleStatus, TransferStatus, StockStatus } from '@/types'
+import type { SaleStatus, TransferStatus, StockStatus, ShiftStatus } from '@/types'
 
 // ─────────────────────────────────────────────────────────────────
 // Base badge
@@ -93,8 +93,8 @@ export function ActiveBadge({ isActive }: { isActive: boolean }) {
     : <Badge variant="neutral" dot>Inactive</Badge>
 }
 
-export function ShiftStatusBadge({ isOpen }: { isOpen: boolean }) {
-  return isOpen
-    ? <Badge variant="success" dot>Shift Open</Badge>
-    : <Badge variant="neutral" dot>No Shift</Badge>
+export function ShiftStatusBadge({ status }: { status: ShiftStatus }) {
+  return status === 'open'
+    ? <Badge variant="success" dot>Open</Badge>
+    : <Badge variant="neutral" dot>Closed</Badge>
 }

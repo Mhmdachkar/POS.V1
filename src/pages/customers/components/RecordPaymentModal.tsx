@@ -24,6 +24,7 @@ import { Button, LoadingButton } from '@/components/ui'
 import { Badge } from '@/components/ui/Badge'
 import { formatCFA } from '@/lib/formatters'
 import { parseError } from '@/lib/errors'
+import { clearStalePosShift } from '@/hooks/useShifts'
 import { useRecordPayment } from '@/hooks/useCustomers'
 import type { Customer } from '@/types/database'
 
@@ -109,6 +110,7 @@ export function RecordPaymentModal({
       onSuccess?.(result.new_balance_owed_cfa)
     } catch (err) {
       const vhmErr = parseError(err)
+      clearStalePosShift(vhmErr.code)
       if (vhmErr.code === 'PAYMENT_EXCEEDS_BALANCE') {
         setAmountError(vhmErr.message)
       } else {

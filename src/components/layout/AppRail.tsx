@@ -44,6 +44,7 @@ const NAV_ITEMS: Record<StaffRole, NavItem[]> = {
     { label: 'Customers',  path: '/customers',         icon: Users },
     { label: 'Payments',   path: '/payments',          icon: Banknote },
     { label: 'Transfers',  path: '/transfers',         icon: ArrowLeftRight },
+    { label: 'Shifts',     path: '/shifts',            icon: Clock },
     { label: 'Reports',    path: '/reports',           icon: BarChart2 },
     { label: 'Staff',      path: '/admin/staff',       icon: UserCog },
     { label: 'Depots',     path: '/admin/depots',      icon: Building2 },

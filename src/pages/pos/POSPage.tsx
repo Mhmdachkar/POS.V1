@@ -21,6 +21,7 @@
  *   - Products scoped to the cashier's depot (enforced by RLS)
  */
 
+import { useShallow } from 'zustand/react/shallow'
 import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
 import { usePOSStore } from '@/stores/posStore'
@@ -28,17 +29,18 @@ import { ProductSearchPanel } from './components/ProductSearchPanel'
 import { CartPanel } from './components/CartPanel'
 import { CheckoutPanel } from './components/CheckoutPanel'
 import { SaleSuccessModal } from './components/SaleSuccessModal'
+import { PosShiftIndicator } from './components/PosShiftIndicator'
 
 export function POSPage() {
   const staff     = useAuthStore((s) => s.staff)
   const depotId   = useDepotStore((s) => s.currentDepotId)
 
-  const { saleResult, customer, items, shiftId } = usePOSStore((s) => ({
+  const { saleResult, customer, items, shiftId } = usePOSStore(useShallow((s) => ({
     saleResult:    s.saleResult,
     customer:      s.customer,
     items:         s.items,
     shiftId:       s.shiftId,
-  }))
+  })))
 
   // For cashiers, use their assigned depot.
   // For admins, use the depot switcher's current depot.
@@ -46,7 +48,9 @@ export function POSPage() {
     staff?.role === 'cashier' ? staff.depot_id : depotId
 
   return (
-    <div className="flex h-full overflow-hidden bg-background no-print">
+    <div className="flex flex-col h-full overflow-hidden bg-background no-print">
+      <PosShiftIndicator />
+      <div className="flex flex-1 overflow-hidden min-h-0">
       {/* ── Left: Product search panel ──────────────────────────── */}
       <div className="flex-1 overflow-hidden border-r border-border">
         <ProductSearchPanel depotId={effectiveDepotId} />
@@ -67,8 +71,8 @@ export function POSPage() {
           />
         </div>
       </div>
+      </div>
 
-      {/* ── Sale success modal ──────────────────────────────────── */}
       {saleResult && (
         <SaleSuccessModal
           result={saleResult}
