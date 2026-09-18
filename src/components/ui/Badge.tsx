@@ -1,4 +1,7 @@
 import { cn } from '@/lib/cn'
+import { BilingualText } from '@/components/ui/BilingualText'
+import { COMMON } from '@/lib/bilingual/common'
+import { SALE_STATUS, SHIFT_STATUS, STOCK_STATUS, TRANSFER_STATUS } from '@/lib/bilingual/status'
 import type { SaleStatus, TransferStatus, StockStatus, ShiftStatus } from '@/types'
 
 // ─────────────────────────────────────────────────────────────────
@@ -53,48 +56,79 @@ export function Badge({ variant = 'neutral', children, className, dot }: BadgePr
 // Domain-specific status badges
 // ─────────────────────────────────────────────────────────────────
 
-const SALE_STATUS_CONFIG: Record<SaleStatus, { variant: BadgeVariant; label: string }> = {
-  completed:         { variant: 'success', label: 'Completed' },
-  voided:            { variant: 'neutral', label: 'Voided' },
-  partially_returned:{ variant: 'warning', label: 'Partially Returned' },
-  returned:          { variant: 'info',    label: 'Returned' },
+const SALE_STATUS_VARIANT: Record<SaleStatus, BadgeVariant> = {
+  completed: 'success',
+  voided: 'neutral',
+  partially_returned: 'warning',
+  returned: 'warning',
 }
 
 export function SaleStatusBadge({ status }: { status: SaleStatus }) {
-  const config = SALE_STATUS_CONFIG[status]
-  return <Badge variant={config.variant} dot>{config.label}</Badge>
+  const pair = SALE_STATUS[status]
+  return (
+    <Badge variant={SALE_STATUS_VARIANT[status]} dot>
+      <BilingualText {...pair} variant="badge" enClassName="normal-case" />
+    </Badge>
+  )
 }
 
-const TRANSFER_STATUS_CONFIG: Record<TransferStatus, { variant: BadgeVariant; label: string }> = {
-  pending:   { variant: 'warning', label: 'Pending' },
-  completed: { variant: 'success', label: 'Completed' },
-  cancelled: { variant: 'neutral', label: 'Cancelled' },
+const TRANSFER_STATUS_VARIANT: Record<TransferStatus, BadgeVariant> = {
+  pending: 'warning',
+  completed: 'success',
+  cancelled: 'neutral',
 }
 
 export function TransferStatusBadge({ status }: { status: TransferStatus }) {
-  const config = TRANSFER_STATUS_CONFIG[status]
-  return <Badge variant={config.variant} dot>{config.label}</Badge>
+  const pair = TRANSFER_STATUS[status]
+  return (
+    <Badge variant={TRANSFER_STATUS_VARIANT[status]} dot>
+      <BilingualText {...pair} variant="badge" enClassName="normal-case" />
+    </Badge>
+  )
 }
 
-const STOCK_STATUS_CONFIG: Record<StockStatus, { variant: BadgeVariant; label: string }> = {
-  healthy:      { variant: 'success', label: 'Healthy' },
-  low_stock:    { variant: 'warning', label: 'Low Stock' },
-  out_of_stock: { variant: 'danger',  label: 'Out of Stock' },
+const STOCK_STATUS_VARIANT: Record<StockStatus, BadgeVariant> = {
+  healthy: 'success',
+  low_stock: 'warning',
+  out_of_stock: 'danger',
 }
 
 export function StockStatusBadge({ status }: { status: StockStatus }) {
-  const config = STOCK_STATUS_CONFIG[status]
-  return <Badge variant={config.variant} dot>{config.label}</Badge>
+  const pair = STOCK_STATUS[status]
+  return (
+    <Badge variant={STOCK_STATUS_VARIANT[status]} dot>
+      <BilingualText {...pair} variant="badge" enClassName="normal-case" />
+    </Badge>
+  )
 }
 
 export function ActiveBadge({ isActive }: { isActive: boolean }) {
-  return isActive
-    ? <Badge variant="success" dot>Active</Badge>
-    : <Badge variant="neutral" dot>Inactive</Badge>
+  const pair = isActive ? COMMON.active : COMMON.inactive
+  return (
+    <Badge variant={isActive ? 'success' : 'neutral'} dot>
+      <BilingualText {...pair} variant="badge" enClassName="normal-case" />
+    </Badge>
+  )
 }
 
 export function ShiftStatusBadge({ status }: { status: ShiftStatus }) {
-  return status === 'open'
-    ? <Badge variant="success" dot>Open</Badge>
-    : <Badge variant="neutral" dot>Closed</Badge>
+  const pair = SHIFT_STATUS[status]
+  return (
+    <Badge variant={status === 'open' ? 'success' : 'neutral'} dot>
+      <BilingualText {...pair} variant="badge" enClassName="normal-case" />
+    </Badge>
+  )
+}
+
+/** Warning-attention badge for sales with shift_id IS NULL. */
+export function NoShiftBadge({ className }: { className?: string }) {
+  return (
+    <Badge variant="warning" className={cn('tracking-wide', className)}>
+      <BilingualText
+        {...COMMON.noShiftBadge}
+        variant="badge"
+        enClassName="uppercase"
+      />
+    </Badge>
+  )
 }

@@ -1,346 +1,369 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
+import { BiEmptyTitle, BiPageDescription, BiPageTitle, BiTabLabel } from '@/lib/bilingual/ui'
+import { REPORTS } from '@/lib/bilingual/reports'
 import { BarChart2 } from 'lucide-react'
-import { cn } from '@/lib/cn'
-import { Card, EmptyState, Skeleton, StatCard } from '@/components/ui'
-import { formatCFA, formatDateTime, formatPieces } from '@/lib/formatters'
-import { downloadCsv } from '@/lib/csvExport'
+import { EmptyState, PageHeader, Skeleton, Tabs } from '@/components/ui'
 import { resolveReportDateRange, type ReportPreset } from '@/lib/reportDates'
+import type { ReportFilterParams } from '@/hooks/useReports'
 import {
   useCashReport,
   useCustomersReport,
   useInventoryReport,
   useSalesReport,
+  useAdminCostReport,
 } from '@/hooks/useReports'
+import { useCategories } from '@/hooks/useInventory'
+import { useStaffList } from '@/hooks/useStaff'
 import { useDepotStore } from '@/stores/depotStore'
 import { ReportToolbar } from './components/ReportToolbar'
+import { UpdatingBanner } from './components/UpdatingBanner'
+import { ReportOverviewTab } from './tabs/ReportOverviewTab'
+import { ReportSalesTab } from './tabs/ReportSalesTab'
+import { ReportProductsTab } from './tabs/ReportProductsTab'
+import { ReportInventoryTab } from './tabs/ReportInventoryTab'
+import { ReportCustomersTab } from './tabs/ReportCustomersTab'
+import { ReportPaymentsTab } from './tabs/ReportPaymentsTab'
+import { ReportShiftsTab } from './tabs/ReportShiftsTab'
+import { ReportReturnsTab } from './tabs/ReportReturnsTab'
+import { ReportVoidsTab } from './tabs/ReportVoidsTab'
+import { ReportTransfersTab } from './tabs/ReportTransfersTab'
+import { ReportAuditTab } from './tabs/ReportAuditTab'
+import { ReportCostTab } from './tabs/ReportCostTab'
+import {
+  exportReportCsv,
+  exportReportPrint,
+  exportReportXlsx,
+  type ReportTabId,
+} from './reportExportHandlers'
 
-type ReportTab = 'sales' | 'inventory' | 'customers' | 'cash'
-
-const TABS: Array<{ id: ReportTab; label: string }> = [
-  { id: 'sales', label: 'Sales' },
-  { id: 'inventory', label: 'Inventory' },
-  { id: 'customers', label: 'Customers' },
-  { id: 'cash', label: 'Cash' },
-]
+const TAB_ITEMS = [
+  { value: 'overview' as const, label: <BiTabLabel {...REPORTS.overview} /> },
+  { value: 'sales' as const, label: <BiTabLabel {...REPORTS.sales} /> },
+  { value: 'products' as const, label: <BiTabLabel {...REPORTS.products} /> },
+  { value: 'inventory' as const, label: <BiTabLabel {...REPORTS.inventory} /> },
+  { value: 'customers' as const, label: <BiTabLabel {...REPORTS.customers} /> },
+  { value: 'payments' as const, label: <BiTabLabel {...REPORTS.payments} /> },
+  { value: 'shifts' as const, label: <BiTabLabel {...REPORTS.shifts} /> },
+  { value: 'returns' as const, label: <BiTabLabel {...REPORTS.returns} /> },
+  { value: 'voids' as const, label: <BiTabLabel {...REPORTS.voids} /> },
+  { value: 'transfers' as const, label: <BiTabLabel {...REPORTS.transfers} /> },
+  { value: 'audit' as const, label: <BiTabLabel {...REPORTS.audit} /> },
+  { value: 'cost' as const, label: <BiTabLabel {...REPORTS.cost} /> },
+] satisfies Array<{ value: ReportTabId; label: ReactNode }>
 
 export function ReportsPage() {
-  const [tab, setTab] = useState<ReportTab>('sales')
+  const [tab, setTab] = useState<ReportTabId>('overview')
   const [preset, setPreset] = useState<ReportPreset>('today')
   const [customStart, setCustomStart] = useState('')
   const [customEnd, setCustomEnd] = useState('')
+  const [cashierId, setCashierId] = useState('')
+  const [categoryId, setCategoryId] = useState('')
+  const [productId, setProductId] = useState('')
+  const [shiftId, setShiftId] = useState('')
+
   const depotId = useDepotStore((s) => s.currentDepotId)
+  const showDepotColumn = !depotId
 
   const range = useMemo(
     () => resolveReportDateRange(preset, customStart, customEnd),
     [preset, customStart, customEnd],
   )
 
-  const sales = useSalesReport(depotId, range.startDate, range.endDate)
-  const inventory = useInventoryReport(depotId, range.startDate, range.endDate)
-  const customers = useCustomersReport(depotId, range.startDate, range.endDate)
-  const cash = useCashReport(depotId, range.startDate, range.endDate)
+  const reportFilters = useMemo((): ReportFilterParams => ({
+    p_cashier_id: cashierId || null,
+    p_category_id: categoryId || null,
+    p_product_id: productId || null,
+    // Shift filter is only for returns/voids presentation — not Sales report.
+    p_shift_id: (tab === 'returns' || tab === 'voids') ? (shiftId || null) : null,
+  }), [cashierId, categoryId, productId, shiftId, tab])
+
+  const salesEnabled =
+    tab === 'overview' || tab === 'sales' || tab === 'products' || tab === 'returns' || tab === 'voids' || tab === 'shifts'
+  const inventoryEnabled = tab === 'overview' || tab === 'inventory'
+  const customersEnabled = tab === 'overview' || tab === 'customers' || tab === 'payments'
+  const cashEnabled = tab === 'shifts'
+  const costEnabled = tab === 'cost'
+
+  const salesQ = useSalesReport(
+    depotId,
+    range.startDate,
+    range.endDate,
+    salesEnabled,
+    reportFilters,
+  )
+  const inventoryQ = useInventoryReport(
+    depotId,
+    range.startDate,
+    range.endDate,
+    inventoryEnabled,
+    {
+      p_category_id: categoryId || null,
+      p_product_id: productId || null,
+    },
+  )
+  const customersQ = useCustomersReport(
+    depotId,
+    range.startDate,
+    range.endDate,
+    customersEnabled,
+  )
+  const cashQ = useCashReport(depotId, range.startDate, range.endDate, cashEnabled)
+  const costQ = useAdminCostReport(
+    {
+      p_depot_id: depotId ?? null,
+      p_start_date: range.startDate,
+      p_end_date: range.endDate,
+      p_category_id: categoryId || null,
+      p_product_id: productId || null,
+    },
+    costEnabled,
+  )
+
+  const { data: staffList } = useStaffList({
+    page: 0,
+    pageSize: 200,
+    search: '',
+    status: 'active',
+    role: 'all',
+  })
+  const { data: categories } = useCategories()
+
+  const cashierOptions = useMemo(
+    () => (staffList?.data ?? []).map((s) => ({ value: s.id, label: s.full_name })),
+    [staffList],
+  )
+  const categoryOptions = useMemo(
+    () => (categories ?? []).map((c) => ({ value: c.id, label: c.name })),
+    [categories],
+  )
+  const productOptions = useMemo(
+    () =>
+      (salesQ.data?.product_performance ?? []).map((p) => ({
+        value: p.product_id,
+        label: p.name,
+      })),
+    [salesQ.data],
+  )
+  const shiftOptions = useMemo(
+    () =>
+      (salesQ.data?.by_shift ?? [])
+        .filter((s) => s.shift_id)
+        .map((s) => ({
+          value: s.shift_id!,
+          label: s.opened_at ? s.opened_at.slice(0, 16).replace('T', ' ') : s.shift_id!,
+        })),
+    [salesQ.data],
+  )
 
   const activeQuery =
-    tab === 'sales' ? sales
-      : tab === 'inventory' ? inventory
-        : tab === 'customers' ? customers
-          : cash
+    tab === 'overview' || tab === 'sales' || tab === 'products' || tab === 'returns' || tab === 'voids'
+      ? salesQ
+      : tab === 'inventory'
+        ? inventoryQ
+        : tab === 'customers' || tab === 'payments'
+          ? customersQ
+          : tab === 'shifts'
+            ? cashQ
+            : tab === 'cost'
+              ? costQ
+              : salesQ
 
-  function handleExport() {
-    const stamp = `${range.startDate}_${range.endDate}`
-    if (tab === 'sales' && sales.data) {
-      const d = sales.data
-      downloadCsv(
-        `sales-report-${stamp}.csv`,
-        ['Metric', 'Value'],
-        [
-          ['Sales activity (CFA)', d.sales_activity_cfa],
-          ['Returns activity (CFA)', d.returns_activity_cfa],
-          ['Net sales (CFA)', d.net_sales_cfa],
-          ['Transactions', d.transaction_count],
-          ['Average sale (CFA)', d.average_sale_cfa],
-          ['Gross profit (CFA)', d.gross_profit_cfa],
-        ],
-      )
-      if (d.product_performance.length > 0) {
-        downloadCsv(
-          `sales-products-${stamp}.csv`,
-          ['Product', 'Net pieces', 'Net revenue CFA'],
-          d.product_performance.map((p) => [p.name, p.net_pieces, p.net_revenue_cfa]),
-        )
-      }
-    } else if (tab === 'inventory' && inventory.data) {
-      const d = inventory.data
-      downloadCsv(
-        `inventory-report-${stamp}.csv`,
-        ['Product', 'Depot id', 'Stock pieces', 'Value CFA'],
-        d.current_stock.map((r) => [
-          r.name,
-          r.depot_id,
-          r.current_stock_pieces,
-          r.value_cfa ?? 0,
-        ]),
-      )
-    } else if (tab === 'customers' && customers.data) {
-      const d = customers.data
-      downloadCsv(
-        `customers-report-${stamp}.csv`,
-        ['Metric', 'Value'],
-        [
-          ['Global outstanding balance (CFA)', d.outstanding_total_cfa],
-          ['Customers with balance', d.outstanding_count],
-          ['Credit activity (CFA)', d.credit_activity_cfa],
-          ['Payment activity (CFA)', d.payment_activity_cfa],
-          ['Unattributed payments (CFA)', d.unattributed_payment_activity_cfa],
-        ],
-      )
-    } else if (tab === 'cash' && cash.data) {
-      const d = cash.data
-      downloadCsv(
-        `cash-closed-shifts-${stamp}.csv`,
-        ['Shift', 'Closed', 'Expected', 'Actual', 'Discrepancy'],
-        d.closed_shifts.map((s) => [
-          s.shift_id,
-          s.closed_at ?? '',
-          s.expected_cash_cfa ?? '',
-          s.actual_cash_cfa ?? '',
-          s.discrepancy_cfa ?? '',
-        ]),
-      )
+  const isFetching =
+    (salesEnabled && salesQ.isFetching)
+    || (inventoryEnabled && inventoryQ.isFetching)
+    || (customersEnabled && customersQ.isFetching)
+    || (cashEnabled && cashQ.isFetching)
+    || (costEnabled && costQ.isFetching)
+
+  const hasActiveData = !!activeQuery.data
+
+  const showCashier =
+    tab === 'sales' || tab === 'products' || tab === 'returns' || tab === 'voids' || tab === 'shifts'
+  const showCategory = tab === 'sales' || tab === 'products' || tab === 'inventory' || tab === 'cost'
+  const showProduct = tab === 'sales' || tab === 'products' || tab === 'inventory' || tab === 'cost'
+  // Sales report no longer filters by shift (active shift workflow removed).
+  const showShift = tab === 'returns' || tab === 'voids'
+
+  const exportCtx = useMemo(
+    () => ({
+      tab,
+      stamp: `${range.startDate}_${range.endDate}`,
+      startDate: range.startDate,
+      endDate: range.endDate,
+      salesFilters: {
+        depotId,
+        startDate: range.startDate,
+        endDate: range.endDate,
+        cashierId: cashierId || null,
+        shiftId: tab === 'sales' ? null : (shiftId || null),
+        categoryId: categoryId || null,
+        productId: productId || null,
+      },
+      sales: salesQ.data,
+      inventory: inventoryQ.data,
+      customers: customersQ.data,
+      cash: cashQ.data,
+      cost: costQ.data,
+    }),
+    [
+      tab,
+      range,
+      depotId,
+      cashierId,
+      shiftId,
+      categoryId,
+      productId,
+      salesQ.data,
+      inventoryQ.data,
+      customersQ.data,
+      cashQ.data,
+      costQ.data,
+    ],
+  )
+
+  function exportDisabled() {
+    if (tab === 'transfers' || tab === 'audit') return true
+    if (tab === 'inventory') return !inventoryQ.data
+    if (tab === 'customers' || tab === 'payments') return !customersQ.data
+    if (tab === 'shifts') return !cashQ.data
+    if (tab === 'cost') return !costQ.data
+    return !salesQ.data
+  }
+
+  async function runExport(kind: 'csv' | 'xlsx' | 'print') {
+    try {
+      if (kind === 'csv') await exportReportCsv(exportCtx)
+      else if (kind === 'xlsx') await exportReportXlsx(exportCtx)
+      else await exportReportPrint(exportCtx)
+    } catch (err) {
+      console.error('Report export failed', err)
     }
   }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="px-6 py-4 border-b border-border bg-surface flex-shrink-0 space-y-4">
-        <div>
-          <h1 className="text-lg font-bold text-text-primary">Reports</h1>
-          <p className="text-sm text-text-secondary mt-0.5">
-            Historical analytics by depot and calendar period
-          </p>
-        </div>
-        <ReportToolbar
-          preset={preset}
-          onPresetChange={setPreset}
-          customStart={customStart}
-          customEnd={customEnd}
-          onCustomStartChange={setCustomStart}
-          onCustomEndChange={setCustomEnd}
-          onExport={handleExport}
-          exportDisabled={!activeQuery.data}
+      <div className="border-b border-border bg-surface flex-shrink-0">
+        <PageHeader
+          title={<BiPageTitle {...REPORTS.pageTitle} />}
+          description={<BiPageDescription {...REPORTS.pageDescription} />}
+          icon={<BarChart2 className="h-5 w-5" />}
+          className="border-b-0"
         />
-        <div className="flex gap-1 border-b border-border -mb-px">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTab(t.id)}
-              className={cn(
-                'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
-                tab === t.id
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-text-secondary hover:text-text-primary',
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
+        <div className="px-6 pb-4 space-y-3">
+          <ReportToolbar
+            preset={preset}
+            onPresetChange={setPreset}
+            customStart={customStart}
+            customEnd={customEnd}
+            onCustomStartChange={setCustomStart}
+            onCustomEndChange={setCustomEnd}
+            showCashierFilter={showCashier}
+            showCategoryFilter={showCategory}
+            showProductFilter={showProduct}
+            showShiftFilter={showShift}
+            cashierId={cashierId}
+            onCashierIdChange={setCashierId}
+            categoryId={categoryId}
+            onCategoryIdChange={setCategoryId}
+            productId={productId}
+            onProductIdChange={setProductId}
+            shiftId={shiftId}
+            onShiftIdChange={setShiftId}
+            cashierOptions={cashierOptions}
+            categoryOptions={categoryOptions}
+            productOptions={productOptions}
+            shiftOptions={shiftOptions}
+            exportDisabled={exportDisabled()}
+            onExportCsv={() => { void runExport('csv') }}
+            onExportXlsx={() => { void runExport('xlsx') }}
+            onExportPrint={() => { void runExport('print') }}
+          />
+          <Tabs tabs={TAB_ITEMS} active={tab} onChange={(v) => setTab(v as ReportTabId)} />
         </div>
       </div>
 
       <div className="flex-1 overflow-auto p-6">
-        {activeQuery.isLoading && (
+        <UpdatingBanner visible={isFetching && hasActiveData} />
+
+        {activeQuery.isLoading && !hasActiveData && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-24" />
             ))}
           </div>
         )}
-        {activeQuery.isError && (
-          <EmptyState icon={<BarChart2 className="h-8 w-8" />} title="Failed to load report" />
+
+        {activeQuery.isError && !hasActiveData && (
+          <EmptyState icon={<BarChart2 className="h-8 w-8" />} title={<BiEmptyTitle {...REPORTS.failedReport} />} />
         )}
 
-        {tab === 'sales' && sales.data && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              <StatCard label="Sales activity" value={formatCFA(Number(sales.data.sales_activity_cfa))} />
-              <StatCard label="Returns activity" value={formatCFA(Number(sales.data.returns_activity_cfa))} />
-              <StatCard label="Net sales" value={formatCFA(Number(sales.data.net_sales_cfa))} />
-              <StatCard label="Transactions" value={String(sales.data.transaction_count)} />
-              <StatCard label="Average sale" value={formatCFA(Number(sales.data.average_sale_cfa))} />
-              <StatCard label="Gross profit" value={formatCFA(Number(sales.data.gross_profit_cfa))} />
-            </div>
-            <Card className="p-4">
-              <h2 className="text-sm font-semibold mb-3">Product performance</h2>
-              {sales.data.product_performance.length === 0 ? (
-                <p className="text-sm text-text-muted">No net product sales in this period.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {sales.data.product_performance.map((p) => (
-                    <li key={p.product_id} className="flex justify-between text-sm gap-4">
-                      <span className="truncate">{p.name}</span>
-                      <span className="tabular-nums text-text-secondary shrink-0">
-                        {formatPieces(Number(p.net_pieces))} · {formatCFA(Number(p.net_revenue_cfa))}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
-            <Card className="p-4">
-              <h2 className="text-sm font-semibold mb-3">Returns in period</h2>
-              {sales.data.returns.length === 0 ? (
-                <p className="text-sm text-text-muted">None</p>
-              ) : (
-                <ul className="space-y-2 text-sm">
-                  {sales.data.returns.map((r) => (
-                    <li key={r.return_id} className="flex justify-between gap-2">
-                      <span className="text-text-muted">{formatDateTime(r.created_at)}</span>
-                      <span className="tabular-nums">{formatCFA(Number(r.refund_amount_cfa))}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
-          </div>
+        {tab === 'overview' && salesQ.data && (
+          <ReportOverviewTab
+            sales={salesQ.data}
+            inventory={inventoryQ.data}
+            customers={customersQ.data}
+          />
         )}
 
-        {tab === 'inventory' && inventory.data && (
-          <div className="space-y-6">
-            <StatCard label="Current inventory value" value={formatCFA(Number(inventory.data.inventory_value_cfa))} />
-            <Card className="p-4">
-              <h2 className="text-sm font-semibold mb-3">Period movement (pieces)</h2>
-              {inventory.data.period_movement.length === 0 ? (
-                <p className="text-sm text-text-muted">No ledger activity in period.</p>
-              ) : (
-                <ul className="space-y-1 text-sm">
-                  {inventory.data.period_movement.map((m) => (
-                    <li key={m.transaction_type} className="flex justify-between">
-                      <span>{m.transaction_type}</span>
-                      <span className="tabular-nums">{formatPieces(Number(m.quantity_pieces))}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
-            <Card className="p-4">
-              <h2 className="text-sm font-semibold mb-3">Low stock (≤10 pcs)</h2>
-              {inventory.data.low_stock.length === 0 ? (
-                <p className="text-sm text-text-muted">None</p>
-              ) : (
-                <ul className="space-y-2 text-sm">
-                  {inventory.data.low_stock.map((r) => (
-                    <li key={`${r.product_id}-${r.depot_id}`} className="flex justify-between gap-2">
-                      <span className="truncate">{r.name}</span>
-                      <span className="tabular-nums shrink-0">{formatPieces(Number(r.current_stock_pieces))}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
-            <Card className="p-4">
-              <h2 className="text-sm font-semibold mb-3">Out of stock</h2>
-              {inventory.data.out_of_stock.length === 0 ? (
-                <p className="text-sm text-text-muted">None</p>
-              ) : (
-                <ul className="space-y-2 text-sm">
-                  {inventory.data.out_of_stock.map((r) => (
-                    <li key={`${r.product_id}-${r.depot_id}`} className="truncate">
-                      {r.name}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
-          </div>
+        {tab === 'sales' && salesQ.data && (
+          <ReportSalesTab
+            sales={salesQ.data}
+            depotId={depotId}
+            startDate={range.startDate}
+            endDate={range.endDate}
+            cashierId={cashierId || undefined}
+          />
         )}
 
-        {tab === 'customers' && customers.data && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <StatCard
-                label="Global outstanding balance"
-                value={formatCFA(Number(customers.data.outstanding_total_cfa))}
-                description={
-                  depotId
-                    ? 'Pooled across all depots — not a depot balance'
-                    : 'Pooled customer credit — not depot-scoped'
-                }
-              />
-              <StatCard label="Customers with balance" value={String(customers.data.outstanding_count)} />
-              <StatCard
-                label="Credit activity (period)"
-                value={formatCFA(Number(customers.data.credit_activity_cfa))}
-              />
-              <StatCard
-                label={depotId ? 'Depot-attributed payments (period)' : 'Payments (period)'}
-                value={formatCFA(Number(customers.data.payment_activity_cfa))}
-                description={
-                  depotId
-                    ? 'Only payments with a shift at this depot. Unattributed payments are listed separately.'
-                    : undefined
-                }
-              />
-              <StatCard
-                label="Unattributed payments (period)"
-                value={formatCFA(Number(customers.data.unattributed_payment_activity_cfa))}
-                description="No shift — not assigned to any depot"
-              />
-            </div>
-            <Card className="p-4">
-              <h2 className="text-sm font-semibold mb-3">Customers with balance (global pool)</h2>
-              <ul className="space-y-2 text-sm">
-                {customers.data.customers_with_balance.map((c) => (
-                  <li key={c.customer_id} className="flex justify-between">
-                    <span>{c.name}</span>
-                    <span className="tabular-nums">{formatCFA(Number(c.balance_owed_cfa))}</span>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          </div>
+        {tab === 'products' && salesQ.data && (
+          <ReportProductsTab sales={salesQ.data} showDepotColumn={showDepotColumn} />
         )}
 
-        {tab === 'cash' && cash.data && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <StatCard label="Closed — expected total" value={formatCFA(Number(cash.data.closed_expected_total_cfa))} />
-              <StatCard label="Closed — actual total" value={formatCFA(Number(cash.data.closed_actual_total_cfa))} />
-              <StatCard label="Closed — discrepancy total" value={formatCFA(Number(cash.data.closed_discrepancy_total_cfa))} />
-            </div>
-            <Card className="p-4">
-              <h2 className="text-sm font-semibold mb-3">Open shifts</h2>
-              {cash.data.open_shifts.length === 0 ? (
-                <p className="text-sm text-text-muted">None</p>
-              ) : (
-                <ul className="space-y-2 text-sm">
-                  {cash.data.open_shifts.map((s) => (
-                    <li key={s.shift_id}>
-                      Opened {formatDateTime(s.opened_at)} · float {formatCFA(Number(s.opening_float_cfa))}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
-            <Card className="p-4">
-              <h2 className="text-sm font-semibold mb-3">Closed shifts in period</h2>
-              {cash.data.closed_shifts.length === 0 ? (
-                <p className="text-sm text-text-muted">None</p>
-              ) : (
-                <ul className="space-y-2 text-sm">
-                  {cash.data.closed_shifts.map((s) => (
-                    <li key={s.shift_id} className="flex flex-wrap justify-between gap-2">
-                      <span>{formatDateTime(s.closed_at ?? s.opened_at)}</span>
-                      <span className="tabular-nums">
-                        exp {formatCFA(Number(s.expected_cash_cfa ?? 0))} · disc{' '}
-                        {formatCFA(Number(s.discrepancy_cfa ?? 0))}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
-          </div>
+        {tab === 'inventory' && inventoryQ.data && (
+          <ReportInventoryTab inventory={inventoryQ.data} showDepotColumn={showDepotColumn} />
+        )}
+
+        {tab === 'customers' && customersQ.data && (
+          <ReportCustomersTab customers={customersQ.data} depotScoped={!!depotId} />
+        )}
+
+        {tab === 'payments' && customersQ.data && (
+          <ReportPaymentsTab customers={customersQ.data} />
+        )}
+
+        {tab === 'shifts' && cashQ.data && (
+          <ReportShiftsTab cash={cashQ.data} sales={salesQ.data} />
+        )}
+
+        {tab === 'returns' && salesQ.data && (
+          <ReportReturnsTab sales={salesQ.data} />
+        )}
+
+        {tab === 'voids' && salesQ.data && (
+          <ReportVoidsTab
+            sales={salesQ.data}
+            depotId={depotId}
+            startDate={range.startDate}
+            endDate={range.endDate}
+            cashierId={cashierId || undefined}
+            shiftId={shiftId || undefined}
+          />
+        )}
+
+        {tab === 'transfers' && (
+          <ReportTransfersTab depotId={depotId} />
+        )}
+
+        {tab === 'audit' && (
+          <ReportAuditTab
+            depotId={depotId}
+            startDate={range.startDate}
+            endDate={range.endDate}
+          />
+        )}
+
+        {tab === 'cost' && costQ.data && (
+          <ReportCostTab cost={costQ.data} showDepotColumn={showDepotColumn} />
         )}
       </div>
     </div>

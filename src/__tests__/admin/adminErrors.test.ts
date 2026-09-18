@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { messageForCodePlain } from '@/lib/bilingual/errors'
 import { ERROR_MESSAGES, parseError } from '@/lib/errors'
 
 const PHASE11_CODES = [
@@ -26,7 +27,7 @@ describe('Phase 11 error catalog', () => {
   it.each(PHASE11_CODES)('maps %s from RPC JSON', (code) => {
     const err = parseError({ message: JSON.stringify({ code, details: {} }) })
     expect(err.code).toBe(code)
-    expect(err.message).toBe(ERROR_MESSAGES[code])
+    expect(err.message).toBe(messageForCodePlain(code))
   })
 
   it('maps Edge Function format 2 envelopes', () => {
@@ -34,7 +35,7 @@ describe('Phase 11 error catalog', () => {
       error: { code: 'LAST_ADMIN_REQUIRED', message: 'raw' },
     })
     expect(err.code).toBe('LAST_ADMIN_REQUIRED')
-    expect(err.message).toBe(ERROR_MESSAGES.LAST_ADMIN_REQUIRED)
+    expect(err.message).toBe(messageForCodePlain('LAST_ADMIN_REQUIRED'))
   })
 
   it('keeps DUPLICATE_PRODUCT_NAME unused in the catalog', () => {

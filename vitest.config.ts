@@ -10,6 +10,9 @@ export default defineConfig({
     setupFiles: ['./src/__tests__/setup.ts'],
     globals: true,
     css: false,
+    /** Zustand + module mocks are global per worker; run files sequentially. */
+    pool: 'forks',
+    fileParallelism: false,
     coverage: {
       reporter: ['text', 'lcov'],
       include: ['src/**/*.{ts,tsx}'],

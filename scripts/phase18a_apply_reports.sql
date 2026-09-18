@@ -1,0 +1,14 @@
+-- Phase 18A — apply extended report RPCs on hosted Supabase
+--
+-- Blocker (2026-09-17): CLI `supabase link --project-ref slrakslfyxbihbivzrhn`
+-- fails (account lacks privileges on that project). `.env` has no DATABASE_URL
+-- or service role key — only VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY.
+--
+-- To apply manually:
+-- 1. Open Supabase Dashboard → SQL Editor for the VHM project.
+-- 2. Paste and run the full contents of:
+--    supabase/migrations/20260922000001_rpc_phase18a_reports.sql
+-- 3. Optional regression: scripts/phase12_reports_integration_test.sql
+--
+-- Source of truth (do not duplicate here — keep in sync with migration file):
+--   supabase/migrations/20260922000001_rpc_phase18a_reports.sql

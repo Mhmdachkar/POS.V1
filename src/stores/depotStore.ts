@@ -1,4 +1,8 @@
 import { create } from 'zustand'
+import {
+  clearCurrentAdminDepotPersistence,
+  persistAdminDepotSelection,
+} from '@/lib/depotContextPersistence'
 import type { DepotOption } from '@/types'
 
 interface DepotState {
@@ -35,15 +39,19 @@ export const useDepotStore = create<DepotState>()((set) => ({
   currentDepotName: null,
   availableDepots: [],
 
-  setCurrentDepot: (id, name) =>
-    set({ currentDepotId: id, currentDepotName: name }),
+  setCurrentDepot: (id, name) => {
+    set({ currentDepotId: id, currentDepotName: name })
+    persistAdminDepotSelection({ id, name })
+  },
 
   setAvailableDepots: (depots) => set({ availableDepots: depots }),
 
-  clear: () =>
+  clear: () => {
+    clearCurrentAdminDepotPersistence()
     set({
       currentDepotId: null,
       currentDepotName: null,
       availableDepots: [],
-    }),
+    })
+  },
 }))

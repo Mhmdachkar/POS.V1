@@ -1,34 +1,51 @@
 import { useState } from 'react'
+import { BiButtonStack, BiEmptyTitle, BiPageTitle } from '@/lib/bilingual/ui'
+import { bilingualPlain } from '@/lib/bilingual/types'
+import { ADMIN } from '@/lib/bilingual/admin'
+import { COMMON } from '@/lib/bilingual/common'
+import { CUSTOMERS } from '@/lib/bilingual/customers'
+import { SHIFT_COPY } from '@/lib/bilingual/shift'
+import { TRANSFERS } from '@/lib/bilingual/transfers'
+import { INVENTORY } from '@/lib/bilingual/inventory'
+import { SALES } from '@/lib/bilingual/sales'
 import { Plus, Search, UserCog } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import { ActiveBadge, Button, EmptyState, Skeleton } from '@/components/ui'
+import { ActiveBadge, Button, EmptyState, PageHeader, Skeleton } from '@/components/ui'
 import { roleLabel, useStaffList, type StaffRoleFilter, type StaffStatusFilter } from '@/hooks/useStaff'
 import { useDepotOptions } from '@/hooks/useInventory'
 import { StaffDetailDrawer } from './components/StaffDetailDrawer'
 import { StaffFormModal } from './components/StaffFormModal'
 
 const STATUS_FILTERS: Array<{ value: StaffStatusFilter; label: string }> = [
-  { value: 'all', label: 'All' },
-  { value: 'active', label: 'Active' },
-  { value: 'inactive', label: 'Inactive' },
+  { value: 'all', label: COMMON.all.fr },
+  { value: 'active', label: COMMON.active.fr },
+  { value: 'inactive', label: COMMON.inactive.fr },
 ]
 
 const ROLE_FILTERS: Array<{ value: StaffRoleFilter; label: string }> = [
-  { value: 'all', label: 'All roles' },
+  { value: 'all', label: ADMIN.filterAllRoles.fr },
   { value: 'admin', label: 'Admin' },
   { value: 'cashier', label: 'Cashier' },
-  { value: 'depot_staff', label: 'Depot staff' },
+  { value: 'depot_staff', label: ADMIN.roleDepotStaff.fr },
 ]
+
+/** Name | Username | Role | Depot | Status */
+const STAFF_GRID =
+  'grid-cols-[minmax(8rem,1.4fr)_minmax(6rem,1fr)_7.5rem_minmax(6rem,1fr)_6.5rem]'
 
 function TableSkeleton() {
   return (
     <div className="space-y-px">
       {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-4 px-4 py-3 border-b border-border">
-          <Skeleton className="h-4 w-40" />
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-4 w-20" />
-          <Skeleton className="h-5 w-16 rounded-full" />
+        <div
+          key={i}
+          className={cn('grid gap-4 px-4 py-3 border-b border-border items-center', STAFF_GRID)}
+        >
+          <Skeleton className="h-4 w-full max-w-[10rem]" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-5 w-full max-w-[4.5rem] rounded-full" />
         </div>
       ))}
     </div>
@@ -56,32 +73,32 @@ export function StaffPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="px-6 py-4 border-b border-border bg-surface flex-shrink-0">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-lg font-bold text-text-primary">Staff</h1>
-            <p className="text-sm text-text-secondary mt-0.5">
-              {totalCount > 0 ? `${totalCount} staff member${totalCount !== 1 ? 's' : ''}` : 'Manage staff accounts'}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="relative w-56">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(0) }}
-                placeholder="Name or username…"
-                className="w-full h-9 pl-9 pr-3 rounded-md border border-border bg-surface text-sm"
-              />
+      <div className="flex-shrink-0 border-b border-border bg-surface">
+        <PageHeader
+          title={<BiPageTitle {...ADMIN.staff} />}
+          description={totalCount > 0 ? ADMIN.staffCount(totalCount).fr : ADMIN.manageStaff.fr}
+          icon={<UserCog className="h-5 w-5" />}
+          className="border-b-0"
+          actions={
+            <div className="flex items-center gap-2">
+              <div className="relative w-52">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setPage(0) }}
+                  placeholder={bilingualPlain(ADMIN.searchStaff)}
+                  className="w-full h-9 pl-9 pr-3 rounded-md border border-border bg-surface text-sm"
+                />
+              </div>
+              <Button className="gap-1.5" onClick={() => setShowCreate(true)}>
+                <Plus className="h-4 w-4" />
+                <BiButtonStack {...ADMIN.addStaff} />
+              </Button>
             </div>
-            <Button className="gap-1.5" onClick={() => setShowCreate(true)}>
-              <Plus className="h-4 w-4" />
-              New Staff
-            </Button>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-1.5 mt-3">
+          }
+        />
+        <div className="px-6 pb-4 flex flex-wrap gap-1.5">
           {STATUS_FILTERS.map((opt) => (
             <button
               key={opt.value}
@@ -116,16 +133,16 @@ export function StaffPage() {
           <TableSkeleton />
         ) : isError ? (
           <div className="p-8">
-            <EmptyState icon={<UserCog className="h-8 w-8" />} title="Failed to load staff" description="Check your connection and try again." />
+            <EmptyState icon={<UserCog className="h-8 w-8" />} title={<BiEmptyTitle {...ADMIN.failedStaff} />} description={COMMON.checkConnection.fr} />
           </div>
         ) : rows.length === 0 ? (
           <div className="p-8">
-            <EmptyState icon={<UserCog className="h-8 w-8" />} title="No staff found" description="Create a staff member to get started." />
+            <EmptyState icon={<UserCog className="h-8 w-8" />} title={<BiEmptyTitle {...ADMIN.noStaff} />} description={ADMIN.noStaffHint.fr} />
           </div>
         ) : (
           <>
-            <div className="sticky top-0 bg-surface-muted border-b border-border">
-              <div className="grid grid-cols-[1.4fr_1fr_1fr_1fr_auto] gap-4 px-4 py-2">
+            <div className="sticky top-0 bg-surface-muted border-b border-border z-[1]">
+              <div className={cn('grid gap-4 px-4 py-2 items-center', STAFF_GRID)}>
                 <span className="text-xs font-semibold text-text-secondary uppercase">Name</span>
                 <span className="text-xs font-semibold text-text-secondary uppercase">Username</span>
                 <span className="text-xs font-semibold text-text-secondary uppercase">Role</span>
@@ -139,15 +156,18 @@ export function StaffPage() {
                 type="button"
                 onClick={() => setSelectedId(row.id)}
                 className={cn(
-                  'w-full text-left grid grid-cols-[1.4fr_1fr_1fr_1fr_auto] gap-4 px-4 py-3 border-b border-border hover:bg-surface-muted',
+                  'w-full text-left grid gap-4 px-4 py-3 items-center border-b border-border hover:bg-surface-muted',
+                  STAFF_GRID,
                   selectedId === row.id && 'bg-primary-subtle',
                 )}
               >
-                <span className="text-sm font-medium text-text-primary truncate">{row.full_name}</span>
-                <span className="text-sm text-text-secondary truncate">{row.username}</span>
-                <span className="text-sm text-text-secondary">{roleLabel(row.role)}</span>
-                <span className="text-sm text-text-secondary truncate">{row.role === 'admin' ? '—' : depotName(row.depot_id)}</span>
-                <ActiveBadge isActive={row.is_active} />
+                <span className="text-sm font-medium text-text-primary truncate min-w-0">{row.full_name}</span>
+                <span className="text-sm text-text-secondary truncate min-w-0">{row.username}</span>
+                <span className="text-sm text-text-secondary truncate min-w-0">{roleLabel(row.role)}</span>
+                <span className="text-sm text-text-secondary truncate min-w-0">{row.role === 'admin' ? '—' : depotName(row.depot_id)}</span>
+                <span className="min-w-0">
+                  <ActiveBadge isActive={row.is_active} />
+                </span>
               </button>
             ))}
             {totalPages > 1 && (

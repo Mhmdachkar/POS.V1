@@ -9,6 +9,7 @@ import { InventoryPage } from '@/pages/inventory/InventoryPage'
 import { ProductDetailDrawer } from '@/pages/inventory/components/ProductDetailDrawer'
 import type { ProductWithUnits } from '@/types'
 import type { AdminDashboardSummary } from '@/types/rpc'
+import { ADMIN } from '@/lib/bilingual/admin'
 
 vi.mock('@/hooks/useAdminCategories', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useAdminCategories')>()
@@ -27,6 +28,7 @@ vi.mock('@/hooks/useAdminCategories', async (importOriginal) => {
     useUpdateCategory: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
     useDeactivateCategory: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
     useReactivateCategory: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
+    useCategoryProducts: vi.fn(() => ({ data: [], isLoading: false })),
   }
 })
 
@@ -77,6 +79,14 @@ vi.mock('@/hooks/useInventory', async (importOriginal) => {
   }
 })
 
+vi.mock('@/hooks/useStockAlerts', () => ({
+  useStockAlerts: vi.fn(() => ({
+    data: { lowStock: [], lowStockCount: 0, outOfStock: [], outOfStockCount: 0 },
+    isLoading: false,
+    isError: false,
+  })),
+}))
+
 vi.mock('@/hooks/useProducts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useProducts')>()
   const product: ProductWithUnits = {
@@ -86,6 +96,8 @@ vi.mock('@/hooks/useProducts', async (importOriginal) => {
     name: 'Water',
     photo_url: 'https://placehold.co/1',
     current_stock_pieces: 40,
+    track_low_stock: false,
+    low_stock_threshold: null,
     is_active: true,
     created_at: '2026-09-01T00:00:00Z',
     updated_at: '2026-09-01T00:00:00Z',
@@ -126,10 +138,13 @@ function wrap(ui: React.ReactElement) {
 }
 
 describe('Admin gates and copy', () => {
-  it('explains that category reactivate does not restore children or products', () => {
+  it('explains that category reactivate does not restore children or products', async () => {
+    const user = userEvent.setup()
     wrap(<CategoriesPage />)
-    expect(screen.getByText(/reactivate restores this category only/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Drinks/ }))
     expect(screen.getByText('Soda')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: ADMIN.reactivate.fr }))
+    expect(screen.getByText(ADMIN.reactivateCategoryMessage.fr, { exact: false })).toBeInTheDocument()
   })
 
   it('asks for confirmation when the exchange rate changes', async () => {
@@ -138,14 +153,14 @@ describe('Admin gates and copy', () => {
     const rate = screen.getByTestId('settings-rate')
     await user.clear(rate)
     await user.type(rate, '700')
-    await user.click(screen.getByRole('button', { name: /save settings/i }))
-    expect(screen.getByRole('heading', { name: /update exchange rate/i })).toBeInTheDocument()
-    expect(screen.getByText(/past sales keep the rate/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: new RegExp(ADMIN.saveSettings.fr, 'i') }))
+    expect(screen.getByRole('heading', { name: new RegExp(ADMIN.updateExchangeRate.fr, 'i') })).toBeInTheDocument()
+    expect(screen.getByText(ADMIN.updateRateConfirm.fr, { exact: false })).toBeInTheDocument()
   })
 
   it('renders a today-only dashboard without date-range controls', () => {
     wrap(<DashboardPage />)
-    expect(screen.getByText('Today')).toBeInTheDocument()
+    expect(screen.getByText(ADMIN.dashboardToday.fr)).toBeInTheDocument()
     expect(screen.queryByLabelText(/date range/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/export/i)).not.toBeInTheDocument()
     expect(screen.getByText('Water')).toBeInTheDocument()

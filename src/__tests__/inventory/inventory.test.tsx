@@ -10,6 +10,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { messageForCodePlain } from '@/lib/bilingual/errors'
 import { ERROR_MESSAGES, parseError } from '@/lib/errors'
 import type { VhmError, VhmErrorCode } from '@/lib/errors'
 import { RestockModal } from '@/pages/inventory/components/RestockModal'
@@ -26,6 +27,7 @@ import {
   INACTIVE_PRODUCT_MESSAGE,
   INVENTORY_ACTIVITY_LIMIT,
   INVENTORY_ACTIVITY_SELECT,
+  INVENTORY_LIST_SELECT,
   INVENTORY_PAGE_SIZE,
   INVENTORY_SEARCH_DEBOUNCE_MS,
   adjustmentFormSchema,
@@ -33,9 +35,14 @@ import {
   categoryKeys,
   fetchInventoryActivity,
   fetchInventoryList,
+  fetchStockActivity,
   formatDerivedUnitQuantity,
   invalidateAfterStockMutation,
   inventoryKeys,
+  primarySellingUnit,
+  STOCK_ACTIVITY_PAGE_SIZE,
+  STOCK_ACTIVITY_SELECT,
+  stockActivityCreatedAtBounds,
   restockFormSchema,
   stockStatusPredicates,
   toAdjustRpcParams,
@@ -82,6 +89,9 @@ type ProductRow = {
   depot_id: string
   category_id: string
   current_stock_pieces: number
+  track_low_stock: boolean
+  low_stock_threshold: number | null
+  is_low_stock: boolean
   is_active: boolean
   photo_url: string
   updated_at: string
@@ -104,6 +114,9 @@ function buildCatalog(): ProductRow[] {
       depot_id: i < 50 ? 'depot-a' : 'depot-b',
       category_id: i % 2 === 0 ? 'cat-water' : 'cat-food',
       current_stock_pieces: outOfStock ? 0 : 50,
+      track_low_stock: false,
+      low_stock_threshold: null,
+      is_low_stock: false,
       is_active: true,
       photo_url: 'https://placehold.co/40',
       updated_at: '2026-09-12T00:00:00Z',
@@ -190,19 +203,19 @@ describe('getStockStatus', () => {
     expect(getStockStatus(0)).toBe('out_of_stock')
   })
 
-  it('maps 1 to low_stock', () => {
-    expect(getStockStatus(1)).toBe('low_stock')
+  it('does not treat untracked stock of 1 as low_stock', () => {
+    expect(getStockStatus(1)).toBe('healthy')
   })
 
-  it('maps 10 to low_stock', () => {
-    expect(getStockStatus(10)).toBe('low_stock')
+  it('maps tracked stock at the threshold to low_stock', () => {
+    expect(getStockStatus(10, { trackLowStock: true, threshold: 10 })).toBe('low_stock')
   })
 
-  it('maps 11 to healthy', () => {
-    expect(getStockStatus(11)).toBe('healthy')
+  it('maps stock above a tracked threshold to healthy', () => {
+    expect(getStockStatus(11, { trackLowStock: true, threshold: 10 })).toBe('healthy')
   })
 
-  it('uses LOW_STOCK_THRESHOLD_PIECES = 10', () => {
+  it('uses LOW_STOCK_THRESHOLD_PIECES = 10 as the form default only', () => {
     expect(LOW_STOCK_THRESHOLD_PIECES).toBe(10)
   })
 })
@@ -218,16 +231,16 @@ describe('stock status query predicates', () => {
     })
   })
 
-  it('low_stock uses gt 0 and lte threshold', () => {
+  it('low_stock uses the generated is_low_stock flag', () => {
     expect(stockStatusPredicates('low_stock')).toEqual({
-      gt: [['current_stock_pieces', 0]],
-      lte: [['current_stock_pieces', 10]],
+      eq: [['is_low_stock', true]],
     })
   })
 
-  it('healthy uses gt threshold', () => {
+  it('healthy uses in-stock and not is_low_stock', () => {
     expect(stockStatusPredicates('healthy')).toEqual({
-      gt: [['current_stock_pieces', 10]],
+      gt: [['current_stock_pieces', 0]],
+      eq: [['is_low_stock', false]],
     })
   })
 
@@ -235,7 +248,7 @@ describe('stock status query predicates', () => {
     expect(stockStatusPredicates('all')).toEqual({})
   })
 
-  it('applyInventoryStockStatusFilter calls lte before returning', () => {
+  it('applyInventoryStockStatusFilter uses is_low_stock for low stock', () => {
     const order: string[] = []
     const q = {
       lte(col: string, val: number) {
@@ -246,9 +259,13 @@ describe('stock status query predicates', () => {
         order.push(`gt:${col}:${val}`)
         return this
       },
+      eq(col: string, val: boolean) {
+        order.push(`eq:${col}:${String(val)}`)
+        return this
+      },
     }
     applyInventoryStockStatusFilter(q, 'low_stock')
-    expect(order).toEqual(['gt:current_stock_pieces:0', 'lte:current_stock_pieces:10'])
+    expect(order).toEqual(['eq:is_low_stock:true'])
   })
 })
 
@@ -312,7 +329,7 @@ describe('filter-before-pagination', () => {
       depotId: null,
     })
 
-    expect(getSelectArgs()[0]).toBe('*, product_units(*), categories(name)')
+    expect(getSelectArgs()[0]).toBe(INVENTORY_LIST_SELECT)
     expect(getSelectArgs()[1]).toEqual({ count: 'exact' })
   })
 
@@ -355,6 +372,25 @@ describe('list filters', () => {
     })
 
     expect(calls).toContain('ilike:name')
+  })
+
+  it('puts categoryId on the list query key so each category is a server-side page', () => {
+    const base: InventoryListFilters = {
+      page: 0,
+      pageSize: 30,
+      search: '',
+      stockStatus: 'all',
+      depotId: 'depot-a',
+      categoryId: null,
+    }
+    expect(inventoryKeys.list({ ...base, categoryId: 'cat-a' })).toEqual([
+      'inventory',
+      'list',
+      { ...base, categoryId: 'cat-a' },
+    ])
+    expect(inventoryKeys.list({ ...base, categoryId: 'cat-a' })).not.toEqual(
+      inventoryKeys.list({ ...base, categoryId: 'cat-b' }),
+    )
   })
 
   it('applies category_id when category is selected', async () => {
@@ -630,6 +666,136 @@ describe('inventory activity query', () => {
   })
 })
 
+describe('stock activity ledger query', () => {
+  function ledgerBuilder(calls: string[]) {
+    const builder: Record<string, unknown> = {}
+    builder.select = (sel: unknown, opts?: unknown) => {
+      calls.push(`select:${String(sel)}`)
+      calls.push(`count:${JSON.stringify(opts ?? null)}`)
+      return builder
+    }
+    builder.eq = (col: unknown, val: unknown) => {
+      calls.push(`eq:${String(col)}:${String(val)}`)
+      return builder
+    }
+    builder.order = (col: unknown, opts: unknown) => {
+      calls.push(`order:${String(col)}:${JSON.stringify(opts)}`)
+      return builder
+    }
+    builder.gte = (col: unknown, val: unknown) => {
+      calls.push(`gte:${String(col)}:${String(val)}`)
+      return builder
+    }
+    builder.lt = (col: unknown, val: unknown) => {
+      calls.push(`lt:${String(col)}:${String(val)}`)
+      return builder
+    }
+    builder.ilike = (col: unknown, val: unknown) => {
+      calls.push(`ilike:${String(col)}:${String(val)}`)
+      return builder
+    }
+    builder.range = (from: unknown, to: unknown) => {
+      calls.push(`range:${from}-${to}`)
+      return builder
+    }
+    builder.then = (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) =>
+      Promise.resolve({
+        data: [
+          {
+            id: 'tx-1',
+            depot_id: 'depot-a',
+            product_id: 'prod-1',
+            quantity_pieces: 5,
+            transaction_type: 'RESTOCK',
+            reference_type: 'stock_entry',
+            reference_id: 'e1',
+            created_by: 'staff-1',
+            created_at: '2026-09-12T00:00:00Z',
+            metadata: { unit_name: 'Bottle', quantity_in_unit: 5 },
+            staff: { full_name: 'Awa Diop' },
+            products: { name: 'Mineral Water', is_active: true },
+            depots: { name: 'Dakar', code: 'DKR' },
+          },
+        ],
+        error: null,
+        count: 1,
+      }).then(resolve, reject)
+    return builder
+  }
+
+  it('selects inventory_transactions with count, newest first, range last', async () => {
+    const calls: string[] = []
+    const builder = ledgerBuilder(calls)
+    vi.mocked(supabase.from).mockImplementation((table: string) => {
+      calls.push(`from:${table}`)
+      return builder as never
+    })
+
+    const bounds = stockActivityCreatedAtBounds('this_week')
+    const result = await fetchStockActivity({
+      depotId: 'depot-a',
+      search: 'Water',
+      transactionType: 'SALE',
+      datePreset: 'this_week',
+      page: 1,
+      pageSize: STOCK_ACTIVITY_PAGE_SIZE,
+    })
+
+    expect(calls[0]).toBe('from:inventory_transactions')
+    expect(calls).toContain(`select:${STOCK_ACTIVITY_SELECT}`)
+    expect(STOCK_ACTIVITY_SELECT).toBe(
+      '*, staff!created_by(full_name), products!product_id!inner(name, is_active), depots!depot_id(name, code)',
+    )
+    expect(calls).toContain('count:{"count":"exact"}')
+    expect(calls).toContain('order:created_at:{"ascending":false}')
+    expect(calls).toContain('eq:depot_id:depot-a')
+    expect(calls).toContain('eq:transaction_type:SALE')
+    expect(calls).toContain(`gte:created_at:${bounds!.from}`)
+    expect(calls).toContain(`lt:created_at:${bounds!.toExclusive}`)
+    expect(calls).toContain('ilike:products.name:%Water%')
+    expect(calls).toContain(`range:50-99`)
+    expect(STOCK_ACTIVITY_PAGE_SIZE).toBe(50)
+
+    const rangeIdx = calls.findIndex((c) => c.startsWith('range:'))
+    const ilikeIdx = calls.findIndex((c) => c.startsWith('ilike:'))
+    const eqTypeIdx = calls.findIndex((c) => c === 'eq:transaction_type:SALE')
+    expect(rangeIdx).toBe(calls.length - 1)
+    expect(ilikeIdx).toBeGreaterThan(-1)
+    expect(ilikeIdx).toBeLessThan(rangeIdx)
+    expect(eqTypeIdx).toBeLessThan(rangeIdx)
+
+    expect(result.count).toBe(1)
+    expect(result.data[0].staff_name).toBe('Awa Diop')
+    expect(result.data[0].product_name).toBe('Mineral Water')
+    expect(result.data[0].depot_name).toBe('Dakar')
+  })
+
+  it('omits depot, type, date, and search predicates when unset', async () => {
+    const calls: string[] = []
+    const builder = ledgerBuilder(calls)
+    vi.mocked(supabase.from).mockImplementation((table: string) => {
+      calls.push(`from:${table}`)
+      return builder as never
+    })
+
+    await fetchStockActivity({
+      depotId: null,
+      search: '  ',
+      transactionType: 'all',
+      datePreset: 'all',
+      page: 0,
+      pageSize: STOCK_ACTIVITY_PAGE_SIZE,
+    })
+
+    expect(calls.some((c) => c.startsWith('eq:depot_id'))).toBe(false)
+    expect(calls.some((c) => c.startsWith('eq:transaction_type'))).toBe(false)
+    expect(calls.some((c) => c.startsWith('gte:created_at'))).toBe(false)
+    expect(calls.some((c) => c.startsWith('lt:created_at'))).toBe(false)
+    expect(calls.some((c) => c.startsWith('ilike:'))).toBe(false)
+    expect(calls).toContain('range:0-49')
+  })
+})
+
 // ─────────────────────────────────────────────────────────────────
 // 9. Invalidation
 // ─────────────────────────────────────────────────────────────────
@@ -648,7 +814,11 @@ describe('query invalidation', () => {
     expect(keys).toContainEqual(['inventory', 'list'])
     expect(keys).toContainEqual([...productKeys.detail('prod-1')])
     expect(keys).toContainEqual([...inventoryKeys.activity('prod-1')])
-    expect(keys).toContainEqual(['products', 'search'])
+    expect(keys).toContainEqual([...inventoryKeys.stockActivities()])
+    expect(keys).toContainEqual([...productKeys.searches()])
+    expect(keys).toContainEqual([...productKeys.stockAlertsAll()])
+    expect(keys.some((k) => k[0] === 'reports')).toBe(true)
+    expect(keys.some((k) => k[0] === 'dashboard')).toBe(true)
     expect(keys.some((k) => k[0] === 'categories')).toBe(false)
     expect(keys).not.toContainEqual([...categoryKeys.all])
   })
@@ -665,6 +835,8 @@ const inactiveProduct: ProductWithUnits = {
   name: 'Inactive Water',
   photo_url: 'https://placehold.co/40',
   current_stock_pieces: 4,
+  track_low_stock: false,
+  low_stock_threshold: null,
   is_active: false,
   created_at: '2026-09-01T00:00:00Z',
   updated_at: '2026-09-01T00:00:00Z',
@@ -707,7 +879,7 @@ describe('inactive product UI', () => {
       message: JSON.stringify({ code: 'PRODUCT_INACTIVE', details: { product_id: 'x' } }),
     })
     expect(err.code).toBe('PRODUCT_INACTIVE')
-    expect(err.message).toBe('This product is no longer available.')
+    expect(err.message).toBe(messageForCodePlain('PRODUCT_INACTIVE'))
   })
 })
 
@@ -719,6 +891,18 @@ describe('derived unit quantity', () => {
   it('shows 3 decimal places and is display-only math', () => {
     expect(formatDerivedUnitQuantity(124.333, 24)).toBe(5.181)
     expect(formatDerivedUnitQuantity(10, 1)).toBe(10)
+  })
+})
+
+describe('primarySellingUnit', () => {
+  it('picks the smallest unit_level', () => {
+    expect(
+      primarySellingUnit([
+        { unit_level: 2, unit_name: 'Carton' },
+        { unit_level: 0, unit_name: 'Piece' },
+      ])?.unit_name,
+    ).toBe('Piece')
+    expect(primarySellingUnit([])).toBeNull()
   })
 })
 
@@ -739,7 +923,7 @@ describe('parseError — already-parsed VhmError', () => {
   it.each(codes)('preserves %s and uses ERROR_MESSAGES, not UNKNOWN', (code) => {
     const err = parseError({ code, message: 'ignored' })
     expect(err.code).toBe(code)
-    expect(err.message).toBe(ERROR_MESSAGES[code])
+    expect(err.message).toBe(messageForCodePlain(code))
     expect(err.code).not.toBe('UNKNOWN')
     expect(err.message).not.toBe(ERROR_MESSAGES.UNKNOWN)
   })
@@ -747,14 +931,14 @@ describe('parseError — already-parsed VhmError', () => {
   it('does not treat Postgres P0001 as a VhmError', () => {
     const err = parseError({ code: 'P0001', message: 'raw postgres boom' })
     expect(err.code).toBe('UNKNOWN')
-    expect(err.message).toBe(ERROR_MESSAGES.UNKNOWN)
+    expect(err.message).toBe(messageForCodePlain('UNKNOWN'))
     expect(err.message).not.toContain('postgres')
   })
 
   it('maps unknown native Error to UNKNOWN', () => {
     const err = parseError(new Error('test'))
     expect(err.code).toBe('UNKNOWN')
-    expect(err.message).toBe(ERROR_MESSAGES.UNKNOWN)
+    expect(err.message).toBe(messageForCodePlain('UNKNOWN'))
   })
 })
 
@@ -769,6 +953,8 @@ const activeProduct: ProductWithUnits = {
   name: 'Water 1.5L',
   photo_url: 'https://placehold.co/40',
   current_stock_pieces: 40,
+  track_low_stock: false,
+  low_stock_threshold: null,
   is_active: true,
   created_at: '2026-09-01T00:00:00Z',
   updated_at: '2026-09-01T00:00:00Z',
@@ -813,8 +999,8 @@ describe('RestockModal mutation error path', () => {
     await user.type(screen.getByRole('spinbutton'), '2')
     await user.click(screen.getByRole('button', { name: /^restock$/i }))
 
-    expect(await screen.findByText(ERROR_MESSAGES[code])).toBeInTheDocument()
-    expect(screen.queryByText(ERROR_MESSAGES.UNKNOWN)).not.toBeInTheDocument()
+    expect(await screen.findByText(messageForCodePlain(code), { exact: false })).toBeInTheDocument()
+    expect(screen.queryByText(messageForCodePlain('UNKNOWN'), { exact: false })).not.toBeInTheDocument()
     expect(rpc.restockProduct).toHaveBeenCalled()
   })
 
@@ -827,7 +1013,7 @@ describe('RestockModal mutation error path', () => {
     await user.type(screen.getByRole('spinbutton'), '2')
     await user.click(screen.getByRole('button', { name: /^restock$/i }))
 
-    expect(await screen.findByText(ERROR_MESSAGES.UNKNOWN)).toBeInTheDocument()
+    expect(await screen.findByText(messageForCodePlain('UNKNOWN'), { exact: false })).toBeInTheDocument()
   })
 })
 
@@ -850,8 +1036,8 @@ describe('AdjustmentModal mutation error path', () => {
     await user.type(screen.getByRole('spinbutton'), '5')
     await user.click(screen.getByRole('button', { name: /apply adjustment/i }))
 
-    expect(await screen.findByText(ERROR_MESSAGES[code])).toBeInTheDocument()
-    expect(screen.queryByText(ERROR_MESSAGES.UNKNOWN)).not.toBeInTheDocument()
+    expect(await screen.findByText(messageForCodePlain(code), { exact: false })).toBeInTheDocument()
+    expect(screen.queryByText(messageForCodePlain('UNKNOWN'), { exact: false })).not.toBeInTheDocument()
     expect(rpc.adjustInventory).toHaveBeenCalled()
   })
 })

@@ -22,6 +22,10 @@ import type {
   ProcessReturnResult,
   VoidSaleParams,
   VoidSaleResult,
+  ReleaseSaleFulfillmentParams,
+  ReleaseSaleFulfillmentResult,
+  RequeuePrintJobParams,
+  RequeuePrintJobResult,
   AdjustInventoryParams,
   AdjustInventoryResult,
   RestockProductParams,
@@ -30,6 +34,20 @@ import type {
   CreateTransferDraftResult,
   CompleteTransferParams,
   CompleteTransferResult,
+  CancelTransferParams,
+  CancelTransferResult,
+  OpenShiftParams,
+  OpenShiftResult,
+  CloseShiftParams,
+  CloseShiftResult,
+  CreateCustomerParams,
+  CreateCustomerResult,
+  UpdateCustomerParams,
+  UpdateCustomerResult,
+  DeactivateCustomerParams,
+  DeactivateCustomerResult,
+  ReactivateCustomerParams,
+  ReactivateCustomerResult,
   AdminInsertStaffParams,
   AdminUpdateStaffParams,
   StaffRowResult,
@@ -46,18 +64,6 @@ import type {
   AdminInventoryReport,
   AdminCustomersReport,
   AdminCashReport,
-  OpenShiftParams,
-  OpenShiftResult,
-  CloseShiftParams,
-  CloseShiftResult,
-  CreateCustomerParams,
-  CreateCustomerResult,
-  UpdateCustomerParams,
-  UpdateCustomerResult,
-  DeactivateCustomerParams,
-  DeactivateCustomerResult,
-  ReactivateCustomerParams,
-  ReactivateCustomerResult,
 } from '@/types/rpc'
 
 // ─── Internal helper ────────────────────────────────────────────
@@ -118,6 +124,14 @@ export const rpc = {
   voidSale: (params: VoidSaleParams): Promise<RpcResult<VoidSaleResult>> =>
     callRpc<VoidSaleResult>('void_sale', params),
 
+  releaseSaleFulfillment: (
+    params: ReleaseSaleFulfillmentParams,
+  ): Promise<RpcResult<ReleaseSaleFulfillmentResult>> =>
+    callRpc<ReleaseSaleFulfillmentResult>('release_sale_fulfillment', params),
+
+  requeuePrintJob: (params: RequeuePrintJobParams): Promise<RpcResult<RequeuePrintJobResult>> =>
+    callRpc<RequeuePrintJobResult>('requeue_print_job', params),
+
   /**
    * Record a signed inventory adjustment (damage, loss, count correction, etc.)
    */
@@ -143,6 +157,13 @@ export const rpc = {
    */
   completeTransfer: (params: CompleteTransferParams): Promise<RpcResult<CompleteTransferResult>> =>
     callRpc<CompleteTransferResult>('complete_transfer', params),
+
+  /**
+   * Cancel a pending transfer. No stock or ledger writes.
+   * Pending only. Admin any accessible; depot_staff source depot only.
+   */
+  cancelTransfer: (params: CancelTransferParams): Promise<RpcResult<CancelTransferResult>> =>
+    callRpc<CancelTransferResult>('cancel_transfer', params),
 
   /**
    * Open a new cashier shift.
@@ -259,4 +280,74 @@ export const rpc = {
 
   adminReportCash: (params: AdminReportParams): Promise<RpcResult<AdminCashReport>> =>
     callRpc<AdminCashReport>('admin_report_cash', params),
+
+  adminReportCostDetail: (params: AdminCostReportParams): Promise<RpcResult<AdminCostReport>> =>
+    callRpc<AdminCostReport>('admin_report_cost_detail', params),
 } as const
+
+// ─── Cost report types (CEO Notes) ─────────────────────────────
+export interface AdminCostReportParams {
+  p_depot_id?: string | null
+  p_start_date?: string | null
+  p_end_date?: string | null
+  p_category_id?: string | null
+  p_product_id?: string | null
+}
+
+export interface AdminCostInventoryRow {
+  product_id: string
+  product_name: string
+  photo_url: string
+  depot_id: string
+  depot_name: string
+  category_id: string
+  category_name: string
+  current_stock_pieces: number
+  serial_number: string | null
+  cost_price_cfa: number
+  selling_price_cfa: number
+  inventory_value_at_cost: number
+  inventory_value_at_selling: number
+  potential_profit: number
+  is_active: boolean
+}
+
+export interface AdminCostRestockRow {
+  stock_entry_id: string
+  entered_at: string
+  depot_id: string
+  depot_name: string
+  product_id: string
+  product_name: string
+  category_name: string
+  unit_level: number
+  unit_name: string | null
+  serial_number: string | null
+  quantity_in_unit: number
+  quantity_pieces: number
+  unit_cost_price_cfa: number
+  total_cost_cfa: number
+  note: string | null
+  entered_by_name: string | null
+}
+
+export interface AdminCostReport {
+  inventory_cost: AdminCostInventoryRow[]
+  inventory_totals: {
+    total_inventory_value_at_cost: number
+    total_inventory_value_at_selling: number
+    total_potential_profit: number
+  }
+  restock_log: AdminCostRestockRow[]
+  period_totals: {
+    total_restock_quantity_pieces: number
+    total_restock_cost_cfa: number
+  }
+  filters: {
+    depot_id: string | null
+    start_date: string | null
+    end_date: string | null
+    category_id: string | null
+    product_id: string | null
+  }
+}

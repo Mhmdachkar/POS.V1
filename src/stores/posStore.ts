@@ -8,6 +8,18 @@ import type { CompleteSaleResult } from '@/types/rpc'
 // ─────────────────────────────────────────────────────────────────
 
 /**
+ * Authoritative checkout total for payment preview.
+ * When an admin override exists, it replaces the calculated cart total.
+ * `totals.total_cfa` always remains the pre-override calculated amount.
+ */
+export function effectiveFinalTotal(
+  calculatedTotalCfa: number,
+  overrideTotalCfa: number | null,
+): number {
+  return overrideTotalCfa != null ? Math.max(0, overrideTotalCfa) : calculatedTotalCfa
+}
+
+/**
  * Compute checkout totals from cart state.
  *
  * CRITICAL: These are CLIENT-SIDE PREVIEW CALCULATIONS ONLY.
@@ -15,12 +27,16 @@ import type { CompleteSaleResult } from '@/types/rpc'
  * The authoritative amounts are computed server-side inside the
  * complete_sale PostgreSQL transaction and returned in the response.
  * Never use these values as authoritative financial state.
+ *
+ * Payment fields (applied / change / balance) always use the effective
+ * final total (override when set, otherwise calculated).
  */
 export function computeTotals(
   items: CartItem[],
   discountType: 'flat' | 'percent' | null,
   discountValue: number,
   cashTendered: number,
+  overrideTotalCfa: number | null = null,
 ): CheckoutTotals {
   const subtotal_cfa = items.reduce((sum, item) => sum + item.line_total_cfa, 0)
 
@@ -31,10 +47,12 @@ export function computeTotals(
     discount_amount_cfa = Math.round((discountValue / 100) * subtotal_cfa)
   }
 
+  // Calculated commercial total (pre-override). Matches server sales.total_cfa.
   const total_cfa = Math.max(0, subtotal_cfa - discount_amount_cfa)
-  const amount_applied_cfa = Math.min(cashTendered, total_cfa)
+  const payable = effectiveFinalTotal(total_cfa, overrideTotalCfa)
+  const amount_applied_cfa = Math.min(cashTendered, payable)
   const change_given_cfa = Math.max(0, cashTendered - amount_applied_cfa)
-  const balance_added_cfa = Math.max(0, total_cfa - amount_applied_cfa)
+  const balance_added_cfa = Math.max(0, payable - amount_applied_cfa)
 
   return {
     subtotal_cfa,
@@ -66,8 +84,8 @@ interface POSState {
   // Cash entry
   cashTendered: number
 
-  // Shift (optional — depot-wide ownership model)
-  shiftId: string | null
+  // Admin-only total override (null = no override, use calculated total)
+  overrideTotalCfa: number | null
 
   // ─── Submission lifecycle ────────────────────────────────────
   /**
@@ -105,12 +123,28 @@ interface POSState {
   addItem: (item: Omit<CartItem, 'line_total_cfa'>) => void
   removeItem: (product_id: string, unit_level: number) => void
   updateQuantity: (product_id: string, unit_level: number, qty: number) => void
+  /**
+   * Atomic unit switch for one cart line. One set(). Never convert qty to pieces.
+   * If a line already exists for the target unit, merge into that line and drop
+   * the source (survivor keeps the target's array index).
+   */
+  changeUnit: (
+    product_id: string,
+    from_unit_level: number,
+    toUnit: {
+      unit_level: 0 | 1 | 2
+      unit_name: string
+      unit_price_cfa: number
+      cost_price_cfa: number
+      conversion_to_base: number
+    },
+  ) => void
   setCustomer: (customer: Customer | null) => void
   setWalkIn: (walkIn: boolean) => void
   setDiscountType: (type: 'flat' | 'percent' | null) => void
   setDiscountValue: (value: number) => void
   setCashTendered: (amount: number) => void
-  setShiftId: (id: string | null) => void
+  setOverrideTotalCfa: (amount: number | null) => void
   clearCart: () => void
 
   /**
@@ -130,7 +164,7 @@ interface POSState {
    * Reset the POS for the next customer.
    * Called after the cashier explicitly clicks "New Sale".
    * Clears cart, customer, discount, cash, idempotency key, and sale result.
-   * Preserves depot context and shift.
+   * Preserves depot context.
    */
   startNewSale: () => void
 }
@@ -159,14 +193,14 @@ export const usePOSStore = create<POSState>()((set, get) => ({
   discountType: null,
   discountValue: 0,
   cashTendered: 0,
-  shiftId: null,
+  overrideTotalCfa: null,
   idempotencyKey: null,
   isSubmitting: false,
   saleResult: null,
   totals: emptyTotals,
 
   addItem: (newItem) => {
-    const { items, discountType, discountValue, cashTendered } = get()
+    const { items, discountType, discountValue, cashTendered, overrideTotalCfa } = get()
     const existingIdx = items.findIndex(
       (i) => i.product_id === newItem.product_id && i.unit_level === newItem.unit_level,
     )
@@ -198,23 +232,23 @@ export const usePOSStore = create<POSState>()((set, get) => ({
 
     set({
       items: updatedItems,
-      totals: computeTotals(updatedItems, discountType, discountValue, cashTendered),
+      totals: computeTotals(updatedItems, discountType, discountValue, cashTendered, overrideTotalCfa),
     })
   },
 
   removeItem: (product_id, unit_level) => {
-    const { discountType, discountValue, cashTendered } = get()
+    const { discountType, discountValue, cashTendered, overrideTotalCfa } = get()
     const updatedItems = get().items.filter(
       (i) => !(i.product_id === product_id && i.unit_level === unit_level),
     )
     set({
       items: updatedItems,
-      totals: computeTotals(updatedItems, discountType, discountValue, cashTendered),
+      totals: computeTotals(updatedItems, discountType, discountValue, cashTendered, overrideTotalCfa),
     })
   },
 
   updateQuantity: (product_id, unit_level, qty) => {
-    const { discountType, discountValue, cashTendered } = get()
+    const { discountType, discountValue, cashTendered, overrideTotalCfa } = get()
     if (qty <= 0) {
       get().removeItem(product_id, unit_level)
       return
@@ -229,7 +263,64 @@ export const usePOSStore = create<POSState>()((set, get) => ({
     })
     set({
       items: updatedItems,
-      totals: computeTotals(updatedItems, discountType, discountValue, cashTendered),
+      totals: computeTotals(updatedItems, discountType, discountValue, cashTendered, overrideTotalCfa),
+    })
+  },
+
+  changeUnit: (product_id, from_unit_level, toUnit) => {
+    const { items, discountType, discountValue, cashTendered, overrideTotalCfa } = get()
+    const sourceIdx = items.findIndex(
+      (i) => i.product_id === product_id && i.unit_level === from_unit_level,
+    )
+    if (sourceIdx < 0) return
+    if (from_unit_level === toUnit.unit_level) return
+
+    const source = items[sourceIdx]
+    const qty = source.quantity_in_unit
+    const targetIdx = items.findIndex(
+      (i) => i.product_id === product_id && i.unit_level === toUnit.unit_level,
+    )
+
+    let updatedItems: CartItem[]
+    if (targetIdx >= 0) {
+      const mergedQty = items[targetIdx].quantity_in_unit + qty
+      updatedItems = items
+        .map((item, idx) => {
+          if (idx !== targetIdx) return item
+          return {
+            ...item,
+            unit_level: toUnit.unit_level,
+            unit_name: toUnit.unit_name,
+            unit_price_cfa: toUnit.unit_price_cfa,
+            cost_price_cfa: toUnit.cost_price_cfa,
+            conversion_to_base: toUnit.conversion_to_base,
+            quantity_in_unit: mergedQty,
+            line_total_cfa: mergedQty * toUnit.unit_price_cfa,
+          }
+        })
+        .filter((_, idx) => idx !== sourceIdx)
+    } else {
+      updatedItems = items.map((item, idx) => {
+        if (idx !== sourceIdx) return item
+        return {
+          ...item,
+          product_id: source.product_id,
+          product_name: source.product_name,
+          product_photo_url: source.product_photo_url,
+          unit_level: toUnit.unit_level,
+          unit_name: toUnit.unit_name,
+          unit_price_cfa: toUnit.unit_price_cfa,
+          cost_price_cfa: toUnit.cost_price_cfa,
+          conversion_to_base: toUnit.conversion_to_base,
+          quantity_in_unit: qty,
+          line_total_cfa: qty * toUnit.unit_price_cfa,
+        }
+      })
+    }
+
+    set({
+      items: updatedItems,
+      totals: computeTotals(updatedItems, discountType, discountValue, cashTendered, overrideTotalCfa),
     })
   },
 
@@ -244,39 +335,47 @@ export const usePOSStore = create<POSState>()((set, get) => ({
   },
 
   setDiscountType: (type) => {
-    const { items, discountValue, cashTendered } = get()
+    const { items, discountValue, cashTendered, overrideTotalCfa } = get()
     // Reset value when changing type to prevent stale values
     const newValue = type === null ? 0 : discountValue
     set({
       discountType: type,
       discountValue: newValue,
-      totals: computeTotals(items, type, newValue, cashTendered),
+      totals: computeTotals(items, type, newValue, cashTendered, overrideTotalCfa),
     })
   },
 
   setDiscountValue: (value) => {
-    const { items, discountType, cashTendered } = get()
+    const { items, discountType, cashTendered, overrideTotalCfa } = get()
     set({
       discountValue: value,
-      totals: computeTotals(items, discountType, value, cashTendered),
+      totals: computeTotals(items, discountType, value, cashTendered, overrideTotalCfa),
     })
   },
 
   setCashTendered: (amount) => {
-    const { items, discountType, discountValue } = get()
+    const { items, discountType, discountValue, overrideTotalCfa } = get()
     set({
       cashTendered: amount,
-      totals: computeTotals(items, discountType, discountValue, amount),
+      totals: computeTotals(items, discountType, discountValue, amount, overrideTotalCfa),
     })
   },
 
-  setShiftId: (id) => set({ shiftId: id }),
+  setOverrideTotalCfa: (amount) => {
+    const { items, discountType, discountValue, cashTendered } = get()
+    const override =
+      amount == null || !Number.isFinite(amount) ? null : Math.max(0, amount)
+    set({
+      overrideTotalCfa: override,
+      totals: computeTotals(items, discountType, discountValue, cashTendered, override),
+    })
+  },
 
   clearCart: () => {
-    const { discountType, discountValue, cashTendered } = get()
+    const { discountType, discountValue, cashTendered, overrideTotalCfa } = get()
     set({
       items: [],
-      totals: computeTotals([], discountType, discountValue, cashTendered),
+      totals: computeTotals([], discountType, discountValue, cashTendered, overrideTotalCfa),
     })
   },
 
@@ -300,10 +399,10 @@ export const usePOSStore = create<POSState>()((set, get) => ({
       discountType: null,
       discountValue: 0,
       cashTendered: 0,
+      overrideTotalCfa: null,
       idempotencyKey: null,
       isSubmitting: false,
       saleResult: null,
       totals: emptyTotals,
-      // shiftId preserved intentionally — same shift stays active
     }),
 }))

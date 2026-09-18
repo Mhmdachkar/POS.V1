@@ -3,6 +3,8 @@ import { useAuthStore } from '@/stores/authStore'
 
 // Layout + Guards
 import { AppShell } from '@/components/layout/AppShell'
+import { PosShell } from '@/components/layout/PosShell'
+import { OpsShell } from '@/components/layout/OpsShell'
 import { AuthGuard } from '@/components/auth/AuthGuard'
 import { RoleGuard } from '@/components/auth/RoleGuard'
 
@@ -14,12 +16,15 @@ import { NotFoundPage } from '@/pages/NotFoundPage'
 import { POSPage } from '@/pages/pos/POSPage'
 import { SalesPage } from '@/pages/sales/SalesPage'
 import { CustomersPage } from '@/pages/customers/CustomersPage'
+import { CustomerActivityPage } from '@/pages/customers/CustomerActivityPage'
 import { PaymentsPage } from '@/pages/payments/PaymentsPage'
 import { ShiftsPage } from '@/pages/shifts/ShiftsPage'
 
 // Inventory + Depot pages (depot_staff + admin)
 import { InventoryPage } from '@/pages/inventory/InventoryPage'
+import { StockActivityPage } from '@/pages/inventory/StockActivityPage'
 import { TransfersPage } from '@/pages/transfers/TransfersPage'
+import { DepotOverviewPage } from '@/pages/depot/DepotOverviewPage'
 
 // Admin-only pages
 import { DashboardPage } from '@/pages/admin/DashboardPage'
@@ -40,9 +45,9 @@ function RoleRedirect() {
   if (!staff) return <Navigate to="/login" replace />
 
   switch (staff.role) {
-    case 'admin':     return <Navigate to="/dashboard" replace />
+    case 'admin':     return <Navigate to="/pos" replace />
     case 'cashier':   return <Navigate to="/pos" replace />
-    case 'depot_staff': return <Navigate to="/inventory" replace />
+    case 'depot_staff': return <Navigate to="/depot" replace />
     default:          return <Navigate to="/login" replace />
   }
 }
@@ -52,6 +57,13 @@ function RoleRedirect() {
 //
 // Structure:
 //   /login               — Public
+//   /pos                 — AuthGuard > RoleGuard(cashier, admin) > PosShell
+//
+//   /sales               — AuthGuard > RoleGuard(cashier, admin) > OpsShell
+//   /customers             OpsShell: cashier → PosShell chrome
+//   /payments                        admin   → AppShell chrome
+//   /shifts
+//
 //   /                    — AuthGuard > AppShell > role redirect
 //     (admin only)
 //     /dashboard         — Admin overview
@@ -61,13 +73,6 @@ function RoleRedirect() {
 //     /admin/categories  — Category management
 //     /admin/audit       — Audit log
 //     /admin/settings    — Business settings
-//
-//     (cashier + admin)
-//     /pos               — POS workspace (cashier primary)
-//     /sales             — Sales history
-//     /customers         — Customer list
-//     /payments          — Payment recording
-//     /shifts            — Shift management
 //
 //     (depot_staff + admin)
 //     /inventory         — Inventory management
@@ -81,8 +86,25 @@ export function AppRoutes() {
       {/* Public */}
       <Route path="/login" element={<LoginPage />} />
 
-      {/* All authenticated routes live inside AuthGuard > AppShell */}
+      {/* Authenticated: POS uses PosShell; all other pages use AppShell */}
       <Route element={<AuthGuard />}>
+        <Route element={<RoleGuard roles={['cashier', 'admin']} redirectTo="/inventory" />}>
+          <Route element={<PosShell />}>
+            <Route path="/pos" element={<POSPage />} />
+          </Route>
+        </Route>
+
+        {/* Ops pages: PosShell chrome for cashier, AppShell chrome for admin */}
+        <Route element={<RoleGuard roles={['cashier', 'admin', 'depot_staff']} redirectTo="/inventory" />}>
+          <Route element={<OpsShell />}>
+            <Route path="/sales"     element={<SalesPage />} />
+            <Route path="/customers" element={<CustomersPage />} />
+            <Route path="/customers/:customerId/activity" element={<CustomerActivityPage />} />
+            <Route path="/payments"  element={<PaymentsPage />} />
+            <Route path="/shifts"    element={<ShiftsPage />} />
+          </Route>
+        </Route>
+
         <Route element={<AppShell />}>
 
           {/* Root: redirect based on role */}
@@ -99,19 +121,11 @@ export function AppRoutes() {
             <Route path="/admin/settings"    element={<SettingsPage />} />
           </Route>
 
-          {/* ── Cashier + Admin ── */}
-          <Route element={<RoleGuard roles={['cashier', 'admin']} redirectTo="/inventory" />}>
-            <Route path="/pos"       element={<POSPage />} />
-            <Route path="/sales"     element={<SalesPage />} />
-            <Route path="/customers" element={<CustomersPage />} />
-            <Route path="/payments"  element={<PaymentsPage />} />
-            <Route path="/shifts"    element={<ShiftsPage />} />
-          </Route>
-
           {/* ── Depot Staff + Admin ── */}
           <Route element={<RoleGuard roles={['depot_staff', 'admin']} redirectTo="/pos" />}>
+            <Route path="/depot"                element={<DepotOverviewPage />} />
             <Route path="/inventory"            element={<InventoryPage />} />
-            <Route path="/inventory/activity"   element={<InventoryPage />} />
+            <Route path="/inventory/activity"   element={<StockActivityPage />} />
             <Route path="/transfers"            element={<TransfersPage />} />
           </Route>
 

@@ -155,6 +155,7 @@ begin
 end;
 $$;
 
+drop trigger if exists prevent_staff_privilege_escalation_trigger on staff;
 create trigger prevent_staff_privilege_escalation_trigger
   before update on staff
   for each row
@@ -175,11 +176,13 @@ do $$
 declare
   v_count integer;
 begin
+  -- pg_policy is the catalog table (polqual/polwithcheck are pg_node_tree).
+  -- The human-readable expressions live on the pg_policies view as qual/with_check.
   select count(*)
   into v_count
-  from pg_policy
+  from pg_policies
   where (qual = 'true' or with_check = 'true')
-    and polname not like '%_test_%';  -- exclude any test policies
+    and policyname not like '%_test_%';  -- exclude any test policies
 
   if v_count > 0 then
     raise exception

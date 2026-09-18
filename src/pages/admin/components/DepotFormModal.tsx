@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Button, LoadingButton } from '@/components/ui'
+import { BilingualText } from '@/components/ui/BilingualText'
 import { parseError } from '@/lib/errors'
 import { useCreateDepot, useUpdateDepot } from '@/hooks/useAdminDepots'
 import type { Depot } from '@/types/database'
+import { ADMIN } from '@/lib/bilingual/admin'
+import { DEPOT } from '@/lib/bilingual/depot'
+import { COMMON } from '@/lib/bilingual/common'
+import { BiButtonStack, BiModalTitle, BiTableHeader } from '@/lib/bilingual/ui'
 
 interface DepotFormModalProps {
   open: boolean
@@ -45,18 +50,29 @@ export function DepotFormModal({ open, onClose, depot }: DepotFormModalProps) {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={isEdit ? 'Edit Depot' : 'New Depot'} size="sm">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={<BiModalTitle {...(isEdit ? ADMIN.editDepot : DEPOT.newDepot)} />}
+      size="sm"
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">Name</label>
+          <label className="block mb-1.5 uppercase tracking-wide">
+            <BiTableHeader {...ADMIN.colName} />
+          </label>
           <input value={name} onChange={(e) => setName(e.target.value)} required className="w-full h-9 px-3 rounded-md border border-border text-sm bg-surface" />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">Location</label>
+          <label className="block mb-1.5 uppercase tracking-wide">
+            <BiTableHeader {...DEPOT.colLocation} />
+          </label>
           <input value={location} onChange={(e) => setLocation(e.target.value)} required className="w-full h-9 px-3 rounded-md border border-border text-sm bg-surface" />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">Code</label>
+          <label className="block mb-1.5 uppercase tracking-wide">
+            <BiTableHeader {...DEPOT.colCode} />
+          </label>
           <input
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
@@ -64,7 +80,11 @@ export function DepotFormModal({ open, onClose, depot }: DepotFormModalProps) {
             disabled={isEdit}
             className="w-full h-9 px-3 rounded-md border border-border text-sm bg-surface disabled:opacity-60"
           />
-          {isEdit && <p className="text-xs text-text-muted mt-1">Depot code cannot be changed.</p>}
+          {isEdit && (
+            <p className="text-xs text-text-muted mt-1">
+              <BilingualText {...ADMIN.depotCodeLocked} variant="caption" />
+            </p>
+          )}
         </div>
         {general && (
           <div className="rounded-md bg-danger-bg border border-danger/20 px-3 py-2">
@@ -72,8 +92,12 @@ export function DepotFormModal({ open, onClose, depot }: DepotFormModalProps) {
           </div>
         )}
         <div className="flex gap-3 justify-end">
-          <Button type="button" variant="secondary" onClick={onClose} disabled={isPending}>Cancel</Button>
-          <LoadingButton type="submit" loading={isPending}>{isEdit ? 'Save Changes' : 'Create Depot'}</LoadingButton>
+          <Button type="button" variant="secondary" onClick={onClose} disabled={isPending}>
+            <BiButtonStack {...COMMON.cancel} />
+          </Button>
+          <LoadingButton type="submit" loading={isPending}>
+            {isEdit ? <BiButtonStack {...ADMIN.saveChanges} /> : <BiButtonStack {...ADMIN.createDepotBtn} />}
+          </LoadingButton>
         </div>
       </form>
     </Modal>

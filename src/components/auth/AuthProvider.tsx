@@ -1,10 +1,25 @@
 import { useEffect, useRef, useCallback } from 'react'
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { clearPersistedAdminDepot } from '@/lib/depotContextPersistence'
+import { startCatalogPersistence, stopCatalogPersistence } from '@/lib/queryPersistence'
 import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
+import { usePOSStore } from '@/stores/posStore'
 import type { Staff } from '@/types/database'
 import type { SessionValidationResult } from '@/types/auth'
+
+/** Clear auth + depot + cart when the user is gone (not TOKEN_REFRESHED). */
+function clearUnauthenticatedLocalState(
+  clear: () => void,
+  clearDepot: () => void,
+) {
+  const staffId = useAuthStore.getState().staff?.id
+  usePOSStore.getState().startNewSale()
+  if (staffId) clearPersistedAdminDepot(staffId)
+  clear()
+  clearDepot()
+}
 
 // ─────────────────────────────────────────────────────────────────
 // Constants
@@ -52,6 +67,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthLoadState,
     clear,
   } = useAuthStore()
+  const authLoadState = useAuthStore((s) => s.authLoadState)
+  const staff = useAuthStore((s) => s.staff)
 
   const setCurrentDepot = useDepotStore((s) => s.setCurrentDepot)
   const clearDepot      = useDepotStore((s) => s.clear)
@@ -96,8 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!session) {
       if (mountedRef.current) {
-        clear()
-        clearDepot()
+        clearUnauthenticatedLocalState(clear, clearDepot)
       }
       return false
     }
@@ -156,12 +172,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setDeactivated(session)
           clearDepot()
         } else {
-          clear()
-          clearDepot()
+          clearUnauthenticatedLocalState(clear, clearDepot)
         }
       } else if (result.reason === 'no_session') {
-        clear()
-        clearDepot()
+        clearUnauthenticatedLocalState(clear, clearDepot)
       }
       return
     }
@@ -199,13 +213,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           case 'SIGNED_OUT':
             // User explicitly signed out or session expired
-            clear()
-            clearDepot()
+            clearUnauthenticatedLocalState(clear, clearDepot)
             break
 
           case 'TOKEN_REFRESHED':
             // JWT refreshed (~every hour): re-verify staff is still active
-            // This catches deactivation that occurred since the last check
+            // This catches deactivation that occurred since the last check.
+            // Do NOT clear the in-memory cart here (session still present).
             await handleSession(session)
             break
 
@@ -221,7 +235,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           default:
             // PASSWORD_RECOVERY and others: not used in this app
             if (session) await handleSession(session)
-            else { clear(); clearDepot() }
+            else clearUnauthenticatedLocalState(clear, clearDepot)
         }
       }
     )
@@ -247,6 +261,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (authLoadState === 'booting') return
+    if (authLoadState === 'authorized' && staff?.id) {
+      void startCatalogPersistence(staff.id)
+      return
+    }
+    void stopCatalogPersistence()
+  }, [authLoadState, staff?.id])
 
   return <>{children}</>
 }

@@ -1,3 +1,5 @@
+import { COMMON } from '@/lib/bilingual/common'
+import { ADMIN } from '@/lib/bilingual/admin'
 /**
  * Phase 12 — Audit log UI: filters, pagination, detail drawer, CSV.
  */
@@ -101,25 +103,25 @@ describe('AuditPage', () => {
 
   it('renders filter controls including actions and entity types', () => {
     render(<AuditPage />)
-    expect(screen.getByText('All actions')).toBeInTheDocument()
-    expect(screen.getByText('All entity types')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('All actions')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('All entity types')).toBeInTheDocument()
-    expect((screen.getByDisplayValue('All actions') as HTMLSelectElement).options.length)
+    expect(screen.getByText(ADMIN.allActions.fr)).toBeInTheDocument()
+    expect(screen.getByText(ADMIN.allEntityTypes.fr)).toBeInTheDocument()
+    expect(screen.getByDisplayValue(ADMIN.allActions.fr)).toBeInTheDocument()
+    expect(screen.getByDisplayValue(ADMIN.allEntityTypes.fr)).toBeInTheDocument()
+    expect((screen.getByDisplayValue(ADMIN.allActions.fr) as HTMLSelectElement).options.length)
       .toBe(AUDIT_ACTIONS.length + 1)
-    expect((screen.getByDisplayValue('All entity types') as HTMLSelectElement).options.length)
+    expect((screen.getByDisplayValue(ADMIN.allEntityTypes.fr) as HTMLSelectElement).options.length)
       .toBe(AUDIT_ENTITY_TYPES.length + 1)
-    expect(screen.getByPlaceholderText(/Entity id/)).toBeInTheDocument()
-    expect(screen.getByText(/All depots — includes global events/)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/ID entité/i)).toBeInTheDocument()
+    expect(screen.getByText(ADMIN.allDepotsIncludesGlobal.fr)).toBeInTheDocument()
   })
 
   it('applies action, entity, actor, and entity-id filters', async () => {
     const user = userEvent.setup()
     render(<AuditPage />)
-    await user.selectOptions(screen.getByDisplayValue('All actions'), 'complete_sale')
-    await user.selectOptions(screen.getByDisplayValue('All entity types'), 'sale')
-    await user.selectOptions(screen.getByDisplayValue('All actors'), 'admin-1')
-    await user.type(screen.getByPlaceholderText(/Entity id/), 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee')
+    await user.selectOptions(screen.getByDisplayValue(ADMIN.allActions.fr), 'complete_sale')
+    await user.selectOptions(screen.getByDisplayValue(ADMIN.allEntityTypes.fr), 'sale')
+    await user.selectOptions(screen.getByDisplayValue(ADMIN.allActors.fr), 'admin-1')
+    await user.type(screen.getByPlaceholderText(/ID entité/i), 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee')
     expect(lastFilters?.action).toBe('complete_sale')
     expect(lastFilters?.entityType).toBe('sale')
     expect(lastFilters?.actorId).toBe('admin-1')
@@ -140,7 +142,7 @@ describe('AuditPage', () => {
     expect(screen.getByText('100 events')).toBeInTheDocument()
     expect(screen.getByText('1 / 2')).toBeInTheDocument()
     expect(lastFilters?.page).toBe(0)
-    await user.click(screen.getByRole('button', { name: 'Next' }))
+    await user.click(screen.getByRole('button', { name: COMMON.next.fr }))
     expect(lastFilters?.page).toBe(1)
     expect(screen.getByText('2 / 2')).toBeInTheDocument()
   })
@@ -149,25 +151,25 @@ describe('AuditPage', () => {
     const user = userEvent.setup()
     render(<AuditPage />)
     await user.click(screen.getByRole('button', { name: /complete_sale/ }))
-    expect(screen.getByText('Audit event')).toBeInTheDocument()
-    expect(screen.getByText('Before')).toBeInTheDocument()
-    expect(screen.getByText('After')).toBeInTheDocument()
+    expect(screen.getByText("Événement d'audit")).toBeInTheDocument()
+    expect(screen.getByText('Avant')).toBeInTheDocument()
+    expect(screen.getByText('Après')).toBeInTheDocument()
     expect(screen.getByText(/"status": "cart"/)).toBeInTheDocument()
     expect(screen.getByText(/"total_cfa": 1500/)).toBeInTheDocument()
-    expect(screen.queryByText('Global / all depots')).not.toBeInTheDocument()
+    expect(screen.queryByText('Global / tous les dépôts')).not.toBeInTheDocument()
   })
 
   it('shows Global / all depots in the drawer for null depot_id', async () => {
     const user = userEvent.setup()
     render(<AuditPage />)
     await user.click(screen.getByRole('button', { name: /process_return/ }))
-    expect(screen.getByText('Global / all depots')).toBeInTheDocument()
+    expect(screen.getByText('Global / tous les dépôts')).toBeInTheDocument()
   })
 
   it('exports the current page as CSV', async () => {
     const user = userEvent.setup()
     render(<AuditPage />)
-    await user.click(screen.getByRole('button', { name: 'Export CSV' }))
+    await user.click(screen.getByRole('button', { name: COMMON.exportCsv.fr }))
     expect(downloadCsv).toHaveBeenCalledTimes(1)
     const call = vi.mocked(downloadCsv).mock.calls[0]
     expect(call[0]).toMatch(/^audit-log-/)

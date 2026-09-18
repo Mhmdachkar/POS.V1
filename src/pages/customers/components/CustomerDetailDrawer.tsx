@@ -1,50 +1,52 @@
 /**
- * CustomerDetailDrawer — Slide-out panel with full customer details.
+ * CustomerDetailDrawer — compact customer account panel.
  *
- * Sections:
- *   1. Identity (name, phone, address, status, created date)
- *   2. Balance summary (authoritative balance_owed_cfa)
- *   3. Recent sales (last 10 for this customer, depot-scoped by RLS)
- *   4. Payment history (last 10 customer_payment records, depot-scoped by RLS)
- *   5. Action bar: Record Payment | Edit | Deactivate/Reactivate (role-gated)
+ * Hierarchy: identity → current balance → financial summary → contact →
+ * recent account activity → actions.
  *
- * Payment model display:
- *   "Credit extended" and "Payment received" — never "allocated to sale".
- *   The sale_id on a sale_payment is informational only.
- *   Customer balance timeline is displayed as independent events.
- *
- * Lifecycle policy displayed:
- *   - Inactive badge shown when is_active=false
- *   - Record Payment available for inactive customers with outstanding balance
- *     (existing debt is still repayable without reactivation)
- *   - Deactivate/Reactivate actions are admin-only
+ * Recent activity is 3–5 events. Full history lives on
+ * /customers/:customerId/activity. Balance is always customer.balance_owed_cfa.
  */
 
-import { useState } from 'react'
-import { Edit, Banknote, UserX, UserCheck, Receipt } from 'lucide-react'
-import { Drawer, Button, LoadingButton, Badge, Skeleton } from '@/components/ui'
-import { formatCFA, formatDate, formatDateTime } from '@/lib/formatters'
+import { useEffect, useState, type ReactNode } from 'react'
+import { CUSTOMERS } from '@/lib/bilingual/customers'
+import { ADMIN } from '@/lib/bilingual/admin'
+import { BiButtonInline, BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
+import { Link } from 'react-router-dom'
+import { Edit, Banknote, UserX, UserCheck, Download, FileText } from 'lucide-react'
+import { Drawer, Button, LoadingButton, MoneyDisplay, Skeleton } from '@/components/ui'
+import { formatDate } from '@/lib/formatters'
 import { parseError } from '@/lib/errors'
 import {
   useCustomer,
-  useCustomerPayments,
   useDeactivateCustomer,
   useReactivateCustomer,
 } from '@/hooks/useCustomers'
-import { useSalesList } from '@/hooks/useSales'
+import {
+  CUSTOMER_ACTIVITY_DRAWER_LIMIT,
+  emptyActivityMessage,
+  useCustomerActivity,
+  useCustomerActivitySummary,
+  type CustomerActivityTypeFilter,
+} from '@/hooks/useCustomerActivity'
+import {
+  downloadCustomerAccountXlsx,
+  fetchCustomerAccountExport,
+  printCustomerAccountPdf,
+} from '@/lib/customerAccountExport'
 import { useAuthStore } from '@/stores/authStore'
-import { usePOSStore } from '@/stores/posStore'
+import { SaleDetailDrawer } from '@/pages/sales/components/SaleDetailDrawer'
 import { RecordPaymentModal } from './RecordPaymentModal'
 import { CustomerFormModal } from './CustomerFormModal'
-import type { Customer } from '@/types/database'
+import { CustomerFinancialSummary } from './CustomerFinancialSummary'
+import {
+  ActivityEventRow,
+  ActivityFilterTabs,
+} from './CustomerActivitySection'
 
-// ─────────────────────────────────────────────────────────────────
-// Section header
-// ─────────────────────────────────────────────────────────────────
-
-function SectionHeader({ title }: { title: string }) {
+function SectionHeader({ title }: { title: ReactNode }) {
   return (
-    <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide mt-5 mb-2 first:mt-0">
+    <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-2 mt-4 first:mt-0">
       {title}
     </p>
   )
@@ -59,9 +61,9 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   )
 }
 
-// ─────────────────────────────────────────────────────────────────
-// CustomerDetailDrawer (main export)
-// ─────────────────────────────────────────────────────────────────
+function contactValue(value: string | null | undefined) {
+  return value?.trim() ? value : '—'
+}
 
 interface CustomerDetailDrawerProps {
   customerId: string | null
@@ -70,21 +72,35 @@ interface CustomerDetailDrawerProps {
 
 export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDrawerProps) {
   const [showPaymentModal, setShowPaymentModal] = useState(false)
-  const [showEditModal, setShowEditModal]       = useState(false)
-  const [actionError, setActionError]            = useState('')
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [actionError, setActionError] = useState('')
+  const [activityFilter, setActivityFilter] = useState<CustomerActivityTypeFilter>('all')
+  const [saleDetailId, setSaleDetailId] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
 
-  const staff  = useAuthStore((s) => s.staff)
-  const shiftId = usePOSStore((s) => s.shiftId)
+  const staff = useAuthStore((s) => s.staff)
   const isAdmin = staff?.role === 'admin'
 
+  useEffect(() => {
+    setActivityFilter('all')
+    setSaleDetailId(null)
+    setActionError('')
+    setShowPaymentModal(false)
+    setShowEditModal(false)
+  }, [customerId])
+
   const { data: customer, isLoading: loadingCustomer } = useCustomer(customerId)
-  const { data: payments, isLoading: loadingPayments } = useCustomerPayments(customerId)
-  const { data: salesData, isLoading: loadingSales }   = useSalesList({
-    customerId: customerId ?? undefined,
-    depotId: null,   // admin sees all, cashier RLS scopes to their depot
+  const {
+    data: activity,
+    isLoading: loadingActivity,
+    isError: activityError,
+    refetch: refetchActivity,
+  } = useCustomerActivity(customerId, {
+    type: activityFilter,
     page: 0,
-    pageSize: 10,
+    pageSize: CUSTOMER_ACTIVITY_DRAWER_LIMIT,
   })
+  const { data: summary, isLoading: loadingSummary } = useCustomerActivitySummary(customerId)
 
   const { mutateAsync: deactivate, isPending: isDeactivating } = useDeactivateCustomer()
   const { mutateAsync: reactivate, isPending: isReactivating } = useReactivateCustomer()
@@ -110,7 +126,23 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
     }
   }
 
-  const sales = salesData?.data ?? []
+  const handleExport = async (kind: 'xlsx' | 'pdf') => {
+    if (!customer) return
+    setActionError('')
+    setExporting(true)
+    try {
+      const dataset = await fetchCustomerAccountExport(customer.id)
+      if (kind === 'xlsx') downloadCustomerAccountXlsx(dataset)
+      else printCustomerAccountPdf(dataset)
+    } catch (err) {
+      setActionError(parseError(err).message || CUSTOMERS.exportAccountFailed.fr)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const events = activity?.data ?? []
+  const hasOutstanding = (customer?.balance_owed_cfa ?? 0) > 0
 
   return (
     <>
@@ -118,8 +150,12 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
         open={!!customerId}
         onClose={onClose}
         title={loadingCustomer ? 'Customer Details' : (customer?.name ?? 'Customer Details')}
-        description={customer && !customer.is_active ? 'Inactive customer' : undefined}
-        width="md"
+        description={
+          customer
+            ? (customer.is_active ? CUSTOMERS.activeCustomer.fr : CUSTOMERS.inactiveCustomer.fr)
+            : undefined
+        }
+        width="lg"
       >
         {loadingCustomer ? (
           <div className="space-y-3">
@@ -128,129 +164,138 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
             ))}
           </div>
         ) : !customer ? (
-          <p className="text-sm text-text-muted">Customer not found.</p>
+          <p className="text-sm text-text-muted">{CUSTOMERS.notFoundShort.fr}</p>
         ) : (
-          <div>
-            {/* ── Section 1: Identity ─── */}
-            <SectionHeader title="Customer Info" />
-            <div className="space-y-0">
-              <DetailRow label="Name" value={
-                <span className="flex items-center gap-2">
-                  {customer.name}
-                  {!customer.is_active && <Badge variant="neutral">Inactive</Badge>}
-                </span>
-              } />
-              <DetailRow label="Phone"   value={customer.phone   ?? <span className="text-text-muted italic">—</span>} />
-              <DetailRow label="Address" value={customer.address ?? <span className="text-text-muted italic">—</span>} />
-              <DetailRow label="Customer since" value={formatDate(customer.created_at)} />
-              {!customer.is_active && customer.deactivated_at && (
-                <DetailRow label="Deactivated" value={
-                  <span className="text-warning-foreground">{formatDate(customer.deactivated_at)}</span>
-                } />
-              )}
-            </div>
-
-            {/* ── Section 2: Balance ─── */}
-            <SectionHeader title="Balance" />
-            <div className="rounded-xl border border-border bg-surface-muted p-4">
-              <p className="text-xs text-text-secondary mb-1">Outstanding balance owed</p>
-              <p className={`text-2xl font-bold tabular-nums ${customer.balance_owed_cfa > 0 ? 'text-danger' : 'text-text-primary'}`}>
-                {formatCFA(customer.balance_owed_cfa)}
-              </p>
+          <div className="space-y-1">
+            <SectionHeader title={<BiSectionTitle {...CUSTOMERS.balanceSection} />} />
+            <div className="rounded-md border border-border bg-surface-muted p-3">
+              <p className="text-xs text-text-secondary mb-1">{CUSTOMERS.outstandingBalance.fr}</p>
+              <MoneyDisplay
+                amount={customer.balance_owed_cfa}
+                size="medium"
+                danger={customer.balance_owed_cfa > 0}
+              />
               <p className="text-xs text-text-muted mt-1">
-                Pooled balance — not allocated to individual sales.
+                {CUSTOMERS.balanceHelp.fr}
               </p>
             </div>
 
-            {/* ── Section 3: Recent Sales ─── */}
-            <SectionHeader title="Recent Sales" />
-            {loadingSales ? (
-              <div className="space-y-2">
-                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+            <CustomerFinancialSummary
+              className="mt-4"
+              summary={summary}
+              isLoading={loadingSummary}
+              outstandingBalanceCfa={customer.balance_owed_cfa}
+              layout="drawer"
+            />
+
+            <SectionHeader title={<BiSectionTitle {...CUSTOMERS.contactSection} />} />
+            <DetailRow label={CUSTOMERS.phone.fr} value={contactValue(customer.phone)} />
+            <DetailRow label={CUSTOMERS.address.fr} value={contactValue(customer.address)} />
+            <DetailRow label={CUSTOMERS.colSince.fr} value={formatDate(customer.created_at)} />
+            {!customer.is_active && customer.deactivated_at && (
+              <DetailRow
+                label={ADMIN.deactivatedAt.fr}
+                value={
+                  <span className="text-warning-foreground">{formatDate(customer.deactivated_at)}</span>
+                }
+              />
+            )}
+
+            <div className="flex items-end justify-between gap-3 mt-4 mb-2">
+              <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">
+                {CUSTOMERS.accountActivity.fr}
+              </p>
+              <Link
+                to={`/customers/${customer.id}/activity`}
+                onClick={onClose}
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                {CUSTOMERS.viewAllActivity.fr}
+              </Link>
+            </div>
+            <ActivityFilterTabs
+              value={activityFilter}
+              onChange={setActivityFilter}
+              className="mb-2"
+            />
+            {loadingActivity ? (
+              <div className="space-y-2" role="status" aria-label={CUSTOMERS.loadingActivity.fr}>
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-full" />
+                ))}
               </div>
-            ) : sales.length === 0 ? (
-              <p className="text-sm text-text-muted">No sales on record.</p>
+            ) : activityError ? (
+              <div className="rounded-md border border-border px-3 py-2">
+                <p className="text-sm text-text-primary">{CUSTOMERS.failedActivity.fr}</p>
+                <Button variant="secondary" size="sm" className="mt-2" onClick={() => void refetchActivity()}>
+                  {CUSTOMERS.tryAgain.fr}
+                </Button>
+              </div>
+            ) : events.length === 0 ? (
+              <p className="text-sm text-text-muted">{emptyActivityMessage(activityFilter)}</p>
             ) : (
-              <div className="space-y-px rounded-lg overflow-hidden border border-border">
-                {sales.map((sale) => (
-                  <div key={sale.id} className="flex items-center justify-between px-3 py-2 bg-surface border-b border-border last:border-0 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Receipt className="h-3.5 w-3.5 text-text-muted flex-shrink-0" />
-                      <span className="font-mono text-xs text-text-secondary">{sale.receipt_number}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-text-muted">{formatDate(sale.created_at)}</span>
-                      <span className="font-semibold tabular-nums text-text-primary">{formatCFA(sale.total_cfa)}</span>
-                      {(sale as any).balance_added_cfa > 0 && (
-                        <span className="text-xs text-warning-foreground">
-                          +{formatCFA((sale as any).balance_added_cfa)} credit
-                        </span>
-                      )}
-                    </div>
-                  </div>
+              <div className="rounded-md overflow-hidden border border-border">
+                {events.map((event) => (
+                  <ActivityEventRow
+                    key={`${event.type}-${event.id}`}
+                    event={event}
+                    onOpenSale={setSaleDetailId}
+                  />
                 ))}
               </div>
             )}
 
-            {/* ── Section 4: Payment History ─── */}
-            <SectionHeader title="Payment History" />
-            {loadingPayments ? (
-              <div className="space-y-2">
-                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-              </div>
-            ) : !payments || payments.length === 0 ? (
-              <p className="text-sm text-text-muted">No payments recorded.</p>
-            ) : (
-              <div className="space-y-px rounded-lg overflow-hidden border border-border">
-                {payments.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between px-3 py-2 bg-surface border-b border-border last:border-0 text-sm">
-                    <div>
-                      <p className="text-xs text-text-muted">{formatDateTime(p.recorded_at)}</p>
-                      {p.note && <p className="text-xs text-text-secondary italic mt-0.5">{p.note}</p>}
-                    </div>
-                    <div className="text-right">
-                      <p className={`font-semibold tabular-nums ${p.is_reversed ? 'line-through text-text-muted' : 'text-success-foreground'}`}>
-                        −{formatCFA(p.amount_cfa)}
-                      </p>
-                      {p.is_reversed && <Badge variant="neutral" className="text-[10px]">Reversed</Badge>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* ── Action error ─── */}
             {actionError && (
               <div className="mt-4 rounded-md bg-danger-bg border border-danger/20 px-3 py-2">
                 <p className="text-sm text-danger">{actionError}</p>
               </div>
             )}
 
-            {/* ── Section 5: Actions ─── */}
-            <div className="mt-6 pt-4 border-t border-border space-y-2">
-              {/* Record Payment — available for any authorized user if balance > 0,
-                  including for inactive customers (existing debt is still payable) */}
-              {customer.balance_owed_cfa > 0 && (
-                <Button
-                  className="w-full gap-2"
-                  onClick={() => setShowPaymentModal(true)}
-                >
-                  <Banknote className="h-4 w-4" />
-                  Record Payment ({formatCFA(customer.balance_owed_cfa)})
-                </Button>
+            <div className="mt-4 pt-3 border-t border-border space-y-2">
+              {isAdmin && (
+                <>
+                  <LoadingButton
+                    variant="secondary"
+                    className="w-full gap-2"
+                    loading={exporting}
+                    disabled={exporting}
+                    onClick={() => { void handleExport('xlsx') }}
+                  >
+                    <Download className="h-4 w-4" />
+                    <BiButtonInline {...CUSTOMERS.exportAccountExcel} />
+                  </LoadingButton>
+                  <LoadingButton
+                    variant="secondary"
+                    className="w-full gap-2"
+                    loading={exporting}
+                    disabled={exporting}
+                    onClick={() => { void handleExport('pdf') }}
+                  >
+                    <FileText className="h-4 w-4" />
+                    <BiButtonInline {...CUSTOMERS.exportAccountPdf} />
+                  </LoadingButton>
+                </>
               )}
 
-              {/* Edit — cashier and admin */}
+              <Button
+                variant={hasOutstanding ? 'primary' : 'secondary'}
+                className="w-full gap-2"
+                onClick={() => setShowPaymentModal(true)}
+                disabled={!hasOutstanding}
+              >
+                <Banknote className="h-4 w-4" />
+                {CUSTOMERS.recordPayment.fr}
+              </Button>
+
               <Button
                 variant="secondary"
                 className="w-full gap-2"
                 onClick={() => setShowEditModal(true)}
               >
                 <Edit className="h-4 w-4" />
-                Edit Customer
+                {CUSTOMERS.editCustomerBtn.fr}
               </Button>
 
-              {/* Deactivate / Reactivate — admin only */}
               {isAdmin && customer.is_active && (
                 <LoadingButton
                   variant="ghost"
@@ -260,7 +305,7 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
                   disabled={isActioning}
                 >
                   <UserX className="h-4 w-4" />
-                  Deactivate Customer
+                  {CUSTOMERS.deactivateCustomer.fr}
                 </LoadingButton>
               )}
               {isAdmin && !customer.is_active && (
@@ -272,7 +317,7 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
                   disabled={isActioning}
                 >
                   <UserCheck className="h-4 w-4" />
-                  Reactivate Customer
+                  {CUSTOMERS.reactivateCustomer.fr}
                 </LoadingButton>
               )}
             </div>
@@ -280,17 +325,15 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
         )}
       </Drawer>
 
-      {/* Record Payment modal */}
       {customer && (
         <RecordPaymentModal
           open={showPaymentModal}
           onClose={() => setShowPaymentModal(false)}
           customer={customer}
-          shiftId={shiftId}
+          shiftId={null}
         />
       )}
 
-      {/* Edit Customer modal */}
       {customer && (
         <CustomerFormModal
           open={showEditModal}
@@ -298,6 +341,12 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
           customer={customer}
         />
       )}
+
+      <SaleDetailDrawer
+        saleId={saleDetailId}
+        shiftId={null}
+        onClose={() => setSaleDetailId(null)}
+      />
     </>
   )
 }

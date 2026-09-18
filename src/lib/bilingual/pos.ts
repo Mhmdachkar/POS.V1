@@ -1,0 +1,173 @@
+import { bi } from './types'
+
+export const POS = {
+  cart: bi('Panier', 'Cart'),
+  noItems: bi('Aucune ligne', 'No items'),
+  completeSale: bi('Terminer la vente', 'Complete Sale'),
+  cashReceived: bi('Espèces reçues', 'Cash Received'),
+  change: bi('Monnaie', 'Change'),
+  balance: bi('Solde', 'Balance'),
+  discount: bi('Remise', 'Discount'),
+  subtotal: bi('Sous-total', 'Subtotal'),
+  total: bi('Total', 'Total'),
+  exactCash: bi('Montant exact', 'Exact Cash'),
+  walkIn: bi('Client de passage', 'Walk-in'),
+  searchProducts: bi('Rechercher un produit…', 'Search products…'),
+  emptyCart: bi('Panier vide', 'Empty cart'),
+  insufficientStock: bi('Stock insuffisant', 'Insufficient Stock'),
+  remainingStock: (n: number) =>
+    bi(`Stock restant : ${n}`, `${n} remaining`),
+  addProductsBeforeSale: bi(
+    'Ajoutez des produits au panier avant de terminer la vente.',
+    'Add products to the cart before completing the sale.',
+  ),
+  creditNeedsCustomer: bi(
+    'Espèces insuffisantes. Choisissez un client pour le solde ou touchez Montant exact.',
+    'Not enough cash. Choose a customer to put the rest on their balance, or tap Exact.',
+  ),
+  cartExceedsStock: bi(
+    'Le panier dépasse le stock disponible. Réduisez les quantités.',
+    'Cart quantity exceeds available stock. Reduce quantity before completing.',
+  ),
+  saleCompleted: bi('Vente terminée', 'Sale completed'),
+  newSale: bi('Nouvelle vente', 'New Sale'),
+  browserPrintFallback: bi(
+    'Impression navigateur (secours)',
+    'Browser print (fallback)',
+  ),
+  receiptLoadFailed: bi(
+    'Impossible de charger le ticket',
+    'Receipt data could not be loaded',
+  ),
+  loadingReceipt: bi('Chargement du ticket…', 'Loading receipt…'),
+  noOpenShift: bi('Sans service', 'No Shift'),
+  cartLines: (n: number) =>
+    bi(`Panier (${n} ligne${n !== 1 ? 's' : ''})`, `Cart (${n} ${n === 1 ? 'line' : 'lines'})`),
+  clearCart: bi('Vider', 'Clear'),
+  emptyCartTitle: bi('Panier vide', 'Your cart is empty'),
+  emptyCartHint: bi('Touchez un produit pour l\'ajouter.', 'Tap a product to add it.'),
+  clearCartConfirmTitle: bi('Vider le panier ?', 'Clear cart?'),
+  clearCartConfirmMessage: bi(
+    'Toutes les lignes de la vente en cours seront supprimées.',
+    'This will remove all items from the current sale.',
+  ),
+  clearCartConfirm: bi('Vider le panier', 'Clear cart'),
+  addProductsBegin: bi('Ajoutez des produits pour commencer.', 'Add products to begin.'),
+  shiftMismatch: bi(
+    'Ce service appartient à un autre dépôt. Choisissez un service correspondant.',
+    'This shift is for another depot. Choose a matching shift to complete the sale.',
+  ),
+  noActiveShiftBanner: bi(
+    'Aucun service actif — les ventes ne seront pas rattachées à un service.',
+    'No active shift — sales will not be attributed to a shift.',
+  ),
+  noShiftWarning: bi(
+    'Aucun service sélectionné. La vente sera terminée mais ne comptera pas à la fermeture.',
+    'No shift selected. This sale will still complete. It will not count on a shift close.',
+  ),
+  selectCustomer: bi('Choisir un client', 'Select customer'),
+  clearCustomer: bi('Effacer le client', 'Clear customer'),
+  applyDiscount: bi('Appliquer une remise', 'Apply discount'),
+  discountType: bi('Type de remise', 'Discount type'),
+  discountValue: bi('Valeur de remise', 'Discount value'),
+  discountNone: bi('Aucune', 'None'),
+  discountFlat: bi('Montant (CFA)', 'Flat (CFA)'),
+  discountPercent: bi('Pourcentage (%)', 'Percent (%)'),
+  discountFlatError: bi(
+    'Remise fixe entre 0 et le sous-total',
+    'Flat discount must be between 0 and subtotal',
+  ),
+  discountPercentError: bi('Pourcentage entre 0 et 100', 'Percentage must be between 0 and 100'),
+  amountCfaPlaceholder: bi('Montant CFA', 'Amount CFA'),
+  onAccount: bi('À crédit', 'On account'),
+  completeSaleAria: bi('Terminer la vente', 'Complete sale'),
+  exactPrefix: bi('Exact', 'Exact'),
+  productCategories: bi('Catégories produits', 'Product categories'),
+  shiftActive: bi('Service : actif', 'Shift: Active'),
+  noActiveShift: bi('Aucun service actif', 'No active shift'),
+  changeShift: bi('Changer de service', 'Change shift'),
+  selectForPos: bi('Sélectionner pour la caisse', 'Select for POS'),
+  chooseOpenShift: bi(
+    'Choisissez un service ouvert. Aucun n\'est sélectionné automatiquement.',
+    'Choose an open shift. None is selected automatically.',
+  ),
+  salesNotOnShiftClose: bi(
+    'Les ventes sans service sélectionné ne sont pas rattachées à une fermeture.',
+    'Sales without a selected shift are not attributed to any shift close.',
+  ),
+  opened: bi('Ouvert', 'Opened'),
+  openNewShift: bi('Ouvrir un service', 'Open new shift'),
+  cashReceivedLabel: bi('Espèces reçues', 'Cash received'),
+  searchCustomer: bi('Rechercher un client…', 'Search customers…'),
+  insufficientStockDetail: bi('Stock insuffisant', 'Insufficient stock'),
+  cashNegative: bi('Le montant ne peut pas être négatif', 'Cash amount cannot be negative'),
+  available: bi('Disponible', 'Available'),
+  left: bi('Reste', 'Left'),
+  catalogRefreshFailed: bi(
+    'Catalogue non actualisé. Derniers produits affichés.',
+    'Catalog could not be refreshed. Showing last loaded products.',
+  ),
+  noDepotSelected: bi('Aucun dépôt sélectionné', 'No depot selected'),
+  noDepotHint: bi(
+    'Choisissez un dépôt dans la vue d\'ensemble, puis ouvrez la caisse.',
+    'Choose a depot from Overview, then open POS.',
+  ),
+  overviewLink: bi('← Vue d\'ensemble', '← Overview'),
+  failedProducts: bi('Impossible de charger les produits', 'Failed to load products'),
+  noProductsWithPhotos: bi('Aucun produit avec photo', 'No products with photos'),
+  noProductsWithPhotosHint: bi(
+    'Les produits actifs nécessitent une photo HTTPS valide. Mettez à jour dans Inventaire.',
+    'Active products need a valid HTTPS photo (no placeholder links). Update them in Inventory.',
+  ),
+  noProductsInCategory: (name: string) => bi(`Aucun produit dans ${name}`, `No products in ${name}`),
+  noProductsFound: bi('Aucun produit', 'No products found'),
+  noActiveProducts: bi('Aucun produit actif', 'No active products'),
+  tryAnotherCategory: bi('Essayez une autre catégorie ou affichez tout.', 'Try another category or show all products.'),
+  noProductsMatching: (q: string) =>
+    bi(`Aucun produit « ${q} » dans ce dépôt.`, `No products matching "${q}" in this depot.`),
+  noActiveUnits: bi(
+    'Ce dépôt n\'a aucun produit actif avec unités configurées.',
+    'This depot has no active products with configured units.',
+  ),
+  showAll: bi('Tout afficher', 'Show all'),
+  showing40Results: bi(
+    '40 résultats — affinez par recherche ou catégorie.',
+    'Showing 40 results — search or select a category to narrow.',
+  ),
+  inCartBadge: bi('Panier', 'Cart'),
+  lowBadge: bi('Faible', 'Low'),
+  outOfStock: bi('Rupture', 'Out of stock'),
+  atMax: bi('Maximum', 'At max'),
+  leftCount: (n: number) => bi(`${n} restant${n !== 1 ? 's' : ''}`, `${n} left`),
+  chooseUnit: bi('Choisir l\'unité', 'Choose unit'),
+  footerLines: (n: number) =>
+    bi(`${n} ligne${n !== 1 ? 's' : ''}`, `${n} ${n === 1 ? 'line' : 'lines'}`),
+  percentPlaceholder: bi('0–100', '0–100'),
+  decreaseQtyAria: (name: string) =>
+    bi(`Diminuer la quantité de ${name}`, `Decrease quantity of ${name}`),
+  increaseQtyAria: (name: string) =>
+    bi(`Augmenter la quantité de ${name}`, `Increase quantity of ${name}`),
+  qtyAria: (name: string) => bi(`Quantité de ${name}`, `Quantity of ${name}`),
+  removeFromCartAria: (name: string) =>
+    bi(`Retirer ${name} du panier`, `Remove ${name} from cart`),
+  changeUnitAria: (name: string) =>
+    bi(`Changer l\'unité pour ${name}`, `Change unit for ${name}`),
+  selectUnitAria: (name: string) =>
+    bi(`Choisir l\'unité pour ${name}`, `Select unit for ${name}`),
+
+  saleCompletedSuccess: bi('Vente terminée avec succès', 'Sale completed successfully'),
+  // ── Admin total override ────────────────────────────────────────
+  calculatedTotal: bi('Total calculé', 'Calculated Total'),
+  adjustedTotal: bi('Total ajusté', 'Adjusted Total'),
+  modifyTotal: bi('Modifier le total', 'Edit Total'),
+  removeOverride: bi('Retirer l\'ajustement', 'Remove adjustment'),
+  overridePlaceholder: bi('Total final (CFA)', 'Final total (CFA)'),
+  overrideHint: bi(
+    'Laissez vide pour utiliser le total calculé.',
+    'Leave empty to use the calculated total.',
+  ),
+  overrideAdminOnly: bi(
+    'Réservé administrateur',
+    'Admin only',
+  ),
+} as const

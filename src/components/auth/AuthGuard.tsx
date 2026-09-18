@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuthStore, selectAuthLoadState } from '@/stores/authStore'
 import { Skeleton } from '@/components/ui'
+import { PosShiftPersistence } from '@/components/pos/PosShiftPersistence'
 import { DeactivatedPage } from '@/pages/DeactivatedPage'
 
 /**
@@ -46,7 +47,7 @@ export function AuthGuard() {
       <div
         className="flex h-screen items-center justify-center bg-background"
         role="status"
-        aria-label="Loading application"
+        aria-label="Chargement de l'application"
       >
         <div className="space-y-3 w-56">
           <Skeleton height={8} className="rounded-full" />
@@ -69,5 +70,10 @@ export function AuthGuard() {
   }
 
   // AUTHORIZED: Active staff confirmed. Render protected routes.
-  return <Outlet />
+  return (
+    <>
+      <PosShiftPersistence />
+      <Outlet />
+    </>
+  )
 }

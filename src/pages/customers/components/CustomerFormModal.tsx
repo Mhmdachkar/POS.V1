@@ -16,10 +16,15 @@
 import { useState, useEffect, useRef } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Button, LoadingButton } from '@/components/ui'
+import { BilingualText } from '@/components/ui/BilingualText'
 import { cn } from '@/lib/cn'
 import { parseError } from '@/lib/errors'
 import { useCreateCustomer, useUpdateCustomer } from '@/hooks/useCustomers'
 import type { Customer } from '@/types/database'
+import { COMMON } from '@/lib/bilingual/common'
+import { CUSTOMERS } from '@/lib/bilingual/customers'
+import { BiButtonStack, BiModalTitle, BiTableHeader } from '@/lib/bilingual/ui'
+import { bilingualPlain } from '@/lib/bilingual/types'
 
 interface CustomerFormModalProps {
   open: boolean
@@ -77,9 +82,9 @@ export function CustomerFormModal({ open, onClose, customer, onSuccess }: Custom
   const validate = (): boolean => {
     const e: FormErrors = {}
     if (!form.name.trim()) {
-      e.name = 'Customer name is required.'
+      e.name = bilingualPlain(CUSTOMERS.nameRequiredError)
     } else if (form.name.trim().length > 255) {
-      e.name = 'Name must be 255 characters or fewer.'
+      e.name = bilingualPlain(CUSTOMERS.nameMaxError)
     }
     setErrors(e)
     return Object.keys(e).length === 0
@@ -126,21 +131,20 @@ export function CustomerFormModal({ open, onClose, customer, onSuccess }: Custom
     <Modal
       open={open}
       onClose={onClose}
-      title={isEdit ? 'Edit Customer' : 'New Customer'}
+      title={<BiModalTitle {...(isEdit ? CUSTOMERS.editCustomer : CUSTOMERS.newCustomerButton)} />}
       size="sm"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Name */}
         <div>
-          <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
-            Name <span className="text-danger">*</span>
+          <label className="block mb-1.5 uppercase tracking-wide">
+            <BiTableHeader {...CUSTOMERS.fullNameRequired} />
           </label>
           <input
             ref={nameRef}
             type="text"
             value={form.name}
             onChange={(e) => { setForm((f) => ({ ...f, name: e.target.value })); setErrors((er) => ({ ...er, name: undefined })) }}
-            placeholder="Full name"
+            placeholder={bilingualPlain(CUSTOMERS.fullNamePlaceholder)}
             maxLength={255}
             className={cn(
               'w-full h-9 px-3 rounded-md border text-sm bg-surface text-text-primary',
@@ -153,10 +157,9 @@ export function CustomerFormModal({ open, onClose, customer, onSuccess }: Custom
           )}
         </div>
 
-        {/* Phone */}
         <div>
-          <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
-            Phone <span className="text-text-muted font-normal">(optional)</span>
+          <label className="block mb-1.5 uppercase tracking-wide">
+            <BiTableHeader {...CUSTOMERS.phoneOptional} />
           </label>
           <input
             type="tel"
@@ -167,34 +170,31 @@ export function CustomerFormModal({ open, onClose, customer, onSuccess }: Custom
           />
         </div>
 
-        {/* Address */}
         <div>
-          <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
-            Address <span className="text-text-muted font-normal">(optional)</span>
+          <label className="block mb-1.5 uppercase tracking-wide">
+            <BiTableHeader {...CUSTOMERS.addressOptional} />
           </label>
           <input
             type="text"
             value={form.address}
             onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-            placeholder="Street, neighborhood, city"
+            placeholder={bilingualPlain(CUSTOMERS.addressPlaceholder)}
             className="w-full h-9 px-3 rounded-md border border-border text-sm bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
           />
         </div>
 
-        {/* General error */}
         {errors.general && (
           <div className="rounded-md bg-danger-bg border border-danger/20 px-3 py-2">
             <p className="text-sm text-danger">{errors.general}</p>
           </div>
         )}
 
-        {/* Actions */}
         <div className="flex gap-3 justify-end pt-1">
           <Button type="button" variant="secondary" onClick={onClose} disabled={isPending}>
-            Cancel
+            <BiButtonStack {...COMMON.cancel} />
           </Button>
           <LoadingButton type="submit" loading={isPending}>
-            {isEdit ? 'Save Changes' : 'Create Customer'}
+            {isEdit ? <BiButtonStack {...CUSTOMERS.saveChanges} /> : <BiButtonStack {...CUSTOMERS.createCustomerBtn} />}
           </LoadingButton>
         </div>
       </form>

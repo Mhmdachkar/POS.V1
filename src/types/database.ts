@@ -88,6 +88,10 @@ export interface Product {
   name: string
   photo_url: string
   current_stock_pieces: number
+  /** Admin opt-in. Untracked products never appear in low-stock warnings. */
+  track_low_stock: boolean
+  /** Required when track_low_stock is true. Compared to current_stock_pieces. */
+  low_stock_threshold: number | null
   is_active: boolean
   created_at: string
   updated_at: string
@@ -99,8 +103,12 @@ export interface ProductUnit {
   /** 0 = piece (base), 1 = package, 2 = carton */
   unit_level: 0 | 1 | 2
   unit_name: string
-  /** How many pieces = 1 of this unit. Piece row = 1. */
+  /** Unique identifier for this unit definition. Required. Case-insensitive unique. */
+  serial_number: string
+  /** How many pieces = 1 of this unit. Piece row = 1. Server-derived. */
   conversion_to_base: number
+  /** L0: null. L1: pieces per package. L2: packages per carton. */
+  relative_quantity: number | null
   cost_price_cfa: number
   selling_price_cfa: number
   created_at: string
@@ -116,6 +124,10 @@ export interface StockEntry {
   quantity_in_unit: number
   /** Frozen piece count at entry time */
   quantity_pieces: number
+  /** Cost per base piece at restock time. Null for pre-CEO Notes historical rows. */
+  unit_cost_price_cfa: number | null
+  /** Total acquisition cost for this restock. Null for pre-CEO Notes historical rows. */
+  total_cost_cfa: number | null
   note: string | null
   entered_by: string
   entered_at: string
@@ -145,6 +157,9 @@ export interface StockTransfer {
   /** Staff who completed the transfer (null until completed). Added in Phase 2 for audit. */
   completed_by: string | null
   note: string | null
+  cancelled_at: string | null
+  cancelled_by: string | null
+  cancel_reason: string | null
 }
 
 export interface StockTransferItem {
@@ -223,6 +238,8 @@ export interface Sale {
   discount_value: number | null
   discount_amount_cfa: number
   total_cfa: number
+  /** Admin-only. When set, this is the authoritative revenue total. Null = use total_cfa. */
+  admin_override_total_cfa: number | null
   amount_tendered_cfa: number
   amount_applied_cfa: number
   change_given_cfa: number

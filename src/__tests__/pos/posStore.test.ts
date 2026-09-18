@@ -200,6 +200,114 @@ describe('removeItem', () => {
   })
 })
 
+// ─── changeUnit ───────────────────────────────────────────────────
+
+describe('changeUnit', () => {
+  const pack = {
+    unit_level: 1 as const,
+    unit_name: 'Pack',
+    unit_price_cfa: 1800,
+    cost_price_cfa: 1000,
+    conversion_to_base: 6,
+  }
+
+  it('is a no-op when the source line is missing', () => {
+    getStore().addItem(makeCartItem({ product_id: 'prod-soda', product_name: 'Soda' }))
+    getStore().changeUnit('prod-001', 0, pack)
+    expect(getStore().items).toHaveLength(1)
+    expect(getStore().items[0].product_id).toBe('prod-soda')
+  })
+
+  it('is a no-op when from and to unit levels match', () => {
+    getStore().addItem(makeCartItem({ quantity_in_unit: 3 }))
+    getStore().changeUnit('prod-001', 0, {
+      unit_level: 0,
+      unit_name: 'Piece',
+      unit_price_cfa: 350,
+      cost_price_cfa: 200,
+      conversion_to_base: 1,
+    })
+    expect(getStore().items).toHaveLength(1)
+    expect(getStore().items[0].unit_level).toBe(0)
+    expect(getStore().items[0].quantity_in_unit).toBe(3)
+  })
+
+  it('rewrites the source line in place when the target does not exist', () => {
+    getStore().addItem(makeCartItem({ quantity_in_unit: 3 }))
+    getStore().addItem(makeCartItem({
+      product_id: 'prod-soda',
+      product_name: 'Soda',
+      unit_name: 'Pack',
+      unit_level: 1,
+    }))
+    getStore().changeUnit('prod-001', 0, pack)
+
+    const { items } = getStore()
+    expect(items).toHaveLength(2)
+    expect(items[0].product_id).toBe('prod-001')
+    expect(items[0].product_name).toBe('Water Bottle')
+    expect(items[0].unit_level).toBe(1)
+    expect(items[0].unit_name).toBe('Pack')
+    expect(items[0].quantity_in_unit).toBe(3)
+    expect(items[0].unit_price_cfa).toBe(1800)
+    expect(items[0].cost_price_cfa).toBe(1000)
+    expect(items[0].conversion_to_base).toBe(6)
+    expect(items[0].line_total_cfa).toBe(5400)
+    expect(items[1].product_id).toBe('prod-soda')
+  })
+
+  it('preserves quantity without converting to pieces', () => {
+    getStore().addItem(makeCartItem({ quantity_in_unit: 3 }))
+    getStore().changeUnit('prod-001', 0, pack)
+    expect(getStore().items[0].quantity_in_unit).toBe(3)
+  })
+
+  it('merges into the existing target, drops source, and keeps the target index', () => {
+    getStore().addItem(makeCartItem({
+      product_id: 'prod-water',
+      product_name: 'Water',
+      unit_level: 0,
+      unit_name: 'Piece',
+      quantity_in_unit: 3,
+      unit_price_cfa: 350,
+    }))
+    getStore().addItem(makeCartItem({
+      product_id: 'prod-soda',
+      product_name: 'Soda',
+      unit_level: 1,
+      unit_name: 'Pack',
+      quantity_in_unit: 1,
+      unit_price_cfa: 1500,
+    }))
+    getStore().addItem(makeCartItem({
+      product_id: 'prod-water',
+      product_name: 'Water',
+      unit_level: 1,
+      unit_name: 'Pack',
+      quantity_in_unit: 2,
+      unit_price_cfa: 1800,
+      cost_price_cfa: 1000,
+      conversion_to_base: 6,
+    }))
+
+    getStore().changeUnit('prod-water', 0, pack)
+
+    const { items, totals } = getStore()
+    expect(items).toHaveLength(2)
+    expect(items.map((i) => `${i.product_name}/${i.unit_name}×${i.quantity_in_unit}`)).toEqual([
+      'Soda/Pack×1',
+      'Water/Pack×5',
+    ])
+    expect(items[1].unit_price_cfa).toBe(1800)
+    expect(items[1].cost_price_cfa).toBe(1000)
+    expect(items[1].conversion_to_base).toBe(6)
+    expect(items[1].line_total_cfa).toBe(9000)
+    expect(items.filter((i) => i.product_id === 'prod-water' && i.unit_level === 1)).toHaveLength(1)
+    expect(items.some((i) => i.product_id === 'prod-water' && i.unit_level === 0)).toBe(false)
+    expect(totals.subtotal_cfa).toBe(1500 + 9000)
+  })
+})
+
 // ─── updateQuantity ───────────────────────────────────────────────
 
 describe('updateQuantity', () => {
@@ -354,12 +462,5 @@ describe('startNewSale', () => {
     expect(s.idempotencyKey).toBeNull()
     expect(s.isSubmitting).toBe(false)
     expect(s.saleResult).toBeNull()
-  })
-
-  it('preserves shiftId across sale reset', () => {
-    getStore().setShiftId('shift-123')
-    getStore().addItem(makeCartItem())
-    getStore().startNewSale()
-    expect(getStore().shiftId).toBe('shift-123')
   })
 })

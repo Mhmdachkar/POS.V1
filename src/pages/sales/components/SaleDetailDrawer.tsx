@@ -15,16 +15,31 @@
  * using today's prices.
  */
 
-import { useState } from 'react'
-import { Printer, RotateCcw, XCircle } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { toastSuccessBi, toastErrorFromCode } from '@/lib/bilingual/toast'
+import { SALES } from '@/lib/bilingual/sales'
+import { COMMON } from '@/lib/bilingual/common'
+import { POS } from '@/lib/bilingual/pos'
+import { CUSTOMERS } from '@/lib/bilingual/customers'
+import { BilingualText } from '@/components/ui/BilingualText'
+import { BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
+import { PackageCheck, Printer, RotateCcw, XCircle } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import { Drawer, Button, Skeleton, SaleStatusBadge } from '@/components/ui'
-import { formatCFA, formatDateTime } from '@/lib/formatters'
+import { Drawer, Button, MoneyDisplay, Skeleton, SaleStatusBadge } from '@/components/ui'
+import { formatDateTime } from '@/lib/formatters'
+import { buildReceiptHtml, printReceiptHtml, receiptDataFromSaleDetail } from '@/lib/receiptHtml'
 import { useSaleDetail } from '@/hooks/useSales'
 import { useQueryClient } from '@tanstack/react-query'
-import { saleKeys } from '@/hooks/useSales'
-import { productKeys } from '@/hooks/useProducts'
-import { customerKeys } from '@/hooks/useCustomers'
+import { settingsKeys } from '@/hooks/useBusinessSettings'
+import { depotOptionKeys } from '@/hooks/useInventory'
+import { invalidateAfterFulfillmentRelease, invalidateAfterSaleSettled } from '@/lib/cacheInvalidation'
+import { printJobStatusLabel } from '@/lib/printJobStatus'
+import { useDepotStore } from '@/stores/depotStore'
+import { useAuthStore } from '@/stores/authStore'
+import { releaseSaleFulfillment, requeuePrintJob, usePrintJobsForSale } from '@/hooks/usePrintJobs'
+import { getErrorMessage } from '@/lib/errors'
+import type { BusinessSettings } from '@/types/database'
+import type { SaleDetailData } from '@/hooks/useSales'
 import { ReturnModal } from './ReturnModal'
 import { VoidModal } from './VoidModal'
 
@@ -32,7 +47,7 @@ import { VoidModal } from './VoidModal'
 // Section header
 // ─────────────────────────────────────────────────────────────────
 
-function SectionHeader({ title }: { title: string }) {
+function SectionHeader({ title }: { title: ReactNode }) {
   return (
     <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-2 mt-4 first:mt-0">
       {title}
@@ -64,44 +79,145 @@ function DetailRow({ label, value, bold }: { label: string; value: React.ReactNo
 // Printable receipt trigger (inside drawer)
 // ─────────────────────────────────────────────────────────────────
 
-function SalePrintReceipt({ receiptNumber, total, customerName }: {
-  receiptNumber: string
-  total: number
-  customerName: string | null
+function SalePrintReceipt({
+  sale,
+  businessName,
+  depotName,
+}: {
+  sale: SaleDetailData
+  businessName: string
+  depotName: string | null
 }) {
-  const lot = receiptNumber.split('-')[0] ?? ''
-
   const handlePrint = () => {
-    // Populate the hidden receipt element then print
-    const existing = document.getElementById('vhm-receipt-drawer')
-    if (existing) existing.remove()
-
-    const div = document.createElement('div')
-    div.id = 'vhm-receipt-drawer'
-    div.className = 'print-only'
-    div.innerHTML = `
-      <div class="receipt-paper">
-        <div class="receipt-header">
-          <div class="receipt-lot">LOT: ${lot}</div>
-          <div class="receipt-number">${receiptNumber}</div>
-        </div>
-        <div class="receipt-divider">- - - - - - - - - - - - - -</div>
-        ${customerName ? `<div class="receipt-customer">${customerName}</div>` : ''}
-        <div class="receipt-amount">${formatCFA(total)}</div>
-        <div class="receipt-divider">- - - - - - - - - - - - - -</div>
-        <div class="receipt-paid">PAID</div>
-      </div>
-    `
-    document.body.appendChild(div)
-    window.print()
-    setTimeout(() => div.remove(), 1000)
+    printReceiptHtml(
+      buildReceiptHtml(receiptDataFromSaleDetail(sale, businessName, depotName)),
+      'vhm-receipt-drawer',
+    )
   }
 
   return (
-    <Button variant="secondary" size="sm" className="gap-1.5" onClick={handlePrint}>
-      <Printer className="h-3.5 w-3.5" />
-      Print Receipt
+    <Button variant="secondary" className="w-full gap-2" onClick={handlePrint}>
+      <Printer className="h-4 w-4" />
+      {SALES.browserPrintFallback.fr}
     </Button>
+  )
+}
+
+function SaleFulfillmentPanel({ sale }: { sale: SaleDetailData }) {
+  const staff = useAuthStore((s) => s.staff)
+  const queryClient = useQueryClient()
+  const saleId = sale.id
+  const { data: jobs, isLoading } = usePrintJobsForSale(saleId)
+  const [releasing, setReleasing] = useState(false)
+
+  const canRelease =
+    staff?.role === 'depot_staff' || staff?.role === 'admin'
+  const fulfillment = sale.fulfillment
+  const depotJob = jobs?.find((j) => j.destination === 'depot')
+  const cashierJob = jobs?.find((j) => j.destination === 'cashier')
+
+  async function handleRelease() {
+    setReleasing(true)
+    try {
+      const result = await releaseSaleFulfillment(saleId)
+      if (result.error) {
+        toastErrorFromCode(result.error.code)
+        return
+      }
+      toastSuccessBi(result.data?.idempotent ? SALES.alreadyReleased : SALES.orderReleased)
+      invalidateAfterFulfillmentRelease(queryClient, saleId)
+    } finally {
+      setReleasing(false)
+    }
+  }
+
+  async function handleRequeueDepot() {
+    if (!depotJob) return
+    const result = await requeuePrintJob(depotJob.id)
+    if (result.error) {
+      toastErrorFromCode(result.error.code)
+      return
+    }
+    toastSuccessBi(SALES.printRequeued)
+    queryClient.invalidateQueries({ queryKey: ['print_jobs', 'sale', saleId] })
+  }
+
+  if (!fulfillment && isLoading) return null
+
+  return (
+    <>
+      <SectionHeader title={<BiSectionTitle {...SALES.fulfillmentSection} />} />
+      {fulfillment ? (
+        fulfillment.status === 'released' ? (
+          <>
+            <DetailRow
+              label={SALES.releasedBy.fr}
+              value={fulfillment.released_by_name ?? '—'}
+              bold
+            />
+            <DetailRow
+              label={SALES.releasedAt.fr}
+              value={
+                fulfillment.released_at
+                  ? formatDateTime(fulfillment.released_at)
+                  : '—'
+              }
+            />
+          </>
+        ) : (
+          <DetailRow label={SALES.releaseStatus.fr} value={SALES.pendingRelease.fr} bold />
+        )
+      ) : (
+        <p className="text-sm text-text-muted">{SALES.noFulfillmentRecord.fr}</p>
+      )}
+
+      {canRelease && fulfillment?.status === 'pending' && (
+        <Button
+          variant="primary"
+          className="w-full gap-2 mt-2"
+          disabled={releasing}
+          onClick={() => void handleRelease()}
+        >
+          <PackageCheck className="h-4 w-4" />
+          {SALES.releaseOrder.fr}
+        </Button>
+      )}
+
+      <SectionHeader title={<BiSectionTitle {...SALES.printStatus} />} />
+      {isLoading ? (
+        <Skeleton className="h-8 w-full" />
+      ) : (
+        <div className="space-y-2 text-sm">
+          {cashierJob && (staff?.role === 'admin' || staff?.role === 'cashier') && (
+            <DetailRow
+              label={SALES.customerReceipt.fr}
+              value={printJobStatusLabel(cashierJob.status)}
+            />
+          )}
+          {depotJob && (staff?.role === 'admin' || staff?.role === 'depot_staff') && (
+            <>
+              <DetailRow
+                label={SALES.depotOrder.fr}
+                value={printJobStatusLabel(depotJob.status)}
+              />
+              {(staff?.role === 'depot_staff' || staff?.role === 'admin') && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => void handleRequeueDepot()}
+                >
+                  {SALES.reprintDepot.fr}
+                </Button>
+              )}
+            </>
+          )}
+          {!cashierJob && !depotJob && (
+            <p className="text-text-muted">{SALES.noPrintJobs.fr}</p>
+          )}
+        </div>
+      )}
+    </>
   )
 }
 
@@ -119,16 +235,21 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
   const [showReturn, setShowReturn] = useState(false)
   const [showVoid, setShowVoid] = useState(false)
   const queryClient = useQueryClient()
+  const staffRole = useAuthStore((s) => s.staff?.role)
+  const canMutateSale = staffRole === 'cashier' || staffRole === 'admin'
+  const depotName = useDepotStore((s) => s.currentDepotName)
+  const businessName =
+    queryClient.getQueryData<BusinessSettings>(settingsKeys.current)?.business_name ?? 'VHM POS'
 
   const { data: sale, isLoading, isError } = useSaleDetail(saleId)
 
   const handleMutationSuccess = () => {
-    if (saleId) {
-      queryClient.invalidateQueries({ queryKey: saleKeys.detail(saleId) })
-      queryClient.invalidateQueries({ queryKey: saleKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: productKeys.all })
-      queryClient.invalidateQueries({ queryKey: customerKeys.all })
-    }
+    if (!saleId) return
+    invalidateAfterSaleSettled(queryClient, {
+      saleId,
+      customerId: sale?.customer_id,
+      shiftId: sale?.shift_id ?? shiftId,
+    })
   }
 
   // ── Action eligibility ─────────────────────────────────────────
@@ -151,7 +272,7 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
       <Drawer
         open={!!saleId}
         onClose={onClose}
-        title={sale ? sale.receipt_number : 'Sale Detail'}
+        title={sale ? sale.receipt_number : SALES.saleDetails.fr}
         description={sale ? `${formatDateTime(sale.created_at)}` : undefined}
         width="lg"
       >
@@ -162,61 +283,49 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
             ))}
           </div>
         ) : isError || !sale ? (
-          <p className="text-sm text-danger">Failed to load sale details.</p>
+          <p className="text-sm text-danger">{SALES.failedDetail.fr}</p>
         ) : (
           <div className="space-y-1">
-            {/* Status + Actions row */}
-            <div className="flex items-center justify-between gap-2 mb-4">
+            <div className="flex items-center gap-2 mb-4">
               <SaleStatusBadge status={sale.status} />
-              <div className="flex gap-1.5">
-                <SalePrintReceipt
-                  receiptNumber={sale.receipt_number}
-                  total={sale.total_cfa}
-                  customerName={sale.customer_name}
-                />
-                {canReturn && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="gap-1.5"
-                    onClick={() => setShowReturn(true)}
-                  >
-                    <RotateCcw className="h-3.5 w-3.5" />
-                    Return
-                  </Button>
-                )}
-                {canVoid && (
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    className="gap-1.5"
-                    onClick={() => setShowVoid(true)}
-                  >
-                    <XCircle className="h-3.5 w-3.5" />
-                    Void
-                  </Button>
-                )}
-              </div>
             </div>
 
             {/* Sale info */}
-            <SectionHeader title="Sale Info" />
-            <DetailRow label="Receipt #" value={<span className="font-mono">{sale.receipt_number}</span>} />
-            <DetailRow label="Date" value={formatDateTime(sale.created_at)} />
-            <DetailRow label="Cashier" value={sale.cashier_name ?? '—'} />
+            <SectionHeader title={<BiSectionTitle {...SALES.saleInfo} />} />
+            <DetailRow label={SALES.receiptNumber.fr} value={<span className="font-mono">{sale.receipt_number}</span>} />
+            <DetailRow label={COMMON.date.fr} value={formatDateTime(sale.created_at)} />
+            <DetailRow
+              label={SALES.soldBy.fr}
+              value={
+                <span className="inline-flex items-center gap-2">
+                  <span>{sale.cashier_name ?? '—'}</span>
+                  {sale.cashier_role === 'admin' ? (
+                    <span className="text-xs font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                      <BilingualText {...SALES.sellerAdmin} variant="caption" layout="inline" />
+                    </span>
+                  ) : sale.cashier_role === 'cashier' ? (
+                    <span className="text-xs font-medium text-text-secondary bg-surface-muted px-1.5 py-0.5 rounded">
+                      <BilingualText {...SALES.sellerCashier} variant="caption" layout="inline" />
+                    </span>
+                  ) : null}
+                </span>
+              }
+            />
             {sale.customer_name && (
               <>
-                <DetailRow label="Customer" value={sale.customer_name} bold />
+                <DetailRow label={COMMON.customer.fr} value={sale.customer_name} bold />
                 {sale.customer_phone && (
-                  <DetailRow label="Phone" value={sale.customer_phone} />
+                  <DetailRow label={CUSTOMERS.phone.fr} value={sale.customer_phone} />
                 )}
                 {sale.customer_balance_owed_cfa != null && (
                   <DetailRow
-                    label="Current balance"
+                    label={SALES.currentBalance.fr}
                     value={
-                      <span className={sale.customer_balance_owed_cfa > 0 ? 'text-danger font-semibold' : ''}>
-                        {formatCFA(sale.customer_balance_owed_cfa)}
-                      </span>
+                      <MoneyDisplay
+                        amount={sale.customer_balance_owed_cfa}
+                        size="small"
+                        danger={sale.customer_balance_owed_cfa > 0}
+                      />
                     }
                   />
                 )}
@@ -224,7 +333,7 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
             )}
 
             {/* Items */}
-            <SectionHeader title="Items" />
+            <SectionHeader title={<BiSectionTitle {...SALES.items} />} />
             <div className="rounded-md border border-border overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-surface-muted">
@@ -245,11 +354,15 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
                       <td className="px-3 py-2 text-right text-text-primary tabular-nums">
                         {item.quantity_in_unit}
                       </td>
-                      <td className="px-3 py-2 text-right text-text-secondary tabular-nums">
-                        {formatCFA(item.unit_price_cfa)}
+                      <td className="px-3 py-2 text-right">
+                        <MoneyDisplay
+                          amount={item.unit_price_cfa}
+                          size="small"
+                          className="text-text-secondary"
+                        />
                       </td>
-                      <td className="px-3 py-2 text-right font-semibold text-text-primary tabular-nums">
-                        {formatCFA(item.line_total_cfa)}
+                      <td className="px-3 py-2 text-right font-semibold">
+                        <MoneyDisplay amount={item.line_total_cfa} size="small" />
                       </td>
                     </tr>
                   ))}
@@ -258,38 +371,85 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
             </div>
 
             {/* Financials */}
-            <SectionHeader title="Financials" />
-            <DetailRow label="Subtotal" value={formatCFA(sale.subtotal_cfa)} />
+            <SectionHeader title={<BiSectionTitle {...SALES.financials} />} />
+            <DetailRow
+              label={POS.subtotal.fr}
+              value={<MoneyDisplay amount={sale.subtotal_cfa} size="small" />}
+            />
             {sale.discount_amount_cfa > 0 && (
               <DetailRow
                 label={
                   sale.discount_type === 'flat'
-                    ? 'Flat discount'
-                    : `Discount (${sale.discount_value}%)`
+                    ? SALES.flatDiscount.fr
+                    : `${SALES.percentDiscount.fr} (${sale.discount_value}%)`
                 }
-                value={<span className="text-success-foreground">− {formatCFA(sale.discount_amount_cfa)}</span>}
+                value={
+                  <MoneyDisplay
+                    amount={-sale.discount_amount_cfa}
+                    size="small"
+                    className="text-success-foreground"
+                  />
+                }
               />
             )}
-            <DetailRow label="Total" value={formatCFA(sale.total_cfa)} bold />
-            <DetailRow label="Cash received" value={formatCFA(sale.amount_tendered_cfa)} />
-            <DetailRow label="Amount applied" value={formatCFA(sale.amount_applied_cfa)} />
+            {sale.admin_override_total_cfa != null ? (
+              <>
+                <DetailRow
+                  label={SALES.calculatedTotal.fr}
+                  value={<MoneyDisplay amount={sale.total_cfa} size="small" className="text-text-secondary line-through" />}
+                />
+                <DetailRow
+                  label={SALES.adjustedTotal.fr}
+                  value={<MoneyDisplay amount={sale.admin_override_total_cfa} size="medium" />}
+                  bold
+                />
+                <p className="text-xs text-warning-foreground mt-0.5">
+                  <BilingualText {...SALES.adminOverrideNote} variant="caption" layout="inline" />
+                </p>
+              </>
+            ) : (
+              <DetailRow
+                label={COMMON.total.fr}
+                value={<MoneyDisplay amount={sale.total_cfa} size="medium" />}
+              />
+            )}
+            <DetailRow
+              label={SALES.cashReceived.fr}
+              value={<MoneyDisplay amount={sale.amount_tendered_cfa} size="small" />}
+            />
+            <DetailRow
+              label={SALES.amountApplied.fr}
+              value={<MoneyDisplay amount={sale.amount_applied_cfa} size="small" />}
+            />
             {sale.change_given_cfa > 0 && (
               <DetailRow
-                label="Change"
-                value={<span className="text-success-foreground">{formatCFA(sale.change_given_cfa)}</span>}
+                label={POS.change.fr}
+                value={
+                  <MoneyDisplay
+                    amount={sale.change_given_cfa}
+                    size="small"
+                    className="text-success-foreground"
+                  />
+                }
               />
             )}
             {sale.balance_added_cfa > 0 && (
               <DetailRow
-                label="Balance added"
-                value={<span className="text-danger-foreground">{formatCFA(sale.balance_added_cfa)}</span>}
+                label={SALES.balanceAdded.fr}
+                value={
+                  <MoneyDisplay
+                    amount={sale.balance_added_cfa}
+                    size="small"
+                    danger
+                  />
+                }
               />
             )}
 
             {/* Return history */}
             {sale.returns.length > 0 && (
               <>
-                <SectionHeader title="Returns" />
+                <SectionHeader title={<BiSectionTitle {...SALES.returns} />} />
                 <div className="space-y-2">
                   {sale.returns.map((ret) => (
                     <div
@@ -298,13 +458,17 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
                     >
                       <div className="flex justify-between">
                         <span className="text-text-secondary">{formatDateTime(ret.created_at)}</span>
-                        <span className="font-semibold text-text-primary">
-                          {formatCFA(ret.refund_amount_cfa)}
-                        </span>
+                        <MoneyDisplay amount={ret.refund_amount_cfa} size="small" />
                       </div>
                       <div className="flex justify-between text-xs text-text-muted">
-                        <span>Cash: {formatCFA(ret.cash_refunded_cfa)}</span>
-                        <span>Balance: {formatCFA(ret.balance_adjustment_cfa)}</span>
+                        <span className="inline-flex items-baseline gap-1">
+                          Cash:
+                          <MoneyDisplay amount={ret.cash_refunded_cfa} size="small" />
+                        </span>
+                        <span className="inline-flex items-baseline gap-1">
+                          Balance:
+                          <MoneyDisplay amount={ret.balance_adjustment_cfa} size="small" />
+                        </span>
                       </div>
                       {ret.reason && (
                         <p className="text-xs text-text-secondary italic">{ret.reason}</p>
@@ -318,12 +482,49 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
             {/* Void info */}
             {sale.status === 'voided' && (
               <>
-                <SectionHeader title="Void" />
+                <SectionHeader title={<BiSectionTitle {...SALES.voidSale} />} />
                 <div className="rounded-md bg-surface-muted border border-border p-3 text-sm">
-                  <p className="text-text-secondary">This sale has been voided.</p>
+                  <p className="text-text-secondary">{SALES.saleVoidedBanner.fr}</p>
                 </div>
               </>
             )}
+
+            {sale.status !== 'voided' && <SaleFulfillmentPanel sale={sale} />}
+
+            <SectionHeader title={<BiSectionTitle {...COMMON.actions} />} />
+            <div className="space-y-2">
+              {(staffRole === 'cashier' || staffRole === 'admin') && (
+              <SalePrintReceipt
+                sale={sale}
+                businessName={businessName}
+                depotName={
+                  queryClient.getQueryData<Array<{ id: string; name: string }>>(depotOptionKeys.all)
+                    ?.find((d) => d.id === sale.depot_id)?.name
+                  ?? depotName
+                }
+              />
+              )}
+              {canMutateSale && canReturn && (
+                <Button
+                  variant="secondary"
+                  className="w-full gap-2"
+                  onClick={() => setShowReturn(true)}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  {SALES.returnTitle.fr}
+                </Button>
+              )}
+              {canMutateSale && canVoid && (
+                <Button
+                  variant="danger"
+                  className="w-full gap-2"
+                  onClick={() => setShowVoid(true)}
+                >
+                  <XCircle className="h-4 w-4" />
+                  {SALES.voidSale.fr}
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </Drawer>

@@ -25,6 +25,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { rpc } from '@/lib/rpc'
 import { parseError } from '@/lib/errors'
+import { CACHE_STALE } from '@/lib/cachePolicy'
 import type { Customer, Payment } from '@/types/database'
 import type {
   CreateCustomerParams,
@@ -34,16 +35,38 @@ import type {
 } from '@/types/rpc'
 
 // ─────────────────────────────────────────────────────────────────
-// Query key factories
+// List params / query key factories
 // ─────────────────────────────────────────────────────────────────
+
+export type CustomerListFilter = 'all' | 'active' | 'inactive' | 'with_balance'
+
+export interface CustomerListParams {
+  page: number
+  pageSize: number
+  search: string
+  filter: CustomerListFilter
+}
 
 export const customerKeys = {
   all:      ['customers'] as const,
   search:   (query: string, activeOnly?: boolean) =>
     ['customers', 'search', query, activeOnly ?? false] as const,
   detail:   (id: string)  => ['customers', 'detail', id] as const,
-  list:     (page: number) => ['customers', 'list', page] as const,
+  /** List key includes page + search + filter so caches do not collide across filters. */
+  list:     (params: Pick<CustomerListParams, 'page' | 'search' | 'filter'>) =>
+    ['customers', 'list', { page: params.page, search: params.search, filter: params.filter }] as const,
   payments: (customerId: string) => ['customers', 'payments', customerId] as const,
+  /**
+   * Customer-scoped account activity (sales, returns, standalone payments).
+   * Nested under `all` so sale/return/payment invalidation of ['customers']
+   * refreshes activity without a separate cache system.
+   */
+  activity: (
+    customerId: string,
+    filters: { type: 'all' | 'sale' | 'return' | 'payment'; page: number; pageSize: number },
+  ) => ['customers', 'activity', customerId, filters] as const,
+  activitySummary: (customerId: string) =>
+    ['customers', 'activity-summary', customerId] as const,
 }
 
 export const paymentKeys = {
@@ -84,13 +107,6 @@ async function fetchCustomer(id: string): Promise<Customer> {
     .single()
   if (error) throw error
   return data as Customer
-}
-
-interface CustomerListParams {
-  page: number
-  pageSize: number
-  search: string
-  filter: 'all' | 'active' | 'inactive' | 'with_balance'
 }
 
 async function fetchCustomerList(params: CustomerListParams): Promise<{ data: Customer[]; count: number }> {
@@ -213,7 +229,7 @@ export function useCustomerSearch(query: string, enabled = true, activeOnly = fa
     queryKey: customerKeys.search(debouncedQuery, activeOnly),
     queryFn:  () => fetchCustomerSearch(debouncedQuery, activeOnly),
     enabled,
-    staleTime: 30_000,
+    staleTime: CACHE_STALE.customerList,
     placeholderData: (prev) => prev,
   })
 }
@@ -228,7 +244,7 @@ export function useCustomer(id: string | null) {
     queryKey: customerKeys.detail(id ?? ''),
     queryFn:  () => fetchCustomer(id!),
     enabled:  !!id,
-    staleTime: 15_000,
+    staleTime: CACHE_STALE.customerDetail,
   })
 }
 
@@ -237,9 +253,13 @@ export function useCustomer(id: string | null) {
  */
 export function useCustomerList(params: CustomerListParams) {
   return useQuery({
-    queryKey: customerKeys.list(params.page),
+    queryKey: customerKeys.list({
+      page: params.page,
+      search: params.search,
+      filter: params.filter,
+    }),
     queryFn:  () => fetchCustomerList(params),
-    staleTime: 30_000,
+    staleTime: CACHE_STALE.customerList,
     placeholderData: (prev) => prev,
   })
 }
@@ -253,7 +273,7 @@ export function useCustomerPayments(customerId: string | null) {
     queryKey: customerKeys.payments(customerId ?? ''),
     queryFn:  () => fetchCustomerPayments(customerId!),
     enabled:  !!customerId,
-    staleTime: 30_000,
+    staleTime: CACHE_STALE.customerList,
   })
 }
 
@@ -265,7 +285,7 @@ export function usePaymentList(params: PaymentListParams) {
   return useQuery({
     queryKey: paymentKeys.list(params as unknown as Record<string, unknown>),
     queryFn:  () => fetchPaymentList(params),
-    staleTime: 30_000,
+    staleTime: CACHE_STALE.customerList,
     placeholderData: (prev) => prev,
   })
 }
@@ -384,6 +404,7 @@ export function useRecordPayment() {
     onSuccess: (_, variables) => {
       // Refresh customer balance (authoritative from server)
       queryClient.invalidateQueries({ queryKey: customerKeys.detail(variables.p_customer_id) })
+      // customerKeys.all also covers activity + activity-summary
       queryClient.invalidateQueries({ queryKey: customerKeys.all })
       // Refresh payment lists
       queryClient.invalidateQueries({ queryKey: paymentKeys.all })

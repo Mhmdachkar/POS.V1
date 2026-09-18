@@ -7,6 +7,10 @@ import { useCreateStaff, useUpdateStaff } from '@/hooks/useStaff'
 import { useDepotOptions } from '@/hooks/useInventory'
 import type { Staff } from '@/types/database'
 import type { AdminStaffRole } from '@/types/rpc'
+import { ADMIN } from '@/lib/bilingual/admin'
+import { COMMON } from '@/lib/bilingual/common'
+import { BiButtonStack, BiModalTitle, BiTableHeader } from '@/lib/bilingual/ui'
+import { bilingualPlain } from '@/lib/bilingual/types'
 
 interface StaffFormModalProps {
   open: boolean
@@ -20,6 +24,10 @@ interface FormState {
   role: AdminStaffRole
   depot_id: string
   password: string
+}
+
+function roleOptionLabel(pair: { fr: string; en: string }) {
+  return pair.fr
 }
 
 export function StaffFormModal({ open, onClose, staff }: StaffFormModalProps) {
@@ -90,12 +98,17 @@ export function StaffFormModal({ open, onClose, staff }: StaffFormModalProps) {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={isEdit ? 'Edit Staff' : 'New Staff'} size="md">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={<BiModalTitle {...(isEdit ? ADMIN.editStaff : ADMIN.newStaff)} />}
+      size="md"
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         {!isEdit && (
           <div>
-            <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
-              Username
+            <label className="block mb-1.5 uppercase tracking-wide">
+              <BiTableHeader {...ADMIN.colUsername} />
             </label>
             <input
               value={form.username}
@@ -108,8 +121,8 @@ export function StaffFormModal({ open, onClose, staff }: StaffFormModalProps) {
         )}
 
         <div>
-          <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
-            Full name
+          <label className="block mb-1.5 uppercase tracking-wide">
+            <BiTableHeader {...ADMIN.fullName} />
           </label>
           <input
             value={form.full_name}
@@ -120,10 +133,11 @@ export function StaffFormModal({ open, onClose, staff }: StaffFormModalProps) {
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
-            Role
+          <label htmlFor="staff-role" className="block mb-1.5 uppercase tracking-wide">
+            <BiTableHeader {...ADMIN.role} />
           </label>
           <select
+            id="staff-role"
             value={form.role}
             onChange={(e) => {
               const role = e.target.value as AdminStaffRole
@@ -131,24 +145,25 @@ export function StaffFormModal({ open, onClose, staff }: StaffFormModalProps) {
             }}
             className="w-full h-9 px-3 rounded-md border border-border text-sm bg-surface"
           >
-            <option value="admin">Admin</option>
-            <option value="cashier">Cashier</option>
-            <option value="depot_staff">Depot staff</option>
+            <option value="admin">{roleOptionLabel(ADMIN.roleAdmin)}</option>
+            <option value="cashier">{roleOptionLabel(ADMIN.roleCashier)}</option>
+            <option value="depot_staff">{roleOptionLabel(ADMIN.roleDepotStaff)}</option>
           </select>
         </div>
 
         {needsDepot && (
           <div>
-            <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
-              Depot
+            <label htmlFor="staff-depot" className="block mb-1.5 uppercase tracking-wide">
+              <BiTableHeader {...COMMON.depot} />
             </label>
             <select
+              id="staff-depot"
               value={form.depot_id}
               onChange={(e) => setForm((f) => ({ ...f, depot_id: e.target.value }))}
               className="w-full h-9 px-3 rounded-md border border-border text-sm bg-surface"
               required
             >
-              <option value="">Select depot…</option>
+              <option value="">{bilingualPlain(ADMIN.selectDepot)}</option>
               {activeDepots.map((d) => (
                 <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
               ))}
@@ -158,8 +173,8 @@ export function StaffFormModal({ open, onClose, staff }: StaffFormModalProps) {
 
         {!isEdit && (
           <div>
-            <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
-              Temporary password
+            <label className="block mb-1.5 uppercase tracking-wide">
+              <BiTableHeader {...ADMIN.temporaryPassword} />
             </label>
             <input
               type="password"
@@ -181,10 +196,10 @@ export function StaffFormModal({ open, onClose, staff }: StaffFormModalProps) {
 
         <div className="flex gap-3 justify-end pt-1">
           <Button type="button" variant="secondary" onClick={onClose} disabled={isPending}>
-            Cancel
+            <BiButtonStack {...COMMON.cancel} />
           </Button>
           <LoadingButton type="submit" loading={isPending}>
-            {isEdit ? 'Save Changes' : 'Create Staff'}
+            {isEdit ? <BiButtonStack {...ADMIN.saveChanges} /> : <BiButtonStack {...ADMIN.createStaffBtn} />}
           </LoadingButton>
         </div>
       </form>

@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { CACHE_STALE } from '@/lib/cachePolicy'
 import type { AuditLog } from '@/types/database'
 
 export const AUDIT_ACTIONS = [
   'complete_sale',
+  'release_sale_fulfillment',
   'record_payment',
   'process_return',
   'void_sale',
@@ -147,6 +149,6 @@ export function useAuditLog(filters: AuditLogFilters) {
   return useQuery({
     queryKey: auditKeys.list(filters),
     queryFn: () => fetchAuditLog(filters),
-    staleTime: 30_000,
+    staleTime: CACHE_STALE.audit,
   })
 }

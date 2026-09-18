@@ -60,12 +60,11 @@ export function TableRowSkeleton({ cols = 5 }: { cols?: number }) {
 
 export function ProductCardSkeleton() {
   return (
-    <div className="bg-surface rounded-lg border border-border overflow-hidden">
-      <Skeleton height={140} className="rounded-none" />
-      <div className="p-3 space-y-2">
-        <Skeleton height={14} width="80%" />
-        <Skeleton height={12} width="50%" />
-        <Skeleton height={16} width="60%" />
+    <div className="bg-surface rounded-xl border border-border overflow-hidden">
+      <Skeleton height={72} className="rounded-none w-full" />
+      <div className="px-2 py-1.5 space-y-1">
+        <Skeleton height={12} width="85%" />
+        <Skeleton height={10} width="50%" />
       </div>
     </div>
   )

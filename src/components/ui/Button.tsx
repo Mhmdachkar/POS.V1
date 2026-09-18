@@ -28,6 +28,7 @@ const sizeClasses = {
   sm: 'h-8 px-3 text-xs gap-1.5',
   md: 'h-9 px-4 text-sm gap-2',
   lg: 'h-11 px-6 text-base gap-2',
+  xl: 'h-14 px-8 text-base gap-2',
   icon: 'h-9 w-9 p-0',
   'icon-sm': 'h-7 w-7 p-0',
   'icon-lg': 'h-11 w-11 p-0',

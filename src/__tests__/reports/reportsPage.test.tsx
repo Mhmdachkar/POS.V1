@@ -5,9 +5,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReportsPage } from '@/pages/reports/ReportsPage'
-import { formatCFA, formatPieces } from '@/lib/formatters'
+import { formatCFA } from '@/lib/formatters'
 import { downloadCsv } from '@/lib/csvExport'
+import { REPORTS } from '@/lib/bilingual/reports'
+import { COMMON } from '@/lib/bilingual/common'
 import type {
   AdminCashReport,
   AdminCustomersReport,
@@ -22,8 +25,34 @@ const salesPayload: AdminSalesReport = {
   transaction_count: 4,
   average_sale_cfa: 570,
   gross_profit_cfa: 672,
+  cogs_cfa: 1008,
+  units_sold: 10,
+  voided_count: 0,
+  voided_amount_cfa: 0,
+  amount_applied_cfa: 1680,
+  amount_tendered_cfa: 1680,
+  balance_added_cfa: 0,
+  change_cfa: 0,
+  no_shift_count: 0,
+  no_shift_amount_cfa: 0,
   product_performance: [
-    { product_id: 'p-top', name: 'PHASE12_TEST_TOP', net_pieces: 10, net_revenue_cfa: 1600 },
+    {
+      product_id: 'p-top',
+      name: 'PHASE12_TEST_TOP',
+      depot_id: 'depot-a',
+      depot_name: 'Depot Dakar',
+      category_id: null,
+      category_name: null,
+      units_sold: 10,
+      returned_qty: 0,
+      net_pieces: 10,
+      gross_sales_cfa: 1600,
+      returns_cfa: 0,
+      net_sales_cfa: 1600,
+      net_revenue_cfa: 1600,
+      cogs_cfa: 1200,
+      gross_profit_cfa: 400,
+    },
   ],
   returns: [
     {
@@ -34,30 +63,62 @@ const salesPayload: AdminSalesReport = {
       cash_refunded_cfa: 300,
       balance_adjustment_cfa: 0,
       created_at: '2024-02-10T15:00:00.000Z',
+      receipt_number: 'DKR-1',
+      cashier_name: 'Cashier',
+      shift_id: null,
+      items: [],
     },
   ],
+  by_depot: [],
+  by_cashier: [],
+  by_category: [],
+  by_shift: [],
+  with_shift_vs_no_shift: {
+    with_shift: { count: 4, sales_activity_cfa: 1680 },
+    no_shift: { count: 0, sales_activity_cfa: 0 },
+  },
+  daily_series: [],
   start_date: '2024-02-10',
   end_date: '2024-02-10',
+}
+
+function stockRow(
+  overrides: Partial<AdminInventoryReport['current_stock'][number]> &
+    Pick<AdminInventoryReport['current_stock'][number], 'product_id' | 'name' | 'current_stock_pieces'>,
+): AdminInventoryReport['current_stock'][number] {
+  return {
+    depot_id: 'depot-a',
+    depot_name: 'Depot Dakar',
+    category_id: null,
+    category_name: null,
+    unit_name: 'Piece',
+    cost_price_cfa: 100,
+    selling_price_cfa: 200,
+    stock_value_cost_cfa: overrides.current_stock_pieces * 100,
+    stock_value_selling_cfa: overrides.current_stock_pieces * 200,
+    stock_status: overrides.current_stock_pieces === 0 ? 'out_of_stock' : overrides.current_stock_pieces <= 5 ? 'low_stock' : 'normal',
+    track_low_stock: true,
+    low_stock_threshold: 10,
+    value_cfa: overrides.current_stock_pieces * 100,
+    ...overrides,
+  }
 }
 
 const inventoryPayload: AdminInventoryReport = {
   inventory_value_cfa: 9000,
   current_stock: [
-    {
-      product_id: 'p-top',
-      name: 'PHASE12_TEST_TOP',
-      depot_id: 'depot-a',
-      current_stock_pieces: 50,
-      value_cfa: 5000,
-    },
+    stockRow({ product_id: 'p-top', name: 'PHASE12_TEST_TOP', current_stock_pieces: 50, value_cfa: 5000 }),
   ],
   low_stock: [
-    { product_id: 'p-low', name: 'PHASE12_TEST_LOW', depot_id: 'depot-a', current_stock_pieces: 5 },
+    stockRow({ product_id: 'p-low', name: 'PHASE12_TEST_LOW', current_stock_pieces: 5 }),
   ],
   out_of_stock: [
-    { product_id: 'p-out', name: 'PHASE12_TEST_OUT', depot_id: 'depot-a', current_stock_pieces: 0 },
+    stockRow({ product_id: 'p-out', name: 'PHASE12_TEST_OUT', current_stock_pieces: 0 }),
   ],
-  period_movement: [{ transaction_type: 'RESTOCK', quantity_pieces: 5 }],
+  period_movement: [{ transaction_type: 'RESTOCK', quantity_pieces: 5, transaction_count: 1 }],
+  adjustment_breakdown: [],
+  low_stock_count: 1,
+  out_of_stock_count: 1,
   start_date: '2024-02-10',
   end_date: '2024-02-10',
 }
@@ -129,6 +190,12 @@ vi.mock('@/hooks/useReports', () => ({
   useInventoryReport: () => queryState.inventory,
   useCustomersReport: () => queryState.customers,
   useCashReport: () => queryState.cash,
+  useAdminCostReport: () => ({
+    data: undefined,
+    isLoading: false,
+    isError: false,
+    isFetching: false,
+  }),
 }))
 
 const depotState = {
@@ -151,6 +218,20 @@ vi.mock('@/hooks/useInventory', async (importOriginal) => {
       ],
       isLoading: false,
     })),
+    useCategories: vi.fn(() => ({ data: [], isLoading: false })),
+  }
+})
+
+vi.mock('@/hooks/useStaff', () => ({
+  useStaffList: vi.fn(() => ({ data: [], isLoading: false })),
+}))
+
+vi.mock('@/hooks/useSales', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/useSales')>()
+  return {
+    ...actual,
+    useSalesList: vi.fn(() => ({ data: { data: [], count: 0 }, isLoading: false })),
+    useSaleDetail: vi.fn(() => ({ data: null, isLoading: false, isError: false })),
   }
 })
 
@@ -162,6 +243,15 @@ function hasFormatted(value: string) {
   const compact = value.replace(/\s/g, '')
   return (_content: string, node: Element | null) =>
     (node?.textContent ?? '').replace(/\s/g, '') === compact
+}
+
+function renderReports() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={client}>
+      <ReportsPage />
+    </QueryClientProvider>,
+  )
 }
 
 describe('ReportsPage', () => {
@@ -176,71 +266,64 @@ describe('ReportsPage', () => {
   })
 
   it('renders Sales tab KPIs from the RPC payload', () => {
-    render(<ReportsPage />)
-    expect(screen.getByText('Sales activity')).toBeInTheDocument()
-    expect(screen.getByText(hasFormatted(formatCFA(2280)))).toBeInTheDocument()
-    expect(screen.getByText('Returns activity')).toBeInTheDocument()
+    renderReports()
+    expect(screen.getByText(REPORTS.grossSales.fr)).toBeInTheDocument()
+    expect(screen.getAllByText(hasFormatted(formatCFA(2280))).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText(REPORTS.returnsMetric.fr).length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText(hasFormatted(formatCFA(600))).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText('Net sales')).toBeInTheDocument()
-    expect(screen.getByText(hasFormatted(formatCFA(1680)))).toBeInTheDocument()
-    expect(screen.getByText('Transactions')).toBeInTheDocument()
-    expect(screen.getByText('4')).toBeInTheDocument()
-    expect(screen.getByText('Average sale')).toBeInTheDocument()
-    expect(screen.getByText(hasFormatted(formatCFA(570)))).toBeInTheDocument()
-    expect(screen.getByText('Gross profit')).toBeInTheDocument()
-    expect(screen.getByText(hasFormatted(formatCFA(672)))).toBeInTheDocument()
-    expect(screen.getByText('PHASE12_TEST_TOP')).toBeInTheDocument()
-    expect(screen.getByText(hasFormatted(`${formatPieces(10)} · ${formatCFA(1600)}`))).toBeInTheDocument()
-    expect(screen.getAllByText(hasFormatted(formatCFA(300))).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText(REPORTS.netSales.fr)).toBeInTheDocument()
+    expect(screen.getAllByText(hasFormatted(formatCFA(1680))).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText(REPORTS.averageSale.fr)).toBeInTheDocument()
+    expect(screen.getAllByText(hasFormatted(formatCFA(570))).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText(REPORTS.grossProfit.fr)).toBeInTheDocument()
+    expect(screen.getAllByText(hasFormatted(formatCFA(672))).length).toBeGreaterThanOrEqual(1)
   })
 
   it('shows shared date presets including Custom', () => {
-    render(<ReportsPage />)
-    expect(screen.getByRole('button', { name: 'Today' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Yesterday' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'This week' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'This month' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Custom' })).toBeInTheDocument()
+    renderReports()
+    expect(screen.getByRole('button', { name: REPORTS.presetToday.fr })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: REPORTS.presetYesterday.fr })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: REPORTS.presetThisWeek.fr })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: REPORTS.presetThisMonth.fr })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: REPORTS.presetCustom.fr })).toBeInTheDocument()
   })
 
   it('reveals custom date inputs and keeps All depots in the toolbar', async () => {
     const user = userEvent.setup()
-    render(<ReportsPage />)
-    expect(screen.getByText(/All depots/)).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Custom' }))
-    expect(screen.getByLabelText(/From/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/To/)).toBeInTheDocument()
+    renderReports()
+    expect(screen.getByText(new RegExp(COMMON.allDepots.fr, 'i'))).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: REPORTS.presetCustom.fr }))
+    expect(screen.getByText(REPORTS.dateFrom.fr)).toBeInTheDocument()
+    expect(screen.getByText(REPORTS.dateTo.fr)).toBeInTheDocument()
   })
 
   it('shows the selected depot name in the toolbar', () => {
     depotState.currentDepotId = 'depot-a'
     depotState.currentDepotName = 'Depot Dakar'
-    render(<ReportsPage />)
+    renderReports()
     expect(screen.getByText(/Depot Dakar/)).toBeInTheDocument()
-    expect(screen.queryByText(/^All depots/)).not.toBeInTheDocument()
+    expect(screen.queryByText(new RegExp(`^${COMMON.allDepots.fr}`))).not.toBeInTheDocument()
   })
 
   it('shows a loading state without KPI values', () => {
     queryState.sales = { data: undefined, isLoading: true, isError: false }
-    render(<ReportsPage />)
-    expect(screen.queryByText('Sales activity')).not.toBeInTheDocument()
+    renderReports()
+    expect(screen.queryByText(REPORTS.grossSales.fr)).not.toBeInTheDocument()
     expect(screen.queryByText(hasFormatted(formatCFA(2280)))).not.toBeInTheDocument()
   })
 
   it('shows an error empty state', () => {
     queryState.sales = { data: undefined, isLoading: false, isError: true }
-    render(<ReportsPage />)
-    expect(screen.getByText('Failed to load report')).toBeInTheDocument()
+    renderReports()
+    expect(screen.getByText(REPORTS.failedReport.fr)).toBeInTheDocument()
   })
 
   it('renders Inventory values after switching tabs', async () => {
     const user = userEvent.setup()
-    render(<ReportsPage />)
-    await user.click(screen.getByRole('button', { name: 'Inventory' }))
-    expect(screen.getByText('Current inventory value')).toBeInTheDocument()
-    expect(screen.getByText(hasFormatted(formatCFA(9000)))).toBeInTheDocument()
-    expect(screen.getByText('RESTOCK')).toBeInTheDocument()
-    expect(screen.getAllByText(hasFormatted(formatPieces(5))).length).toBeGreaterThanOrEqual(1)
+    renderReports()
+    await user.click(screen.getByRole('tab', { name: REPORTS.inventory.fr }))
+    expect(screen.getByText(REPORTS.currentInventoryValue.fr)).toBeInTheDocument()
+    expect(screen.getAllByText(hasFormatted(formatCFA(9000))).length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('PHASE12_TEST_LOW')).toBeInTheDocument()
     expect(screen.getByText('PHASE12_TEST_OUT')).toBeInTheDocument()
   })
@@ -249,44 +332,44 @@ describe('ReportsPage', () => {
     const user = userEvent.setup()
     depotState.currentDepotId = 'depot-a'
     depotState.currentDepotName = 'Depot Dakar'
-    render(<ReportsPage />)
-    await user.click(screen.getByRole('button', { name: 'Customers' }))
-    expect(screen.getByText('Global outstanding balance')).toBeInTheDocument()
-    expect(screen.getByText('Pooled across all depots — not a depot balance')).toBeInTheDocument()
+    renderReports()
+    await user.click(screen.getByRole('tab', { name: REPORTS.customers.fr }))
+    expect(screen.getByText('Solde global dû')).toBeInTheDocument()
+    expect(screen.getAllByText(REPORTS.balancesGlobalNote.fr, { exact: false }).length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText(hasFormatted(formatCFA(4000))).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText('Depot-attributed payments (period)')).toBeInTheDocument()
-    expect(screen.getByText(hasFormatted(formatCFA(200)))).toBeInTheDocument()
-    expect(screen.getByText('Unattributed payments (period)')).toBeInTheDocument()
-    expect(screen.getByText(hasFormatted(formatCFA(75)))).toBeInTheDocument()
+    expect(screen.getByText('Paiements attribués au dépôt (période)')).toBeInTheDocument()
+    expect(screen.getAllByText(hasFormatted(formatCFA(200))).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('Paiements non attribués (période)')).toBeInTheDocument()
+    expect(screen.getAllByText(hasFormatted(formatCFA(75))).length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('PHASE12_TEST_CUST')).toBeInTheDocument()
-    expect(screen.getByText(/never a depot balance/)).toBeInTheDocument()
   })
 
   it('renders Cash expected, actual, discrepancy, and open shifts', async () => {
     const user = userEvent.setup()
-    render(<ReportsPage />)
-    await user.click(screen.getByRole('button', { name: 'Cash' }))
+    renderReports()
+    await user.click(screen.getByRole('tab', { name: REPORTS.shifts.fr }))
     expect(screen.getAllByText(hasFormatted(formatCFA(1000))).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText(hasFormatted(formatCFA(980)))).toBeInTheDocument()
+    expect(screen.getAllByText(hasFormatted(formatCFA(980))).length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText(hasFormatted(formatCFA(-20))).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText(/float/)).toBeInTheDocument()
-    expect(screen.getByText('Closed — discrepancy total')).toBeInTheDocument()
+    expect(screen.getByText('Fermé — écart total')).toBeInTheDocument()
+    expect(screen.getByText(REPORTS.openShifts.fr)).toBeInTheDocument()
   })
 
   it('exports the Sales CSV with displayed KPI values', async () => {
     const user = userEvent.setup()
-    render(<ReportsPage />)
-    await user.click(screen.getByRole('button', { name: 'Export CSV' }))
+    renderReports()
+    await user.click(screen.getByRole('button', { name: COMMON.export.fr }))
+    await user.click(screen.getByRole('button', { name: COMMON.exportCsv.fr }))
     expect(downloadCsv).toHaveBeenCalled()
     const first = vi.mocked(downloadCsv).mock.calls[0]
-    expect(first[0]).toMatch(/^sales-report-/)
+    expect(first[0]).toMatch(/^rapport-ventes-/)
     expect(first[2]).toEqual(expect.arrayContaining([
-      ['Sales activity (CFA)', 2280],
-      ['Returns activity (CFA)', 600],
-      ['Net sales (CFA)', 1680],
+      ['Ventes brutes (CFA)', 2280],
+      ['Retours (CFA)', 600],
+      ['Ventes nettes (CFA)', 1680],
       ['Transactions', 4],
-      ['Average sale (CFA)', 570],
-      ['Gross profit (CFA)', 672],
+      ['Vente moyenne (CFA)', 570],
+      ['Marge brute (CFA)', 672],
     ]))
   })
 })

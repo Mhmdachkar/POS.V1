@@ -64,23 +64,45 @@ export interface PaginatedResult<T> {
   hasMore: boolean
 }
 
-/** Stock status derived from current_stock_pieces */
+/** Stock status derived from current_stock_pieces + optional per-product tracking. */
 export type StockStatus = 'out_of_stock' | 'low_stock' | 'healthy'
 
 /**
- * Phase 7 fixed business rule: Low Stock threshold = 10 pieces.
- * Do not add a settings column or per-depot threshold.
+ * Suggested default when an admin turns tracking on.
+ * Not a global warning rule — untracked products are never Low Stock.
  */
 export const LOW_STOCK_THRESHOLD_PIECES = 10
+
+export interface StockStatusTracking {
+  trackLowStock?: boolean | null
+  threshold?: number | null
+}
 
 /** Derive stock status from authoritative current_stock_pieces. */
 export function getStockStatus(
   pieces: number,
-  lowThreshold = LOW_STOCK_THRESHOLD_PIECES,
+  tracking?: StockStatusTracking,
 ): StockStatus {
   if (pieces <= 0) return 'out_of_stock'
-  if (pieces <= lowThreshold) return 'low_stock'
+  if (
+    tracking?.trackLowStock === true &&
+    tracking.threshold != null &&
+    pieces <= tracking.threshold
+  ) {
+    return 'low_stock'
+  }
   return 'healthy'
+}
+
+export function getProductStockStatus(product: {
+  current_stock_pieces: number
+  track_low_stock?: boolean | null
+  low_stock_threshold?: number | null
+}): StockStatus {
+  return getStockStatus(product.current_stock_pieces, {
+    trackLowStock: product.track_low_stock,
+    threshold: product.low_stock_threshold,
+  })
 }
 
 /** Inventory list filters — all applied at the query layer before pagination. */

@@ -3,8 +3,8 @@ import { cn } from '@/lib/cn'
 export interface EmptyStateProps {
   /** Icon element (e.g. a lucide component) */
   icon?: React.ReactNode
-  title: string
-  description?: string
+  title: React.ReactNode
+  description?: React.ReactNode
   /** Primary action button or link */
   action?: React.ReactNode
   className?: string
@@ -32,7 +32,7 @@ export function EmptyState({ icon, title, description, action, className }: Empt
       )}
       <h3 className="text-base font-semibold text-text-primary mb-1">{title}</h3>
       {description && (
-        <p className="text-sm text-text-secondary max-w-xs mb-5">{description}</p>
+        <div className="text-sm text-text-secondary max-w-xs mb-5">{description}</div>
       )}
       {action && <div>{action}</div>}
     </div>

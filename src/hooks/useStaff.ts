@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { edge } from '@/lib/edge'
+import { CACHE_STALE } from '@/lib/cachePolicy'
 import type { Staff } from '@/types/database'
 import type { AdminStaffRole, CreateStaffEdgePayload, UpdateStaffEdgePayload } from '@/types/rpc'
 
@@ -69,7 +70,7 @@ export function useStaffList(filters: StaffListFilters) {
   return useQuery({
     queryKey: staffKeys.list(queryFilters),
     queryFn: () => fetchStaffList(queryFilters),
-    staleTime: 15_000,
+    staleTime: CACHE_STALE.staffList,
     placeholderData: (prev) => prev,
   })
 }
@@ -79,7 +80,7 @@ export function useStaff(id: string | null) {
     queryKey: staffKeys.detail(id ?? ''),
     queryFn: () => fetchStaff(id!),
     enabled: !!id,
-    staleTime: 10_000,
+    staleTime: CACHE_STALE.staffDetail,
   })
 }
 

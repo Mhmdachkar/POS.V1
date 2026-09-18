@@ -1,0 +1,150 @@
+/**
+ * Phase 14B-2 — RecordPaymentModal in-flight lock and missing-shift warning.
+ */
+
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { RecordPaymentModal } from '@/pages/customers/components/RecordPaymentModal'
+import { useRecordPayment } from '@/hooks/useCustomers'
+import { useOpenShifts, type ShiftListItem } from '@/hooks/useShifts'
+import { useAuthStore } from '@/stores/authStore'
+import type { Customer, Staff } from '@/types/database'
+
+vi.mock('@/hooks/useCustomers', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/useCustomers')>()
+  return {
+    ...actual,
+    useRecordPayment: vi.fn(),
+  }
+})
+
+vi.mock('@/hooks/useShifts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/useShifts')>()
+  return {
+    ...actual,
+    useOpenShifts: vi.fn(),
+  }
+})
+
+function cashierStaff(): Staff {
+  return {
+    id: 'cashier-1',
+    username: 'cashier',
+    full_name: 'Cashier Dakar',
+    role: 'cashier',
+    depot_id: 'depot-a',
+    is_active: true,
+    deactivated_at: null,
+    created_at: '2026-01-01T00:00:00Z',
+  }
+}
+
+function openShift(): ShiftListItem {
+  return {
+    id: 'shift-1',
+    depot_id: 'depot-a',
+    cashier_id: 'cashier-1',
+    opening_float_cfa: 1000,
+    opened_at: '2026-09-13T08:00:00Z',
+    closed_at: null,
+    closed_by: null,
+    expected_cash_cfa: null,
+    actual_cash_cfa: null,
+    discrepancy_cfa: null,
+    status: 'open',
+    depot_name: 'Depot Dakar',
+    cashier_name: 'Cashier Dakar',
+    closed_by_name: null,
+  }
+}
+
+const customer: Customer = {
+  id: 'cust-1',
+  name: 'Aminata Diallo',
+  phone: '77000000',
+  address: null,
+  balance_owed_cfa: 5000,
+  is_active: true,
+  deactivated_at: null,
+  created_by: 'admin-1',
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+}
+
+function renderModal(shiftId: string | null = null) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={client}>
+      <RecordPaymentModal
+        open
+        onClose={vi.fn()}
+        customer={customer}
+        shiftId={shiftId}
+      />
+    </QueryClientProvider>,
+  )
+}
+
+describe('RecordPaymentModal', () => {
+  beforeEach(() => {
+    useAuthStore.setState({
+      staff: cashierStaff(),
+      session: null,
+      isLoading: false,
+      authLoadState: 'authorized',
+    })
+    vi.mocked(useOpenShifts).mockReturnValue({
+      data: [openShift()],
+      isLoading: false,
+    } as never)
+    vi.mocked(useRecordPayment).mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue({
+        amount_cfa: 1000,
+        new_balance_owed_cfa: 4000,
+      }),
+      isPending: false,
+    } as never)
+  })
+
+  it('warns and still records when there is no valid shift', async () => {
+    const user = userEvent.setup()
+    const mutateAsync = vi.fn().mockResolvedValue({
+      amount_cfa: 1000,
+      new_balance_owed_cfa: 4000,
+    })
+    vi.mocked(useOpenShifts).mockReturnValue({ data: [], isLoading: false } as never)
+    vi.mocked(useRecordPayment).mockReturnValue({
+      mutateAsync,
+      isPending: false,
+    } as never)
+    renderModal(null)
+    expect(screen.getByText(/can still be recorded and will not be attributed/)).toBeInTheDocument()
+    await user.type(screen.getByPlaceholderText('0'), '1000')
+    await user.click(screen.getByRole('button', { name: 'Record Payment' }))
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1))
+    expect(mutateAsync).toHaveBeenCalledWith(expect.objectContaining({
+      p_customer_id: 'cust-1',
+      p_amount_cfa: 1000,
+      p_shift_id: null,
+    }))
+  })
+
+  it('ignores a second rapid Record Payment submit', async () => {
+    const mutateAsync = vi.fn(() => new Promise(() => {}))
+    vi.mocked(useRecordPayment).mockReturnValue({
+      mutateAsync,
+      isPending: false,
+    } as never)
+    renderModal('shift-1')
+    fireEvent.change(screen.getByPlaceholderText('0'), { target: { value: '1000' } })
+    const form = screen.getByRole('button', { name: 'Record Payment' }).closest('form')!
+    fireEvent.submit(form)
+    fireEvent.submit(form)
+    expect(mutateAsync).toHaveBeenCalledTimes(1)
+    expect(mutateAsync).toHaveBeenCalledWith(expect.objectContaining({
+      p_shift_id: 'shift-1',
+    }))
+  })
+})

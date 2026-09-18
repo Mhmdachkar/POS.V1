@@ -59,8 +59,8 @@
     --shadow-lg: 0 8px 24px rgba(16, 24, 40, 0.12);
 
     /* --- AppRail widths --- */
-    --rail-width-collapsed: 64px;
-    --rail-width-expanded: 220px;
+    --rail-width-collapsed: 88px;
+    --rail-width-expanded: 240px;
 
     /* --- TopBar height --- */
     --topbar-height: 56px;
@@ -131,76 +131,159 @@
     @apply tabular-nums font-semibold;
     font-variant-numeric: tabular-nums;
   }
+
+  .pos-workspace-enter {
+    animation: pos-workspace-enter 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* POS / inventory product thumbnails — full frame, no crop */
+  .product-photo-contain {
+    object-fit: contain;
+    object-position: center;
+    width: 100%;
+    height: 100%;
+  }
+
+  .pos-discovery-canvas {
+    background-color: var(--color-background);
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(16, 24, 40, 0.04) 1px, transparent 0);
+    background-size: 20px 20px;
+  }
+}
+
+@keyframes pos-workspace-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ================================================================
-   Print styles — Customer Receipt
-   @media print shows ONLY #vhm-receipt and hides everything else.
-   The receipt is minimal and optimised for 80mm thermal paper.
+   Print styles — 80mm thermal POS receipt
+   Hides the app chrome and browser URL. @page margin: 0 is what
+   keeps Chromium from printing localhost / page numbers.
    ================================================================ */
 
-@media print {
-  /* Hide the entire application shell */
-  body > * { display: none !important; }
+@page {
+  size: 80mm auto;
+  margin: 0;
+}
 
-  /* Show only the receipt */
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  html, body {
+    width: 80mm;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  /* Never print link URLs (some engines append href after <a>) */
+  a[href]::after {
+    content: none !important;
+  }
+
+  body > * { display: none !important; }
+  body > .print-only,
   .print-only { display: block !important; }
+
+  .no-print { display: none !important; }
 
   .receipt-paper {
     font-family: 'Courier New', Courier, monospace;
-    font-size: 12pt;
-    width: 76mm;
+    font-size: 11pt;
+    width: 72mm;
     margin: 0 auto;
-    padding: 4mm;
+    padding: 3mm 2mm 8mm;
     color: #000;
+    line-height: 1.35;
   }
 
   .receipt-header {
     text-align: center;
-    margin-bottom: 4mm;
-  }
-
-  .receipt-lot {
-    font-size: 10pt;
-    letter-spacing: 0.05em;
-  }
-
-  .receipt-number {
-    font-size: 14pt;
-    font-weight: bold;
-    letter-spacing: 0.1em;
-    margin-top: 1mm;
-  }
-
-  .receipt-divider {
-    text-align: center;
-    color: #555;
-    margin: 2mm 0;
-    font-size: 9pt;
-  }
-
-  .receipt-customer {
-    text-align: center;
-    font-size: 11pt;
     margin-bottom: 2mm;
   }
 
-  .receipt-amount {
-    text-align: center;
-    font-size: 20pt;
+  .receipt-store {
+    font-size: 14pt;
     font-weight: bold;
-    margin: 4mm 0;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .receipt-depot {
+    font-size: 10pt;
+    margin-top: 1mm;
+  }
+
+  .receipt-lot {
+    font-size: 9pt;
+    letter-spacing: 0.06em;
+    margin-top: 2mm;
+  }
+
+  .receipt-number {
+    font-size: 12pt;
+    font-weight: bold;
+    letter-spacing: 0.08em;
+    margin-top: 0.5mm;
+  }
+
+  .receipt-rule {
+    border-top: 1px dashed #000;
+    margin: 2.5mm 0;
+    height: 0;
+  }
+
+  .receipt-kv {
+    display: flex;
+    justify-content: space-between;
+    gap: 3mm;
+    font-size: 10pt;
+  }
+
+  .receipt-kv.receipt-total {
+    font-size: 12pt;
+    font-weight: bold;
+    margin-top: 1mm;
+  }
+
+  .receipt-item {
+    margin-bottom: 1.5mm;
+  }
+
+  .receipt-item-name {
+    font-weight: bold;
+    font-size: 10pt;
+  }
+
+  .receipt-item-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 2mm;
+    font-size: 9pt;
   }
 
   .receipt-paid {
     text-align: center;
-    font-size: 16pt;
+    font-size: 14pt;
     font-weight: bold;
-    letter-spacing: 0.2em;
-    margin-top: 4mm;
+    letter-spacing: 0.18em;
+    margin-top: 2mm;
   }
 
-  /* Hide non-print elements */
-  .no-print { display: none !important; }
+  .receipt-thanks {
+    text-align: center;
+    font-size: 9pt;
+    margin-top: 2mm;
+  }
 }

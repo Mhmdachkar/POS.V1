@@ -29,7 +29,7 @@ export function Card({ className, noPadding, children, ...props }: CardProps) {
 // ─────────────────────────────────────────────────────────────────
 
 export interface StatCardProps {
-  label: string
+  label: React.ReactNode
   value: string
   /** Optional descriptive text below the value */
   description?: string

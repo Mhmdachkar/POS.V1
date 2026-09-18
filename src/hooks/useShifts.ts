@@ -9,7 +9,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { rpc } from '@/lib/rpc'
-import { usePOSStore } from '@/stores/posStore'
+import { CACHE_STALE, keepPlaceholderWhen } from '@/lib/cachePolicy'
 import type { ShiftStatus, Staff } from '@/types/database'
 import type { CloseShiftParams, CloseShiftResult, OpenShiftParams } from '@/types/rpc'
 
@@ -98,10 +98,8 @@ export function authorizedOpenShifts(
   return (shifts ?? []).filter((shift) => canSelectShiftForPos(staff, shift))
 }
 
-export function clearStalePosShift(code: string | null | undefined) {
-  if (code === 'SHIFT_NOT_OPEN') {
-    usePOSStore.getState().setShiftId(null)
-  }
+export function clearStalePosShift(_code: string | null | undefined) {
+  // No-op: POS no longer binds an active shift (CEO Notes).
 }
 
 export function clampShiftPage(page: number, totalPages: number): number {
@@ -260,8 +258,11 @@ export function useShiftsList(filters: ShiftListFilters) {
   return useQuery({
     queryKey: shiftKeys.list(filters),
     queryFn: () => fetchShiftsList(filters),
-    staleTime: 15_000,
-    placeholderData: (prev) => prev,
+    staleTime: CACHE_STALE.shiftsList,
+    placeholderData: keepPlaceholderWhen((prevKey) => {
+      const prev = prevKey[2] as ShiftListFilters | undefined
+      return (prev?.depotId ?? null) === (filters.depotId ?? null)
+    }),
   })
 }
 
@@ -270,7 +271,7 @@ export function useOpenShifts() {
   return useQuery({
     queryKey: shiftKeys.open(),
     queryFn: fetchOpenShifts,
-    staleTime: 15_000,
+    staleTime: CACHE_STALE.shiftsList,
   })
 }
 
@@ -279,7 +280,7 @@ export function useShiftDetail(id: string | null) {
     queryKey: shiftKeys.detail(id ?? ''),
     queryFn: () => fetchShiftDetail(id!),
     enabled: !!id,
-    staleTime: 10_000,
+    staleTime: CACHE_STALE.shiftsDetail,
   })
 }
 

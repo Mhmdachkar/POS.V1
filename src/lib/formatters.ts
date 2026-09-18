@@ -103,3 +103,19 @@ export function parseCFAInput(raw: string): number {
   const cleaned = raw.replace(/[\s,]/g, '')
   return parseFloat(cleaned)
 }
+
+/**
+ * Group digits with spaces while typing: 40000 → "40 000".
+ * Keeps an optional decimal part ungrouped.
+ */
+export function formatThousandsInput(raw: string): string {
+  if (raw.trim() === '') return ''
+  const cleaned = raw.replace(/[^\d.]/g, '')
+  if (cleaned === '' || cleaned === '.') return cleaned === '.' ? '0.' : ''
+  const dot = cleaned.indexOf('.')
+  const intDigits = (dot === -1 ? cleaned : cleaned.slice(0, dot)).replace(/\D/g, '')
+  const frac = dot === -1 ? null : cleaned.slice(dot + 1).replace(/\D/g, '')
+  const grouped = intDigits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
+  if (frac == null) return grouped
+  return `${grouped || '0'}.${frac}`
+}

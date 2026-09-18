@@ -5,25 +5,31 @@
  *   1. Show returnable items (original qty - already returned qty)
  *   2. Cashier selects return quantities per item (UI blocks over-return)
  *   3. Cashier enters reason (optional)
- *   4. Show refund preview: total refund, cash portion, balance portion
- *   5. Cashier enters cash refund amount (must ≤ refund total)
- *   6. Submit via rpc.processReturn()
+ *   4. Show refund preview: total, balance reduction, cash (SQL C1 split)
+ *   5. Submit via rpc.processReturn() with computed p_cash_refund_cfa
  *
  * Critical requirements:
  *   - NEVER sends quantity_pieces — server derives it from frozen sale data
  *   - Only sends: { sale_item_id, quantity_in_unit }
- *   - cash_refund + balance_reduction must = refund_total (validated UI + server)
+ *   - p_cash_refund_cfa is the helper-computed cash, not a cashier override
  */
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
+import { toastSuccessBi, toastErrorFromCode } from '@/lib/bilingual/toast'
+import { SALES } from '@/lib/bilingual/sales'
 import { Minus, Plus } from 'lucide-react'
-import { toast } from 'sonner'
 import { cn } from '@/lib/cn'
-import { Modal, Button, LoadingButton, Input, Textarea } from '@/components/ui'
-import { formatCFA, parseCFAInput } from '@/lib/formatters'
+import { Modal, Button, LoadingButton, Textarea } from '@/components/ui'
+import { BilingualText } from '@/components/ui/BilingualText'
+import { COMMON } from '@/lib/bilingual/common'
+import { BiButtonStack, BiModalTitle, BiTableHeader } from '@/lib/bilingual/ui'
+import { bilingualPlain } from '@/lib/bilingual/types'
+import { formatCFA } from '@/lib/formatters'
 import { rpc } from '@/lib/rpc'
-import { getErrorMessage } from '@/lib/errors'
-import { clearStalePosShift } from '@/hooks/useShifts'
+import { computeReturnLineRefund, computeReturnRefundPreview, computeReturnRefundTotal } from '@/lib/returnRefundPreview'
+import { authorizedOpenShifts, clearStalePosShift, useOpenShifts } from '@/hooks/useShifts'
+import { processingShiftId, resolveLoadedPosShiftContext } from '@/lib/posShiftContext'
+import { useAuthStore } from '@/stores/authStore'
 import type { SaleDetailData, SaleItemDetail } from '@/hooks/useSales'
 
 // ─────────────────────────────────────────────────────────────────
@@ -33,29 +39,48 @@ import type { SaleDetailData, SaleItemDetail } from '@/hooks/useSales'
 interface ReturnableItem {
   item: SaleItemDetail
   alreadyReturned: number   // qty_in_unit already returned across all returns
+  alreadyRefunded: number   // refund_amount_cfa already returned for this sale_item
   returnable: number        // original - alreadyReturned
   selected: number          // what the cashier is returning now
+}
+
+function priorReturnTotals(
+  saleItemId: string,
+  returns: SaleDetailData['returns'],
+): { alreadyReturned: number; alreadyRefunded: number } {
+  let alreadyReturned = 0
+  let alreadyRefunded = 0
+  for (const ret of returns) {
+    for (const ri of ret.sale_return_items) {
+      if (ri.sale_item_id !== saleItemId) continue
+      alreadyReturned += ri.quantity_in_unit
+      alreadyRefunded += ri.refund_amount_cfa
+    }
+  }
+  return { alreadyReturned, alreadyRefunded }
+}
+
+function lineRefundInput(ri: ReturnableItem) {
+  return {
+    originalQty: ri.item.quantity_in_unit,
+    selectedQty: ri.selected,
+    netLineTotalCfa: ri.item.net_line_total_cfa,
+    alreadyReturnedQty: ri.alreadyReturned,
+    alreadyRefundedCfa: ri.alreadyRefunded,
+  }
 }
 
 function buildReturnableItems(
   items: SaleItemDetail[],
   returns: SaleDetailData['returns'],
 ): ReturnableItem[] {
-  // Aggregate already-returned quantities per sale_item_id across all return events
-  const returnedMap: Record<string, number> = {}
-  for (const ret of returns) {
-    for (const ri of ret.sale_return_items) {
-      returnedMap[ri.sale_item_id] =
-        (returnedMap[ri.sale_item_id] ?? 0) + ri.quantity_in_unit
-    }
-  }
-
   return items.map((item) => {
-    const alreadyReturned = returnedMap[item.id] ?? 0
+    const { alreadyReturned, alreadyRefunded } = priorReturnTotals(item.id, returns)
     const returnable = item.quantity_in_unit - alreadyReturned
     return {
       item,
       alreadyReturned,
+      alreadyRefunded,
       returnable,
       selected: 0, // start at 0 — cashier explicitly picks quantity
     }
@@ -74,9 +99,7 @@ interface ReturnItemRowProps {
 function ReturnItemRow({ ri, onChange }: ReturnItemRowProps) {
   const { item, returnable, selected, alreadyReturned } = ri
   const estimatedRefund =
-    returnable > 0 && selected > 0
-      ? (selected / item.quantity_in_unit) * item.net_line_total_cfa
-      : 0
+    selected > 0 ? computeReturnLineRefund(lineRefundInput(ri)) : 0
 
   return (
     <div
@@ -91,16 +114,21 @@ function ReturnItemRow({ ri, onChange }: ReturnItemRowProps) {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-text-primary">{item.product_name}</p>
           <p className="text-xs text-text-secondary">
-            {item.unit_name} · {formatCFA(item.unit_price_cfa)} each
+            {item.unit_name} · {formatCFA(item.unit_price_cfa)}{' '}
+            <BilingualText {...SALES.eachPrice} variant="caption" layout="inline" />
           </p>
           <p className="text-xs text-text-muted mt-0.5">
-            Original: {item.quantity_in_unit}
-            {alreadyReturned > 0 && ` · Already returned: ${alreadyReturned}`}
-            {returnable > 0 ? ` · Returnable: ${returnable}` : ' · Fully returned'}
+            {SALES.originalQty.fr}: {item.quantity_in_unit}
+            {alreadyReturned > 0 && ` · ${SALES.alreadyReturned.fr}: ${alreadyReturned}`}
+            {returnable > 0
+              ? ` · ${SALES.returnable.fr}: ${returnable}`
+              : ` · ${SALES.fullyReturned.fr}`}
           </p>
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="text-xs text-text-muted">Est. refund</p>
+          <p className="text-xs text-text-muted">
+            <BilingualText {...SALES.estRefund} variant="caption" />
+          </p>
           <p className="text-sm font-semibold text-text-primary">
             {selected > 0 ? formatCFA(estimatedRefund) : '—'}
           </p>
@@ -110,7 +138,9 @@ function ReturnItemRow({ ri, onChange }: ReturnItemRowProps) {
       {/* Quantity selector */}
       {returnable > 0 && (
         <div className="flex items-center gap-2">
-          <span className="text-xs text-text-secondary">Return qty:</span>
+          <span className="text-xs text-text-secondary">
+            <BilingualText {...SALES.returnQty} variant="caption" layout="inline" />:
+          </span>
           <button
             type="button"
             onClick={() => onChange(Math.max(0, selected - 1))}
@@ -152,11 +182,30 @@ function ReturnItemRow({ ri, onChange }: ReturnItemRowProps) {
               onClick={() => onChange(returnable)}
               className="text-xs text-primary hover:text-primary-hover underline"
             >
-              Return all
+              <BilingualText {...SALES.returnAll} variant="caption" layout="inline" />
             </button>
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+function PreviewRow({
+  label,
+  amount,
+  emphasize,
+}: {
+  label: React.ReactNode
+  amount: number
+  emphasize?: boolean
+}) {
+  return (
+    <div className="flex justify-between text-sm">
+      <span className="text-text-secondary">{label}</span>
+      <span className={cn('font-semibold', emphasize && 'text-info-foreground')}>
+        {formatCFA(amount)}
+      </span>
     </div>
   )
 }
@@ -178,39 +227,54 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
     buildReturnableItems(sale.items, sale.returns),
   )
   const [reason, setReason] = useState('')
-  const [cashRefundInput, setCashRefundInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const inFlight = useRef(false)
+  const staff = useAuthStore((s) => s.staff)
+  const { data: openShifts, isLoading: openShiftsLoading } = useOpenShifts()
+  const shiftCtx = resolveLoadedPosShiftContext(
+    shiftId,
+    null,
+    authorizedOpenShifts(staff, openShifts),
+    openShiftsLoading,
+  )
+  const effectiveShiftId = processingShiftId(shiftId, shiftCtx)
 
-  // ── Computed refund preview ────────────────────────────────────
   const selectedItems = useMemo(
     () => returnableItems.filter((ri) => ri.selected > 0),
     [returnableItems],
   )
 
-  const estimatedRefundTotal = useMemo(() => {
-    // Proportional estimate: (selected / original) * net_line_total
-    // The server computes the authoritative value.
-    return selectedItems.reduce((sum, ri) => {
-      return sum + (ri.selected / ri.item.quantity_in_unit) * ri.item.net_line_total_cfa
-    }, 0)
-  }, [selectedItems])
+  const estimatedRefundTotal = useMemo(
+    () => computeReturnRefundTotal(selectedItems.map(lineRefundInput)),
+    [selectedItems],
+  )
 
-  const cashRefund = useMemo(() => {
-    const val = parseCFAInput(cashRefundInput)
-    return isNaN(val) ? 0 : val
-  }, [cashRefundInput])
+  const preview = useMemo(
+    () =>
+      computeReturnRefundPreview({
+        refundAmountCfa: estimatedRefundTotal,
+        customerId: sale.customer_id,
+        saleBalanceAddedCfa: sale.balance_added_cfa,
+        customerBalanceOwedCfa: sale.customer_balance_owed_cfa,
+        previousReturns: sale.returns,
+      }),
+    [
+      estimatedRefundTotal,
+      sale.customer_id,
+      sale.balance_added_cfa,
+      sale.customer_balance_owed_cfa,
+      sale.returns,
+    ],
+  )
 
-  const balanceAdjustment = Math.max(0, estimatedRefundTotal - cashRefund)
-
-  // ── Validation ─────────────────────────────────────────────────
-  const isCashRefundInvalid = cashRefund < 0 || cashRefund > estimatedRefundTotal
   const noItemsSelected = selectedItems.length === 0
-  const canSubmit = !noItemsSelected && !isCashRefundInvalid && !isLoading
+  const canSubmit = !noItemsSelected && !isLoading
 
-  // ── Submit ─────────────────────────────────────────────────────
   const handleSubmit = async () => {
+    if (inFlight.current) return
     if (!canSubmit) return
 
+    inFlight.current = true
     setIsLoading(true)
     try {
       const result = await rpc.processReturn({
@@ -221,24 +285,23 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
           // NOTE: no quantity_pieces — server derives it from frozen sale data
         })),
         p_reason:       reason.trim() || null,
-        p_cash_refund_cfa: cashRefund,
-        p_shift_id:     shiftId ?? null,
+        p_cash_refund_cfa: preview.cashRefundCfa,
+        p_shift_id:     effectiveShiftId,
       })
 
       if (result.error) {
         clearStalePosShift(result.error.code)
-        toast.error(getErrorMessage(result.error.code))
+        toastErrorFromCode(result.error.code, result.error.details)
         return
       }
 
       const data = result.data
-      toast.success(
-        `Return processed. ${formatCFA(data.cash_refunded_cfa)} cash refunded.`,
-      )
+      toastSuccessBi(SALES.returnProcessedCash(formatCFA(data.cash_refunded_cfa)))
       onSuccess()
       onClose()
     } finally {
       setIsLoading(false)
+      inFlight.current = false
     }
   }
 
@@ -256,7 +319,7 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
     <Modal
       open={open}
       onClose={handleClose}
-      title={`Return — ${sale.receipt_number}`}
+      title={<BiModalTitle {...SALES.returnModalTitle(sale.receipt_number)} />}
       size="lg"
     >
       <div className="space-y-4">
@@ -273,67 +336,43 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
 
         {noItemsSelected && (
           <p className="text-xs text-text-muted text-center">
-            Select quantities to return above
+            <BilingualText {...SALES.selectQtyHint} variant="caption" />
           </p>
         )}
 
-        {/* Refund breakdown */}
         {!noItemsSelected && (
           <div className="rounded-md bg-surface-muted border border-border p-3 space-y-2">
             <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">
-              Refund Preview
+              <BiTableHeader {...SALES.refundPreview} />
             </p>
-            <div className="flex justify-between text-sm">
-              <span className="text-text-secondary">Estimated refund</span>
-              <span className="font-semibold">{formatCFA(estimatedRefundTotal)}</span>
-            </div>
-
-            {/* Cash refund input */}
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-text-secondary flex-shrink-0">Cash refund</span>
-              <div className="flex-1">
-                <input
-                  type="number"
-                  min={0}
-                  max={estimatedRefundTotal}
-                  value={cashRefundInput}
-                  onChange={(e) => setCashRefundInput(e.target.value)}
-                  placeholder={`0 – ${Math.round(estimatedRefundTotal)}`}
-                  className={cn(
-                    'w-full h-8 px-3 text-sm rounded-md border bg-surface text-text-primary',
-                    'focus:outline-none focus:ring-2 focus:ring-primary/20',
-                    isCashRefundInvalid
-                      ? 'border-danger focus:border-danger'
-                      : 'border-border focus:border-primary',
-                  )}
-                />
-              </div>
-              <span className="text-sm font-semibold">CFA</span>
-            </div>
-            {isCashRefundInvalid && (
-              <p className="text-xs text-danger">
-                Cash refund must be between 0 and {formatCFA(estimatedRefundTotal)}
+            <PreviewRow label={<BiTableHeader {...SALES.totalRefund} />} amount={preview.refundAmountCfa} />
+            <PreviewRow
+              label={<BiTableHeader {...SALES.balanceReduction} />}
+              amount={preview.balanceAdjustmentCfa}
+              emphasize={preview.balanceAdjustmentCfa > 0}
+            />
+            <PreviewRow label={<BiTableHeader {...SALES.cashRefund} />} amount={preview.cashRefundCfa} />
+            <p className="text-xs text-text-muted">
+              <BilingualText {...SALES.serverRefundNote} variant="caption" />
+            </p>
+            {shiftCtx.hasValidShift ? (
+              <p className="text-xs text-text-secondary">
+                <BilingualText {...SALES.cashRefundShiftNote} variant="caption" />
+              </p>
+            ) : (
+              <p className="text-xs text-warning-foreground bg-warning-bg border border-warning/20 rounded-md px-2.5 py-1.5">
+                <BilingualText {...SALES.noProcessingShift} variant="caption" />
               </p>
             )}
-
-            <div className="flex justify-between text-sm border-t border-border pt-2">
-              <span className="text-text-secondary">Balance reduction</span>
-              <span className={cn('font-semibold', balanceAdjustment > 0 && 'text-info-foreground')}>
-                {formatCFA(balanceAdjustment)}
-              </span>
-            </div>
-            <p className="text-xs text-text-muted">
-              Server computes authoritative refund amounts.
-            </p>
           </div>
         )}
 
         {/* Reason */}
         <Textarea
-          label="Reason (optional)"
+          label={bilingualPlain(SALES.voidReasonOptional)}
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          placeholder="Reason for return…"
+          placeholder={bilingualPlain(SALES.returnReasonPlaceholder)}
           rows={2}
           disabled={isLoading}
         />
@@ -341,7 +380,7 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
         {/* Actions */}
         <div className="flex gap-3 justify-end">
           <Button variant="secondary" onClick={handleClose} disabled={isLoading}>
-            Cancel
+            <BiButtonStack {...COMMON.cancel} />
           </Button>
           <LoadingButton
             variant="primary"
@@ -349,7 +388,7 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
             disabled={!canSubmit}
             onClick={handleSubmit}
           >
-            Process Return
+            <BiButtonStack {...SALES.processReturn} />
           </LoadingButton>
         </div>
       </div>

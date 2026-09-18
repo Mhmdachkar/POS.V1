@@ -1,19 +1,19 @@
 /**
  * OpenShiftModal — open a cashier shift with opening float.
- *
- * Cashier: depot locked to staff.depot_id (server also ignores client depot).
- * Admin: must pick an active depot.
- * Success explicitly binds posStore.shiftId to the created shift.
  */
 
 import { useEffect, useState } from 'react'
-import { toast } from 'sonner'
 import { Button, Input, LoadingButton, Modal } from '@/components/ui'
+import { BilingualText } from '@/components/ui/BilingualText'
+import { COMMON } from '@/lib/bilingual/common'
+import { SHIFT_COPY } from '@/lib/bilingual/shift'
+import { BiButtonStack, BiModalTitle, BiPageDescription } from '@/lib/bilingual/ui'
+import { toastSuccessBi } from '@/lib/bilingual/toast'
+import { bilingualPlain } from '@/lib/bilingual/types'
 import { parseError } from '@/lib/errors'
 import { useDepotOptions } from '@/hooks/useInventory'
 import { parseNonNegativeCfa, useOpenShift } from '@/hooks/useShifts'
 import { useAuthStore } from '@/stores/authStore'
-import { usePOSStore } from '@/stores/posStore'
 
 interface OpenShiftModalProps {
   open: boolean
@@ -23,7 +23,6 @@ interface OpenShiftModalProps {
 
 export function OpenShiftModal({ open, onClose, onOpened }: OpenShiftModalProps) {
   const staff = useAuthStore((s) => s.staff)
-  const setShiftId = usePOSStore((s) => s.setShiftId)
   const { data: depots } = useDepotOptions()
   const { mutateAsync: openShift, isPending } = useOpenShift()
 
@@ -52,11 +51,11 @@ export function OpenShiftModal({ open, onClose, onOpened }: OpenShiftModalProps)
 
   const handleSubmit = async () => {
     if (floatValue === null) {
-      setFormError('Opening float must be zero or greater.')
+      setFormError(bilingualPlain(SHIFT_COPY.openingFloatError))
       return
     }
     if (!isCashier && !depotId) {
-      setFormError('Select a depot.')
+      setFormError(bilingualPlain(SHIFT_COPY.selectDepotError))
       return
     }
 
@@ -66,8 +65,7 @@ export function OpenShiftModal({ open, onClose, onOpened }: OpenShiftModalProps)
         p_depot_id: isCashier ? lockedDepotId || undefined : depotId,
         p_opening_float_cfa: floatValue,
       })
-      setShiftId(result.shift_id)
-      toast.success('Shift opened.')
+      toastSuccessBi(SHIFT_COPY.shiftOpened)
       onOpened?.(result.shift_id)
       onClose()
     } catch (err) {
@@ -79,25 +77,29 @@ export function OpenShiftModal({ open, onClose, onOpened }: OpenShiftModalProps)
     <Modal
       open={open}
       onClose={() => { if (!isPending) onClose() }}
-      title="Open Shift"
-      description="Record opening cash in the drawer."
+      title={<BiModalTitle {...SHIFT_COPY.openShiftTitle} />}
+      description={<BiPageDescription {...SHIFT_COPY.openShiftDesc} />}
       size="sm"
     >
       <div className="space-y-4">
         {isCashier ? (
           <div>
-            <p className="text-sm font-medium text-text-primary mb-1">Depot</p>
+            <p className="text-sm font-medium text-text-primary mb-1">
+              <BilingualText {...COMMON.depot} variant="body" layout="inline" />
+            </p>
             <p className="text-sm text-text-secondary">{lockedDepotName}</p>
           </div>
         ) : (
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-text-primary">Depot</span>
+            <span className="text-sm font-medium text-text-primary">
+              <BilingualText {...COMMON.depot} variant="body" layout="inline" />
+            </span>
             <select
               value={depotId}
               onChange={(e) => { setDepotId(e.target.value); setFormError(null) }}
               className="h-9 rounded-md border border-border bg-surface px-3 text-sm text-text-primary"
             >
-              <option value="">Select depot</option>
+              <option value="">{bilingualPlain(SHIFT_COPY.selectDepotOption)}</option>
               {activeDepots.map((depot) => (
                 <option key={depot.id} value={depot.id}>{depot.name}</option>
               ))}
@@ -106,25 +108,25 @@ export function OpenShiftModal({ open, onClose, onOpened }: OpenShiftModalProps)
         )}
 
         <Input
-          label="Cash in Drawer (CFA)"
+          label={bilingualPlain(SHIFT_COPY.cashInDrawer)}
           inputMode="decimal"
           value={floatStr}
           onChange={(e) => { setFloatStr(e.target.value); setFormError(null) }}
-          error={floatValue === null && floatStr.trim() !== '' ? 'Must be zero or greater.' : undefined}
+          error={floatValue === null && floatStr.trim() !== '' ? bilingualPlain(SHIFT_COPY.floatNonNegative) : undefined}
         />
 
         {formError && <p className="text-sm text-danger">{formError}</p>}
 
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose} disabled={isPending}>
-            Cancel
+            <BiButtonStack {...COMMON.cancel} />
           </Button>
           <LoadingButton
             loading={isPending}
             disabled={!canSubmit}
             onClick={handleSubmit}
           >
-            Open Shift
+            <BiButtonStack {...SHIFT_COPY.openShift} />
           </LoadingButton>
         </div>
       </div>

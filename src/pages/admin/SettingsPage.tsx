@@ -1,10 +1,21 @@
 import { useEffect, useState } from 'react'
 import { Settings } from 'lucide-react'
 import { Card, ConfirmDialog, EmptyState, LoadingButton, Skeleton } from '@/components/ui'
+import { BilingualText } from '@/components/ui/BilingualText'
 import { formatDateTime } from '@/lib/formatters'
 import { parseError } from '@/lib/errors'
 import { isHttpsUrl } from '@/hooks/useAdminProducts'
 import { useBusinessSettings, useUpdateBusinessSettings } from '@/hooks/useBusinessSettings'
+import { ADMIN } from '@/lib/bilingual/admin'
+import {
+  BiButtonStack,
+  BiEmptyTitle,
+  BiModalTitle,
+  BiPageDescription,
+  BiPageTitle,
+  BiTableHeader,
+} from '@/lib/bilingual/ui'
+import { bilingualPlain } from '@/lib/bilingual/types'
 
 export function SettingsPage() {
   const { data, isLoading, isError } = useBusinessSettings()
@@ -29,11 +40,11 @@ export function SettingsPage() {
     setError('')
     const logo = logoUrl.trim()
     if (logo && !isHttpsUrl(logo)) {
-      setError('Logo must be an HTTPS URL.')
+      setError(bilingualPlain(ADMIN.logoHttpsError))
       return
     }
     if (!(rateNumber > 0)) {
-      setError('Enter a valid CFA per USD rate greater than zero.')
+      setError(bilingualPlain(ADMIN.rateInvalid))
       return
     }
     try {
@@ -62,28 +73,38 @@ export function SettingsPage() {
     return <div className="p-6 space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
   }
   if (isError || !data) {
-    return <div className="p-6"><EmptyState icon={<Settings className="h-8 w-8" />} title="Failed to load settings" /></div>
+    return (
+      <div className="p-6">
+        <EmptyState icon={<Settings className="h-8 w-8" />} title={<BiEmptyTitle {...ADMIN.failedSettings} />} />
+      </div>
+    )
   }
 
   return (
     <div className="p-6 max-w-xl">
-      <h1 className="text-lg font-bold text-text-primary">Settings</h1>
-      <p className="text-sm text-text-secondary mt-0.5 mb-6">
-        Business name, logo, and CFA per USD rate. Historical sales keep the rate locked at sale time.
-      </p>
+      <BiPageTitle {...ADMIN.settings} />
+      <div className="mt-0.5 mb-6">
+        <BiPageDescription {...ADMIN.settingsDesc} />
+      </div>
 
       <Card>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">Business name</label>
+            <label className="block mb-1.5 uppercase tracking-wide">
+              <BiTableHeader {...ADMIN.businessName} />
+            </label>
             <input value={name} onChange={(e) => setName(e.target.value)} required className="w-full h-9 px-3 rounded-md border border-border text-sm bg-surface" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">Logo URL</label>
+            <label className="block mb-1.5 uppercase tracking-wide">
+              <BiTableHeader {...ADMIN.logoUrl} />
+            </label>
             <input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://…" className="w-full h-9 px-3 rounded-md border border-border text-sm bg-surface" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">CFA per 1 USD</label>
+            <label className="block mb-1.5 uppercase tracking-wide">
+              <BiTableHeader {...ADMIN.cfaPerUsd} />
+            </label>
             <input
               data-testid="settings-rate"
               inputMode="decimal"
@@ -93,7 +114,8 @@ export function SettingsPage() {
               className="w-full h-9 px-3 rounded-md border border-border text-sm bg-surface"
             />
             <p className="text-xs text-text-muted mt-1">
-              Last updated {formatDateTime(data.rate_updated_at)}
+              {ADMIN.lastUpdated.fr} {formatDateTime(data.rate_updated_at)}
+              <span className="block text-[10px]">{ADMIN.lastUpdated.en} {formatDateTime(data.rate_updated_at)}</span>
             </p>
           </div>
           {error && (
@@ -102,7 +124,9 @@ export function SettingsPage() {
             </div>
           )}
           <div className="flex justify-end">
-            <LoadingButton type="submit" loading={isPending}>Save settings</LoadingButton>
+            <LoadingButton type="submit" loading={isPending}>
+              <BiButtonStack {...ADMIN.saveSettings} />
+            </LoadingButton>
           </div>
         </form>
       </Card>
@@ -111,9 +135,9 @@ export function SettingsPage() {
         open={confirmRate}
         onClose={() => setConfirmRate(false)}
         onConfirm={() => { void persist() }}
-        title="Update exchange rate?"
-        message="New sales will use this rate. Past sales keep the rate that was locked when they were completed."
-        confirmLabel="Update rate"
+        title={<BiModalTitle {...ADMIN.updateExchangeRate} />}
+        message={<BilingualText {...ADMIN.updateRateConfirm} variant="body" />}
+        confirmLabel={<BiButtonStack {...ADMIN.updateRateButton} />}
         variant="primary"
         isLoading={isPending}
       />

@@ -9,9 +9,10 @@
  */
 
 import { useEffect } from 'react'
+import { toastSuccessBi } from '@/lib/bilingual/toast'
+import { INVENTORY } from '@/lib/bilingual/inventory'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { toast } from 'sonner'
 import { Modal } from '@/components/ui/Modal'
 import { Button, LoadingButton } from '@/components/ui'
 import { formatPieces } from '@/lib/formatters'
@@ -32,7 +33,7 @@ const ADJUSTMENT_TYPES: Array<{ value: InventoryAdjustmentType; label: string }>
   { value: 'DAMAGE', label: 'Damage' },
   { value: 'LOSS', label: 'Loss' },
   { value: 'EXPIRY', label: 'Expiry' },
-  { value: 'COUNT_CORRECTION', label: 'Count correction' },
+  { value: 'COUNT_CORRECTION', label: INVENTORY.countCorrection.fr },
   { value: 'OTHER', label: 'Other' },
 ]
 
@@ -91,7 +92,7 @@ export function AdjustmentModal({ open, onClose, product }: AdjustmentModalProps
         data.reason,
       )
       await adjust(params)
-      toast.success('Stock updated')
+      toastSuccessBi(INVENTORY.stockUpdated)
       onClose()
     } catch (err) {
       setError('root', { message: parseError(err).message })
@@ -130,7 +131,7 @@ export function AdjustmentModal({ open, onClose, product }: AdjustmentModalProps
           <p className="text-xs text-text-muted mt-1">
             {isReduction
               ? 'Enter a positive amount to remove. Sent to the server as a negative quantity.'
-              : 'Signed value: negative removes stock, positive adds stock.'}
+              : INVENTORY.signedAdjustmentHint.fr}
           </p>
           {errors.quantity && (
             <p className="text-xs text-danger mt-1">{errors.quantity.message}</p>
@@ -158,12 +159,12 @@ export function AdjustmentModal({ open, onClose, product }: AdjustmentModalProps
 
         <div className="rounded-lg bg-surface-muted border border-border p-3 text-sm space-y-1">
           <div className="flex justify-between">
-            <span className="text-text-secondary">Current stock</span>
+            <span className="text-text-secondary">{INVENTORY.currentStock.fr}</span>
             <span className="font-medium tabular-nums">{formatPieces(product.current_stock_pieces)}</span>
           </div>
           {estimate != null && (
             <div className="flex justify-between">
-              <span className="text-text-secondary">Estimated result</span>
+              <span className="text-text-secondary">{INVENTORY.estimatedResult.fr}</span>
               <span className="font-medium tabular-nums">~ {formatPieces(estimate)}</span>
             </div>
           )}

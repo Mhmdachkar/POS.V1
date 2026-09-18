@@ -1,10 +1,23 @@
 import { useState } from 'react'
+import { BiButtonStack, BiEmptyTitle, BiPageTitle } from '@/lib/bilingual/ui'
+import { ADMIN } from '@/lib/bilingual/admin'
+import { DEPOT } from '@/lib/bilingual/depot'
+import { bilingualPlain } from '@/lib/bilingual/types'
+import { CUSTOMERS } from '@/lib/bilingual/customers'
+import { SHIFT_COPY } from '@/lib/bilingual/shift'
+import { TRANSFERS } from '@/lib/bilingual/transfers'
+import { INVENTORY } from '@/lib/bilingual/inventory'
+import { SALES } from '@/lib/bilingual/sales'
 import { Building2, Plus, Search } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import { ActiveBadge, Button, EmptyState, Skeleton } from '@/components/ui'
+import { ActiveBadge, Button, EmptyState, PageHeader, Skeleton } from '@/components/ui'
 import { useAdminDepotList } from '@/hooks/useAdminDepots'
 import { DepotDetailDrawer } from './components/DepotDetailDrawer'
 import { DepotFormModal } from './components/DepotFormModal'
+
+/** Name | Location | Code | Status */
+const DEPOTS_GRID =
+  'grid-cols-[minmax(8rem,1.2fr)_minmax(8rem,1fr)_4.5rem_6.5rem]'
 
 export function DepotsPage() {
   const [search, setSearch] = useState('')
@@ -20,31 +33,32 @@ export function DepotsPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="px-6 py-4 border-b border-border bg-surface flex-shrink-0">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-lg font-bold text-text-primary">Depots</h1>
-            <p className="text-sm text-text-secondary mt-0.5">
-              {totalCount > 0 ? `${totalCount} depot${totalCount !== 1 ? 's' : ''}` : 'Physical locations that own products'}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="relative w-56">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(0) }}
-                placeholder="Name, code, location…"
-                className="w-full h-9 pl-9 pr-3 rounded-md border border-border bg-surface text-sm"
-              />
+      <div className="flex-shrink-0 border-b border-border bg-surface">
+        <PageHeader
+          title={<BiPageTitle {...ADMIN.depots} />}
+          description={totalCount > 0 ? `${totalCount} dépôt${totalCount !== 1 ? 's' : ''}` : ADMIN.depotsDesc.fr}
+          icon={<Building2 className="h-5 w-5" />}
+          className="border-b-0"
+          actions={
+            <div className="flex items-center gap-2">
+              <div className="relative w-52">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setPage(0) }}
+                  placeholder={bilingualPlain(DEPOT.searchDepots)}
+                  className="w-full h-9 pl-9 pr-3 rounded-md border border-border bg-surface text-sm"
+                />
+              </div>
+              <Button className="gap-1.5" onClick={() => setShowCreate(true)}>
+                <Plus className="h-4 w-4" />
+                <BiButtonStack {...ADMIN.addDepot} />
+              </Button>
             </div>
-            <Button className="gap-1.5" onClick={() => setShowCreate(true)}>
-              <Plus className="h-4 w-4" /> New Depot
-            </Button>
-          </div>
-        </div>
-        <div className="flex gap-1.5 mt-3">
+          }
+        />
+        <div className="px-6 pb-4 flex gap-1.5">
           {(['all', 'active', 'inactive'] as const).map((value) => (
             <button
               key={value}
@@ -65,28 +79,35 @@ export function DepotsPage() {
         {isLoading ? (
           <div className="space-y-px">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
         ) : isError ? (
-          <div className="p-8"><EmptyState icon={<Building2 className="h-8 w-8" />} title="Failed to load depots" /></div>
+          <div className="p-8"><EmptyState icon={<Building2 className="h-8 w-8" />} title={<BiEmptyTitle {...ADMIN.failedDepots} />} /></div>
         ) : rows.length === 0 ? (
-          <div className="p-8"><EmptyState icon={<Building2 className="h-8 w-8" />} title="No depots found" /></div>
+          <div className="p-8"><EmptyState icon={<Building2 className="h-8 w-8" />} title={<BiEmptyTitle {...ADMIN.noDepots} />} /></div>
         ) : (
           <>
-            <div className="sticky top-0 bg-surface-muted border-b border-border grid grid-cols-[1.2fr_1fr_auto_auto] gap-4 px-4 py-2">
-              <span className="text-xs font-semibold text-text-secondary uppercase">Name</span>
-              <span className="text-xs font-semibold text-text-secondary uppercase">Location</span>
-              <span className="text-xs font-semibold text-text-secondary uppercase">Code</span>
-              <span className="text-xs font-semibold text-text-secondary uppercase">Status</span>
+            <div className="sticky top-0 bg-surface-muted border-b border-border z-[1]">
+              <div className={cn('grid gap-4 px-4 py-2 items-center', DEPOTS_GRID)}>
+                <span className="text-xs font-semibold text-text-secondary uppercase">Name</span>
+                <span className="text-xs font-semibold text-text-secondary uppercase">Location</span>
+                <span className="text-xs font-semibold text-text-secondary uppercase">Code</span>
+                <span className="text-xs font-semibold text-text-secondary uppercase">Status</span>
+              </div>
             </div>
             {rows.map((row) => (
               <button
                 key={row.id}
                 type="button"
                 onClick={() => setSelectedId(row.id)}
-                className="w-full text-left grid grid-cols-[1.2fr_1fr_auto_auto] gap-4 px-4 py-3 border-b border-border hover:bg-surface-muted"
+                className={cn(
+                  'w-full text-left grid gap-4 px-4 py-3 items-center border-b border-border hover:bg-surface-muted',
+                  DEPOTS_GRID,
+                )}
               >
-                <span className="text-sm font-medium text-text-primary truncate">{row.name}</span>
-                <span className="text-sm text-text-secondary truncate">{row.location}</span>
+                <span className="text-sm font-medium text-text-primary truncate min-w-0">{row.name}</span>
+                <span className="text-sm text-text-secondary truncate min-w-0">{row.location}</span>
                 <span className="text-sm font-mono text-text-secondary">{row.code}</span>
-                <ActiveBadge isActive={row.is_active} />
+                <span className="min-w-0">
+                  <ActiveBadge isActive={row.is_active} />
+                </span>
               </button>
             ))}
             {totalPages > 1 && (

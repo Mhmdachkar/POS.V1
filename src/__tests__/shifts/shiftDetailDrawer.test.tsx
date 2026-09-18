@@ -7,15 +7,29 @@ import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ShiftDetailDrawer } from '@/pages/shifts/components/ShiftDetailDrawer'
 import { useShiftDetail, type ShiftDetailData } from '@/hooks/useShifts'
+import { useUnshiftedSalesForShiftWindow } from '@/hooks/useSales'
 import { useAuthStore } from '@/stores/authStore'
-import { usePOSStore } from '@/stores/posStore'
+import { formatCFA } from '@/lib/formatters'
 import type { Staff } from '@/types/database'
+import { SHIFT_COPY } from '@/lib/bilingual/shift'
+import { COMMON } from '@/lib/bilingual/common'
 
 vi.mock('@/hooks/useShifts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useShifts')>()
   return {
     ...actual,
     useShiftDetail: vi.fn(),
+  }
+})
+
+vi.mock('@/hooks/useSales', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/useSales')>()
+  return {
+    ...actual,
+    useUnshiftedSalesForShiftWindow: vi.fn(() => ({
+      data: { count: 0, total_cfa: 0 },
+      isLoading: false,
+    })),
   }
 })
 
@@ -78,7 +92,10 @@ function renderDrawer(id: string) {
 describe('ShiftDetailDrawer', () => {
   beforeEach(() => {
     useAuthStore.setState({ staff: cashierStaff(), session: null, isLoading: false })
-    usePOSStore.setState({ shiftId: null })
+    vi.mocked(useUnshiftedSalesForShiftWindow).mockReturnValue({
+      data: { count: 0, total_cfa: 0 },
+      isLoading: false,
+    } as never)
   })
 
   it('shows running totals and Close Shift for an open authorized shift', () => {
@@ -88,23 +105,87 @@ describe('ShiftDetailDrawer', () => {
       isError: false,
     } as never)
     renderDrawer('sh-open')
-    expect(screen.getByText('Open')).toBeInTheDocument()
-    expect(screen.getByText('Current running total')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Close Shift' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Select for POS' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Cashier Dakar' })).toBeInTheDocument()
+    expect(screen.getAllByText('Depot Dakar').length).toBeGreaterThan(0)
+    expect(screen.getByText(SHIFT_COPY.cashSummary.fr)).toBeInTheDocument()
+    expect(screen.getByText(SHIFT_COPY.openingFloat.fr)).toBeInTheDocument()
+    expect(screen.getByText(SHIFT_COPY.salesCash.fr)).toBeInTheDocument()
+    expect(screen.getByText(SHIFT_COPY.customerPayments.fr)).toBeInTheDocument()
+    expect(screen.getByText(SHIFT_COPY.returnCash.fr)).toBeInTheDocument()
+    expect(screen.getByText(SHIFT_COPY.expectedCash.fr)).toBeInTheDocument()
+    expect(screen.getByText(SHIFT_COPY.actualCash.fr)).toBeInTheDocument()
+    expect(screen.getAllByText(SHIFT_COPY.shiftDetails.fr).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/^Actions$/i).length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: /Close Shift|Fermer le service/i })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /Select for POS|Sélectionner pour la caisse/i }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/Current/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Shift' })).not.toBeInTheDocument()
+
+    const floatNode = screen.getAllByText((_, el) =>
+      el?.tagName === 'SPAN' && el.textContent === formatCFA(1000),
+    ).find((el) => el.className.includes('financial-value'))
+    expect(floatNode).toBeTruthy()
+
+    const estimatedNode = screen.getAllByText((_, el) =>
+      el?.tagName === 'SPAN' && el.textContent === formatCFA(1200),
+    ).find((el) => el.className.includes('text-financial-sm'))
+    expect(estimatedNode).toBeTruthy()
   })
 
-  it('hides Close Shift and Select for POS on a closed shift', () => {
+  it('shows sales without a shift separately from expected cash', () => {
+    vi.mocked(useShiftDetail).mockReturnValue({
+      data: openDetail(),
+      isLoading: false,
+      isError: false,
+    } as never)
+    vi.mocked(useUnshiftedSalesForShiftWindow).mockReturnValue({
+      data: { count: 3, total_cfa: 47000 },
+      isLoading: false,
+    } as never)
+    renderDrawer('sh-open')
+    expect(screen.getByText(SHIFT_COPY.salesWithoutShift.fr)).toBeInTheDocument()
+    const unshiftedBlock = screen.getByTestId('unshifted-shift-sales')
+    expect(unshiftedBlock.textContent).toContain('3 ventes')
+    expect(unshiftedBlock.textContent).toContain(formatCFA(47000))
+    expect(
+      screen.getByText(SHIFT_COPY.unshiftedWindowNote.fr, { exact: false }),
+    ).toBeInTheDocument()
+    const expectedNode = screen.getAllByText((_, el) =>
+      el?.tagName === 'SPAN' && el.textContent === formatCFA(1200),
+    ).find((el) => typeof el.className === 'string' && el.className.includes('text-financial-sm'))
+    expect(expectedNode).toBeTruthy()
+    expect(
+      screen.queryAllByText((_, el) =>
+        el?.tagName === 'SPAN' && el.textContent === formatCFA(48200),
+      ).find((el) => typeof el.className === 'string' && el.className.includes('text-financial-sm')),
+    ).toBeUndefined()
+  })
+
+  it('hides Close Shift on a closed shift', () => {
     vi.mocked(useShiftDetail).mockReturnValue({
       data: closedDetail(),
       isLoading: false,
       isError: false,
     } as never)
     renderDrawer('sh-closed')
-    expect(screen.getByText('Closed')).toBeInTheDocument()
-    expect(screen.getByText('Expected Cash')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Close Shift' })).not.toBeInTheDocument()
+    expect(screen.getAllByText(SHIFT_COPY.closed.fr).length).toBeGreaterThan(0)
+    expect(screen.getByText(SHIFT_COPY.expectedCash.fr)).toBeInTheDocument()
+    expect(screen.getByText(SHIFT_COPY.actualCash.fr)).toBeInTheDocument()
+    expect(screen.getByText(SHIFT_COPY.discrepancy.fr)).toBeInTheDocument()
+    expect(screen.getByText(SHIFT_COPY.opened.fr)).toBeInTheDocument()
+    expect(screen.getByText(SHIFT_COPY.closedBy.fr)).toBeInTheDocument()
+    expect(screen.getByText(SHIFT_COPY.shiftId.fr)).toBeInTheDocument()
+    expect(screen.getAllByText('Depot Dakar').length).toBeGreaterThan(0)
+    expect(screen.queryByRole('button', { name: SHIFT_COPY.closeShift.fr })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Select for POS' })).not.toBeInTheDocument()
+    expect(screen.queryByText(COMMON.actions.fr)).not.toBeInTheDocument()
+
+    const expectedNode = screen.getAllByText((_, el) =>
+      el?.tagName === 'SPAN' && el.textContent === formatCFA(1200),
+    ).find((el) => el.className.includes('text-financial-sm'))
+    expect(expectedNode).toBeTruthy()
   })
 
   it('shows an error state when the detail query fails', () => {
@@ -114,6 +195,6 @@ describe('ShiftDetailDrawer', () => {
       isError: true,
     } as never)
     renderDrawer('missing')
-    expect(screen.getByText('Failed to load shift details.')).toBeInTheDocument()
+    expect(screen.getByText(SHIFT_COPY.failedDetail.fr)).toBeInTheDocument()
   })
 })

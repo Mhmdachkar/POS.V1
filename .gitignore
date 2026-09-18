@@ -21,9 +21,22 @@ Thumbs.db
 # Vite cache
 .vite/
 
+# Cloudflare / Wrangler
+.wrangler/
+.dev.vars
+.dev.vars*
+
 # TypeScript build info
 *.tsbuildinfo
 
 # Supabase local dev (add supabase/config.toml to version control)
 supabase/.branches/
 supabase/.temp/
+
+# Local verification / one-shot patch artifacts (not for deploy)
+vitest-*.txt
+build-*.txt
+tsc-*.txt
+tmp-export-verify/
+scripts/_fr_patch_*.mjs
+scripts/_bilingual_batch_*.mjs

@@ -6,20 +6,26 @@
  * Inactive products: Restock and Adjust are disabled with "Product is inactive".
  */
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
+import { INVENTORY } from '@/lib/bilingual/inventory'
+import { BiModalTitle as BiSectionTitle, BiModalTitle } from '@/lib/bilingual/ui'
+import { BilingualText } from '@/components/ui/BilingualText'
 import { PackagePlus, Pencil, SlidersHorizontal, UserCheck, UserX } from 'lucide-react'
 import { ActiveBadge, Button, ConfirmDialog, Drawer, LoadingButton, Skeleton, StockStatusBadge } from '@/components/ui'
 import { formatCFA, formatDateTime, formatPieces } from '@/lib/formatters'
-import { getStockStatus } from '@/types'
+import { getProductStockStatus } from '@/types'
 import { useProductDetail } from '@/hooks/useProducts'
 import {
   INACTIVE_PRODUCT_MESSAGE,
-  formatDerivedUnitQuantity,
+  stockHierarchyBreakdown,
+  primarySellingUnit,
   useCategories,
   useDepotOptions,
   useInventoryActivity,
 } from '@/hooks/useInventory'
 import { parseError } from '@/lib/errors'
+import { hasDisplayableProductPhoto, resolveProductPhotoUrl } from '@/lib/productPhotos'
+import { ProductPhotoFrame } from '@/components/pos/ProductPhotoFrame'
 import { useDeactivateProduct, useReactivateProduct } from '@/hooks/useAdminProducts'
 import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
@@ -27,7 +33,7 @@ import { RestockModal } from './RestockModal'
 import { AdjustmentModal } from './AdjustmentModal'
 import { ProductFormModal } from './ProductFormModal'
 
-function SectionHeader({ title }: { title: string }) {
+function SectionHeader({ title }: { title: ReactNode }) {
   return (
     <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide mt-5 mb-2 first:mt-0">
       {title}
@@ -97,64 +103,142 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
           <p className="text-sm text-text-muted">Product not found.</p>
         ) : (
           <div>
-            <img
-              src={product.photo_url}
-              alt=""
-              className="w-full h-32 rounded-lg object-cover bg-surface-muted mb-4"
-            />
+            {hasDisplayableProductPhoto(product.photo_url, product.name) && (
+              <div className="relative aspect-[4/3] w-full rounded-lg overflow-hidden mb-4 border border-border">
+                <ProductPhotoFrame
+                  src={resolveProductPhotoUrl(product.photo_url, product.name)}
+                  className="absolute inset-0 h-full rounded-lg"
+                />
+              </div>
+            )}
 
-            <SectionHeader title="Product Info" />
-            <div className="space-y-0">
-              <DetailRow
-                label="Name"
-                value={
-                  <span className="flex items-center justify-end gap-2">
-                    {product.name}
-                    <ActiveBadge isActive={product.is_active} />
-                  </span>
-                }
-              />
-              <DetailRow label="Category" value={categoryName} />
-              <DetailRow label="Depot" value={depotName} />
-              <DetailRow label="Updated" value={formatDateTime(product.updated_at)} />
+            {(() => {
+              const sellingUnit = primarySellingUnit(product.units)
+              return (
+                <>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-base font-semibold text-text-primary truncate">{product.name}</p>
+                <p className="text-xs text-text-secondary mt-0.5">
+                  {categoryName} · {depotName}
+                </p>
+              </div>
+              <ActiveBadge isActive={product.is_active} />
             </div>
 
-            <SectionHeader title="Current Stock" />
+            <SectionHeader title={<BiSectionTitle {...INVENTORY.stockSection} />} />
             <div className="rounded-xl border border-border bg-surface-muted p-4">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-2xl font-bold tabular-nums text-text-primary">
                   {formatPieces(product.current_stock_pieces)}
                 </p>
-                <StockStatusBadge status={getStockStatus(product.current_stock_pieces)} />
+                <StockStatusBadge status={getProductStockStatus(product)} />
               </div>
-              <div className="mt-3 space-y-1">
-                {product.units.map((unit) => (
-                  <p key={unit.id} className="text-xs text-text-secondary tabular-nums">
-                    {formatDerivedUnitQuantity(product.current_stock_pieces, unit.conversion_to_base)}{' '}
-                    {unit.unit_name}
-                    {formatDerivedUnitQuantity(product.current_stock_pieces, unit.conversion_to_base) !== 1 ? 's' : ''}
-                    <span className="text-text-muted"> (display only)</span>
+              {sellingUnit && (
+                <p className="mt-2 text-sm text-text-primary">
+                  {formatCFA(sellingUnit.selling_price_cfa)}
+                  <span className="text-text-secondary font-normal"> / {sellingUnit.unit_name}</span>
+                </p>
+              )}
+              <div className="mt-2 space-y-1">
+                {stockHierarchyBreakdown(product.current_stock_pieces, product.units).map((row) => (
+                  <p key={row.unit_level} className="text-xs text-text-secondary tabular-nums">
+                    <span className="font-medium text-text-primary">{row.count}</span>
+                    {' '}{row.unit_name}{row.count !== 1 ? 's' : ''}
                   </p>
                 ))}
               </div>
             </div>
 
-            <SectionHeader title="Unit Prices" />
-            <div className="space-y-px rounded-lg overflow-hidden border border-border">
+            {/* Serial numbers */}
+            <SectionHeader title={<BiSectionTitle {...INVENTORY.serialNumbers} />} />
+            <div className="space-y-0">
               {product.units.map((unit) => (
-                <div
+                <DetailRow
                   key={unit.id}
-                  className="flex items-center justify-between px-3 py-2 bg-surface border-b border-border last:border-0 text-sm"
-                >
-                  <span className="font-medium text-text-primary">{unit.unit_name}</span>
-                  <span className="text-text-secondary tabular-nums">
-                    Cost {formatCFA(unit.cost_price_cfa)} · Selling {formatCFA(unit.selling_price_cfa)}
-                  </span>
-                </div>
+                  label={unit.unit_name}
+                  value={
+                    unit.serial_number ? (
+                      <span className="font-mono text-xs bg-surface-muted px-2 py-0.5 rounded border border-border">
+                        {unit.serial_number}
+                      </span>
+                    ) : (
+                      <span className="text-text-muted">—</span>
+                    )
+                  }
+                />
               ))}
             </div>
 
-            <SectionHeader title="Stock Activity" />
+            {/* Cost, price & profit per unit */}
+            <SectionHeader title={<BiSectionTitle {...INVENTORY.costSection} />} />
+            <div className="rounded-md border border-border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-surface-muted">
+                  <tr>
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-text-secondary">
+                      <BilingualText fr="Unité" en="Unit" variant="caption" layout="inline" />
+                    </th>
+                    <th className="text-right px-3 py-2 text-xs font-semibold text-text-secondary">
+                      <BilingualText {...INVENTORY.costPrice} variant="caption" layout="inline" />
+                    </th>
+                    <th className="text-right px-3 py-2 text-xs font-semibold text-text-secondary">
+                      <BilingualText {...INVENTORY.sellingPrice} variant="caption" layout="inline" />
+                    </th>
+                    <th className="text-right px-3 py-2 text-xs font-semibold text-text-secondary">
+                      <BilingualText {...INVENTORY.profit} variant="caption" layout="inline" />
+                    </th>
+                    <th className="text-right px-3 py-2 text-xs font-semibold text-text-secondary">
+                      <BilingualText {...INVENTORY.profitMargin} variant="caption" layout="inline" />
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {product.units.map((unit) => {
+                    const profit = unit.selling_price_cfa - unit.cost_price_cfa
+                    const margin = unit.selling_price_cfa > 0
+                      ? Number(((profit / unit.selling_price_cfa) * 100).toFixed(2))
+                      : null
+                    return (
+                      <tr key={unit.id} className="border-t border-border">
+                        <td className="px-3 py-2 font-medium text-text-primary">{unit.unit_name}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-text-secondary">{formatCFA(unit.cost_price_cfa)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{formatCFA(unit.selling_price_cfa)}</td>
+                        <td className={`px-3 py-2 text-right tabular-nums font-medium ${profit >= 0 ? 'text-success-foreground' : 'text-danger'}`}>
+                          {profit >= 0 ? '+' : ''}{formatCFA(profit)}
+                        </td>
+                        <td className={`px-3 py-2 text-right tabular-nums ${margin != null && margin >= 0 ? 'text-success-foreground' : 'text-danger'}`}>
+                          {margin != null ? `${margin}%` : '—'}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <SectionHeader title={<BiSectionTitle {...INVENTORY.monitoringSection} />} />
+            <div className="space-y-0">
+              <DetailRow
+                label={INVENTORY.trackLowStock.fr}
+                value={product.track_low_stock ? 'On' : 'Off'}
+              />
+              {product.track_low_stock && (
+                <DetailRow
+                  label={INVENTORY.threshold.fr}
+                  value={
+                    product.low_stock_threshold == null
+                      ? '—'
+                      : formatPieces(product.low_stock_threshold)
+                  }
+                />
+              )}
+            </div>
+                </>
+              )
+            })()}
+
+            <SectionHeader title={<BiSectionTitle {...INVENTORY.stockActivitySection} />} />
             {loadingActivity ? (
               <div className="space-y-2">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -260,7 +344,7 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
                   loading={reactivating}
                 >
                   <UserCheck className="h-4 w-4" />
-                  Reactivate Product
+                  {INVENTORY.reactivateProduct.fr}
                 </LoadingButton>
               )}
             </div>
@@ -304,7 +388,7 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
             setConfirmDeactivate(false)
           }
         }}
-        title="Deactivate product?"
+        title={<BiModalTitle {...INVENTORY.deactivateProduct} />}
         message="Allowed even with stock. Blocked only if this product is on a pending transfer."
         confirmLabel="Deactivate"
         isLoading={deactivating}

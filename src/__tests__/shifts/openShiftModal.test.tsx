@@ -9,8 +9,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { OpenShiftModal } from '@/pages/shifts/components/OpenShiftModal'
 import { useOpenShift } from '@/hooks/useShifts'
 import { ERROR_MESSAGES } from '@/lib/errors'
+import { messageForCodePlain } from '@/lib/bilingual/errors'
 import { useAuthStore } from '@/stores/authStore'
-import { usePOSStore } from '@/stores/posStore'
 import type { Staff } from '@/types/database'
 
 vi.mock('@/hooks/useShifts', async (importOriginal) => {
@@ -78,11 +78,10 @@ function renderModal() {
 
 describe('OpenShiftModal', () => {
   beforeEach(() => {
-    usePOSStore.setState({ shiftId: null })
     useAuthStore.setState({ staff: cashierStaff(), session: null, isLoading: false })
   })
 
-  it('locks depot for cashier and accepts zero float', async () => {
+  it('locks depot for cashier and accepts zero float without binding POS', async () => {
     const user = userEvent.setup()
     const { mutateAsync } = renderModal()
     mutateAsync.mockResolvedValue({
@@ -95,12 +94,11 @@ describe('OpenShiftModal', () => {
     expect(screen.getByText('Depot Dakar')).toBeInTheDocument()
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Open Shift' }))
+    await user.click(screen.getByRole('button', { name: /Open Shift|Ouvrir un service/i }))
     expect(mutateAsync).toHaveBeenCalledWith({
       p_depot_id: 'depot-a',
       p_opening_float_cfa: 0,
     })
-    expect(usePOSStore.getState().shiftId).toBe('new-shift')
   })
 
   it('requires depot for admin and rejects negative float', async () => {
@@ -108,15 +106,15 @@ describe('OpenShiftModal', () => {
     const user = userEvent.setup()
     const { mutateAsync } = renderModal()
 
-    const float = screen.getByLabelText('Cash in Drawer (CFA)')
+    const float = screen.getByLabelText(/Cash in Drawer|Espèces en caisse/i)
     await user.clear(float)
     await user.type(float, '-1')
-    expect(screen.getByText('Must be zero or greater.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Open Shift' })).toBeDisabled()
+    expect(screen.getByText(/Must be zero or greater|Doit être ≥ 0/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Open Shift|Ouvrir un service/i })).toBeDisabled()
     expect(mutateAsync).not.toHaveBeenCalled()
   })
 
-  it('shows mapped error and does not bind shiftId on failure', async () => {
+  it('shows mapped error on failure without binding POS', async () => {
     const user = userEvent.setup()
     const { mutateAsync } = renderModal()
     mutateAsync.mockRejectedValue({
@@ -124,8 +122,9 @@ describe('OpenShiftModal', () => {
       message: ERROR_MESSAGES.INVALID_AMOUNT,
     })
 
-    await user.click(screen.getByRole('button', { name: 'Open Shift' }))
-    expect(await screen.findByText(ERROR_MESSAGES.INVALID_AMOUNT)).toBeInTheDocument()
-    expect(usePOSStore.getState().shiftId).toBeNull()
+    await user.click(screen.getByRole('button', { name: /Open Shift|Ouvrir un service/i }))
+    expect(
+      await screen.findByText(messageForCodePlain('INVALID_AMOUNT'), { exact: false }),
+    ).toBeInTheDocument()
   })
 })

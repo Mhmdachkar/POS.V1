@@ -19,12 +19,22 @@
  */
 
 import { useState, useRef, useEffect } from 'react'
+import { BiEmptyTitle, BiModalTitle, BiPageTitle, BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
+import { COMMON } from '@/lib/bilingual/common'
+import { ADMIN } from '@/lib/bilingual/admin'
+import { CUSTOMERS } from '@/lib/bilingual/customers'
+import { INVENTORY } from '@/lib/bilingual/inventory'
+import { SALES } from '@/lib/bilingual/sales'
+import { SHIFT_COPY } from '@/lib/bilingual/shift'
+import { TRANSFERS } from '@/lib/bilingual/transfers'
 import { Modal } from '@/components/ui/Modal'
 import { Button, LoadingButton } from '@/components/ui'
 import { Badge } from '@/components/ui/Badge'
 import { formatCFA } from '@/lib/formatters'
 import { parseError } from '@/lib/errors'
-import { clearStalePosShift } from '@/hooks/useShifts'
+import { authorizedOpenShifts, clearStalePosShift, useOpenShifts } from '@/hooks/useShifts'
+import { processingShiftId, resolveLoadedPosShiftContext } from '@/lib/posShiftContext'
+import { useAuthStore } from '@/stores/authStore'
 import { useRecordPayment } from '@/hooks/useCustomers'
 import type { Customer } from '@/types/database'
 
@@ -53,8 +63,18 @@ export function RecordPaymentModal({
     new_balance_owed_cfa: number
   } | null>(null)
   const amountRef = useRef<HTMLInputElement>(null)
+  const inFlight = useRef(false)
 
   const { mutateAsync: recordPayment, isPending } = useRecordPayment()
+  const staff = useAuthStore((s) => s.staff)
+  const { data: openShifts, isLoading: openShiftsLoading } = useOpenShifts()
+  const shiftCtx = resolveLoadedPosShiftContext(
+    shiftId,
+    null,
+    authorizedOpenShifts(staff, openShifts),
+    openShiftsLoading,
+  )
+  const effectiveShiftId = processingShiftId(shiftId, shiftCtx)
 
   useEffect(() => {
     if (open) {
@@ -77,12 +97,13 @@ export function RecordPaymentModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (inFlight.current || isPending) return
 
     const amount = parseFloat(amountStr)
 
     // Client-side validation (server also validates; these are UX guards only)
     if (!amountStr || isNaN(amount) || amount <= 0) {
-      setAmountError('Enter a valid amount greater than zero.')
+      setAmountError(CUSTOMERS.paymentAmountError.fr)
       return
     }
     if (amount > customer.balance_owed_cfa) {
@@ -95,11 +116,12 @@ export function RecordPaymentModal({
     setAmountError('')
     setGeneralError('')
 
+    inFlight.current = true
     try {
       const result = await recordPayment({
         p_customer_id: customer.id,
         p_amount_cfa:  amount,
-        p_shift_id:    shiftId ?? null,
+        p_shift_id:    effectiveShiftId,
         p_note:        note.trim() || null,
       })
 
@@ -116,6 +138,8 @@ export function RecordPaymentModal({
       } else {
         setGeneralError(vhmErr.message)
       }
+    } finally {
+      inFlight.current = false
     }
   }
 
@@ -127,7 +151,7 @@ export function RecordPaymentModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Record Customer Payment"
+      title={<BiModalTitle {...CUSTOMERS.recordPaymentTitle} />}
       size="sm"
     >
       {successResult ? (
@@ -145,7 +169,7 @@ export function RecordPaymentModal({
               <span className="font-medium text-text-primary">{customer.name}</span>
             </div>
             <div className="flex justify-between text-text-secondary">
-              <span>New balance owed</span>
+              <span>{CUSTOMERS.newBalanceOwed.fr}</span>
               <span className={`font-semibold tabular-nums ${successResult.new_balance_owed_cfa > 0 ? 'text-warning-foreground' : 'text-success-foreground'}`}>
                 {formatCFA(successResult.new_balance_owed_cfa)}
               </span>
@@ -173,7 +197,7 @@ export function RecordPaymentModal({
               <p className="text-xs text-text-muted">{customer.phone}</p>
             )}
             <div className="flex items-baseline justify-between pt-1 border-t border-border">
-              <span className="text-xs text-text-secondary">Balance owed</span>
+              <span className="text-xs text-text-secondary">{CUSTOMERS.balanceOwedLabel.fr}</span>
               <span className="text-base font-bold text-danger tabular-nums">
                 {formatCFA(customer.balance_owed_cfa)}
               </span>
@@ -185,6 +209,14 @@ export function RecordPaymentModal({
             <div className="rounded-md bg-warning-bg border border-warning/20 px-3 py-2">
               <p className="text-xs text-warning-foreground">
                 This customer is inactive. Payments against their existing balance are still allowed.
+              </p>
+            </div>
+          )}
+
+          {!shiftCtx.hasValidShift && (
+            <div className="rounded-md bg-warning-bg border border-warning/20 px-3 py-2">
+              <p className="text-xs text-warning-foreground">
+                No valid shift selected. This payment can still be recorded and will not be attributed to a shift close.
               </p>
             </div>
           )}

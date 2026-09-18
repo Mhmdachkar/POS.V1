@@ -1,7 +1,20 @@
 /**
  * Vitest global setup — runs before every test file.
  */
+import { afterEach } from 'vitest'
 import '@testing-library/jest-dom'
+
+afterEach(() => {
+  vi.useRealTimers()
+})
+
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as typeof ResizeObserver
+}
 
 // ─── Mock Supabase client ────────────────────────────────────────
 // The Supabase client makes real network calls. We intercept it
@@ -24,7 +37,23 @@ vi.mock('@/lib/supabase', () => ({
     from:  vi.fn().mockReturnThis(),
     select: vi.fn().mockReturnThis(),
     eq:     vi.fn().mockReturnThis(),
+    order:  vi.fn().mockReturnThis(),
     single: vi.fn().mockResolvedValue({ data: null, error: null }),
     rpc:    vi.fn().mockResolvedValue({ data: null, error: null }),
+    storage: {
+      from: vi.fn(() => ({
+        upload: vi.fn().mockResolvedValue({ data: { path: 'photo.jpg' }, error: null }),
+        getPublicUrl: vi.fn().mockReturnValue({
+          data: { publicUrl: 'https://cdn.example.com/product-photos/photo.jpg' },
+        }),
+      })),
+    },
   },
 }))
+
+if (typeof URL.createObjectURL !== 'function') {
+  URL.createObjectURL = () => 'blob:mock-product-photo'
+}
+if (typeof URL.revokeObjectURL !== 'function') {
+  URL.revokeObjectURL = () => {}
+}

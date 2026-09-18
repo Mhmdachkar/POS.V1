@@ -6,6 +6,7 @@ import { StaffPage } from '@/pages/admin/StaffPage'
 import { StaffFormModal } from '@/pages/admin/components/StaffFormModal'
 import { StaffDetailDrawer } from '@/pages/admin/components/StaffDetailDrawer'
 import { ERROR_MESSAGES } from '@/lib/errors'
+import { messageForCodePlain } from '@/lib/bilingual/errors'
 import type { Staff } from '@/types/database'
 
 const staffRow: Staff = {
@@ -78,26 +79,28 @@ describe('StaffPage', () => {
 
   it('renders filters and the staff row', () => {
     wrap(<StaffPage />)
-    expect(screen.getByText('Staff')).toBeInTheDocument()
-    expect(screen.getAllByText('Active').length).toBeGreaterThan(0)
-    expect(screen.getByText('Inactive')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /équipe|staff/i })).toBeInTheDocument()
+    expect(screen.getAllByText(/actif|active/i).length).toBeGreaterThan(0)
+    expect(screen.getByText(/inactif|inactive/i)).toBeInTheDocument()
     expect(screen.getByText('Cashier Dakar')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /new staff/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /ajouter un membre|add staff/i })).toBeInTheDocument()
   })
 
   it('shows depot field for cashier and hides it for admin', async () => {
     const user = userEvent.setup()
     wrap(<StaffFormModal open onClose={() => undefined} />)
-    expect(screen.getByText('Depot')).toBeInTheDocument()
-    await user.selectOptions(screen.getByDisplayValue('Cashier'), 'admin')
-    expect(screen.queryByText('Depot')).not.toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: /dépôt|depot/i })).toBeInTheDocument()
+    await user.selectOptions(screen.getByRole('combobox', { name: /rôle|role/i }), 'admin')
+    expect(screen.queryByRole('combobox', { name: /^dépôt$|^depot$/i })).not.toBeInTheDocument()
   })
 
   it('surfaces last-admin, open-shift, and self-deactivate messages', async () => {
     const user = userEvent.setup()
     wrap(<StaffDetailDrawer staffId="s-cashier" onClose={() => undefined} />)
-    await user.click(screen.getByRole('button', { name: /deactivate staff/i }))
-    await user.click(screen.getByRole('button', { name: /^deactivate$/i }))
-    expect(await screen.findByText(ERROR_MESSAGES.LAST_ADMIN_REQUIRED)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /désactiver le membre|deactivate staff/i }))
+    await user.click(screen.getByRole('button', { name: /Deactivate|Désactiver/i }))
+    expect(
+      await screen.findByText(messageForCodePlain('LAST_ADMIN_REQUIRED'), { exact: false }),
+    ).toBeInTheDocument()
   })
 })

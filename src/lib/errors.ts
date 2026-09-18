@@ -6,6 +6,12 @@
  * The frontend maps codes → human-readable messages here.
  */
 
+import {
+  errorMessagesFrench,
+  messageForCodeBilingual,
+  messageForCodePlain,
+} from '@/lib/bilingual/errors'
+
 export type VhmErrorCode =
   | 'INSUFFICIENT_STOCK'
   | 'INVALID_PRICE'
@@ -63,66 +69,17 @@ export type VhmErrorCode =
   | 'UNIT_LEVEL_REQUIRED'
   | 'INVALID_CONVERSION'
   | 'INVALID_INPUT'
+  | 'DUPLICATE_TRANSFER_LINE'
   | 'UNKNOWN'
 
-export const ERROR_MESSAGES: Record<VhmErrorCode, string> = {
-  INSUFFICIENT_STOCK: 'Not enough stock available for this product.',
-  INVALID_PRICE: 'Product has an invalid price configuration. Contact an administrator.',
-  INVALID_UNIT: 'Product unit configuration is invalid. Contact an administrator.',
-  INVALID_CART: 'Cart total must be greater than zero.',
-  INVALID_DISCOUNT: 'Invalid discount value. Check the discount type and amount.',
-  INVALID_CURRENCY: 'Invalid display currency. Use CFA or USD.',
-  PRODUCT_NOT_IN_DEPOT: 'Product not found in this depot.',
-  PRODUCT_INACTIVE: 'This product is no longer available.',
-  DEPOT_INACTIVE: 'This depot is currently inactive.',
-  CUSTOMER_REQUIRED: 'A customer must be selected for credit sales.',
-  CUSTOMER_NOT_FOUND: 'Customer not found.',
-  RETURN_QTY_EXCEEDED: 'Return quantity exceeds the remaining returnable amount.',
-  SALE_FULLY_RETURNED: 'This sale has already been fully returned.',
-  SALE_VOIDED: 'This sale has been voided and cannot be processed further.',
-  SALE_NOT_FOUND: 'Sale not found.',
-  PAYMENT_EXCEEDS_BALANCE: 'Payment amount exceeds the customer\'s outstanding balance.',
-  TRANSFER_ALREADY_COMPLETED: 'This transfer has already been completed.',
-  TRANSFER_CANCELLED: 'This transfer was cancelled.',
-  TRANSFER_NOT_FOUND: 'Transfer not found.',
-  UNAUTHORIZED: 'You don\'t have permission to perform this action.',
-  INVALID_DEPOT: 'Invalid depot or unauthorized depot access.',
-  SHIFT_ALREADY_CLOSED: 'This shift is already closed.',
-  SHIFT_NOT_FOUND: 'Shift not found.',
-  SHIFT_NOT_OPEN: 'No open shift found. Please open a shift before proceeding.',
-  CONCURRENT_UPDATE: 'This record was modified by another operation. Please try again.',
-  RECEIPT_GENERATION_FAILED: 'Unable to generate receipt number. Please try again.',
-  INVALID_ADJUSTMENT_SIGN: 'Damage, loss, and expiry adjustments must reduce stock (negative quantity).',
-  ADJUSTMENT_NEGATIVE_RESULT: 'This adjustment would result in negative stock.',
-  INVALID_QUANTITY: 'Please enter a valid quantity greater than zero.',
-  INVALID_AMOUNT: 'Please enter a valid amount greater than zero.',
-  CART_EMPTY: 'Your cart is empty. Add products before checking out.',
-  PRODUCT_NOT_FOUND: 'Product not found.',
-  UNIT_NOT_FOUND: 'Unit configuration not found for this product.',
-  CATEGORY_NAME_CONFLICT: 'A category with this name already exists in the same parent.',
-  DUPLICATE_PRODUCT_NAME: 'A product with this name already exists in this depot.',
-  STAFF_ALREADY_DEACTIVATED: 'This staff account is already deactivated.',
-  CANNOT_DEACTIVATE_SELF: 'You cannot deactivate your own account.',
-  LAST_ADMIN_REQUIRED: 'The last active admin cannot be deactivated or demoted.',
-  STAFF_HAS_OPEN_SHIFT: 'This staff member has an open shift. Close the shift before deactivating.',
-  AUTH_SYNC_FAILED: 'The account was updated but login access could not be synced. Retry from the current staff status.',
-  STAFF_ROLE_SLOT_TAKEN: 'This depot already has an active staff member in that role.',
-  USERNAME_TAKEN: 'That username is already taken.',
-  DEPOT_HAS_ACTIVE_STAFF: 'This depot still has active staff assigned.',
-  DEPOT_HAS_OPEN_SHIFTS: 'This depot has open shifts. Close them before deactivating.',
-  DEPOT_HAS_PENDING_TRANSFERS: 'This depot has pending transfers.',
-  DEPOT_CODE_CONFLICT: 'A depot with this code already exists.',
-  CATEGORY_HAS_ACTIVE_CHILDREN: 'This category has active child categories.',
-  CATEGORY_HAS_ACTIVE_PRODUCTS: 'This category still has active products.',
-  CATEGORY_INACTIVE: 'This category is inactive.',
-  PRODUCT_IN_PENDING_TRANSFER: 'This product is on a pending transfer.',
-  INVALID_PHOTO_URL: 'Product photo must be an HTTPS URL.',
-  INVALID_LOGO_URL: 'Logo must be an HTTPS URL.',
-  INVALID_EXCHANGE_RATE: 'Enter a valid CFA per USD rate greater than zero.',
-  UNIT_LEVEL_REQUIRED: 'Each product needs a base unit (level 0).',
-  INVALID_CONVERSION: 'Unit conversion must be a positive number. The base unit conversion must be 1.',
-  INVALID_INPUT: 'Invalid input. Please check your entries and try again.',
-  UNKNOWN: 'An unexpected error occurred. Please try again.',
+/** French UI messages (same as messageForCodePlain without details). */
+export const ERROR_MESSAGES: Record<VhmErrorCode, string> = errorMessagesFrench()
+
+function messageForCode(
+  code: VhmErrorCode,
+  details?: Record<string, unknown>,
+): string {
+  return messageForCodeBilingual(code, details).fr
 }
 
 export interface VhmError {
@@ -153,7 +110,7 @@ export interface VhmError {
  *    Falls back to UNKNOWN.
  */
 export function parseError(raw: unknown): VhmError {
-  if (!raw) return { code: 'UNKNOWN', message: ERROR_MESSAGES.UNKNOWN }
+  if (!raw) return { code: 'UNKNOWN', message: messageForCodePlain('UNKNOWN') }
 
   if (raw && typeof raw === 'object') {
     const obj = raw as Record<string, unknown>
@@ -165,13 +122,14 @@ export function parseError(raw: unknown): VhmError {
       typeof obj.message === 'string'
     ) {
       const code = obj.code as VhmErrorCode
+      const details =
+        obj.details && typeof obj.details === 'object'
+          ? (obj.details as Record<string, unknown>)
+          : undefined
       return {
         code,
-        message: ERROR_MESSAGES[code],
-        details:
-          obj.details && typeof obj.details === 'object'
-            ? (obj.details as Record<string, unknown>)
-            : undefined,
+        message: messageForCodePlain(code, details),
+        details,
       }
     }
 
@@ -183,10 +141,11 @@ export function parseError(raw: unknown): VhmError {
         const parsed = JSON.parse(message) as Record<string, unknown>
         if (parsed.code && typeof parsed.code === 'string') {
           const code = parsed.code as VhmErrorCode
+          const details = parsed['details'] as Record<string, unknown> | undefined
           return {
             code,
-            message: ERROR_MESSAGES[code] ?? message,
-            details: parsed['details'] as Record<string, unknown> | undefined,
+            message: code in ERROR_MESSAGES ? messageForCodePlain(code, details) : message,
+            details,
           }
         }
       } catch {
@@ -198,15 +157,19 @@ export function parseError(raw: unknown): VhmError {
     const err = obj['error'] as Record<string, unknown> | undefined
     if (err?.code && typeof err.code === 'string') {
       const code = err.code as VhmErrorCode
+      const details = err['details'] as Record<string, unknown> | undefined
       return {
         code,
-        message: ERROR_MESSAGES[code] ?? String(err.message ?? ERROR_MESSAGES.UNKNOWN),
-        details: err['details'] as Record<string, unknown> | undefined,
+        message:
+          code in ERROR_MESSAGES
+            ? messageForCodePlain(code, details)
+            : String(err.message ?? messageForCodePlain('UNKNOWN')),
+        details,
       }
     }
   }
 
-  return { code: 'UNKNOWN', message: ERROR_MESSAGES.UNKNOWN }
+  return { code: 'UNKNOWN', message: messageForCodePlain('UNKNOWN') }
 }
 
 /**
@@ -218,15 +181,20 @@ export function parseEdgeFunctionError(raw: unknown): VhmError {
 }
 
 /** Get a user-friendly message for a known error code. */
-export function getErrorMessage(code: VhmErrorCode): string {
-  return ERROR_MESSAGES[code] ?? ERROR_MESSAGES.UNKNOWN
+export function getErrorMessage(
+  code: VhmErrorCode,
+  details?: Record<string, unknown>,
+): string {
+  return messageForCode(code, details)
 }
 
 /** Build a VhmError with optional stock detail for display. */
 export function insufficientStockError(productName: string, available: number): VhmError {
+  const fr = `Stock insuffisant pour « ${productName} ». Disponible : ${available} pcs.`
+  const en = `Not enough stock for "${productName}". Available: ${available} pcs.`
   return {
     code: 'INSUFFICIENT_STOCK',
-    message: `Not enough stock for "${productName}". Available: ${available} pcs.`,
-    details: { productName, available },
+    message: `${fr}\n${en}`,
+    details: { productName, available, available_pieces: available },
   }
 }

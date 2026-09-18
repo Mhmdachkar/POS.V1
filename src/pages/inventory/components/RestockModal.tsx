@@ -7,9 +7,10 @@
  */
 
 import { useEffect } from 'react'
+import { toastSuccessBi } from '@/lib/bilingual/toast'
+import { INVENTORY } from '@/lib/bilingual/inventory'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { toast } from 'sonner'
 import { Modal } from '@/components/ui/Modal'
 import { Button, LoadingButton } from '@/components/ui'
 import { formatPieces } from '@/lib/formatters'
@@ -73,7 +74,7 @@ export function RestockModal({ open, onClose, product }: RestockModalProps) {
         note: data.note,
       })
       await restock(params)
-      toast.success('Stock updated')
+      toastSuccessBi(INVENTORY.stockUpdated)
       onClose()
     } catch (err) {
       setError('root', { message: parseError(err).message })

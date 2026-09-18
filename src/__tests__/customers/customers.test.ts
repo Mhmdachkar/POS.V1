@@ -22,6 +22,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { parseError } from '@/lib/errors'
 import type { VhmErrorCode } from '@/lib/errors'
 import type { CreateCustomerParams, UpdateCustomerParams } from '@/types/rpc'
+import { customerKeys } from '@/hooks/useCustomers'
 
 // ─── parseError — INVALID_INPUT (Phase 6 addition) ────────────────
 
@@ -35,7 +36,7 @@ describe('parseError — INVALID_INPUT', () => {
     }
     const err = parseError(raw)
     expect(err.code).toBe('INVALID_INPUT')
-    expect(err.message).toContain('Invalid input')
+    expect(err.message).toContain('Saisie invalide')
     expect(err.details?.field).toBe('name')
   })
 
@@ -305,5 +306,58 @@ describe('Error codes', () => {
     expect(err.code).toBe('INVALID_INPUT')
     expect(typeof err.message).toBe('string')
     expect(err.message.length).toBeGreaterThan(0)
+  })
+})
+
+// ─── Phase 13E-B: list query key includes search + filter ─────────
+
+describe('customerKeys.list (13E-B)', () => {
+  it('includes page, search, and filter so caches do not collide', () => {
+    expect(customerKeys.list({ page: 0, search: '', filter: 'all' })).toEqual([
+      'customers',
+      'list',
+      { page: 0, search: '', filter: 'all' },
+    ])
+    expect(customerKeys.list({ page: 0, search: 'john', filter: 'all' })).toEqual([
+      'customers',
+      'list',
+      { page: 0, search: 'john', filter: 'all' },
+    ])
+    expect(customerKeys.list({ page: 0, search: '', filter: 'active' })).toEqual([
+      'customers',
+      'list',
+      { page: 0, search: '', filter: 'active' },
+    ])
+    expect(customerKeys.list({ page: 0, search: '', filter: 'with_balance' })).toEqual([
+      'customers',
+      'list',
+      { page: 0, search: '', filter: 'with_balance' },
+    ])
+
+    const a = JSON.stringify(customerKeys.list({ page: 0, search: '', filter: 'all' }))
+    const b = JSON.stringify(customerKeys.list({ page: 0, search: 'john', filter: 'all' }))
+    const c = JSON.stringify(customerKeys.list({ page: 0, search: '', filter: 'active' }))
+    expect(a).not.toBe(b)
+    expect(a).not.toBe(c)
+    expect(b).not.toBe(c)
+  })
+})
+
+describe('customerKeys.activity (15E)', () => {
+  it('scopes activity under customers so sale/payment invalidation refreshes it', () => {
+    expect(customerKeys.activity('cust-1', { type: 'all', page: 0, pageSize: 5 })).toEqual([
+      'customers',
+      'activity',
+      'cust-1',
+      { type: 'all', page: 0, pageSize: 5 },
+    ])
+    expect(customerKeys.activitySummary('cust-1')).toEqual(['customers', 'activity-summary', 'cust-1'])
+    expect(customerKeys.activity('cust-1', { type: 'sale', page: 0, pageSize: 25 })[0]).toBe('customers')
+    expect(customerKeys.activity('cust-1', { type: 'all', page: 0, pageSize: 5 })).not.toEqual(
+      customerKeys.activity('cust-1', { type: 'all', page: 1, pageSize: 5 }),
+    )
+    expect(customerKeys.activity('cust-1', { type: 'all', page: 0, pageSize: 5 })).not.toEqual(
+      customerKeys.activity('cust-2', { type: 'all', page: 0, pageSize: 5 }),
+    )
   })
 })

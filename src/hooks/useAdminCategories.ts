@@ -49,6 +49,66 @@ export function flattenTree(nodes: CategoryTreeNode[], depth = 0): Array<Categor
   ])
 }
 
+export function findCategoryPath(
+  nodes: CategoryTreeNode[],
+  id: string,
+  trail: CategoryTreeNode[] = [],
+): CategoryTreeNode[] | null {
+  for (const node of nodes) {
+    const next = [...trail, node]
+    if (node.id === id) return next
+    const found = findCategoryPath(node.children, id, next)
+    if (found) return found
+  }
+  return null
+}
+
+export interface CategoryProductRow {
+  id: string
+  name: string
+  photo_url: string
+  is_active: boolean
+  current_stock_pieces: number
+  depot_id: string
+  depot_name: string
+}
+
+export async function fetchProductsForCategory(categoryId: string): Promise<CategoryProductRow[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select('id, name, photo_url, is_active, current_stock_pieces, depot_id, depots(name)')
+    .eq('category_id', categoryId)
+    .order('name')
+  if (error) throw error
+
+  return ((data ?? []) as Array<{
+    id: string
+    name: string
+    photo_url: string
+    is_active: boolean
+    current_stock_pieces: number
+    depot_id: string
+    depots: { name: string } | { name: string }[] | null
+  }>).map((row) => ({
+    id: row.id,
+    name: row.name,
+    photo_url: row.photo_url,
+    is_active: row.is_active,
+    current_stock_pieces: row.current_stock_pieces,
+    depot_id: row.depot_id,
+    depot_name: Array.isArray(row.depots) ? (row.depots[0]?.name ?? '') : (row.depots?.name ?? ''),
+  }))
+}
+
+export function useCategoryProducts(categoryId: string | null) {
+  return useQuery({
+    queryKey: [...adminCategoryKeys.all, 'products', categoryId] as const,
+    queryFn: () => fetchProductsForCategory(categoryId!),
+    enabled: !!categoryId,
+    staleTime: 15_000,
+  })
+}
+
 export function useAdminCategoryTree() {
   return useQuery({
     queryKey: adminCategoryKeys.tree,

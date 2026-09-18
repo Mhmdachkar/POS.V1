@@ -11,50 +11,88 @@
  * Roles:
  *   - cashier: sees their depot's sales
  *   - admin: sees selected depot's sales (or all if no depot selected)
+ *
+ * Phase 13E-A: PageHeader + FilterBar + MoneyDisplay on list totals.
+ * Custom sticky CSS-grid list retained (not DataTable).
  */
 
 import { useEffect, useState } from 'react'
-import { Receipt, Search } from 'lucide-react'
+import { BiEmptyTitle } from '@/lib/bilingual/ui'
+import { SALES } from '@/lib/bilingual/sales'
+import { COMMON } from '@/lib/bilingual/common'
+import { POS } from '@/lib/bilingual/pos'
+import { BilingualText } from '@/components/ui/BilingualText'
+import { Receipt } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import { SaleStatusBadge, Skeleton, EmptyState } from '@/components/ui'
-import { formatCFA, formatDateTime } from '@/lib/formatters'
+import {
+  EmptyState,
+  FilterBar,
+  MoneyDisplay,
+  PageHeader,
+  SaleStatusBadge,
+  Skeleton,
+} from '@/components/ui'
+import { formatDateTime } from '@/lib/formatters'
 import { useSalesList } from '@/hooks/useSales'
 import { useDepotOptions } from '@/hooks/useInventory'
 import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
-import { usePOSStore } from '@/stores/posStore'
 import { SaleDetailDrawer } from './components/SaleDetailDrawer'
 import type { SaleStatus } from '@/types/database'
+import type { FulfillmentStatus } from '@/lib/printPayload'
 
 /** Receipt-number search debounce. Do not query on every keystroke. */
 export const SALES_SEARCH_DEBOUNCE_MS = 300
 
 // ─────────────────────────────────────────────────────────────────
-// Status filter
+// Status filter (UI chips use string "all"; hook still receives null)
 // ─────────────────────────────────────────────────────────────────
 
 const STATUS_OPTIONS: Array<{ value: SaleStatus | null; label: string }> = [
-  { value: null,               label: 'All' },
-  { value: 'completed',        label: 'Completed' },
+  { value: null,                 label: 'All' },
+  { value: 'completed',          label: 'Completed' },
   { value: 'partially_returned', label: 'Partially Returned' },
-  { value: 'returned',         label: 'Returned' },
-  { value: 'voided',           label: 'Voided' },
+  { value: 'returned',           label: 'Returned' },
+  { value: 'voided',             label: 'Voided' },
 ]
+
+const STATUS_CHIPS = STATUS_OPTIONS.map((opt) => ({
+  value: opt.value ?? 'all',
+  label: opt.label,
+}))
+
+/** Shared tracks so header + each row grid align (avoid per-row `auto` sizing). */
+const SALES_GRID_WITH_DEPOT =
+  'grid-cols-[7.25rem_7.25rem_minmax(4.5rem,0.85fr)_minmax(5.25rem,0.95fr)_minmax(5rem,0.9fr)_5.25rem_minmax(7.5rem,8.75rem)]'
+const SALES_GRID_NO_DEPOT =
+  'grid-cols-[7.25rem_7.25rem_minmax(5.25rem,1fr)_minmax(5.25rem,1fr)_5.25rem_minmax(7.5rem,9rem)]'
+
 
 // ─────────────────────────────────────────────────────────────────
 // Table skeleton
 // ─────────────────────────────────────────────────────────────────
 
-function TableSkeleton() {
+function TableSkeleton({
+  gridCols,
+  showDepotColumn,
+}: {
+  gridCols: string
+  showDepotColumn: boolean
+}) {
   return (
     <div className="space-y-px">
       {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-4 px-4 py-3 bg-surface border-b border-border">
-          <Skeleton className="h-4 w-28" />
-          <Skeleton className="h-5 w-24 rounded-full" />
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-4 w-20 ml-auto" />
-          <Skeleton className="h-4 w-28" />
+        <div
+          key={i}
+          className={cn('grid gap-4 px-4 py-3 bg-surface border-b border-border items-center', gridCols)}
+        >
+          <Skeleton className="h-4 w-full max-w-[7rem]" />
+          <Skeleton className="h-5 w-full max-w-[6.5rem] rounded-full" />
+          {showDepotColumn && <Skeleton className="h-4 w-full" />}
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full max-w-[5rem] justify-self-end" />
+          <Skeleton className="h-4 w-full max-w-[8rem] justify-self-end" />
         </div>
       ))}
     </div>
@@ -65,22 +103,36 @@ function TableSkeleton() {
 // SalesPage (main export)
 // ─────────────────────────────────────────────────────────────────
 
+const FULFILLMENT_CHIPS: Array<{ value: FulfillmentStatus | 'all'; label: string }> = [
+  { value: 'all', label: SALES.allFulfillment.fr },
+  { value: 'pending', label: SALES.pendingRelease.fr },
+  { value: 'released', label: SALES.released.fr },
+]
+
 export function SalesPage() {
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<SaleStatus | null>(null)
+  const [fulfillmentFilter, setFulfillmentFilter] = useState<FulfillmentStatus | null>(null)
   const [page, setPage] = useState(0)
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null)
 
   const staff     = useAuthStore((s) => s.staff)
   const depotId   = useDepotStore((s) => s.currentDepotId)
-  const shiftId   = usePOSStore((s) => s.shiftId)
   const { data: depots } = useDepotOptions()
 
+  const isDepotStaff = staff?.role === 'depot_staff'
   const effectiveDepotId =
-    staff?.role === 'cashier' ? staff.depot_id : depotId
+    staff?.role === 'cashier' || isDepotStaff ? staff.depot_id : depotId
 
   const showDepotColumn = staff?.role === 'admin' && depotId === null
+
+  useEffect(() => {
+    if (isDepotStaff && fulfillmentFilter === null) {
+      setFulfillmentFilter('pending')
+    }
+  }, [isDepotStaff, fulfillmentFilter])
+  const gridCols = showDepotColumn ? SALES_GRID_WITH_DEPOT : SALES_GRID_NO_DEPOT
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), SALES_SEARCH_DEBOUNCE_MS)
@@ -94,6 +146,7 @@ export function SalesPage() {
   const { data, isLoading, isError } = useSalesList({
     depotId: effectiveDepotId,
     status:  statusFilter,
+    fulfillmentStatus: fulfillmentFilter,
     search:  debouncedSearch,
     page,
     pageSize: 30,
@@ -107,8 +160,8 @@ export function SalesPage() {
   const pageSize = 30
   const totalPages = Math.ceil(totalCount / pageSize)
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearch(e.target.value)
+  const handleSearchChange = (value: string) => {
+    setSearch(value)
     setPage(0)
   }
 
@@ -117,97 +170,90 @@ export function SalesPage() {
     setPage(0)
   }
 
+  const handleChipChange = (value: string) => {
+    handleStatusChange(value === 'all' ? null : (value as SaleStatus))
+  }
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Header */}
-      <div className="px-6 py-4 border-b border-border bg-surface flex-shrink-0">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-lg font-bold text-text-primary">Sales History</h1>
-            <p className="text-sm text-text-secondary mt-0.5">
-              {totalCount > 0
-                ? `${totalCount} sale${totalCount !== 1 ? 's' : ''}`
-                : 'All sales'
-              }
-            </p>
+      {/* Single header band: PageHeader + FilterBar */}
+      <div className="flex-shrink-0 border-b border-border bg-surface">
+        <PageHeader
+          title={isDepotStaff ? 'Sales / orders' : 'Sales History'}
+          className="border-b-0"
+        />
+        <div className="px-6 pb-4">
+          <FilterBar
+            search={search}
+            onSearchChange={handleSearchChange}
+            searchPlaceholder={SALES.searchReceiptPlaceholder.fr}
+            chips={STATUS_CHIPS}
+            activeChip={statusFilter ?? 'all'}
+            onChipChange={handleChipChange}
+            count={totalCount}
+          />
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {(isDepotStaff || staff?.role === 'admin') &&
+              FULFILLMENT_CHIPS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    setFulfillmentFilter(opt.value === 'all' ? null : opt.value)
+                    setPage(0)
+                  }}
+                  className={cn(
+                    'px-3 h-7 rounded-full text-xs font-medium flex-shrink-0 transition-colors',
+                    (fulfillmentFilter ?? 'all') === opt.value ||
+                      (opt.value === 'all' && fulfillmentFilter === null)
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-surface-muted text-text-secondary border border-border hover:bg-surface',
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
           </div>
-
-          {/* Search */}
-          <div className="relative w-56">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
-            <input
-              type="search"
-              value={search}
-              onChange={handleSearchChange}
-              placeholder="Receipt number…"
-              className={cn(
-                'w-full h-9 pl-9 pr-3 rounded-md border border-border bg-surface',
-                'text-sm text-text-primary placeholder:text-text-muted',
-                'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary',
-              )}
-            />
-          </div>
-        </div>
-
-        {/* Status filters */}
-        <div className="flex gap-1.5 mt-3 overflow-x-auto">
-          {STATUS_OPTIONS.map((opt) => (
-            <button
-              key={String(opt.value)}
-              type="button"
-              onClick={() => handleStatusChange(opt.value)}
-              className={cn(
-                'px-3 h-7 rounded-full text-xs font-medium flex-shrink-0 transition-colors',
-                statusFilter === opt.value
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-surface-muted text-text-secondary border border-border hover:bg-surface',
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
         </div>
       </div>
 
-      {/* Table */}
-      <div className="flex-1 overflow-auto">
+      {/* Table — horizontal scroll stays inside this pane, not the page */}
+      <div className="flex-1 min-w-0 overflow-x-auto overflow-y-auto">
         {isLoading ? (
-          <TableSkeleton />
+          <TableSkeleton gridCols={gridCols} showDepotColumn={showDepotColumn} />
         ) : isError ? (
           <div className="p-8">
             <EmptyState
               icon={<Receipt className="h-8 w-8" />}
-              title="Failed to load sales"
-              description="Check your connection and try again."
+              title={<BiEmptyTitle {...SALES.failedToLoad} />}
+              description={COMMON.checkConnection.fr}
             />
           </div>
         ) : sales.length === 0 ? (
           <div className="p-8">
             <EmptyState
               icon={<Receipt className="h-8 w-8" />}
-              title="No sales found"
+              title={<BiEmptyTitle {...SALES.noSales} />}
               description={
                 search || statusFilter
-                  ? 'No sales match your current filters.'
-                  : 'No sales have been recorded yet.'
+                  ? SALES.noSalesMatch.fr
+                  : SALES.noSalesYet.fr
               }
             />
           </div>
         ) : (
           <>
             {/* Table header */}
-            <div className="sticky top-0 bg-surface-muted border-b border-border">
-              <div className={cn(
-                'grid gap-4 px-4 py-2',
-                showDepotColumn
-                  ? 'grid-cols-[1fr_auto_auto_auto_auto_auto]'
-                  : 'grid-cols-[1fr_auto_auto_auto_auto]',
-              )}>
+            <div className="sticky top-0 bg-surface-muted border-b border-border z-[1]">
+              <div className={cn('grid gap-4 px-4 py-2 items-center', gridCols)}>
                 <span className="text-xs font-semibold text-text-secondary uppercase">Receipt</span>
                 <span className="text-xs font-semibold text-text-secondary uppercase">Status</span>
                 {showDepotColumn && (
                   <span className="text-xs font-semibold text-text-secondary uppercase">Depot</span>
                 )}
+                <span className="text-xs font-semibold text-text-secondary uppercase">
+                  <BilingualText {...SALES.soldBy} variant="tableHeader" />
+                </span>
                 <span className="text-xs font-semibold text-text-secondary uppercase">Customer</span>
                 <span className="text-xs font-semibold text-text-secondary uppercase text-right">Total</span>
                 <span className="text-xs font-semibold text-text-secondary uppercase text-right">Date</span>
@@ -221,31 +267,44 @@ export function SalesPage() {
                 type="button"
                 onClick={() => setSelectedSaleId(sale.id)}
                 className={cn(
-                  'w-full text-left grid gap-4 px-4 py-3',
-                  showDepotColumn
-                    ? 'grid-cols-[1fr_auto_auto_auto_auto_auto]'
-                    : 'grid-cols-[1fr_auto_auto_auto_auto]',
+                  'w-full text-left grid gap-4 px-4 py-3 items-center',
+                  gridCols,
                   'border-b border-border hover:bg-surface-muted transition-colors',
                   'focus:outline-none focus:bg-primary-subtle',
                   selectedSaleId === sale.id && 'bg-primary-subtle',
                 )}
               >
-                <span className="text-sm font-mono font-medium text-text-primary truncate">
+                <span className="text-sm font-mono font-semibold text-text-primary truncate min-w-0">
                   {sale.receipt_number}
                 </span>
-                <span>
+                <span className="min-w-0">
                   <SaleStatusBadge status={sale.status} />
                 </span>
                 {showDepotColumn && (
-                  <span className="text-sm text-text-secondary truncate max-w-36">
+                  <span className="text-sm text-text-secondary truncate min-w-0">
                     {depotName(sale.depot_id)}
                   </span>
                 )}
-                <span className="text-sm text-text-secondary truncate max-w-36">
-                  {sale.customer_name ?? <span className="text-text-muted italic">Walk-in</span>}
+                <span className="text-sm text-text-secondary truncate min-w-0 inline-flex items-center gap-1.5">
+                  <span className="truncate">{sale.cashier_name ?? '—'}</span>
+                  {sale.cashier_role === 'admin' ? (
+                    <span className="flex-shrink-0 text-[10px] font-medium text-primary bg-primary/10 px-1 py-0.5 rounded">
+                      <BilingualText {...SALES.sellerAdmin} variant="caption" layout="inline" />
+                    </span>
+                  ) : sale.cashier_role === 'cashier' ? (
+                    <span className="flex-shrink-0 text-[10px] font-medium text-text-secondary bg-surface-muted px-1 py-0.5 rounded">
+                      <BilingualText {...SALES.sellerCashier} variant="caption" layout="inline" />
+                    </span>
+                  ) : null}
                 </span>
-                <span className="text-sm font-semibold text-text-primary tabular-nums text-right">
-                  {formatCFA(sale.total_cfa)}
+                <span className="text-sm text-text-secondary truncate min-w-0">
+                  {sale.customer_name ?? <span className="text-text-muted italic">{POS.walkIn.fr}</span>}
+                </span>
+                <span className="text-right">
+                  <MoneyDisplay
+                    amount={sale.admin_override_total_cfa ?? sale.total_cfa}
+                    size="small"
+                  />
                 </span>
                 <span className="text-sm text-text-secondary text-right whitespace-nowrap">
                   {formatDateTime(sale.created_at)}
@@ -286,7 +345,7 @@ export function SalesPage() {
       {/* Sale detail drawer */}
       <SaleDetailDrawer
         saleId={selectedSaleId}
-        shiftId={shiftId}
+        shiftId={null}
         onClose={() => setSelectedSaleId(null)}
       />
     </div>

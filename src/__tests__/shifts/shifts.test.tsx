@@ -4,7 +4,6 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import {
@@ -22,7 +21,8 @@ import {
 import { ShiftsPage } from '@/pages/shifts/ShiftsPage'
 import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
-import { usePOSStore } from '@/stores/posStore'
+import { formatCFA } from '@/lib/formatters'
+import { COMMON } from '@/lib/bilingual/common'
 import type { Staff } from '@/types/database'
 
 vi.mock('@/hooks/useShifts', async (importOriginal) => {
@@ -247,40 +247,60 @@ describe('ShiftsPage', () => {
   beforeEach(() => {
     useAuthStore.setState({ staff: adminStaff(), session: null, isLoading: false })
     useDepotStore.setState({ currentDepotId: null })
-    usePOSStore.setState({ shiftId: null })
     const { builder } = createFilterAwareFrom(buildCatalog())
     vi.mocked(supabase.from).mockReturnValue(builder as never)
   })
 
-  it('renders list, status pills, and Open Shift for admin', async () => {
+  it('renders historical list and status pills without Open Shift or Select for POS', async () => {
     renderShifts()
-    expect(await screen.findByRole('heading', { name: 'Shifts' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Open Shift' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Open' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Closed' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /Shifts|Services/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Open Shift|Ouvrir un service/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Select for POS|Sélectionner pour la caisse/i })).not.toBeInTheDocument()
+    expect(screen.queryByText('Current')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Tout \/ All|All/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Ouvert \/ Open|Open/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Fermé \/ Closed|Closed/i })).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('Search shifts…')).not.toBeInTheDocument()
+  })
+
+  it('shows FilterBar count from totalCount', async () => {
+    renderShifts()
+    expect(await screen.findByRole('heading', { name: /Shifts|Services/i })).toBeInTheDocument()
+    expect(await screen.findByText('40')).toBeInTheDocument()
   })
 
   it('shows depot column for admin All Depots and hides it for cashier', async () => {
     renderShifts()
-    expect(await screen.findByText('Depot')).toBeInTheDocument()
+    expect(await screen.findByText('Dépôt')).toBeInTheDocument()
 
     useAuthStore.setState({ staff: cashierStaff(), session: null, isLoading: false })
     renderShifts()
-    expect(screen.getAllByText('Cashier').length).toBeGreaterThan(0)
+    expect((await screen.findAllByText(COMMON.cashier.fr)).length).toBeGreaterThan(0)
   })
 
-  it('does not auto-select a current shift when several are open', async () => {
+  it('does not offer Select for POS on open shifts', async () => {
     renderShifts()
-    await screen.findByRole('heading', { name: 'Shifts' })
-    expect(usePOSStore.getState().shiftId).toBeNull()
+    await screen.findByRole('heading', { name: /Shifts|Services/i })
+    await screen.findAllByText('Cashier Dakar')
+    expect(screen.queryByRole('button', { name: /Select for POS|Sélectionner pour la caisse/i })).not.toBeInTheDocument()
     expect(screen.queryByText('Current')).not.toBeInTheDocument()
   })
 
-  it('binds shiftId only after Select for POS', async () => {
-    const user = userEvent.setup()
+  it('uses MoneyDisplay for float amounts', async () => {
     renderShifts()
-    const buttons = await screen.findAllByText('Select for POS')
-    await user.click(buttons[0])
-    expect(usePOSStore.getState().shiftId).toBeTruthy()
+    await screen.findByRole('heading', { name: /Shifts|Services/i })
+    await screen.findAllByText('Cashier Dakar')
+    const floatLabel = formatCFA(5000)
+    const node = screen.getAllByText((_, el) =>
+      el?.tagName === 'SPAN' && el.textContent === floatLabel,
+    ).find((el) => el.className.includes('financial-value'))
+    expect(node).toBeTruthy()
+    expect(node).toHaveClass('text-sm', 'financial-value')
+  })
+
+  it('shows View for open and closed shifts', async () => {
+    renderShifts()
+    expect((await screen.findAllByRole('button', { name: /View|Voir/i })).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('button', { name: /Select for POS|Sélectionner pour la caisse/i })).not.toBeInTheDocument()
   })
 })

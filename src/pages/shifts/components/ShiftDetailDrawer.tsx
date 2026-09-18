@@ -1,25 +1,36 @@
 /**
- * ShiftDetailDrawer — identity + cash totals for one shift.
+ * ShiftDetailDrawer — cash control + identity for one shift.
  *
  * Open shifts show a live estimated running total and Close when authorized.
  * Closed shifts show frozen expected / actual / discrepancy.
+ *
+ * Hierarchy: cash summary → expected/actual → discrepancy → context → actions.
+ * No edit / handover / settlement entity — those are not in the shift model.
  */
 
-import { useState } from 'react'
-import { Button, Drawer, ShiftStatusBadge, Skeleton } from '@/components/ui'
+import { useState, type ReactNode } from 'react'
+import { SHIFT_COPY } from '@/lib/bilingual/shift'
+import { COMMON } from '@/lib/bilingual/common'
+import { BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
+import { DoorClosed } from 'lucide-react'
+import { Button, Drawer, MoneyDisplay, ShiftStatusBadge, Skeleton } from '@/components/ui'
 import { formatCFA, formatDateTime } from '@/lib/formatters'
 import { cn } from '@/lib/cn'
 import {
   canCloseShift,
-  canSelectShiftForPos,
   estimateExpectedCash,
   useShiftDetail,
 } from '@/hooks/useShifts'
+import { useUnshiftedSalesForShiftWindow } from '@/hooks/useSales'
+import {
+  formatShiftTimeRange,
+  UNSHIFTED_OPEN_PERIOD_NOTE,
+  UNSHIFTED_SHIFT_WINDOW_NOTE,
+} from '@/lib/shiftAttribution'
 import { useAuthStore } from '@/stores/authStore'
-import { usePOSStore } from '@/stores/posStore'
 import { CloseShiftModal } from './CloseShiftModal'
 
-function SectionHeader({ title }: { title: string }) {
+function SectionHeader({ title }: { title: ReactNode }) {
   return (
     <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-2 mt-4 first:mt-0">
       {title}
@@ -27,25 +38,43 @@ function SectionHeader({ title }: { title: string }) {
   )
 }
 
+function CashRow({
+  label,
+  value,
+  strong,
+}: {
+  label: string
+  value: React.ReactNode
+  strong?: boolean
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-2">
+      <span
+        className={cn(
+          'text-sm flex-shrink-0',
+          strong ? 'font-semibold text-text-secondary uppercase tracking-wide' : 'text-text-secondary',
+        )}
+      >
+        {label}
+      </span>
+      <span className={cn('text-right', strong && 'font-semibold')}>{value}</span>
+    </div>
+  )
+}
+
 function DetailRow({
   label,
   value,
   mono,
-  danger,
 }: {
   label: string
   value: React.ReactNode
   mono?: boolean
-  danger?: boolean
 }) {
   return (
     <div className="flex items-start justify-between gap-4 py-1.5 border-b border-border last:border-0">
       <span className="text-sm text-text-secondary flex-shrink-0">{label}</span>
-      <span className={cn(
-        'text-sm text-right text-text-primary',
-        mono && 'font-mono',
-        danger && 'text-danger font-semibold',
-      )}>
+      <span className={cn('text-sm text-right text-text-primary font-medium', mono && 'font-mono')}>
         {value}
       </span>
     </div>
@@ -60,24 +89,36 @@ interface ShiftDetailDrawerProps {
 export function ShiftDetailDrawer({ shiftId, onClose }: ShiftDetailDrawerProps) {
   const [showClose, setShowClose] = useState(false)
   const staff = useAuthStore((s) => s.staff)
-  const posShiftId = usePOSStore((s) => s.shiftId)
-  const setShiftId = usePOSStore((s) => s.setShiftId)
   const { data: shift, isLoading, isError } = useShiftDetail(shiftId)
+  const { data: unshifted } = useUnshiftedSalesForShiftWindow(
+    shift
+      ? { cashierId: shift.cashier_id, openedAt: shift.opened_at, closedAt: shift.closed_at }
+      : null,
+  )
+  const unshiftedCount = unshifted?.count ?? 0
+  const unshiftedTotal = unshifted?.total_cfa ?? 0
 
   const canClose = canCloseShift(staff, shift)
-  const canSelect = canSelectShiftForPos(staff, shift)
-  const isCurrent = !!shift && posShiftId === shift.id
   const estimated = shift
     ? estimateExpectedCash(shift.opening_float_cfa, shift.running)
     : 0
+  const isOpen = shift?.status === 'open'
+  const discrepancy = shift?.discrepancy_cfa ?? null
+  const hasDiscrepancy = !isOpen && discrepancy != null && discrepancy !== 0
+
+  const drawerTitle = isLoading
+    ? 'Shift Detail'
+    : shift
+      ? (shift.cashier_name ?? `Shift ${shift.id.slice(0, 8)}`)
+      : 'Shift Detail'
 
   return (
     <>
       <Drawer
         open={!!shiftId}
         onClose={onClose}
-        title="Shift Detail"
-        description={shift ? formatDateTime(shift.opened_at) : undefined}
+        title={drawerTitle}
+        description={shift ? shift.depot_name : undefined}
         width="lg"
       >
         {isLoading ? (
@@ -87,62 +128,138 @@ export function ShiftDetailDrawer({ shiftId, onClose }: ShiftDetailDrawerProps) 
             ))}
           </div>
         ) : isError || !shift ? (
-          <p className="text-sm text-danger">Failed to load shift details.</p>
+          <p className="text-sm text-danger">{SHIFT_COPY.failedDetail.fr}</p>
         ) : (
-          <div className="space-y-1">
-            <div className="flex items-center justify-between gap-2 mb-4">
-              <div className="flex items-center gap-2">
-                <ShiftStatusBadge status={shift.status} />
-                {isCurrent && (
-                  <span className="text-xs font-medium text-primary">Current</span>
-                )}
-              </div>
-              <div className="flex gap-1.5">
-                {canSelect && !isCurrent && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setShiftId(shift.id)}
-                  >
-                    Select for POS
-                  </Button>
-                )}
-                {canClose && (
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => setShowClose(true)}
-                  >
-                    Close Shift
-                  </Button>
-                )}
-              </div>
+          <div>
+            <div className="flex items-center gap-2 mb-4 -mt-1">
+              <ShiftStatusBadge status={shift.status} />
             </div>
 
-            <SectionHeader title="Identity" />
-            <DetailRow label="ID" value={shift.id} mono />
-            <DetailRow label="Depot" value={shift.depot_name} />
-            <DetailRow label="Cashier" value={shift.cashier_name ?? '—'} />
-            <DetailRow label="Opened" value={formatDateTime(shift.opened_at)} />
+            <div className="rounded-md border border-border px-3 py-2 mb-4 space-y-1">
+              <DetailRow label={SHIFT_COPY.shiftLabel.fr} value={formatShiftTimeRange(shift.opened_at, shift.closed_at)} />
+              <DetailRow label={COMMON.cashier.fr} value={shift.cashier_name ?? '—'} />
+            </div>
 
-            <SectionHeader title={shift.status === 'open' ? 'Current running total' : 'Cash'} />
-            <DetailRow label="Opening Float" value={formatCFA(shift.opening_float_cfa)} />
-            <DetailRow label="Sales Cash" value={formatCFA(shift.running.sales_cash_cfa)} />
-            <DetailRow label="Customer Payments" value={formatCFA(shift.running.customer_pmts_cfa)} />
-            <DetailRow label="Cash Refunded" value={formatCFA(shift.running.return_cash_cfa)} />
-            {shift.status === 'open' ? (
-              <DetailRow label="Estimated Expected" value={formatCFA(estimated)} />
-            ) : (
-              <>
-                <DetailRow label="Expected Cash" value={formatCFA(shift.expected_cash_cfa)} />
-                <DetailRow label="Actual Cash" value={formatCFA(shift.actual_cash_cfa)} />
-                <DetailRow
-                  label="Discrepancy"
-                  value={formatCFA(shift.discrepancy_cfa)}
-                  danger={(shift.discrepancy_cfa ?? 0) < 0}
+            <SectionHeader title={<BiSectionTitle {...SHIFT_COPY.cashSummary} />} />
+            <div className="space-y-0">
+              <CashRow
+                label={SHIFT_COPY.openingFloat.fr}
+                value={<MoneyDisplay amount={shift.opening_float_cfa} size="small" />}
+              />
+              <CashRow
+                label={SHIFT_COPY.salesCash.fr}
+                value={<MoneyDisplay amount={shift.running.sales_cash_cfa} size="small" />}
+              />
+              <CashRow
+                label={SHIFT_COPY.customerPayments.fr}
+                value={<MoneyDisplay amount={shift.running.customer_pmts_cfa} size="small" />}
+              />
+              <CashRow
+                label={SHIFT_COPY.returnCash.fr}
+                value={
+                  <MoneyDisplay
+                    amount={
+                      shift.running.return_cash_cfa === 0
+                        ? 0
+                        : -Math.abs(shift.running.return_cash_cfa)
+                    }
+                    size="small"
+                  />
+                }
+              />
+            </div>
+
+            <div className="mt-3 rounded-md bg-surface-muted px-3 py-2 space-y-1">
+              <CashRow
+                label={SHIFT_COPY.expectedCash.fr}
+                strong
+                value={
+                  <MoneyDisplay
+                    amount={isOpen ? estimated : shift.expected_cash_cfa}
+                    size="medium"
+                  />
+                }
+              />
+              <CashRow
+                label={SHIFT_COPY.actualCash.fr}
+                strong
+                value={
+                  isOpen ? (
+                    <span className="text-sm text-text-secondary">—</span>
+                  ) : (
+                    <MoneyDisplay amount={shift.actual_cash_cfa} size="medium" />
+                  )
+                }
+              />
+            </div>
+
+            {!isOpen && discrepancy != null && (
+              <div
+                className={cn(
+                  'mt-2 rounded-md px-3 py-2.5 flex items-center justify-between gap-4',
+                  hasDiscrepancy ? 'bg-danger-bg' : 'bg-surface-muted',
+                )}
+              >
+                <span
+                  className={cn(
+                    'text-xs font-semibold uppercase tracking-wide',
+                    hasDiscrepancy ? 'text-danger-foreground' : 'text-text-secondary',
+                  )}
+                >
+                  {SHIFT_COPY.discrepancy.fr}
+                </span>
+                <MoneyDisplay
+                  amount={discrepancy}
+                  size="medium"
+                  danger={discrepancy !== 0}
                 />
-                <DetailRow label="Closed by" value={shift.closed_by_name ?? '—'} />
-                <DetailRow label="Closed at" value={formatDateTime(shift.closed_at)} />
+              </div>
+            )}
+
+            <div
+              className="mt-3 rounded-md border border-warning/20 bg-warning-bg px-3 py-2"
+              data-testid="unshifted-shift-sales"
+            >
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-xs font-semibold uppercase tracking-wide text-warning-foreground">
+                  {SHIFT_COPY.salesWithoutShift.fr}
+                </span>
+                <span className="text-sm font-medium tabular-nums text-warning-foreground">
+                  {unshiftedCount} vente{unshiftedCount === 1 ? '' : 's'} · {formatCFA(unshiftedTotal)}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-warning-foreground leading-snug">
+                {UNSHIFTED_SHIFT_WINDOW_NOTE}
+                {isOpen ? ` ${UNSHIFTED_OPEN_PERIOD_NOTE}` : ''}
+              </p>
+            </div>
+
+            <SectionHeader title={<BiSectionTitle {...SHIFT_COPY.shiftDetails} />} />
+            <DetailRow label={COMMON.depot.fr} value={shift.depot_name} />
+            <DetailRow label={COMMON.cashier.fr} value={shift.cashier_name ?? '—'} />
+            <DetailRow label={SHIFT_COPY.opened.fr} value={formatDateTime(shift.opened_at)} />
+            <DetailRow
+              label={SHIFT_COPY.closed.fr}
+              value={isOpen ? '—' : formatDateTime(shift.closed_at)}
+            />
+            {!isOpen && (
+              <DetailRow label={SHIFT_COPY.closedBy.fr} value={shift.closed_by_name ?? '—'} />
+            )}
+            <DetailRow label={SHIFT_COPY.shiftId.fr} value={shift.id} mono />
+
+            {canClose && (
+              <>
+                <SectionHeader title={<BiSectionTitle {...COMMON.actions} />} />
+                <div className="space-y-2">
+                  <Button
+                    variant="primary"
+                    className="w-full gap-2"
+                    onClick={() => setShowClose(true)}
+                  >
+                    <DoorClosed className="h-4 w-4" />
+                    Close Shift
+                  </Button>
+                </div>
               </>
             )}
           </div>

@@ -1,9 +1,13 @@
 import { useState } from 'react'
 import { ShieldOff, LogOut } from 'lucide-react'
-import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
 import { LoadingButton } from '@/components/ui'
+import { BilingualText } from '@/components/ui/BilingualText'
+import { AUTH } from '@/lib/bilingual/auth'
+import { BiButtonStack, BiPageDescription, BiPageTitle } from '@/lib/bilingual/ui'
+import { toastErrorBi } from '@/lib/bilingual/toast'
+import { bilingualPlain } from '@/lib/bilingual/types'
 
 /**
  * DeactivatedPage — shown when staff.is_active = false.
@@ -21,8 +25,7 @@ import { LoadingButton } from '@/components/ui'
  *   4. AuthGuard redirects to /login.
  *
  * Design decision: No automatic sign-out. Showing the deactivated
- * message and letting the user acknowledge it is better UX and
- * ensures they understand WHY they're being signed out.
+ * message and letting the user understand WHY they're being signed out.
  */
 export function DeactivatedPage() {
   const [isSigningOut, setIsSigningOut] = useState(false)
@@ -33,13 +36,13 @@ export function DeactivatedPage() {
     try {
       const { error } = await supabase.auth.signOut()
       if (error) {
-        toast.error('Sign-out failed. Please close the browser tab.')
+        toastErrorBi(AUTH.signOutFailed)
         console.error('[DeactivatedPage] signOut error:', error)
       }
       // AuthProvider's SIGNED_OUT handler will call clear() and
       // transition authLoadState → 'unauthenticated' → /login redirect
     } catch (err) {
-      toast.error('Unexpected error during sign-out.')
+      toastErrorBi(AUTH.signOutUnexpected)
       console.error('[DeactivatedPage] unexpected error:', err)
     } finally {
       setIsSigningOut(false)
@@ -56,20 +59,18 @@ export function DeactivatedPage() {
         </div>
 
         {/* Heading */}
-        <h1 className="text-2xl font-bold text-text-primary mb-2">
-          Account Deactivated
-        </h1>
+        <div className="text-2xl font-bold text-text-primary mb-2">
+          <BiPageTitle {...AUTH.accountDeactivated} />
+        </div>
 
-        {/* Message */}
-        <p className="text-text-secondary text-sm leading-relaxed mb-2">
-          {staffName
-            ? <>Your account (<strong className="text-text-primary">{staffName}</strong>) has been deactivated.</>
-            : 'Your account has been deactivated.'
-          }
-        </p>
-        <p className="text-text-secondary text-sm leading-relaxed mb-8">
-          Please contact your system administrator to restore access.
-        </p>
+        <div className="mb-2">
+          <BiPageDescription
+            {...(staffName ? AUTH.accountDeactivatedNamed(staffName) : AUTH.accountDeactivatedBody)}
+          />
+        </div>
+        <div className="mb-8">
+          <BiPageDescription {...AUTH.contactAdmin} />
+        </div>
 
         {/* Sign out */}
         <LoadingButton
@@ -77,16 +78,14 @@ export function DeactivatedPage() {
           variant="danger"
           size="lg"
           loading={isSigningOut}
-          loadingLabel="Signing out…"
+          loadingLabel={bilingualPlain(AUTH.signingOut)}
           className="w-full"
         >
           <LogOut className="h-4 w-4 mr-2" />
-          Sign Out
+          <BiButtonStack {...AUTH.signOut} />
         </LoadingButton>
 
-        <p className="text-xs text-text-muted mt-6">
-          VHM Multi-Depot POS &amp; Inventory System
-        </p>
+        <BilingualText {...AUTH.systemTagline} variant="caption" className="text-text-muted mt-6" />
       </div>
     </div>
   )

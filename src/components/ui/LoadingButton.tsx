@@ -24,17 +24,22 @@ export function LoadingButton({
   disabled,
   children,
   className,
+  size,
   ...props
 }: LoadingButtonProps) {
   return (
     <Button
       disabled={disabled || loading}
       className={cn('relative', className)}
+      size={size}
       {...props}
     >
       {loading && (
         <Loader2
-          className="h-4 w-4 animate-spin flex-shrink-0"
+          className={cn(
+            'animate-spin flex-shrink-0',
+            size === 'xl' ? 'h-5 w-5' : 'h-4 w-4',
+          )}
           aria-hidden="true"
         />
       )}

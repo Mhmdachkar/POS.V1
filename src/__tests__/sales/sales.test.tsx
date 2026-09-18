@@ -21,6 +21,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
 import { usePOSStore } from '@/stores/posStore'
 import type { Staff } from '@/types/database'
+import { SALES } from '@/lib/bilingual/sales'
 
 vi.mock('@/hooks/useSales', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useSales')>()
@@ -287,7 +288,7 @@ describe('SalesPage', () => {
     const { builder } = createFilterAwareFrom([])
     vi.mocked(supabase.from).mockReturnValue(builder as never)
     renderSales()
-    expect(await screen.findByText('No sales found')).toBeInTheDocument()
+    expect(await screen.findByText(SALES.noSales.fr)).toBeInTheDocument()
   })
 
   it('shows Depot column in admin All Depots and hides it when a depot is selected', async () => {
@@ -339,7 +340,7 @@ describe('SalesPage', () => {
     const ilikeBefore = calls.filter((c) => c.startsWith('ilike:')).length
 
     vi.useFakeTimers()
-    const input = screen.getByPlaceholderText('Receipt number…')
+    const input = screen.getByPlaceholderText(SALES.searchReceiptPlaceholder.fr)
     await act(async () => {
       fireEvent.change(input, { target: { value: 'D' } })
       fireEvent.change(input, { target: { value: 'DK' } })
@@ -377,7 +378,7 @@ describe('SalesPage', () => {
       expect(calls.some((c) => c === 'range:30-59')).toBe(true)
     })
 
-    await user.type(screen.getByPlaceholderText('Receipt number…'), 'X')
+    await user.type(screen.getByPlaceholderText(SALES.searchReceiptPlaceholder.fr), 'X')
     await act(async () => {
       await vi.advanceTimersByTimeAsync(SALES_SEARCH_DEBOUNCE_MS)
     })

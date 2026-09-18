@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { rpc } from '@/lib/rpc'
+import { CACHE_STALE } from '@/lib/cachePolicy'
 import type { AdminDashboardSummary } from '@/types/rpc'
 
 export const dashboardKeys = {
@@ -17,6 +18,6 @@ export function useDashboardSummary(depotId: string | null) {
   return useQuery({
     queryKey: dashboardKeys.summary(depotId),
     queryFn: () => fetchDashboardSummary(depotId),
-    staleTime: 30_000,
+    staleTime: CACHE_STALE.dashboard,
   })
 }

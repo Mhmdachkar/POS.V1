@@ -1,9 +1,14 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { ChevronDown, User, LogOut, Building2 } from 'lucide-react'
+import { ChevronDown, User, LogOut, Building2, Menu } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
 import { supabase } from '@/lib/supabase'
+
+export interface TopBarProps {
+  /** Opens the mobile AppRail drawer (shown only below md). */
+  onOpenMobileNav?: () => void
+}
 
 // ─────────────────────────────────────────────────────────────────
 // Depot selector (admin: switchable; cashier/staff: display only)
@@ -114,7 +119,7 @@ function UserMenu() {
             'hover:bg-surface-muted transition-colors duration-150',
             'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1',
           )}
-          aria-label="User menu"
+          aria-label="Menu utilisateur"
         >
           <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
             <User className="h-3.5 w-3.5 text-primary" />
@@ -169,15 +174,30 @@ function UserMenu() {
 // TopBar
 // ─────────────────────────────────────────────────────────────────
 
-export function TopBar() {
+export function TopBar({ onOpenMobileNav }: TopBarProps) {
   return (
     <header
-      className="h-14 bg-surface border-b border-border flex items-center px-4 gap-4 flex-shrink-0 z-20"
+      className="h-14 bg-surface border-b border-border flex items-center px-4 gap-3 sm:gap-4 flex-shrink-0 z-20"
       role="banner"
     >
+      {onOpenMobileNav && (
+        <button
+          type="button"
+          className={cn(
+            'md:hidden flex items-center justify-center h-9 w-9 rounded-md flex-shrink-0',
+            'text-text-primary hover:bg-surface-muted transition-colors duration-150',
+            'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1',
+          )}
+          onClick={onOpenMobileNav}
+          aria-label="Ouvrir le menu"
+        >
+          <Menu className="h-5 w-5" aria-hidden="true" />
+        </button>
+      )}
+
       <DepotContext />
 
-      <div className="flex-1" />
+      <div className="flex-1 min-w-0" />
 
       <UserMenu />
     </header>

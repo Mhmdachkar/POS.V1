@@ -4,87 +4,61 @@
  * Shows after a successful complete_sale() RPC call.
  * Displays server-authoritative values (not client-side preview).
  *
+ * Print uses fetchSaleDetail(sale_id) via useSaleDetail — never the live cart.
+ *
  * Actions:
- *   - Print Receipt (browser print, shows only the receipt)
+ *   - Browser print (fallback) — automatic printing uses the local print agent
  *   - New Sale (clears POS state, closes modal)
- *
- * Customer receipt format (per specification):
- *   - Lot (depot code from receipt number)
- *   - Receipt number
- *   - Amount + currency
- *   - PAID
- *
- * Do NOT include: timestamps, plates, payment method, internal data.
- *
- * The receipt is hidden in normal view and only visible when printing.
- * CSS @media print reveals the receipt and hides everything else.
  */
 
-import { useRef } from 'react'
 import { CheckCircle, Printer, ShoppingCart } from 'lucide-react'
-import { cn } from '@/lib/cn'
-import { Modal, Button } from '@/components/ui'
+import { BiEmptyTitle, BiModalTitle, BiPageTitle, BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
+import { COMMON } from '@/lib/bilingual/common'
+import { ADMIN } from '@/lib/bilingual/admin'
+import { CUSTOMERS } from '@/lib/bilingual/customers'
+import { INVENTORY } from '@/lib/bilingual/inventory'
+import { SALES } from '@/lib/bilingual/sales'
+import { POS } from '@/lib/bilingual/pos'
+import { SHIFT_COPY } from '@/lib/bilingual/shift'
+import { TRANSFERS } from '@/lib/bilingual/transfers'
+import { Modal, Button, MoneyDisplay } from '@/components/ui'
 import { formatCFA } from '@/lib/formatters'
+import { buildReceiptHtml, printReceiptHtml, receiptDataFromSaleDetail } from '@/lib/receiptHtml'
+import { useSaleDetail } from '@/hooks/useSales'
+import { useDepotStore } from '@/stores/depotStore'
 import { usePOSStore } from '@/stores/posStore'
 import type { CompleteSaleResult } from '@/types/rpc'
 import type { Customer } from '@/types/database'
-
-// ─────────────────────────────────────────────────────────────────
-// PrintableReceipt — only visible during window.print()
-// ─────────────────────────────────────────────────────────────────
-
-interface PrintableReceiptProps {
-  result: CompleteSaleResult
-  customer: Customer | null
-}
-
-function PrintableReceipt({ result, customer }: PrintableReceiptProps) {
-  // Lot = depot code from receipt number (e.g. "DKR" from "DKR-00000012")
-  const lot = result.receipt_number.split('-')[0] ?? ''
-
-  return (
-    <div
-      className="print-only"
-      style={{ display: 'none' }}
-      aria-hidden="true"
-    >
-      {/* This is only shown by the @media print CSS rule in index.css */}
-      <div id="vhm-receipt" className="receipt-paper">
-        <div className="receipt-header">
-          <div className="receipt-lot">LOT: {lot}</div>
-          <div className="receipt-number">{result.receipt_number}</div>
-        </div>
-        <div className="receipt-divider">- - - - - - - - - - - - - -</div>
-        {customer && (
-          <div className="receipt-customer">{customer.name}</div>
-        )}
-        <div className="receipt-amount">
-          {formatCFA(result.total_cfa)}
-        </div>
-        <div className="receipt-divider">- - - - - - - - - - - - - -</div>
-        <div className="receipt-paid">PAID</div>
-      </div>
-    </div>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────
-// SaleSuccessModal (main export)
-// ─────────────────────────────────────────────────────────────────
 
 interface SaleSuccessModalProps {
   result: CompleteSaleResult
   customer: Customer | null
   cartItemCount: number
+  businessName?: string
 }
 
-export function SaleSuccessModal({ result, customer, cartItemCount }: SaleSuccessModalProps) {
+export function SaleSuccessModal({
+  result,
+  customer,
+  cartItemCount,
+  businessName = 'VHM POS',
+}: SaleSuccessModalProps) {
   const startNewSale = usePOSStore((s) => s.startNewSale)
+  const depotName = useDepotStore((s) => s.currentDepotName)
+  const {
+    data: sale,
+    isLoading: saleLoading,
+    isError: saleError,
+  } = useSaleDetail(result.sale_id)
 
-  const printRef = useRef<HTMLDivElement>(null)
+  const canPrint = !!sale && !saleLoading && !saleError
 
   const handlePrint = () => {
-    window.print()
+    if (!sale) return
+    printReceiptHtml(
+      buildReceiptHtml(receiptDataFromSaleDetail(sale, businessName, depotName)),
+      'vhm-receipt',
+    )
   }
 
   const isChange = result.change_given_cfa > 0
@@ -92,114 +66,114 @@ export function SaleSuccessModal({ result, customer, cartItemCount }: SaleSucces
   const wasIdempotent = result.idempotent
 
   return (
-    <>
-      {/* Printable receipt — hidden in UI, shown by @media print */}
-      <PrintableReceipt result={result} customer={customer} />
-
-      <Modal
-        open={true}
-        onClose={() => {}} // Only closeable via "New Sale"
-        title="Sale Complete"
-        hideClose
-        size="md"
-        className="no-print"
-      >
-        <div className="space-y-5" ref={printRef}>
-          {/* Success header */}
-          <div className="flex flex-col items-center text-center gap-3 pt-2">
-            <div className="w-14 h-14 rounded-full bg-success-bg flex items-center justify-center">
-              <CheckCircle className="h-7 w-7 text-success" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-text-primary">Sale completed successfully</h2>
-              <p className="text-sm text-text-secondary mt-0.5 font-mono">
-                {result.receipt_number}
-              </p>
-              {wasIdempotent && (
-                <p className="text-xs text-info-foreground mt-1 bg-info-bg px-2 py-0.5 rounded-full inline-block">
-                  Duplicate submission — existing sale returned
-                </p>
-              )}
-            </div>
+    <Modal
+      open={true}
+      onClose={() => {}} // Only closeable via New Sale
+      title={<BiModalTitle {...SALES.saleComplete} />}
+      hideClose
+      size="md"
+      className="no-print"
+    >
+      <div className="space-y-5">
+        <div className="flex flex-col items-center text-center gap-3 pt-2">
+          <div className="w-14 h-14 rounded-full bg-success-bg flex items-center justify-center">
+            <CheckCircle className="h-7 w-7 text-success" />
           </div>
-
-          {/* Sale financials — server-authoritative */}
-          <div className="rounded-lg bg-surface-muted border border-border overflow-hidden">
-            <div className="px-4 py-2 border-b border-border bg-surface">
-              <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">
-                Sale Summary
+          <div>
+            <h2 className="text-lg font-bold text-text-primary">{POS.saleCompletedSuccess.fr}</h2>
+            <p className="text-sm text-text-secondary mt-0.5 font-mono">
+              {result.receipt_number}
+            </p>
+            {wasIdempotent && (
+              <p className="text-xs text-info-foreground mt-1 bg-info-bg px-2 py-0.5 rounded-full inline-block">
+                Duplicate submission — existing sale returned
               </p>
-            </div>
-            <div className="px-4 py-3 space-y-1.5">
-              {customer && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-text-secondary">Customer</span>
-                  <span className="font-medium text-text-primary">{customer.name}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-sm">
-                <span className="text-text-secondary">Items</span>
-                <span className="font-medium text-text-primary">{cartItemCount}</span>
-              </div>
-              {result.discount_amount_cfa > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-text-secondary">Discount</span>
-                  <span className="font-medium text-success-foreground">
-                    − {formatCFA(result.discount_amount_cfa)}
-                  </span>
-                </div>
-              )}
-              <div className="flex justify-between text-sm font-semibold border-t border-border pt-2 mt-2">
-                <span className="text-text-primary">Total</span>
-                <span className="text-text-primary text-base">{formatCFA(result.total_cfa)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-text-secondary">Amount applied</span>
-                <span className="text-text-primary">{formatCFA(result.amount_applied_cfa)}</span>
-              </div>
-              {isChange && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-text-secondary">Change</span>
-                  <span className="font-semibold text-success-foreground">
-                    {formatCFA(result.change_given_cfa)}
-                  </span>
-                </div>
-              )}
-              {isBalance && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-text-secondary">Balance added</span>
-                  <span className="font-semibold text-danger-foreground">
-                    {formatCFA(result.balance_added_cfa)}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3">
-            <Button
-              variant="secondary"
-              size="md"
-              className="flex-1 gap-2"
-              onClick={handlePrint}
-            >
-              <Printer className="h-4 w-4" />
-              Print Receipt
-            </Button>
-            <Button
-              variant="primary"
-              size="md"
-              className="flex-1 gap-2"
-              onClick={startNewSale}
-              autoFocus
-            >
-              <ShoppingCart className="h-4 w-4" />
-              New Sale
-            </Button>
+            )}
           </div>
         </div>
-      </Modal>
-    </>
+
+        <div className="rounded-lg bg-surface-muted border border-border overflow-hidden">
+          <div className="px-4 py-2 border-b border-border bg-surface">
+            <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">
+              Sale Summary
+            </p>
+          </div>
+          <div className="px-4 py-3 space-y-1.5">
+            {customer && (
+              <div className="flex justify-between text-sm">
+                <span className="text-text-secondary">Customer</span>
+                <span className="font-medium text-text-primary">{customer.name}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-sm">
+              <span className="text-text-secondary">Items</span>
+              <span className="font-medium text-text-primary">{cartItemCount}</span>
+            </div>
+            {result.discount_amount_cfa > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-text-secondary">Discount</span>
+                <span className="font-medium text-success-foreground">
+                  − {formatCFA(result.discount_amount_cfa)}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between items-center font-semibold border-t border-border pt-2 mt-2">
+              <span className="text-text-primary text-sm">Total</span>
+              <MoneyDisplay amount={result.total_cfa} size="display" />
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-text-secondary">{SALES.amountApplied.fr}</span>
+              <span className="text-text-primary">{formatCFA(result.amount_applied_cfa)}</span>
+            </div>
+            {isChange && (
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-text-secondary">Change</span>
+                <MoneyDisplay amount={result.change_given_cfa} size="large" />
+              </div>
+            )}
+            {isBalance && (
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-text-secondary">{SALES.balanceAdded.fr}</span>
+                <MoneyDisplay amount={result.balance_added_cfa} size="large" danger />
+              </div>
+            )}
+          </div>
+        </div>
+
+        <p className="text-xs text-text-muted text-center">
+          Customer receipt prints automatically when the cashier print agent is running.
+        </p>
+
+        <div className="flex gap-3">
+          <Button
+            variant="secondary"
+            size="md"
+            className="flex-1 gap-2"
+            onClick={handlePrint}
+            disabled={!canPrint}
+            title={
+              saleError
+                ? POS.receiptLoadFailed.fr
+                : saleLoading
+                  ? POS.loadingReceipt.fr
+                  : undefined
+            }
+          >
+            <Printer className="h-4 w-4" />
+            {POS.browserPrintFallback.fr}
+          </Button>
+          <Button
+            variant="primary"
+            size="md"
+            className="flex-1 gap-2"
+            onClick={startNewSale}
+            autoFocus
+          >
+            <ShoppingCart className="h-4 w-4" />
+            {POS.newSale.fr}
+          </Button>
+        </div>
+      </div>
+    </Modal>
   )
 }

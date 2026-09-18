@@ -17,36 +17,64 @@
  *   - Inactive customers shown with "Inactive" badge
  *   - "Inactive" filter only available to admin (cashiers see active+inactive in the list,
  *     but can only use the POS to create new sales for active customers)
+ *
+ * Phase 13E-B: PageHeader + FilterBar + MoneyDisplay; custom sticky CSS-grid retained.
  */
 
-import { useState } from 'react'
-import { Users, Plus, Search } from 'lucide-react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Users, Plus } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import { Badge, Button, EmptyState, Skeleton } from '@/components/ui'
-import { formatCFA, formatDate } from '@/lib/formatters'
-import { useCustomerList } from '@/hooks/useCustomers'
+import {
+  Badge,
+  Button,
+  EmptyState,
+  FilterBar,
+  MoneyDisplay,
+  PageHeader,
+  Skeleton,
+} from '@/components/ui'
+import { formatDate } from '@/lib/formatters'
+import { COMMON, commonPageOf } from '@/lib/bilingual/common'
+import { CUSTOMERS } from '@/lib/bilingual/customers'
+import {
+  BiButtonStack,
+  BiEmptyDescription,
+  BiEmptyTitle,
+  BiPageTitle,
+  BiTabLabel,
+  BiTableHeader,
+} from '@/lib/bilingual/ui'
+import { BilingualText } from '@/components/ui/BilingualText'
+import { bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
+import { useCustomerList, type CustomerListFilter } from '@/hooks/useCustomers'
 import { useAuthStore } from '@/stores/authStore'
 import { CustomerDetailDrawer } from './components/CustomerDetailDrawer'
 import { CustomerFormModal } from './components/CustomerFormModal'
+
+/** Name/phone search debounce. Do not query on every keystroke. */
+export const CUSTOMERS_SEARCH_DEBOUNCE_MS = 300
 
 // ─────────────────────────────────────────────────────────────────
 // Filter options
 // ─────────────────────────────────────────────────────────────────
 
-type CustomerFilter = 'all' | 'active' | 'inactive' | 'with_balance'
-
 interface FilterOption {
-  value: CustomerFilter
-  label: string
+  value: CustomerListFilter
+  label: ReactNode
+  aria: string
   adminOnly?: boolean
 }
 
 const FILTER_OPTIONS: FilterOption[] = [
-  { value: 'all',          label: 'All' },
-  { value: 'active',       label: 'Active' },
-  { value: 'with_balance', label: 'With Balance' },
-  { value: 'inactive',     label: 'Inactive', adminOnly: true },
+  { value: 'all', label: <BiTabLabel {...CUSTOMERS.filterAll} />, aria: bilingualAriaLabel(CUSTOMERS.filterAll) },
+  { value: 'active', label: <BiTabLabel {...CUSTOMERS.filterActive} />, aria: bilingualAriaLabel(CUSTOMERS.filterActive) },
+  { value: 'with_balance', label: <BiTabLabel {...CUSTOMERS.filterWithBalance} />, aria: bilingualAriaLabel(CUSTOMERS.filterWithBalance) },
+  { value: 'inactive', label: <BiTabLabel {...CUSTOMERS.filterInactive} />, aria: bilingualAriaLabel(CUSTOMERS.filterInactive), adminOnly: true },
 ]
+
+/** Name | Phone | Balance Owed | Status | Since */
+const CUSTOMERS_GRID =
+  'grid-cols-[minmax(10rem,1.4fr)_8.5rem_7rem_6.5rem_7.5rem]'
 
 // ─────────────────────────────────────────────────────────────────
 // Table skeleton
@@ -56,12 +84,15 @@ function TableSkeleton() {
   return (
     <div className="space-y-px">
       {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-4 px-4 py-3 bg-surface border-b border-border">
-          <Skeleton className="h-4 w-40" />
-          <Skeleton className="h-4 w-28" />
-          <Skeleton className="h-4 w-24 ml-auto" />
-          <Skeleton className="h-5 w-16 rounded-full" />
-          <Skeleton className="h-4 w-24" />
+        <div
+          key={i}
+          className={cn('grid gap-4 px-4 py-3 bg-surface border-b border-border items-center', CUSTOMERS_GRID)}
+        >
+          <Skeleton className="h-4 w-full max-w-[10rem]" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full max-w-[5rem] justify-self-end" />
+          <Skeleton className="h-5 w-full max-w-[4.5rem] rounded-full" />
+          <Skeleton className="h-4 w-full" />
         </div>
       ))}
     </div>
@@ -73,21 +104,28 @@ function TableSkeleton() {
 // ─────────────────────────────────────────────────────────────────
 
 export function CustomersPage() {
-  const [search, setSearch]               = useState('')
-  const [filter, setFilter]               = useState<CustomerFilter>('all')
-  const [page, setPage]                   = useState(0)
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [filter, setFilter] = useState<CustomerListFilter>('all')
+  const [page, setPage] = useState(0)
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
-  const [showCreateModal, setShowCreateModal]       = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
 
   const staff   = useAuthStore((s) => s.staff)
   const isAdmin = staff?.role === 'admin'
+  const canCreateCustomer = staff?.role === 'admin' || staff?.role === 'cashier'
 
   const pageSize = 30
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), CUSTOMERS_SEARCH_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [search])
 
   const { data, isLoading, isError } = useCustomerList({
     page,
     pageSize,
-    search,
+    search: debouncedSearch,
     filter,
   })
 
@@ -95,78 +133,52 @@ export function CustomersPage() {
   const totalCount  = data?.count ?? 0
   const totalPages  = Math.ceil(totalCount / pageSize)
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearch(e.target.value)
+  const handleSearchChange = (value: string) => {
+    setSearch(value)
     setPage(0)
   }
 
-  const handleFilterChange = (f: CustomerFilter) => {
+  const handleFilterChange = (f: CustomerListFilter) => {
     setFilter(f)
     setPage(0)
   }
 
   const visibleFilters = FILTER_OPTIONS.filter((f) => !f.adminOnly || isAdmin)
+  const filterChips = visibleFilters.map((opt) => ({
+    value: opt.value,
+    label: opt.label,
+    ariaLabel: opt.aria,
+  }))
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Header */}
-      <div className="px-6 py-4 border-b border-border bg-surface flex-shrink-0">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-lg font-bold text-text-primary">Customers</h1>
-            <p className="text-sm text-text-secondary mt-0.5">
-              {totalCount > 0
-                ? `${totalCount} customer${totalCount !== 1 ? 's' : ''}`
-                : 'Manage customer accounts and balances'
-              }
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Search */}
-            <div className="relative w-56">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
-              <input
-                type="search"
-                value={search}
-                onChange={handleSearchChange}
-                placeholder="Name or phone…"
-                className={cn(
-                  'w-full h-9 pl-9 pr-3 rounded-md border border-border bg-surface',
-                  'text-sm text-text-primary placeholder:text-text-muted',
-                  'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary',
-                )}
-              />
-            </div>
-
-            {/* New Customer button */}
-            <Button
-              className="gap-1.5 flex-shrink-0"
-              onClick={() => setShowCreateModal(true)}
-            >
-              <Plus className="h-4 w-4" />
-              New Customer
-            </Button>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="flex gap-1.5 mt-3 overflow-x-auto">
-          {visibleFilters.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => handleFilterChange(opt.value)}
-              className={cn(
-                'px-3 h-7 rounded-full text-xs font-medium flex-shrink-0 transition-colors',
-                filter === opt.value
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-surface-muted text-text-secondary border border-border hover:bg-surface',
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
+      {/* Single header band: PageHeader + FilterBar */}
+      <div className="flex-shrink-0 border-b border-border bg-surface">
+        <PageHeader
+          title={<BiPageTitle {...CUSTOMERS.pageTitle} />}
+          className="border-b-0"
+          actions={
+            canCreateCustomer ? (
+              <Button
+                className="gap-1.5 flex-shrink-0"
+                onClick={() => setShowCreateModal(true)}
+              >
+                <Plus className="h-4 w-4" />
+                <BiButtonStack {...CUSTOMERS.newCustomerButton} />
+              </Button>
+            ) : undefined
+          }
+        />
+        <div className="px-6 pb-4">
+          <FilterBar
+            search={search}
+            onSearchChange={handleSearchChange}
+            searchPlaceholder={bilingualPlain(CUSTOMERS.searchPlaceholder)}
+            chips={filterChips}
+            activeChip={filter}
+            onChipChange={(value) => handleFilterChange(value as CustomerListFilter)}
+            count={totalCount}
+          />
         </div>
       </div>
 
@@ -178,32 +190,36 @@ export function CustomersPage() {
           <div className="p-8">
             <EmptyState
               icon={<Users className="h-8 w-8" />}
-              title="Failed to load customers"
-              description="Check your connection and try again."
+              title={<BiEmptyTitle {...CUSTOMERS.failedToLoad} />}
+              description={<BiEmptyDescription {...COMMON.checkConnection} />}
             />
           </div>
         ) : customers.length === 0 ? (
           <div className="p-8">
             <EmptyState
               icon={<Users className="h-8 w-8" />}
-              title="No customers found"
+              title={<BiEmptyTitle {...CUSTOMERS.noCustomers} />}
               description={
-                search || filter !== 'all'
-                  ? 'No customers match your filters.'
-                  : 'No customers yet. Create the first one.'
+                search || filter !== 'all' ? (
+                  <BiEmptyDescription {...CUSTOMERS.noMatchFilters} />
+                ) : (
+                  <BiEmptyDescription {...CUSTOMERS.createFirst} />
+                )
               }
             />
           </div>
         ) : (
           <>
             {/* Table header */}
-            <div className="sticky top-0 bg-surface-muted border-b border-border">
-              <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-4 py-2">
-                <span className="text-xs font-semibold text-text-secondary uppercase">Name</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Phone</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase text-right">Balance Owed</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Status</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Since</span>
+            <div className="sticky top-0 bg-surface-muted border-b border-border z-[1]">
+              <div className={cn('grid gap-4 px-4 py-2 items-center', CUSTOMERS_GRID)}>
+                <BiTableHeader {...CUSTOMERS.name} />
+                <BiTableHeader {...CUSTOMERS.phone} />
+                <span className="text-right">
+                  <BiTableHeader {...CUSTOMERS.balanceOwed} />
+                </span>
+                <BiTableHeader {...COMMON.status} />
+                <BiTableHeader {...CUSTOMERS.colSince} />
               </div>
             </div>
 
@@ -214,31 +230,41 @@ export function CustomersPage() {
                 type="button"
                 onClick={() => setSelectedCustomerId(customer.id)}
                 className={cn(
-                  'w-full text-left grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-4 py-3',
+                  'w-full text-left grid gap-4 px-4 py-3 items-center',
+                  CUSTOMERS_GRID,
                   'border-b border-border hover:bg-surface-muted transition-colors',
                   'focus:outline-none focus:bg-primary-subtle',
                   selectedCustomerId === customer.id && 'bg-primary-subtle',
                 )}
               >
-                <span className="text-sm font-medium text-text-primary truncate">
+                <span className="text-sm font-medium text-text-primary truncate min-w-0">
                   {customer.name}
                 </span>
-                <span className="text-sm text-text-secondary">
+                <span className="text-sm text-text-secondary truncate min-w-0">
                   {customer.phone ?? <span className="text-text-muted italic">—</span>}
                 </span>
-                <span className={cn(
-                  'text-sm font-semibold tabular-nums text-right',
-                  customer.balance_owed_cfa > 0 ? 'text-danger' : 'text-text-muted',
-                )}>
-                  {customer.balance_owed_cfa > 0 ? formatCFA(customer.balance_owed_cfa) : '—'}
+                <span className="text-right min-w-0">
+                  {customer.balance_owed_cfa > 0 ? (
+                    <MoneyDisplay amount={customer.balance_owed_cfa} size="small" danger />
+                  ) : (
+                    <span className="text-sm text-text-muted">—</span>
+                  )}
                 </span>
-                <span>
+                <span className="min-w-0">
                   {customer.is_active
-                    ? <Badge variant="success" dot>Active</Badge>
-                    : <Badge variant="neutral" dot>Inactive</Badge>
+                    ? (
+                      <Badge variant="success" dot>
+                        <BilingualText {...COMMON.active} variant="caption" layout="inline" />
+                      </Badge>
+                    )
+                    : (
+                      <Badge variant="neutral" dot>
+                        <BilingualText {...COMMON.inactive} variant="caption" layout="inline" />
+                      </Badge>
+                    )
                   }
                 </span>
-                <span className="text-sm text-text-secondary">
+                <span className="text-sm text-text-secondary whitespace-nowrap">
                   {formatDate(customer.created_at)}
                 </span>
               </button>
@@ -248,7 +274,7 @@ export function CustomersPage() {
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-border">
                 <span className="text-sm text-text-secondary">
-                  Page {page + 1} of {totalPages}
+                  <BilingualText {...commonPageOf(page + 1, totalPages)} variant="caption" layout="inline" />
                 </span>
                 <div className="flex gap-2">
                   <button
@@ -257,7 +283,7 @@ export function CustomersPage() {
                     disabled={page === 0}
                     className="px-3 h-8 text-sm rounded-md border border-border bg-surface hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    ← Previous
+                    <BilingualText {...COMMON.previous} variant="caption" layout="inline" />
                   </button>
                   <button
                     type="button"
@@ -265,7 +291,7 @@ export function CustomersPage() {
                     disabled={page >= totalPages - 1}
                     className="px-3 h-8 text-sm rounded-md border border-border bg-surface hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    Next →
+                    <BilingualText {...COMMON.next} variant="caption" layout="inline" />
                   </button>
                 </div>
               </div>

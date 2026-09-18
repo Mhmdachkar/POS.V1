@@ -6,7 +6,9 @@
  */
 
 import { useEffect, useState } from 'react'
-import { toast } from 'sonner'
+import { toastSuccessBi } from '@/lib/bilingual/toast'
+import { SHIFT_COPY } from '@/lib/bilingual/shift'
+import { COMMON } from '@/lib/bilingual/common'
 import { Button, Input, LoadingButton, Modal } from '@/components/ui'
 import { formatCFA } from '@/lib/formatters'
 import { parseError } from '@/lib/errors'
@@ -16,8 +18,12 @@ import {
   useCloseShift,
   type ShiftDetailData,
 } from '@/hooks/useShifts'
+import { useUnshiftedSalesForShiftWindow } from '@/hooks/useSales'
+import {
+  UNSHIFTED_NOT_IN_RECONCILIATION_NOTE,
+  UNSHIFTED_OPEN_PERIOD_NOTE,
+} from '@/lib/shiftAttribution'
 import { useAuthStore } from '@/stores/authStore'
-import { usePOSStore } from '@/stores/posStore'
 import type { CloseShiftResult } from '@/types/rpc'
 import { cn } from '@/lib/cn'
 
@@ -55,9 +61,14 @@ function BreakdownRow({
 
 export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) {
   const staff = useAuthStore((s) => s.staff)
-  const posShiftId = usePOSStore((s) => s.shiftId)
-  const setShiftId = usePOSStore((s) => s.setShiftId)
   const { mutateAsync: closeShift, isPending } = useCloseShift()
+  const { data: unshifted } = useUnshiftedSalesForShiftWindow({
+    cashierId: shift.cashier_id,
+    openedAt: shift.opened_at,
+    closedAt: shift.closed_at,
+  })
+  const unshiftedCount = unshifted?.count ?? 0
+  const unshiftedTotal = unshifted?.total_cfa ?? 0
 
   const [actualStr, setActualStr] = useState('')
   const [confirmed, setConfirmed] = useState(false)
@@ -86,14 +97,12 @@ export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) 
         p_shift_id: shift.id,
         p_actual_cash_cfa: actual,
       })
-      if (posShiftId === shift.id) setShiftId(null)
       setResult(data)
-      toast.success('Shift closed.')
+      toastSuccessBi(SHIFT_COPY.shiftClosedToast)
     } catch (err) {
       const parsed = parseError(err)
       if (parsed.code === 'SHIFT_NOT_OPEN') {
-        if (posShiftId === shift.id) setShiftId(null)
-        setFormError('This shift is already closed.')
+        setFormError(SHIFT_COPY.alreadyClosed.fr)
       } else {
         setFormError(parsed.message)
       }
@@ -109,65 +118,88 @@ export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) 
     <Modal
       open={open}
       onClose={handleDismiss}
-      title={result ? 'Shift Closed' : 'Close Shift'}
-      description={result ? 'Server-authoritative totals.' : 'This action is irreversible.'}
+      title={result ? SHIFT_COPY.shiftClosed.fr : SHIFT_COPY.closeShift.fr}
+      description={result ? SHIFT_COPY.serverAuthoritative.fr : SHIFT_COPY.closeIrreversible.fr}
       size="sm"
     >
       {result ? (
         <div className="space-y-4">
           <div className="rounded-md border border-border bg-surface-muted p-3 space-y-1.5">
-            <BreakdownRow label="Opening Float" value={result.breakdown.opening_float_cfa} />
-            <BreakdownRow label="+ Sales Cash" value={result.breakdown.sales_cash_cfa} />
-            <BreakdownRow label="+ Customer Payments" value={result.breakdown.customer_pmts_cfa} />
-            <BreakdownRow label="− Cash Refunds" value={result.breakdown.return_cash_cfa} />
+            <BreakdownRow label={SHIFT_COPY.openingFloat.fr} value={result.breakdown.opening_float_cfa} />
+            <BreakdownRow label={`+ ${SHIFT_COPY.salesCash.fr}`} value={result.breakdown.sales_cash_cfa} />
+            <BreakdownRow label={`+ ${SHIFT_COPY.customerPayments.fr}`} value={result.breakdown.customer_pmts_cfa} />
+            <BreakdownRow label={`− ${SHIFT_COPY.returnCash.fr}`} value={result.breakdown.return_cash_cfa} />
             <div className="border-t border-border pt-1.5">
-              <BreakdownRow label="Expected Cash" value={result.expected_cash_cfa} emphasis />
+              <BreakdownRow label={SHIFT_COPY.expectedCash.fr} value={result.expected_cash_cfa} emphasis />
             </div>
-            <BreakdownRow label="Actual Cash" value={result.actual_cash_cfa} />
+            <BreakdownRow label={SHIFT_COPY.actualCash.fr} value={result.actual_cash_cfa} />
             <BreakdownRow
-              label="Discrepancy"
+              label={SHIFT_COPY.discrepancy.fr}
               value={result.discrepancy_cfa}
               emphasis
               danger={result.discrepancy_cfa < 0}
             />
           </div>
+          <div className="rounded-md border border-warning/20 bg-warning-bg px-3 py-2">
+            <div className="flex items-baseline justify-between gap-3 text-sm">
+              <span className="text-warning-foreground">{SHIFT_COPY.salesWithoutShift.fr}</span>
+              <span className="tabular-nums font-medium text-warning-foreground">
+                {unshiftedCount} vente{unshiftedCount === 1 ? '' : 's'} · {formatCFA(unshiftedTotal)}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-warning-foreground leading-snug">
+              {UNSHIFTED_NOT_IN_RECONCILIATION_NOTE}
+            </p>
+          </div>
           <div className="flex justify-end">
-            <Button onClick={handleDismiss}>Done</Button>
+            <Button onClick={handleDismiss}>Terminé</Button>
           </div>
         </div>
       ) : (
         <div className="space-y-4">
           {closingOthers && (
             <p className="text-sm text-warning-foreground bg-warning-bg border border-warning/20 rounded-md px-3 py-2">
-              You are closing a shift opened by {shift.cashier_name ?? 'another cashier'}.
+              Vous fermez un service ouvert par {shift.cashier_name ?? 'un autre caissier'}.
             </p>
           )}
 
           <div className="rounded-md border border-border bg-surface-muted p-3 space-y-1.5">
-            <p className="text-xs font-semibold text-text-secondary uppercase">Estimated</p>
-            <BreakdownRow label="Opening Float" value={shift.opening_float_cfa} />
-            <BreakdownRow label="+ Sales Cash" value={shift.running.sales_cash_cfa} />
-            <BreakdownRow label="+ Customer Payments" value={shift.running.customer_pmts_cfa} />
-            <BreakdownRow label="− Cash Refunds" value={shift.running.return_cash_cfa} />
-            <BreakdownRow label="Estimated Expected" value={estimatedExpected} emphasis />
+            <p className="text-xs font-semibold text-text-secondary uppercase">Estimé</p>
+            <BreakdownRow label={SHIFT_COPY.openingFloat.fr} value={shift.opening_float_cfa} />
+            <BreakdownRow label={`+ ${SHIFT_COPY.salesCash.fr}`} value={shift.running.sales_cash_cfa} />
+            <BreakdownRow label={`+ ${SHIFT_COPY.customerPayments.fr}`} value={shift.running.customer_pmts_cfa} />
+            <BreakdownRow label={`− ${SHIFT_COPY.returnCash.fr}`} value={shift.running.return_cash_cfa} />
+            <BreakdownRow label={SHIFT_COPY.estimatedExpected.fr} value={estimatedExpected} emphasis />
             {estimatedDiscrepancy !== null && (
               <BreakdownRow
-                label="Estimated Discrepancy"
+                label={SHIFT_COPY.estimatedDiscrepancy.fr}
                 value={estimatedDiscrepancy}
                 danger={estimatedDiscrepancy < 0}
               />
             )}
           </div>
 
+          <div className="rounded-md border border-warning/20 bg-warning-bg px-3 py-2">
+            <div className="flex items-baseline justify-between gap-3 text-sm">
+              <span className="text-warning-foreground">{SHIFT_COPY.salesWithoutShift.fr}</span>
+              <span className="tabular-nums font-medium text-warning-foreground">
+                {unshiftedCount} vente{unshiftedCount === 1 ? '' : 's'} · {formatCFA(unshiftedTotal)}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-warning-foreground leading-snug">
+              {UNSHIFTED_NOT_IN_RECONCILIATION_NOTE} {UNSHIFTED_OPEN_PERIOD_NOTE}
+            </p>
+          </div>
+
           <Input
-            label="Actual Cash in Drawer (CFA)"
+            label={SHIFT_COPY.actualCashInDrawer.fr}
             inputMode="decimal"
             value={actualStr}
             onChange={(e) => { setActualStr(e.target.value); setFormError(null) }}
-            error={actual === null && actualStr.trim() !== '' ? 'Must be zero or greater.' : undefined}
+            error={actual === null && actualStr.trim() !== '' ? SHIFT_COPY.actualCashError.fr : undefined}
           />
 
-          <p className="text-sm text-danger">This action is irreversible.</p>
+          <p className="text-sm text-danger">{SHIFT_COPY.closeIrreversible.fr}</p>
 
           <label className="flex items-start gap-2.5 cursor-pointer">
             <input
@@ -178,7 +210,7 @@ export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) 
               className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary/20"
             />
             <span className="text-sm text-text-secondary leading-snug">
-              I understand this shift will be closed and cannot be reopened.
+              Je comprends que ce service sera fermé et ne pourra pas être rouvert.
             </span>
           </label>
 
@@ -186,14 +218,14 @@ export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) 
 
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={handleDismiss} disabled={isPending}>
-              Cancel
+              {COMMON.cancel.fr}
             </Button>
             <LoadingButton
               loading={isPending}
               disabled={!canSubmit}
               onClick={handleCloseShift}
             >
-              Close Shift
+              {SHIFT_COPY.closeShift.fr}
             </LoadingButton>
           </div>
         </div>

@@ -1,7 +1,16 @@
 import { useMemo, useState } from 'react'
+import { BiEmptyTitle, BiModalTitle, BiPageTitle, BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
+import { COMMON } from '@/lib/bilingual/common'
+import { ADMIN } from '@/lib/bilingual/admin'
+import { bilingualPlain } from '@/lib/bilingual/types'
+import { CUSTOMERS } from '@/lib/bilingual/customers'
+import { INVENTORY } from '@/lib/bilingual/inventory'
+import { SALES } from '@/lib/bilingual/sales'
+import { SHIFT_COPY } from '@/lib/bilingual/shift'
+import { TRANSFERS } from '@/lib/bilingual/transfers'
 import { ClipboardList } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import { EmptyState, Skeleton } from '@/components/ui'
+import { EmptyState, PageHeader, Skeleton } from '@/components/ui'
 import { formatDateTime } from '@/lib/formatters'
 import { downloadCsv } from '@/lib/csvExport'
 import {
@@ -73,7 +82,7 @@ export function AuditPage() {
   function exportCsv() {
     downloadCsv(
       `audit-log-${range.startDate}_${range.endDate}.csv`,
-      ['Occurred', 'Actor', 'Action', 'Entity type', 'Entity id', 'Depot id'],
+      [ADMIN.auditHeaders.occurred.fr, ADMIN.auditHeaders.actor.fr, ADMIN.auditHeaders.action.fr, ADMIN.auditHeaders.entityType.fr, ADMIN.auditHeaders.entityId.fr, ADMIN.auditHeaders.depotId.fr],
       rows.map((r) => [
         r.occurred_at,
         r.actor_name ?? '',
@@ -87,91 +96,92 @@ export function AuditPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="px-6 py-4 border-b border-border bg-surface flex-shrink-0 space-y-4">
-        <div>
-          <h1 className="text-lg font-bold text-text-primary">Audit log</h1>
-          <p className="text-sm text-text-secondary mt-0.5">
-            Append-only system trail · admin only
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {PRESETS.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => { setPreset(p); setPage(0) }}
-              className={cn(
-                'px-3 py-1.5 rounded-md text-sm font-medium border',
-                preset === p
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-surface border-border text-text-secondary',
-              )}
-            >
-              {REPORT_PRESET_LABELS[p]}
-            </button>
-          ))}
-        </div>
-
-        {preset === 'custom' && (
-          <div className="flex flex-wrap gap-3">
-            <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-9 px-2 border rounded-md text-sm" />
-            <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="h-9 px-2 border rounded-md text-sm" />
+      <div className="border-b border-border bg-surface flex-shrink-0">
+        <PageHeader
+          title={<BiPageTitle {...ADMIN.auditLog} />}
+          description={ADMIN.auditDesc.fr}
+          icon={<ClipboardList className="h-5 w-5" />}
+          className="border-b-0"
+        />
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {PRESETS.map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => { setPreset(p); setPage(0) }}
+                className={cn(
+                  'px-3 py-1.5 rounded-md text-sm font-medium border',
+                  preset === p
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-surface border-border text-text-secondary',
+                )}
+              >
+                {REPORT_PRESET_LABELS[p]}
+              </button>
+            ))}
           </div>
-        )}
 
-        <p className="text-xs text-text-muted">
-          {depotId
-            ? `${depotName ?? 'Depot'} — events for this depot only (global events hidden)`
-            : 'All depots — includes global events (null depot)'}
-        </p>
+          {preset === 'custom' && (
+            <div className="flex flex-wrap gap-3">
+              <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-9 px-2 border rounded-md text-sm" />
+              <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="h-9 px-2 border rounded-md text-sm" />
+            </div>
+          )}
 
-        <div className="flex flex-wrap gap-3">
-          <select
-            value={action}
-            onChange={(e) => { setAction(e.target.value); setPage(0) }}
-            className="h-9 px-2 rounded-md border border-border bg-surface text-sm"
-          >
-            <option value="">All actions</option>
-            {AUDIT_ACTIONS.map((a) => (
-              <option key={a} value={a}>{a}</option>
-            ))}
-          </select>
-          <select
-            value={entityType}
-            onChange={(e) => { setEntityType(e.target.value); setPage(0) }}
-            className="h-9 px-2 rounded-md border border-border bg-surface text-sm"
-          >
-            <option value="">All entity types</option>
-            {AUDIT_ENTITY_TYPES.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-          <select
-            value={actorId}
-            onChange={(e) => { setActorId(e.target.value); setPage(0) }}
-            className="h-9 px-2 rounded-md border border-border bg-surface text-sm max-w-xs"
-          >
-            <option value="">All actors</option>
-            {(staffList?.data ?? []).map((s) => (
-              <option key={s.id} value={s.id}>{s.full_name}</option>
-            ))}
-          </select>
-          <input
-            type="search"
-            placeholder="Entity id (exact UUID)…"
-            value={entityId}
-            onChange={(e) => { setEntityId(e.target.value); setPage(0) }}
-            className="h-9 px-3 rounded-md border border-border bg-surface text-sm w-64"
-          />
-          <button
-            type="button"
-            onClick={exportCsv}
-            disabled={rows.length === 0}
-            className="h-9 px-3 rounded-md border border-border text-sm hover:bg-surface-muted disabled:opacity-50"
-          >
-            Export CSV
-          </button>
+          <p className="text-xs text-text-muted">
+            {depotId
+              ? `${depotName ?? 'Depot'} — events for this depot only`
+              : ADMIN.allDepotsIncludesGlobal.fr}
+          </p>
+
+          <div className="flex flex-wrap gap-3">
+            <select
+              value={action}
+              onChange={(e) => { setAction(e.target.value); setPage(0) }}
+              className="h-9 px-2 rounded-md border border-border bg-surface text-sm"
+            >
+              <option value="">{ADMIN.allActions.fr}</option>
+              {AUDIT_ACTIONS.map((a) => (
+                <option key={a} value={a}>{a}</option>
+              ))}
+            </select>
+            <select
+              value={entityType}
+              onChange={(e) => { setEntityType(e.target.value); setPage(0) }}
+              className="h-9 px-2 rounded-md border border-border bg-surface text-sm"
+            >
+              <option value="">{ADMIN.allEntityTypes.fr}</option>
+              {AUDIT_ENTITY_TYPES.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+            <select
+              value={actorId}
+              onChange={(e) => { setActorId(e.target.value); setPage(0) }}
+              className="h-9 px-2 rounded-md border border-border bg-surface text-sm max-w-xs"
+            >
+              <option value="">{ADMIN.allActors.fr}</option>
+              {(staffList?.data ?? []).map((s) => (
+                <option key={s.id} value={s.id}>{s.full_name}</option>
+              ))}
+            </select>
+            <input
+              type="search"
+              placeholder={bilingualPlain(ADMIN.searchEntityId)}
+              value={entityId}
+              onChange={(e) => { setEntityId(e.target.value); setPage(0) }}
+              className="h-9 px-3 rounded-md border border-border bg-surface text-sm w-64"
+            />
+            <button
+              type="button"
+              onClick={exportCsv}
+              disabled={rows.length === 0}
+              className="h-9 px-3 rounded-md border border-border text-sm hover:bg-surface-muted disabled:opacity-50"
+            >
+              {COMMON.exportCsv.fr}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -184,10 +194,10 @@ export function AuditPage() {
           </div>
         )}
         {isError && (
-          <EmptyState icon={<ClipboardList className="h-8 w-8" />} title="Failed to load audit log" />
+          <EmptyState icon={<ClipboardList className="h-8 w-8" />} title={<BiEmptyTitle {...ADMIN.failedAudit} />} />
         )}
         {!isLoading && !isError && rows.length === 0 && (
-          <EmptyState icon={<ClipboardList className="h-8 w-8" />} title="No audit events match filters" />
+          <EmptyState icon={<ClipboardList className="h-8 w-8" />} title={<BiEmptyTitle {...ADMIN.noAudit} />} />
         )}
         {!isLoading && rows.length > 0 && (
           <ul className="divide-y divide-border">
@@ -232,7 +242,7 @@ export function AuditPage() {
               onClick={() => setPage((p) => p - 1)}
               className="px-3 py-1 border rounded-md disabled:opacity-40"
             >
-              Previous
+              {COMMON.previous.fr}
             </button>
             <span className="tabular-nums px-2">
               {page + 1} / {totalPages}
@@ -243,7 +253,7 @@ export function AuditPage() {
               onClick={() => setPage((p) => p + 1)}
               className="px-3 py-1 border rounded-md disabled:opacity-40"
             >
-              Next
+              {COMMON.next.fr}
             </button>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { CACHE_STALE } from '@/lib/cachePolicy'
 import { rpc } from '@/lib/rpc'
 import type { BusinessSettings } from '@/types/database'
 import type { UpdateBusinessSettingsParams } from '@/types/rpc'
@@ -22,7 +23,7 @@ export function useBusinessSettings() {
   return useQuery({
     queryKey: settingsKeys.current,
     queryFn: fetchBusinessSettings,
-    staleTime: 30_000,
+    staleTime: CACHE_STALE.settings,
   })
 }
 

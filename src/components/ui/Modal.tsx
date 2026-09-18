@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
 import { X } from 'lucide-react'
@@ -19,10 +20,12 @@ const sizeClasses = {
 export interface ModalProps {
   open: boolean
   onClose: () => void
-  title: string
+  title: ReactNode
   /** Visually hidden description for screen readers when no visible description exists */
-  description?: string
+  description?: ReactNode
   children: React.ReactNode
+  /** Pinned below the scrollable body so actions stay visible */
+  footer?: React.ReactNode
   size?: keyof typeof sizeClasses
   /** Hide the close button */
   hideClose?: boolean
@@ -35,6 +38,7 @@ export function Modal({
   title,
   description,
   children,
+  footer,
   size = 'md',
   hideClose = false,
   className,
@@ -55,7 +59,8 @@ export function Modal({
         <Dialog.Content
           className={cn(
             'fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%]',
-            'w-full bg-surface rounded-xl shadow-lg border border-border',
+            'flex max-h-[min(92dvh,56rem)] w-[calc(100%-1.5rem)] flex-col overflow-hidden',
+            'bg-surface rounded-xl shadow-lg border border-border',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
             'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
@@ -67,7 +72,7 @@ export function Modal({
           aria-describedby={description ? undefined : 'modal-desc'}
         >
           {/* Header */}
-          <div className="flex items-start justify-between p-5 border-b border-border">
+          <div className="flex flex-shrink-0 items-start justify-between p-5 border-b border-border">
             <Dialog.Title className="text-base font-semibold text-text-primary leading-snug">
               {title}
             </Dialog.Title>
@@ -77,7 +82,7 @@ export function Modal({
                   variant="ghost"
                   size="icon-sm"
                   className="ml-4 flex-shrink-0 -mr-1 -mt-1"
-                  aria-label="Close"
+                  aria-label="Fermer"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -98,7 +103,12 @@ export function Modal({
           )}
 
           {/* Body */}
-          <div className="p-5">{children}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-5 scrollbar-thin">{children}</div>
+          {footer && (
+            <div className="flex-shrink-0 border-t border-border bg-surface px-5 py-4">
+              {footer}
+            </div>
+          )}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -113,10 +123,10 @@ export interface ConfirmDialogProps {
   open: boolean
   onClose: () => void
   onConfirm: () => void
-  title: string
-  message: string
-  confirmLabel?: string
-  cancelLabel?: string
+  title: ReactNode
+  message: ReactNode
+  confirmLabel?: ReactNode
+  cancelLabel?: ReactNode
   variant?: 'danger' | 'primary'
   isLoading?: boolean
 }
@@ -127,25 +137,25 @@ export function ConfirmDialog({
   onConfirm,
   title,
   message,
-  confirmLabel = 'Confirm',
-  cancelLabel = 'Cancel',
+  confirmLabel,
+  cancelLabel,
   variant = 'danger',
   isLoading = false,
 }: ConfirmDialogProps) {
   return (
     <Modal open={open} onClose={onClose} title={title} size="sm" hideClose>
       <div className="space-y-5">
-        <p className="text-sm text-text-secondary">{message}</p>
+        <div className="text-sm text-text-secondary">{message}</div>
         <div className="flex gap-3 justify-end">
           <Button variant="secondary" onClick={onClose} disabled={isLoading}>
-            {cancelLabel}
+            {cancelLabel ?? 'Annuler'}
           </Button>
           <Button
             variant={variant}
             onClick={onConfirm}
             disabled={isLoading}
           >
-            {isLoading ? 'Processing…' : confirmLabel}
+            {isLoading ? 'Traitement…' : (confirmLabel ?? 'Confirmer')}
           </Button>
         </div>
       </div>
@@ -160,8 +170,8 @@ export function ConfirmDialog({
 export interface DrawerProps {
   open: boolean
   onClose: () => void
-  title: string
-  description?: string
+  title: ReactNode
+  description?: ReactNode
   children: React.ReactNode
   width?: 'sm' | 'md' | 'lg'
 }
@@ -218,7 +228,7 @@ export function Drawer({
               )}
             </div>
             <Dialog.Close asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="Close" className="flex-shrink-0">
+              <Button variant="ghost" size="icon-sm" aria-label="Fermer" className="flex-shrink-0">
                 <X className="h-4 w-4" />
               </Button>
             </Dialog.Close>

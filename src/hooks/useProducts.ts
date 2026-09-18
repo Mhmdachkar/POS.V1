@@ -12,6 +12,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { CACHE_GC, CACHE_STALE, keepPlaceholderWhen } from '@/lib/cachePolicy'
 import type { ProductWithUnits } from '@/types'
 
 // ─────────────────────────────────────────────────────────────────
@@ -19,19 +20,24 @@ import type { ProductWithUnits } from '@/types'
 // ─────────────────────────────────────────────────────────────────
 
 export const productKeys = {
-  all:    ['products'] as const,
-  search: (query: string, depotId: string | null) =>
-    ['products', 'search', depotId, query] as const,
-  detail: (id: string) => ['products', 'detail', id] as const,
+  all:      ['products'] as const,
+  searches: () => ['products', 'search'] as const,
+  search:   (query: string, depotId: string | null, categoryId?: string | null) =>
+    ['products', 'search', depotId, query, categoryId ?? null] as const,
+  detail:   (id: string) => ['products', 'detail', id] as const,
+  stockAlertsAll: () => ['products', 'stock-alerts'] as const,
+  stockAlerts: (depotId: string | null) =>
+    ['products', 'stock-alerts', depotId] as const,
 }
 
 // ─────────────────────────────────────────────────────────────────
 // Fetch helpers
 // ─────────────────────────────────────────────────────────────────
 
-async function fetchProductSearch(
+export async function fetchProductSearch(
   query: string,
   depotId: string | null,
+  categoryId?: string | null,
 ): Promise<ProductWithUnits[]> {
   let q = supabase
     .from('products')
@@ -44,8 +50,28 @@ async function fetchProductSearch(
     q = q.eq('depot_id', depotId)
   }
 
+  if (categoryId) {
+    q = q.eq('category_id', categoryId)
+  }
+
   if (query.trim()) {
-    q = q.ilike('name', `%${query.trim()}%`)
+    // CEO Notes: also search by serial number (case-insensitive)
+    // First, find products matching by serial number
+    const trimmed = query.trim()
+    const { data: serialData } = await supabase
+      .from('product_units')
+      .select('product_id')
+      .ilike('serial_number', `%${trimmed}%`)
+      .limit(40)
+
+    const serialProductIds = (serialData ?? []).map((r: any) => r.product_id as string)
+
+    if (serialProductIds.length > 0) {
+      // OR: match by name or by serial-found product IDs
+      q = q.or(`name.ilike.%${trimmed}%,id.in.(${serialProductIds.join(',')})`)
+    } else {
+      q = q.ilike('name', `%${trimmed}%`)
+    }
   }
 
   const { data, error } = await q
@@ -81,6 +107,7 @@ export function useProductSearch(
   query: string,
   depotId: string | null,
   enabled = true,
+  categoryId?: string | null,
 ) {
   const [debouncedQuery, setDebouncedQuery] = useState(query)
 
@@ -90,11 +117,12 @@ export function useProductSearch(
   }, [query])
 
   return useQuery({
-    queryKey: productKeys.search(debouncedQuery, depotId),
-    queryFn:  () => fetchProductSearch(debouncedQuery, depotId),
+    queryKey: productKeys.search(debouncedQuery, depotId, categoryId),
+    queryFn:  () => fetchProductSearch(debouncedQuery, depotId, categoryId),
     enabled:  enabled,
-    staleTime: 30_000,
-    placeholderData: (prev) => prev, // keep old results while typing
+    staleTime: CACHE_STALE.catalog,
+    gcTime: CACHE_GC.catalog,
+    placeholderData: keepPlaceholderWhen((prevKey) => prevKey[2] === depotId),
   })
 }
 
@@ -121,7 +149,8 @@ export function useProductDetail(id: string | null) {
       } as ProductWithUnits
     },
     enabled: !!id,
-    staleTime: 30_000,
+    staleTime: CACHE_STALE.catalog,
+    gcTime: CACHE_GC.catalog,
   })
 }
 

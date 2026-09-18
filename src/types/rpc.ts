@@ -21,8 +21,33 @@ export interface CompleteSaleParams {
   p_display_currency?: 'CFA' | 'USD'
   p_discount_type?: 'flat' | 'percent' | null
   p_discount_value?: number | null
-  p_shift_id?: string | null       // uuid — optional
+  p_shift_id?: string | null       // uuid — CEO Notes: always null for new ops
   p_idempotency_key?: string | null // uuid — optional dedup key
+  p_override_total_cfa?: number | null // admin-only total override
+}
+
+// ─── Phase 18C fulfillment + print jobs ─────────────────────────
+
+export interface ReleaseSaleFulfillmentParams {
+  p_sale_id: string
+}
+
+export interface ReleaseSaleFulfillmentResult {
+  sale_id: string
+  status: 'released'
+  released_at: string
+  released_by: string
+  idempotent: boolean
+}
+
+export interface RequeuePrintJobParams {
+  p_job_id: string
+}
+
+export interface RequeuePrintJobResult {
+  job_id: string
+  status: string
+  sale_id: string
 }
 
 export interface CompleteSaleResult {
@@ -31,6 +56,7 @@ export interface CompleteSaleResult {
   subtotal_cfa: number
   discount_amount_cfa: number
   total_cfa: number
+  admin_override_total_cfa: number | null
   amount_tendered_cfa: number
   amount_applied_cfa: number
   change_given_cfa: number
@@ -173,6 +199,21 @@ export interface CompleteTransferResult {
   transfer_id: string
   status: 'completed'
   items_moved: number
+}
+
+// ─── cancel_transfer ────────────────────────────────────────────
+
+export interface CancelTransferParams {
+  p_transfer_id: string
+  p_reason?: string | null
+}
+
+export interface CancelTransferResult {
+  transfer_id: string
+  status: 'cancelled'
+  cancelled_at: string
+  cancelled_by: string
+  cancel_reason: string | null
 }
 
 // ─── open_shift ─────────────────────────────────────────────────
@@ -333,7 +374,9 @@ export interface UpdateCategoryParams {
 export interface ProductUnitInput {
   unit_level: 0 | 1 | 2
   unit_name: string
-  conversion_to_base: number
+  serial_number: string
+  /** L0: null (server enforces 1). L1: pieces/package. L2: packages/carton. */
+  relative_quantity: number | null
   cost_price_cfa: number
   selling_price_cfa: number
 }
@@ -344,6 +387,8 @@ export interface CreateProductParams {
   p_name: string
   p_photo_url: string
   p_units: ProductUnitInput[]
+  p_track_low_stock: boolean
+  p_low_stock_threshold: number | null
 }
 
 export interface UpdateProductParams {
@@ -352,6 +397,8 @@ export interface UpdateProductParams {
   p_name: string
   p_photo_url: string
   p_units: ProductUnitInput[]
+  p_track_low_stock: boolean
+  p_low_stock_threshold: number | null
 }
 
 export interface UpdateBusinessSettingsParams {
@@ -436,13 +483,36 @@ export interface AdminReportParams {
   p_depot_id: string | null
   p_start_date: string
   p_end_date: string
+  p_cashier_id?: string | null
+  p_category_id?: string | null
+  p_product_id?: string | null
+  p_shift_id?: string | null
 }
 
 export interface SalesReportProductRow {
   product_id: string
   name: string
+  depot_id: string
+  depot_name: string
+  category_id: string | null
+  category_name: string | null
+  units_sold: number
+  returned_qty: number
   net_pieces: number
+  gross_sales_cfa: number
+  returns_cfa: number
+  net_sales_cfa: number
+  /** Legacy alias; same as net_sales_cfa */
   net_revenue_cfa: number
+  cogs_cfa: number
+  gross_profit_cfa: number
+}
+
+export interface SalesReportReturnItemRow {
+  product_id: string
+  product_name: string
+  quantity_pieces: number
+  refund_amount_cfa: number
 }
 
 export interface SalesReportReturnRow {
@@ -453,6 +523,53 @@ export interface SalesReportReturnRow {
   cash_refunded_cfa: number
   balance_adjustment_cfa: number
   created_at: string
+  receipt_number: string
+  cashier_name: string
+  shift_id: string | null
+  items: SalesReportReturnItemRow[]
+}
+
+export interface SalesReportDepotRow {
+  depot_id: string
+  depot_name: string
+  sales_activity_cfa: number
+  returns_activity_cfa: number
+  net_sales_cfa: number
+  transaction_count: number
+}
+
+export interface SalesReportCashierRow {
+  cashier_id: string
+  cashier_name: string
+  sales_activity_cfa: number
+  transaction_count: number
+}
+
+export interface SalesReportCategoryRow {
+  category_id: string | null
+  category_name: string | null
+  sales_activity_cfa: number
+  net_pieces: number
+}
+
+export interface SalesReportShiftRow {
+  shift_id: string | null
+  opened_at: string | null
+  closed_at: string | null
+  sales_activity_cfa: number
+  transaction_count: number
+}
+
+export interface SalesReportShiftBucket {
+  count: number
+  sales_activity_cfa: number
+}
+
+export interface SalesReportDailyRow {
+  date: string
+  sales_activity_cfa: number
+  returns_activity_cfa: number
+  net_sales_cfa: number
 }
 
 export interface AdminSalesReport {
@@ -462,24 +579,65 @@ export interface AdminSalesReport {
   transaction_count: number
   average_sale_cfa: number
   gross_profit_cfa: number
+  cogs_cfa: number
+  units_sold: number
+  voided_count: number
+  voided_amount_cfa: number
+  no_shift_count: number
+  no_shift_amount_cfa: number
+  amount_applied_cfa: number
+  amount_tendered_cfa: number
+  balance_added_cfa: number
+  change_cfa: number
   product_performance: SalesReportProductRow[]
   returns: SalesReportReturnRow[]
+  by_depot: SalesReportDepotRow[]
+  by_cashier: SalesReportCashierRow[]
+  by_category: SalesReportCategoryRow[]
+  by_shift: SalesReportShiftRow[]
+  with_shift_vs_no_shift: {
+    with_shift: SalesReportShiftBucket
+    no_shift: SalesReportShiftBucket
+  }
+  daily_series: SalesReportDailyRow[]
   start_date: string
   end_date: string
 }
+
+export type InventoryStockStatus = 'out_of_stock' | 'low_stock' | 'normal'
 
 export interface InventoryStockRow {
   product_id: string
   name: string
   depot_id: string
+  depot_name: string
+  category_id: string | null
+  category_name: string | null
   current_stock_pieces: number
+  unit_name: string | null
+  cost_price_cfa: number
+  selling_price_cfa: number
+  stock_value_cost_cfa: number
+  stock_value_selling_cfa: number
+  stock_status: InventoryStockStatus
+  track_low_stock: boolean
+  low_stock_threshold: number | null
+  /** @deprecated Phase 12 field; use cost_price_cfa */
   unit_cost_cfa?: number
+  /** @deprecated Phase 12 field; use stock_value_cost_cfa */
   value_cfa?: number
 }
 
 export interface InventoryMovementRow {
   transaction_type: string
   quantity_pieces: number
+  transaction_count: number
+}
+
+export interface InventoryAdjustmentBreakdownRow {
+  adjustment_type: string
+  quantity_pieces: number
+  transaction_count: number
 }
 
 export interface AdminInventoryReport {
@@ -488,6 +646,9 @@ export interface AdminInventoryReport {
   low_stock: InventoryStockRow[]
   out_of_stock: InventoryStockRow[]
   period_movement: InventoryMovementRow[]
+  adjustment_breakdown: InventoryAdjustmentBreakdownRow[]
+  low_stock_count: number
+  out_of_stock_count: number
   start_date: string
   end_date: string
 }
@@ -505,6 +666,7 @@ export interface CustomerPaymentRow {
   amount_cfa: number
   recorded_at: string
   shift_id: string | null
+  cashier_name: string | null
 }
 
 export interface AdminCustomersReport {
@@ -516,6 +678,8 @@ export interface AdminCustomersReport {
   payment_activity_count: number
   unattributed_payment_activity_cfa: number
   unattributed_payment_activity_count: number
+  reversed_payment_activity_cfa: number
+  reversed_payment_activity_count: number
   customers_with_balance: CustomerBalanceRow[]
   payments: CustomerPaymentRow[]
   unattributed_payments: CustomerPaymentRow[]
@@ -527,7 +691,9 @@ export interface AdminCustomersReport {
 export interface CashShiftReportRow {
   shift_id: string
   depot_id: string
+  depot_name: string
   cashier_id: string
+  cashier_name: string
   status: string
   opened_at: string
   closed_at: string | null

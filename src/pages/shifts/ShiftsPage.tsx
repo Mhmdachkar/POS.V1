@@ -1,32 +1,45 @@
 /**
- * ShiftsPage — list, filter, open, select current POS shift, and close.
+ * ShiftsPage — Read-only historical view of shifts.
  *
- * Never auto-selects a shift. Cashier sees own depot (RLS). Admin can filter depot.
+ * CEO Notes: Active shift workflow removed.
+ * New operations do not use shifts (shift_id = NULL for new sales).
+ * This page is now purely a historical record viewer.
+ * Historical shift data is preserved and viewable.
  */
 
 import { useEffect, useState } from 'react'
-import { Clock, Plus } from 'lucide-react'
+import { BiEmptyTitle, BiPageTitle } from '@/lib/bilingual/ui'
+import { SHIFT_COPY } from '@/lib/bilingual/shift'
+import { COMMON } from '@/lib/bilingual/common'
+import { Clock } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import { Button, EmptyState, ShiftStatusBadge, Skeleton } from '@/components/ui'
-import { formatCFA, formatDateTime } from '@/lib/formatters'
+import {
+  Badge,
+  EmptyState,
+  FilterBar,
+  MoneyDisplay,
+  PageHeader,
+  ShiftStatusBadge,
+  Skeleton,
+  type FilterBarChip,
+} from '@/components/ui'
+import { BilingualText } from '@/components/ui/BilingualText'
+import { formatDate, formatTime } from '@/lib/formatters'
 import {
   SHIFT_PAGE_SIZE,
-  canSelectShiftForPos,
   clampShiftPage,
   useShiftsList,
   type ShiftListItem,
 } from '@/hooks/useShifts'
 import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
-import { usePOSStore } from '@/stores/posStore'
 import type { ShiftStatus } from '@/types/database'
 import { ShiftDetailDrawer } from './components/ShiftDetailDrawer'
-import { OpenShiftModal } from './components/OpenShiftModal'
 
-const STATUS_OPTIONS: Array<{ value: ShiftStatus | null; label: string }> = [
-  { value: null, label: 'All' },
-  { value: 'open', label: 'Open' },
-  { value: 'closed', label: 'Closed' },
+const STATUS_CHIPS: FilterBarChip[] = [
+  { value: 'all', label: 'Tout / All' },
+  { value: 'open', label: 'Ouvert / Open' },
+  { value: 'closed', label: 'Fermé / Closed' },
 ]
 
 function TableSkeleton({ showDepot }: { showDepot: boolean }) {
@@ -48,12 +61,9 @@ export function ShiftsPage() {
   const [statusFilter, setStatusFilter] = useState<ShiftStatus | null>(null)
   const [page, setPage] = useState(0)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [showOpen, setShowOpen] = useState(false)
 
   const staff = useAuthStore((s) => s.staff)
   const currentDepotId = useDepotStore((s) => s.currentDepotId)
-  const posShiftId = usePOSStore((s) => s.shiftId)
-  const setShiftId = usePOSStore((s) => s.setShiftId)
 
   const isAdmin = staff?.role === 'admin'
   const showDepot = isAdmin && !currentDepotId
@@ -80,81 +90,53 @@ export function ShiftsPage() {
     if (next !== page) setPage(next)
   }, [isLoading, page, totalPages])
 
-  const handleStatusChange = (status: ShiftStatus | null) => {
-    setStatusFilter(status)
+  const handleChipChange = (value: string) => {
+    setStatusFilter(value === 'all' ? null : (value as ShiftStatus))
     setPage(0)
   }
 
-  const handleSelectForPos = (shift: ShiftListItem, e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (!canSelectShiftForPos(staff, shift)) return
-    setShiftId(shift.id)
-  }
-
+  // Status | [Depot] | Caissier | Ouvert | Float | Écart | Actions
   const gridCols = showDepot
-    ? 'grid-cols-[auto_1fr_1fr_auto_auto_auto_auto]'
-    : 'grid-cols-[auto_1fr_auto_auto_auto_auto]'
+    ? 'grid-cols-[5.5rem_minmax(5rem,0.9fr)_minmax(7rem,1.1fr)_4.5rem_5.75rem_6.5rem_5rem]'
+    : 'grid-cols-[5.5rem_minmax(7rem,1fr)_4.5rem_5.75rem_6.5rem_5rem]'
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="px-6 py-4 border-b border-border bg-surface flex-shrink-0">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-lg font-bold text-text-primary">Shifts</h1>
-            <p className="text-sm text-text-secondary mt-0.5">
-              {totalCount > 0
-                ? `${totalCount} shift${totalCount !== 1 ? 's' : ''}`
-                : 'Open and close cashier shifts'}
-            </p>
-          </div>
-
-          {(staff?.role === 'admin' || staff?.role === 'cashier') && (
-            <Button type="button" onClick={() => setShowOpen(true)} className="gap-1.5">
-              <Plus className="h-4 w-4" />
-              Open Shift
-            </Button>
-          )}
-        </div>
-
-        <div className="flex gap-1.5 mt-3 overflow-x-auto">
-          {STATUS_OPTIONS.map((opt) => (
-            <button
-              key={String(opt.value)}
-              type="button"
-              onClick={() => handleStatusChange(opt.value)}
-              className={cn(
-                'px-3 h-7 rounded-full text-xs font-medium flex-shrink-0 transition-colors',
-                statusFilter === opt.value
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-surface-muted text-text-secondary border border-border hover:bg-surface',
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
+      <div className="flex-shrink-0 border-b border-border bg-surface">
+        <PageHeader
+          title={<BiPageTitle {...SHIFT_COPY.pageTitle} />}
+          className="border-b-0"
+        />
+        <div className="px-6 pb-4">
+          <FilterBar
+            chips={STATUS_CHIPS}
+            activeChip={statusFilter ?? 'all'}
+            onChipChange={handleChipChange}
+            count={totalCount}
+          />
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 min-w-0 overflow-x-auto overflow-y-auto">
         {isLoading ? (
           <TableSkeleton showDepot={showDepot} />
         ) : isError ? (
           <div className="p-8">
             <EmptyState
               icon={<Clock className="h-8 w-8" />}
-              title="Failed to load shifts"
-              description="Check your connection and try again."
+              title={<BiEmptyTitle {...SHIFT_COPY.failedToLoad} />}
+              description={COMMON.checkConnection.fr}
             />
           </div>
         ) : shifts.length === 0 ? (
           <div className="p-8">
             <EmptyState
               icon={<Clock className="h-8 w-8" />}
-              title="No shifts found"
+              title={<BiEmptyTitle {...SHIFT_COPY.noShifts} />}
               description={
                 statusFilter
-                  ? 'No shifts match your current filters.'
-                  : 'Open a shift to start attributing sales.'
+                  ? 'Aucun service ne correspond aux filtres.'
+                  : 'Aucun service historique.'
               }
             />
           </div>
@@ -162,78 +144,105 @@ export function ShiftsPage() {
           <>
             <div className="sticky top-0 bg-surface-muted border-b border-border">
               <div className={cn('grid gap-4 px-4 py-2', gridCols)}>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Status</span>
+                <span className="text-xs font-semibold text-text-secondary uppercase">
+                  <BilingualText fr="Statut" en="Status" variant="caption" layout="inline" />
+                </span>
                 {showDepot && (
-                  <span className="text-xs font-semibold text-text-secondary uppercase">Depot</span>
+                  <span className="text-xs font-semibold text-text-secondary uppercase">
+                    <BilingualText fr="Dépôt" en="Depot" variant="caption" layout="inline" />
+                  </span>
                 )}
-                <span className="text-xs font-semibold text-text-secondary uppercase">Cashier</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Opened</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase text-right">Float</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase text-right">Discrepancy</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase text-right">Actions</span>
+                <span className="text-xs font-semibold text-text-secondary uppercase">
+                  <BilingualText fr="Caissier" en="Cashier" variant="caption" layout="inline" />
+                </span>
+                <span className="text-xs font-semibold text-text-secondary uppercase">
+                  <BilingualText fr="Ouvert" en="Opened" variant="caption" layout="inline" />
+                </span>
+                <span className="text-xs font-semibold text-text-secondary uppercase text-right">
+                  <BilingualText fr="Flotte" en="Float" variant="caption" layout="inline" />
+                </span>
+                <span className="text-xs font-semibold text-text-secondary uppercase text-right">
+                  <BilingualText fr="Écart" en="Discrepancy" variant="caption" layout="inline" />
+                </span>
+                <span className="text-xs font-semibold text-text-secondary uppercase text-right">
+                  <BilingualText fr="Actions" en="Actions" variant="caption" layout="inline" />
+                </span>
               </div>
             </div>
 
-            {shifts.map((shift) => {
-              const isCurrent = posShiftId === shift.id
-              const selectable = canSelectShiftForPos(staff, shift)
-              return (
-                <button
-                  key={shift.id}
-                  type="button"
-                  onClick={() => setSelectedId(shift.id)}
-                  className={cn(
-                    'w-full text-left grid gap-4 px-4 py-3',
-                    gridCols,
-                    'border-b border-border hover:bg-surface-muted transition-colors',
-                    'focus:outline-none focus:bg-primary-subtle',
-                    selectedId === shift.id && 'bg-primary-subtle',
+            {shifts.map((shift: ShiftListItem) => (
+              <div
+                key={shift.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => setSelectedId(shift.id)}
+                onKeyDown={(e) => {
+                  if (e.target !== e.currentTarget) return
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setSelectedId(shift.id)
+                  }
+                }}
+                className={cn(
+                  'w-full text-left grid gap-4 px-4 py-3 items-center',
+                  gridCols,
+                  'border-b border-border hover:bg-surface-muted transition-colors cursor-pointer',
+                  'focus:outline-none focus:bg-primary-subtle',
+                  selectedId === shift.id && 'bg-primary-subtle',
+                )}
+                aria-label={`Voir les détails du service — ${shift.cashier_name ?? 'caissier'}`}
+              >
+                <span>
+                  <ShiftStatusBadge status={shift.status} />
+                </span>
+                {showDepot && (
+                  <span className="text-sm text-text-primary truncate">{shift.depot_name}</span>
+                )}
+                <span className="text-sm text-text-primary truncate font-medium">
+                  {shift.cashier_name ?? '—'}
+                </span>
+                <span className="flex flex-col leading-tight">
+                  <span className="text-sm text-text-primary tabular-nums">
+                    {formatTime(shift.opened_at)}
+                  </span>
+                  <span className="text-xs text-text-secondary whitespace-nowrap">
+                    {formatDate(shift.opened_at)}
+                  </span>
+                </span>
+                <span className="text-right">
+                  <MoneyDisplay amount={shift.opening_float_cfa} size="small" />
+                </span>
+                <span className="text-right">
+                  {shift.status === 'closed' ? (
+                    <MoneyDisplay
+                      amount={shift.discrepancy_cfa}
+                      size="small"
+                      danger={(shift.discrepancy_cfa ?? 0) !== 0}
+                    />
+                  ) : (
+                    <span className="text-sm text-text-secondary">—</span>
                   )}
+                </span>
+                <span
+                  className="text-right"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
                 >
-                  <span className="flex items-center gap-1.5">
-                    <ShiftStatusBadge status={shift.status} />
-                    {isCurrent && (
-                      <span className="text-[10px] font-semibold uppercase text-primary">Current</span>
-                    )}
-                  </span>
-                  {showDepot && (
-                    <span className="text-sm text-text-primary truncate">{shift.depot_name}</span>
-                  )}
-                  <span className="text-sm text-text-primary truncate">{shift.cashier_name ?? '—'}</span>
-                  <span className="text-sm text-text-secondary whitespace-nowrap">
-                    {formatDateTime(shift.opened_at)}
-                  </span>
-                  <span className="text-sm tabular-nums text-right text-text-secondary">
-                    {formatCFA(shift.opening_float_cfa)}
-                  </span>
-                  <span className={cn(
-                    'text-sm tabular-nums text-right',
-                    shift.status === 'closed' && (shift.discrepancy_cfa ?? 0) < 0
-                      ? 'text-danger'
-                      : 'text-text-secondary',
-                  )}>
-                    {shift.status === 'closed' ? formatCFA(shift.discrepancy_cfa) : '—'}
-                  </span>
-                  <span className="text-right">
-                    {selectable && !isCurrent && (
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        className="text-xs font-medium text-primary hover:underline"
-                        onClick={(e) => handleSelectForPos(shift, e)}
-                      >
-                        Select for POS
-                      </span>
-                    )}
-                  </span>
-                </button>
-              )
-            })}
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-sm"
+                    onClick={() => setSelectedId(shift.id)}
+                  >
+                    <BilingualText fr="Voir" en="View" variant="caption" layout="inline" />
+                  </button>
+                </span>
+              </div>
+            ))}
 
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-border">
                 <span className="text-sm text-text-secondary">
-                  Page {page + 1} of {totalPages}
+                  Page {page + 1} / {totalPages}
                 </span>
                 <div className="flex gap-2">
                   <button
@@ -242,7 +251,7 @@ export function ShiftsPage() {
                     disabled={page === 0}
                     className="px-3 h-8 text-sm rounded-md border border-border bg-surface hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    ← Previous
+                    ← Précédent
                   </button>
                   <button
                     type="button"
@@ -250,7 +259,7 @@ export function ShiftsPage() {
                     disabled={page >= totalPages - 1}
                     className="px-3 h-8 text-sm rounded-md border border-border bg-surface hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    Next →
+                    Suivant →
                   </button>
                 </div>
               </div>
@@ -262,15 +271,6 @@ export function ShiftsPage() {
       <ShiftDetailDrawer
         shiftId={selectedId}
         onClose={() => setSelectedId(null)}
-      />
-
-      <OpenShiftModal
-        open={showOpen}
-        onClose={() => setShowOpen(false)}
-        onOpened={(id) => {
-          setShowOpen(false)
-          setSelectedId(id)
-        }}
       />
     </div>
   )

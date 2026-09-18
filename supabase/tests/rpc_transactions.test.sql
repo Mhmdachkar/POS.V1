@@ -3,6 +3,8 @@
 -- ================================================================
 --
 -- Run after: supabase db reset
+-- This suite is NOT idempotent. Re-running it on a dirty database will fail.
+-- A0 fails early if seed stock/ledger is not at the clean baseline.
 -- All tests are DO $$ blocks that RAISE EXCEPTION on failure.
 -- A passing run produces no exceptions and one final success message.
 --
@@ -29,8 +31,68 @@ select set_config('request.jwt.claims',
 select set_config('request.jwt.sub', '00000000-0000-0000-0000-000000000001', false);
 
 -- ──────────────────────────────────────────────────────────────
--- SECTION A: Inventory drift invariant (post-seed baseline)
+-- SECTION A: Clean seed baseline + inventory drift invariant
 -- ──────────────────────────────────────────────────────────────
+
+-- A0: Fail immediately if this is not a fresh seed.
+-- Seed.sql ON CONFLICT DO NOTHING does not restore stock after prior test runs.
+do $A0$
+declare
+  water_id     constant uuid := '00000000-0000-0000-0003-000000000001';
+  water_stock  numeric;
+  water_ledger numeric;
+  dirty        text;
+begin
+  select p.current_stock_pieces, coalesce(it.ledger, 0)
+  into water_stock, water_ledger
+  from products p
+  left join (
+    select product_id, sum(quantity_pieces) as ledger
+    from inventory_transactions
+    group by product_id
+  ) it on it.product_id = p.id
+  where p.id = water_id;
+
+  if water_stock is null then
+    raise exception
+      'TEST ENVIRONMENT NOT CLEAN: seeded water product % is missing. Run supabase db reset (or re-apply seed.sql on an empty public schema) before executing the suite.',
+      water_id;
+  end if;
+
+  if water_stock != 500 or water_ledger != 500 then
+    raise exception
+      'TEST ENVIRONMENT NOT CLEAN: expected seeded water stock=500 and ledger=500, got stock=% ledger=%. Run supabase db reset before executing the suite. Re-running seed.sql will not restore stock (ON CONFLICT DO NOTHING).',
+      water_stock, water_ledger;
+  end if;
+
+  -- Other seed products used by later sections (same class of failure as B1)
+  select string_agg(format('%s stock=%s ledger=%s (expected %s)', p.id, p.current_stock_pieces, coalesce(it.ledger, 0), e.expected), ', ')
+  into dirty
+  from (
+    values
+      ('00000000-0000-0000-0003-000000000002'::uuid, 240::numeric),
+      ('00000000-0000-0000-0003-000000000003'::uuid, 80::numeric),
+      ('00000000-0000-0000-0003-000000000011'::uuid, 200::numeric),
+      ('00000000-0000-0000-0003-000000000012'::uuid, 100::numeric)
+  ) as e(id, expected)
+  join products p on p.id = e.id
+  left join (
+    select product_id, sum(quantity_pieces) as ledger
+    from inventory_transactions
+    group by product_id
+  ) it on it.product_id = p.id
+  where p.current_stock_pieces != e.expected
+     or coalesce(it.ledger, 0) != e.expected;
+
+  if dirty is not null then
+    raise exception
+      'TEST ENVIRONMENT NOT CLEAN: seed products are not at baseline: %. Run supabase db reset before executing the suite.',
+      dirty;
+  end if;
+
+  raise notice 'A0 PASS: clean seed baseline (water stock=500, ledger=500, other seed products match)';
+end;
+$A0$;
 
 do $A$
 declare drift_count int;
@@ -145,9 +207,15 @@ declare
   sale_id     uuid;
   new_balance numeric;
 begin
-  -- Insert a test customer
-  insert into customers (id, name, phone, balance_owed_cfa)
-  values ('00000000-0000-0000-0005-000000000001', 'Test Customer B2', '0000000000', 0)
+  -- Insert a test customer (created_by is NOT NULL and FK to staff)
+  insert into customers (id, name, phone, balance_owed_cfa, created_by)
+  values (
+    '00000000-0000-0000-0005-000000000001',
+    'Test Customer B2',
+    '0000000000',
+    0,
+    '00000000-0000-0000-0000-000000000001'
+  )
   on conflict (id) do nothing;
 
   result := public.complete_sale(
@@ -289,12 +357,14 @@ declare
   prod_id uuid := 'bbbbbbbb-7777-0000-0000-000000000001';
 begin
   -- Self-contained test product: 10 pieces
-  insert into products (id, depot_id, category_id, name, current_stock_pieces, is_active)
+  -- photo_url is NOT NULL (mandatory product photo — do not omit)
+  insert into products (id, depot_id, category_id, name, photo_url, current_stock_pieces, is_active)
   values (
     prod_id,
     '00000000-0000-0000-0001-000000000001',
     '00000000-0000-0000-0002-000000000001',
     'B7 Dup-Line Test Product',
+    'https://placehold.co/200x200?text=B7',
     10,
     true
   ) on conflict (id) do update set current_stock_pieces = 10;
@@ -348,6 +418,110 @@ begin
 end;
 $B7$;
 
+-- B8: Cart iteration order must not change sale correctness for two distinct products.
+-- Deterministic product locking is structural (PERFORM … ORDER BY id FOR UPDATE
+-- in 20260917000001). A single-session test cannot prove pg_locks acquisition
+-- sequence. Optional manual concurrency check: supabase/tests/concurrent_sale_test.sh
+do $B8$
+declare
+  prod_lo     constant uuid := 'aaaaaaaa-0000-0000-0000-000000000001';
+  prod_hi     constant uuid := 'aaaaaaaa-0000-0000-0000-000000000002';
+  depot_id    constant uuid := '00000000-0000-0000-0001-000000000001';
+  admin_id    constant uuid := '00000000-0000-0000-0000-000000000001';
+  result_desc jsonb;
+  result_asc  jsonb;
+  sale_desc   uuid;
+  sale_asc    uuid;
+  stock_lo    numeric;
+  stock_hi    numeric;
+  drift_count int;
+begin
+  insert into products (id, depot_id, category_id, name, photo_url, current_stock_pieces, is_active)
+  values
+    (prod_lo, depot_id, '00000000-0000-0000-0002-000000000001', 'B8 Lock Lo', 'https://placehold.co/200x200?text=B8Lo', 10, true),
+    (prod_hi, depot_id, '00000000-0000-0000-0002-000000000001', 'B8 Lock Hi', 'https://placehold.co/200x200?text=B8Hi', 10, true);
+  insert into product_units (product_id, unit_level, unit_name, conversion_to_base, cost_price_cfa, selling_price_cfa)
+  values
+    (prod_lo, 0, 'Piece', 1, 50, 100),
+    (prod_hi, 0, 'Piece', 1, 50, 100);
+  insert into inventory_transactions (
+    depot_id, product_id, quantity_pieces, transaction_type,
+    reference_type, reference_id, created_by
+  ) values
+    (depot_id, prod_lo, 10, 'RESTOCK', 'stock_entry', '00000000-0000-0000-0004-000000000098', admin_id),
+    (depot_id, prod_hi, 10, 'RESTOCK', 'stock_entry', '00000000-0000-0000-0004-000000000097', admin_id);
+
+  -- Descending UUID cart order (hi then lo)
+  result_desc := public.complete_sale(
+    p_depot_id            := depot_id,
+    p_cart_items          := jsonb_build_array(
+      jsonb_build_object('product_id', prod_hi, 'unit_level', 0, 'quantity_in_unit', 1),
+      jsonb_build_object('product_id', prod_lo, 'unit_level', 0, 'quantity_in_unit', 1)
+    ),
+    p_amount_tendered_cfa := 200
+  );
+  sale_desc := (result_desc->>'sale_id')::uuid;
+  if sale_desc is null then
+    raise exception 'B8 FAIL: descending-cart sale returned no sale_id';
+  end if;
+  if (result_desc->>'receipt_number') is null or (result_desc->>'receipt_number') not like 'DKR-%' then
+    raise exception 'B8 FAIL: descending-cart receipt missing/wrong: %', result_desc->>'receipt_number';
+  end if;
+  if (result_desc->>'total_cfa')::numeric != 200 then
+    raise exception 'B8 FAIL: descending-cart expected total=200, got %', result_desc->>'total_cfa';
+  end if;
+
+  -- Ascending UUID cart order (lo then hi)
+  result_asc := public.complete_sale(
+    p_depot_id            := depot_id,
+    p_cart_items          := jsonb_build_array(
+      jsonb_build_object('product_id', prod_lo, 'unit_level', 0, 'quantity_in_unit', 1),
+      jsonb_build_object('product_id', prod_hi, 'unit_level', 0, 'quantity_in_unit', 1)
+    ),
+    p_amount_tendered_cfa := 200
+  );
+  sale_asc := (result_asc->>'sale_id')::uuid;
+  if sale_asc is null then
+    raise exception 'B8 FAIL: ascending-cart sale returned no sale_id';
+  end if;
+  if (result_asc->>'receipt_number') is null or (result_asc->>'receipt_number') not like 'DKR-%' then
+    raise exception 'B8 FAIL: ascending-cart receipt missing/wrong: %', result_asc->>'receipt_number';
+  end if;
+  if (result_asc->>'total_cfa')::numeric != 200 then
+    raise exception 'B8 FAIL: ascending-cart expected total=200, got %', result_asc->>'total_cfa';
+  end if;
+
+  select current_stock_pieces into stock_lo from products where id = prod_lo;
+  select current_stock_pieces into stock_hi from products where id = prod_hi;
+  if stock_lo != 8 or stock_hi != 8 then
+    raise exception 'B8 FAIL: expected stock 8/8 after two 1-unit sales, got lo=% hi=%', stock_lo, stock_hi;
+  end if;
+
+  if (select count(*) from inventory_transactions
+      where product_id = prod_lo and transaction_type = 'SALE' and quantity_pieces = -1) != 2 then
+    raise exception 'B8 FAIL: expected 2 SALE ledger rows qty=-1 for prod_lo';
+  end if;
+  if (select count(*) from inventory_transactions
+      where product_id = prod_hi and transaction_type = 'SALE' and quantity_pieces = -1) != 2 then
+    raise exception 'B8 FAIL: expected 2 SALE ledger rows qty=-1 for prod_hi';
+  end if;
+
+  select count(*) into drift_count
+  from products p
+  left join (
+    select product_id, sum(quantity_pieces) as ledger
+    from inventory_transactions group by product_id
+  ) it on it.product_id = p.id
+  where p.id in (prod_lo, prod_hi)
+    and p.current_stock_pieces != coalesce(it.ledger, 0);
+  if drift_count > 0 then
+    raise exception 'B8 FAIL: inventory drift after reverse/forward cart sales';
+  end if;
+
+  raise notice 'B8 PASS: descending and ascending two-product carts both succeed; stock and ledger match';
+end;
+$B8$;
+
 -- ──────────────────────────────────────────────────────────────
 -- SECTION C: process_return
 -- ──────────────────────────────────────────────────────────────
@@ -357,7 +531,7 @@ do $C1$
 declare
   sale_result    jsonb;
   return_result  jsonb;
-  sale_id        uuid;
+  v_sale_id      uuid;
   sale_item_id   uuid;
   stock_after    numeric;
   drift_count    int;
@@ -368,12 +542,13 @@ begin
     p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000001","unit_level":0,"quantity_in_unit":5}]'::jsonb,
     p_amount_tendered_cfa := 1750
   );
-  sale_id := (sale_result->>'sale_id')::uuid;
+  v_sale_id := (sale_result->>'sale_id')::uuid;
 
-  select id into sale_item_id from sale_items where sale_id = sale_id limit 1;
+  -- v_sale_id: PL/pgSQL variable name must not match sale_items.sale_id
+  select id into sale_item_id from sale_items where sale_items.sale_id = v_sale_id limit 1;
 
   return_result := public.process_return(
-    p_sale_id         := sale_id,
+    p_sale_id         := v_sale_id,
     p_items           := jsonb_build_array(jsonb_build_object('sale_item_id', sale_item_id, 'quantity_in_unit', 2)),
     p_reason          := 'Test partial return',
     p_cash_refund_cfa := 700
@@ -407,7 +582,7 @@ $C1$;
 do $C2$
 declare
   sale_result   jsonb;
-  sale_id       uuid;
+  v_sale_id     uuid;
   sale_item_id  uuid;
 begin
   sale_result := public.complete_sale(
@@ -415,14 +590,14 @@ begin
     p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000001","unit_level":0,"quantity_in_unit":1}]'::jsonb,
     p_amount_tendered_cfa := 350
   );
-  sale_id := (sale_result->>'sale_id')::uuid;
-  perform public.void_sale(p_sale_id := sale_id);
+  v_sale_id := (sale_result->>'sale_id')::uuid;
+  perform public.void_sale(p_sale_id := v_sale_id);
 
-  select id into sale_item_id from sale_items where sale_id = sale_id limit 1;
+  select id into sale_item_id from sale_items where sale_items.sale_id = v_sale_id limit 1;
 
   begin
     perform public.process_return(
-      p_sale_id         := sale_id,
+      p_sale_id         := v_sale_id,
       p_items           := jsonb_build_array(jsonb_build_object('sale_item_id', sale_item_id, 'quantity_in_unit', 1)),
       p_cash_refund_cfa := 350
     );
@@ -441,7 +616,7 @@ $C2$;
 do $C3$
 declare
   sale_result   jsonb;
-  sale_id       uuid;
+  v_sale_id     uuid;
   sale_item_id  uuid;
   r1 jsonb; r2 jsonb; r3 jsonb;
   total_refunded numeric;
@@ -457,25 +632,25 @@ begin
     p_discount_type       := 'flat',
     p_discount_value      := 100
   );
-  sale_id := (sale_result->>'sale_id')::uuid;
-  select id into sale_item_id from sale_items where sale_id = sale_id limit 1;
+  v_sale_id := (sale_result->>'sale_id')::uuid;
+  select id into sale_item_id from sale_items where sale_items.sale_id = v_sale_id limit 1;
 
   -- Get net_line_total_cfa for this item
   select net_line_total_cfa into net_total from sale_items where id = sale_item_id;
 
   -- Three separate single-unit returns
   r1 := public.process_return(
-    p_sale_id := sale_id,
+    p_sale_id := v_sale_id,
     p_items   := jsonb_build_array(jsonb_build_object('sale_item_id', sale_item_id, 'quantity_in_unit', 1)),
     p_cash_refund_cfa := round(net_total / 3, 2)
   );
   r2 := public.process_return(
-    p_sale_id := sale_id,
+    p_sale_id := v_sale_id,
     p_items   := jsonb_build_array(jsonb_build_object('sale_item_id', sale_item_id, 'quantity_in_unit', 1)),
     p_cash_refund_cfa := round(net_total / 3, 2)
   );
   r3 := public.process_return(
-    p_sale_id := sale_id,
+    p_sale_id := v_sale_id,
     p_items   := jsonb_build_array(jsonb_build_object('sale_item_id', sale_item_id, 'quantity_in_unit', 1)),
     p_cash_refund_cfa := net_total - round(net_total / 3, 2) * 2
   );
@@ -497,6 +672,57 @@ begin
   raise notice 'C3 PASS: 3 partial returns sum exactly to net_line_total_cfa (%), no rounding leak', net_total;
 end;
 $C3$;
+
+-- C4: Duplicate sale_item_id in one process_return payload must not
+-- double-restore stock. Reject before any ledger write.
+do $C4$
+declare
+  sale_result   jsonb;
+  sale_id       uuid;
+  sale_item_id  uuid;
+  stock_after_sale numeric;
+  stock_after_reject numeric;
+begin
+  sale_result := public.complete_sale(
+    p_depot_id            := '00000000-0000-0000-0001-000000000001',
+    p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000001","unit_level":0,"quantity_in_unit":2}]'::jsonb,
+    p_amount_tendered_cfa := 700
+  );
+  sale_id := (sale_result->>'sale_id')::uuid;
+  select id into sale_item_id from sale_items where sale_id = sale_id;
+  select current_stock_pieces into stock_after_sale
+    from products where id = '00000000-0000-0000-0003-000000000001';
+
+  begin
+    perform public.process_return(
+      p_sale_id := sale_id,
+      p_items   := jsonb_build_array(
+        jsonb_build_object('sale_item_id', sale_item_id, 'quantity_in_unit', 2),
+        jsonb_build_object('sale_item_id', sale_item_id, 'quantity_in_unit', 2)
+      ),
+      p_cash_refund_cfa := 700
+    );
+    raise exception 'C4 FAIL: duplicate sale_item_id payload was accepted';
+  exception
+    when sqlstate 'P0001' then
+      if sqlerrm not like '%INVALID_INPUT%' then
+        raise exception 'C4 FAIL: expected INVALID_INPUT, got %', sqlerrm;
+      end if;
+  end;
+
+  select current_stock_pieces into stock_after_reject
+    from products where id = '00000000-0000-0000-0003-000000000001';
+  if stock_after_reject != stock_after_sale then
+    raise exception 'C4 FAIL: stock changed after rejected duplicate return. after_sale=%, after_reject=%',
+      stock_after_sale, stock_after_reject;
+  end if;
+  if exists (select 1 from sale_returns where sale_id = sale_id) then
+    raise exception 'C4 FAIL: sale_returns row written for rejected duplicate payload';
+  end if;
+
+  raise notice 'C4 PASS: duplicate sale_item_id in one return payload rejected; stock unchanged';
+end;
+$C4$;
 
 -- ──────────────────────────────────────────────────────────────
 -- SECTION D: void_sale
@@ -641,10 +867,12 @@ declare
 begin
   select current_stock_pieces into stock_before from products where id = '00000000-0000-0000-0003-000000000001';
 
+  -- Signature is (uuid, smallint, numeric, text). Named calls need
+  -- explicit casts: integer does not resolve to smallint/numeric.
   result := public.restock_product(
-    p_product_id       := '00000000-0000-0000-0003-000000000001',
-    p_unit_level       := 1,  -- Case (12 bottles)
-    p_quantity_in_unit := 5,  -- 5 cases = 60 pieces
+    p_product_id       := '00000000-0000-0000-0003-000000000001'::uuid,
+    p_unit_level       := 1::smallint,   -- Case (12 bottles)
+    p_quantity_in_unit := 5::numeric,    -- 5 cases = 60 pieces
     p_note             := 'Supplier delivery'
   );
 
@@ -880,16 +1108,16 @@ $G4$;
 -- H1: Attempt to UPDATE sale_items.unit_price_cfa → rejected
 do $H1$
 declare
-  sale_id      uuid;
+  v_sale_id    uuid;
   sale_item_id uuid;
 begin
-  sale_id := (public.complete_sale(
+  v_sale_id := (public.complete_sale(
     p_depot_id            := '00000000-0000-0000-0001-000000000001',
     p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000001","unit_level":0,"quantity_in_unit":1}]'::jsonb,
     p_amount_tendered_cfa := 350
   )->>'sale_id')::uuid;
 
-  select id into sale_item_id from sale_items where sale_id = sale_id limit 1;
+  select id into sale_item_id from sale_items where sale_items.sale_id = v_sale_id limit 1;
 
   begin
     -- Attempt privileged UPDATE via direct SQL
@@ -1602,7 +1830,7 @@ do $SUMMARY$
 begin
   raise notice '=========================================';
   raise notice 'Phase 4+6 RPC Tests — ALL SECTIONS PASSED';
-  raise notice 'Sections: A(drift) B(sale,B7=dup-product) C(return) D(void)';
+  raise notice 'Sections: A(A0=clean-seed,A1=drift) B(sale,B7=dup-product) C(return) D(void)';
   raise notice '          E(inventory) F(transfer)';
   raise notice '          G(shift,G2=neg-float,G3=neg-cash,G4=repeated-close)';
   raise notice '          H(immutability) I(RLS)';
@@ -1610,3 +1838,6 @@ begin
   raise notice '=========================================';
 end;
 $SUMMARY$;
+
+-- Visible row for the hosted SQL editor Results tab
+select 'Phase 4+6 RPC Tests — ALL SECTIONS PASSED' as status;
