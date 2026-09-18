@@ -54,7 +54,11 @@ function isBanned(user) {
 }
 
 async function main() {
-  const admin = await signIn('admin', 'Admin2026!')
+  const adminPw = process.env.QA_ADMIN_PASSWORD
+  const fixturePw = process.env.QA_PHASE11_FIXTURE_PASSWORD
+  if (!adminPw) { console.error('Missing QA_ADMIN_PASSWORD'); process.exit(1) }
+  if (!fixturePw) { console.error('Missing QA_PHASE11_FIXTURE_PASSWORD'); process.exit(1) }
+  const admin = await signIn('admin', adminPw)
   const stamp = Date.now()
   const username = `phase11_test_ab_${stamp}`
   const created = await admin.functions.invoke('create-staff', {
@@ -63,7 +67,7 @@ async function main() {
       full_name: `PHASE11_TEST_AB_${stamp}`,
       role: 'depot_staff',
       depot_id: '00000000-0000-0000-0001-000000000002',
-      password: 'Phase11Test!ab',
+      password: fixturePw,
     },
   })
   if (created.error || created.data?.error) {
@@ -71,7 +75,7 @@ async function main() {
     process.exit(1)
   }
   const staffId = created.data.staff.id
-  const admin2 = await signIn('admin', 'Admin2026!')
+  const admin2 = await signIn('admin', adminPw)
 
   const [deact, react] = await Promise.all([
     admin.functions.invoke('deactivate-staff', { body: { staff_id: staffId } }),
@@ -90,7 +94,7 @@ async function main() {
   // Auth ban bit is not readable with anon JWT. Re-read via Edge result + login probe.
   const probe = await adminClient.auth.signInWithPassword({
     email: `${username}@vhm-pos.internal`,
-    password: 'Phase11Test!ab',
+    password: fixturePw,
   })
   const canLogin = !probe.error
   const matches = row.is_active === canLogin

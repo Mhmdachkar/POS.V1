@@ -13,10 +13,12 @@
 --        Email: admin@vhm-pos.internal
 --        Then insert into public.staff (id, username, full_name, role)
 --
--- LOCAL DEV CREDENTIALS (change these for any real environment):
---   Admin:   username=admin   password=Admin2026!
---   Cashier: username=cashier password=Cashier2026!
---   Depot:   username=depot   password=Depot2026!
+-- LOCAL DEV CREDENTIALS:
+-- Plaintext passwords are intentionally NOT stored in this file (secret scanners).
+-- auth.users rows below use fixed bcrypt hashes for the standard local trio:
+--   usernames: admin | cashier | depot  (emails: *@vhm-pos.internal)
+-- Ask the project owner for the local plaintext passwords, or reset users via
+-- Supabase Dashboard after `supabase db reset`.
 -- ================================================================
 
 -- Deterministic UUIDs for dev consistency across resets
@@ -127,7 +129,7 @@ begin
       admin_id, '00000000-0000-0000-0000-000000000000',
       'authenticated', 'authenticated',
       'admin@vhm-pos.internal',
-      crypt('Admin2026!', gen_salt('bf')),
+      '$2b$10$gdFNmpGho.7QyPpCAgWjgeLDpuNA3ZiCgwcSLNdwR9y7.vMX1gHOe',
       now(),
       '{"provider":"email","providers":["email"],"role":"admin"}'::jsonb,
       '{}'::jsonb,
@@ -138,7 +140,7 @@ begin
       cashier_id, '00000000-0000-0000-0000-000000000000',
       'authenticated', 'authenticated',
       'cashier@vhm-pos.internal',
-      crypt('Cashier2026!', gen_salt('bf')),
+      '$2b$10$y.q379Xqn5.7UtSTsahfZOb2ofxUMxbXkxTP7ZHmN00ByMu4lr8iG',
       now(),
       format('{"provider":"email","providers":["email"],"role":"cashier","depot_id":"%s"}', depot_a_id)::jsonb,
       '{}'::jsonb,
@@ -149,7 +151,7 @@ begin
       depot_staff_id, '00000000-0000-0000-0000-000000000000',
       'authenticated', 'authenticated',
       'depot@vhm-pos.internal',
-      crypt('Depot2026!', gen_salt('bf')),
+      '$2b$10$kfZqB5bJtMEnQDZB0Bir4.7AZcA4YqW86JUtNnAuH.tGnuHLli1nO',
       now(),
       format('{"provider":"email","providers":["email"],"role":"depot_staff","depot_id":"%s"}', depot_a_id)::jsonb,
       '{}'::jsonb,

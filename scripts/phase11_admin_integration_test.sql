@@ -117,7 +117,8 @@ begin
     p_id, '00000000-0000-0000-0000-000000000000',
     'authenticated', 'authenticated',
     p_email,
-    crypt('Phase11Test!', gen_salt('bf')),
+    -- bcrypt only (no plaintext password in repo). Match via QA_PHASE11_FIXTURE_PASSWORD in local .env.
+    '$2b$10$ZodeYyN.L/QugOX5BhNoQu.bP02b2DHTPd0WtxwtYkR37z0Pg2JkO',
     now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{}'::jsonb,

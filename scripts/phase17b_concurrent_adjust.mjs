@@ -48,7 +48,7 @@ async function main() {
   const auth = createClient(url, anon, { auth: { persistSession: false } })
   const { data: session, error: signErr } = await auth.auth.signInWithPassword({
     email: 'admin@vhm-pos.internal',
-    password: 'Admin2026!',
+    password: process.env.QA_ADMIN_PASSWORD || process.env.PHASE17B_ADMIN_PASSWORD || (() => { console.error("Missing QA_ADMIN_PASSWORD"); process.exit(1) })(),
   })
   if (signErr || !session.session) {
     console.error('admin sign-in failed', signErr)

@@ -121,7 +121,7 @@ async function main() {
   // ── Admin login ──────────────────────────────────────────────
   const { error: authError } = await supabase.auth.signInWithPassword({
     email: 'admin@vhm-pos.internal',
-    password: process.env.CEO_NOTES_ADMIN_PASSWORD || 'Admin2026!',
+    password: process.env.CEO_NOTES_ADMIN_PASSWORD || process.env.QA_ADMIN_PASSWORD || (() => { console.error("Missing CEO_NOTES_ADMIN_PASSWORD"); process.exit(1) })(),
   })
   if (authError) rpcError('admin login', authError)
   pass('Admin login')
@@ -459,7 +459,7 @@ async function main() {
   await supabase.auth.signOut()
   const { error: cashLoginErr } = await supabase.auth.signInWithPassword({
     email: 'cashier@vhm-pos.internal',
-    password: process.env.CEO_NOTES_CASHIER_PASSWORD || 'Cashier2026!',
+    password: process.env.CEO_NOTES_CASHIER_PASSWORD || process.env.QA_CASHIER_PASSWORD || (() => { console.error("Missing CEO_NOTES_CASHIER_PASSWORD"); process.exit(1) })(),
   })
   if (cashLoginErr) {
     fail('Cashier login for override rejection', cashLoginErr.message)
@@ -494,7 +494,7 @@ async function main() {
   {
     const { error } = await supabase.auth.signInWithPassword({
       email: 'admin@vhm-pos.internal',
-      password: process.env.CEO_NOTES_ADMIN_PASSWORD || 'Admin2026!',
+      password: process.env.CEO_NOTES_ADMIN_PASSWORD || process.env.QA_ADMIN_PASSWORD || (() => { console.error("Missing CEO_NOTES_ADMIN_PASSWORD"); process.exit(1) })(),
     })
     if (error) rpcError('re-login admin', error)
   }

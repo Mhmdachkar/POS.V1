@@ -1,8 +1,8 @@
 -- Phase 18A — apply extended report RPCs on hosted Supabase
 --
--- Blocker (2026-09-17): CLI `supabase link --project-ref slrakslfyxbihbivzrhn`
--- fails (account lacks privileges on that project). `.env` has no DATABASE_URL
--- or service role key — only VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY.
+-- Blocker (2026-09-17): CLI `supabase link` failed (account lacked privileges
+-- on the target project). `.env` has no DATABASE_URL or service role key —
+-- only VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY.
 --
 -- To apply manually:
 -- 1. Open Supabase Dashboard → SQL Editor for the VHM project.

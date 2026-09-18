@@ -87,7 +87,7 @@ function rpcError(label, error) {
 async function main() {
   const { error: authError } = await supabase.auth.signInWithPassword({
     email: 'admin@vhm-pos.internal',
-    password: process.env.PHASE15A_ADMIN_PASSWORD || 'Admin2026!',
+    password: process.env.PHASE15A_ADMIN_PASSWORD || process.env.QA_ADMIN_PASSWORD || (() => { console.error("Missing PHASE15A_ADMIN_PASSWORD"); process.exit(1) })(),
   })
   if (authError) rpcError('login', authError)
 

@@ -30,7 +30,7 @@ const adminClient = createClient(url, anon, { auth: { persistSession: false } })
 async function asAdmin() {
   const { data, error } = await adminClient.auth.signInWithPassword({
     email: 'admin@vhm-pos.internal',
-    password: 'Admin2026!',
+    password: process.env.QA_ADMIN_PASSWORD || (() => { console.error("Missing QA_ADMIN_PASSWORD"); process.exit(1) })(),
   })
   if (error) throw error
   return createClient(url, anon, {
@@ -47,7 +47,7 @@ async function createExtraAdmin(client, suffix) {
       full_name: `PHASE11_TEST_ADM_${suffix}`,
       role: 'admin',
       depot_id: null,
-      password: 'Phase11Test!adm',
+      password: process.env.QA_PHASE11_FIXTURE_PASSWORD || (() => { console.error("Missing QA_PHASE11_FIXTURE_PASSWORD"); process.exit(1) })(),
     },
   })
   if (error || data?.error) throw error ?? new Error(JSON.stringify(data))

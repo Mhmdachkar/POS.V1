@@ -28,7 +28,7 @@ async function main() {
   const root = createClient(url, anon, { auth: { persistSession: false } })
   const { data: auth, error: signErr } = await root.auth.signInWithPassword({
     email: 'admin@vhm-pos.internal',
-    password: 'Admin2026!',
+    password: process.env.QA_ADMIN_PASSWORD || (() => { console.error("Missing QA_ADMIN_PASSWORD"); process.exit(1) })(),
   })
   if (signErr || !auth.session) throw signErr ?? new Error('admin sign-in failed')
 
@@ -44,7 +44,7 @@ async function main() {
       full_name: `PHASE11_TEST_BYPASS_${stamp}`,
       role: 'depot_staff',
       depot_id: DEPOT_B,
-      password: 'Phase11Test!bypass',
+      password: process.env.QA_PHASE11_FIXTURE_PASSWORD || (() => { console.error("Missing QA_PHASE11_FIXTURE_PASSWORD"); process.exit(1) })(),
     },
   })
   if (created.error || created.data?.error) {
@@ -80,13 +80,13 @@ async function main() {
   const { data: row } = await admin.from('staff').select('id, is_active').eq('id', staffId).single()
   const probe = await root.auth.signInWithPassword({
     email: `phase11_test_bypass_${stamp}@vhm-pos.internal`,
-    password: 'Phase11Test!bypass',
+    password: process.env.QA_PHASE11_FIXTURE_PASSWORD || (() => { console.error("Missing QA_PHASE11_FIXTURE_PASSWORD"); process.exit(1) })(),
   })
 
   const cashier = createClient(url, anon, { auth: { persistSession: false } })
   const { data: cashAuth, error: cashErr } = await cashier.auth.signInWithPassword({
     email: 'cashier@vhm-pos.internal',
-    password: 'Cashier2026!',
+    password: process.env.QA_CASHIER_PASSWORD || (() => { console.error("Missing QA_CASHIER_PASSWORD"); process.exit(1) })(),
   })
   if (cashErr) throw cashErr
   const cashClient = createClient(url, anon, {
@@ -102,13 +102,13 @@ async function main() {
   const { data: afterDeact } = await admin.from('staff').select('is_active').eq('id', staffId).single()
   const probeBanned = await root.auth.signInWithPassword({
     email: `phase11_test_bypass_${stamp}@vhm-pos.internal`,
-    password: 'Phase11Test!bypass',
+    password: process.env.QA_PHASE11_FIXTURE_PASSWORD || (() => { console.error("Missing QA_PHASE11_FIXTURE_PASSWORD"); process.exit(1) })(),
   })
   const edgeReact = await admin.functions.invoke('reactivate-staff', { body: { staff_id: staffId } })
   const { data: afterReact } = await admin.from('staff').select('is_active').eq('id', staffId).single()
   const probeUnbanned = await root.auth.signInWithPassword({
     email: `phase11_test_bypass_${stamp}@vhm-pos.internal`,
-    password: 'Phase11Test!bypass',
+    password: process.env.QA_PHASE11_FIXTURE_PASSWORD || (() => { console.error("Missing QA_PHASE11_FIXTURE_PASSWORD"); process.exit(1) })(),
   })
 
   const directBlocked =
