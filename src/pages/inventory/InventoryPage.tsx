@@ -171,70 +171,72 @@ export function InventoryPage() {
           icon={<Package className="h-5 w-5" />}
           className="border-b-0"
           actions={
-            <div className="flex items-center gap-2">
-              <div className="relative w-52">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
-                <input
-                  type="search"
-                  value={search}
-                  onChange={handleSearchChange}
-                  placeholder={INVENTORY.searchProducts.fr}
-                  aria-label={INVENTORY.searchProducts.fr}
-                  className={cn(
-                    'w-full h-9 pl-9 pr-3 rounded-md border border-border bg-surface',
-                    'text-sm text-text-primary placeholder:text-text-muted',
-                    'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary',
-                  )}
-                />
-              </div>
-              <select
-                value={categoryId ?? ''}
-                onChange={handleCategoryChange}
-                className="h-9 px-3 rounded-md border border-border bg-surface text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              >
-                <option value="">{COMMON.allCategories.fr}</option>
-                {(categories ?? []).map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-              {canCreateProduct && (
-                <Button className="gap-1.5 flex-shrink-0" onClick={() => setShowCreate(true)}>
-                  <Plus className="h-4 w-4" />
-                  New Product
-                </Button>
-              )}
-            </div>
+            canCreateProduct ? (
+              <Button className="gap-1.5 flex-shrink-0 w-full sm:w-auto justify-center" onClick={() => setShowCreate(true)}>
+                <Plus className="h-4 w-4" />
+                New Product
+              </Button>
+            ) : undefined
           }
         />
-        <div className="px-6 pb-4 flex items-center gap-3 flex-wrap">
-          <div className="flex gap-1.5 overflow-x-auto">
-          {STOCK_FILTERS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => handleStockFilter(opt.value)}
-              className={cn(
-                'px-3 h-7 rounded-full text-xs font-medium flex-shrink-0 transition-colors',
-                stockStatus === opt.value
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-surface-muted text-text-secondary border border-border hover:bg-surface',
-              )}
+        <div className="px-3 sm:px-6 pb-3 sm:pb-4 space-y-3">
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+            <div className="relative w-full sm:w-52 min-w-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
+              <input
+                type="search"
+                value={search}
+                onChange={handleSearchChange}
+                placeholder={INVENTORY.searchProducts.fr}
+                aria-label={INVENTORY.searchProducts.fr}
+                className={cn(
+                  'w-full h-9 pl-9 pr-3 rounded-md border border-border bg-surface',
+                  'text-sm text-text-primary placeholder:text-text-muted',
+                  'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary',
+                )}
+              />
+            </div>
+            <select
+              value={categoryId ?? ''}
+              onChange={handleCategoryChange}
+              className="h-9 w-full sm:w-auto px-3 rounded-md border border-border bg-surface text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
             >
-              {opt.label}
-            </button>
-          ))}
+              <option value="">{COMMON.allCategories.fr}</option>
+              {(categories ?? []).map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
           </div>
-          {isFetching && isPlaceholderData && (
-            <span className="text-xs text-text-muted" data-testid="inventory-list-updating">
-              Updating list…
-            </span>
-          )}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-thin min-w-0 max-w-full">
+              {STOCK_FILTERS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => handleStockFilter(opt.value)}
+                  className={cn(
+                    'px-3 h-8 sm:h-7 rounded-full text-xs font-medium flex-shrink-0 transition-colors',
+                    stockStatus === opt.value
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-surface-muted text-text-secondary border border-border hover:bg-surface',
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {isFetching && isPlaceholderData && (
+              <span className="text-xs text-text-muted" data-testid="inventory-list-updating">
+                Updating list…
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 min-w-0 overflow-x-auto overflow-y-auto">
         {showInitialSkeleton ? (
           <TableSkeleton gridCols={gridCols} showDepotColumn={showDepotColumn} />
         ) : isError ? (

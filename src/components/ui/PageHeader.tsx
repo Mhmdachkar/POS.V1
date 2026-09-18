@@ -24,7 +24,8 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        'px-6 py-4 border-b border-border bg-surface flex items-center justify-between gap-4',
+        'px-3 py-3 sm:px-6 sm:py-4 border-b border-border bg-surface',
+        'flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4',
         className,
       )}
     >
@@ -33,14 +34,16 @@ export function PageHeader({
           <div className="flex-shrink-0 text-text-secondary">{icon}</div>
         )}
         <div className="min-w-0">
-          <h1 className="text-lg font-bold text-text-primary">{title}</h1>
+          <h1 className="text-base sm:text-lg font-bold text-text-primary">{title}</h1>
           {description && (
-            <p className="text-sm text-text-secondary mt-0.5">{description}</p>
+            <div className="text-sm text-text-secondary mt-0.5">{description}</div>
           )}
         </div>
       </div>
       {actions && (
-        <div className="flex items-center gap-2 flex-shrink-0">{actions}</div>
+        <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto sm:justify-end">
+          {actions}
+        </div>
       )}
     </div>
   )

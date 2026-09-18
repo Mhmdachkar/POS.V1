@@ -34,7 +34,7 @@ export function Tabs({ tabs, active, onChange, className }: TabsProps) {
   return (
     <div
       role="tablist"
-      className={cn('flex border-b border-border', className)}
+      className={cn('flex border-b border-border overflow-x-auto scrollbar-thin', className)}
       onKeyDown={handleKeyDown}
     >
       {tabs.map((tab) => {
@@ -48,7 +48,7 @@ export function Tabs({ tabs, active, onChange, className }: TabsProps) {
             tabIndex={isActive ? 0 : -1}
             onClick={() => onChange(tab.value)}
             className={cn(
-              'px-4 h-9 text-sm font-medium border-b-2 -mb-px transition-colors',
+              'px-3 sm:px-4 h-9 text-sm font-medium border-b-2 -mb-px transition-colors flex-shrink-0 whitespace-nowrap',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
               isActive
                 ? 'border-primary text-primary'

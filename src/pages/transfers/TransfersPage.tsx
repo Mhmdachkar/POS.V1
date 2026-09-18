@@ -124,7 +124,7 @@ export function TransfersPage() {
             </Button>
           }
         />
-        <div className="px-6 pb-4 flex gap-1.5 overflow-x-auto">
+        <div className="px-3 sm:px-6 pb-3 sm:pb-4 flex gap-1.5 overflow-x-auto">
           {STATUS_OPTIONS.map((opt) => (
             <button
               key={String(opt.value)}
@@ -143,7 +143,7 @@ export function TransfersPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 min-w-0 overflow-x-auto overflow-y-auto">
         {isLoading ? (
           <TableSkeleton gridCols={gridCols} />
         ) : isError ? (

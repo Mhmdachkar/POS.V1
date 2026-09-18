@@ -182,7 +182,7 @@ export function SalesPage() {
           title={isDepotStaff ? 'Sales / orders' : 'Sales History'}
           className="border-b-0"
         />
-        <div className="px-6 pb-4">
+        <div className="px-3 sm:px-6 pb-3 sm:pb-4">
           <FilterBar
             search={search}
             onSearchChange={handleSearchChange}

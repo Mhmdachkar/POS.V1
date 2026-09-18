@@ -81,7 +81,7 @@ export function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="p-3 sm:p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28" />)}
       </div>
     )
@@ -89,7 +89,7 @@ export function DashboardPage() {
 
   if (isError || !data) {
     return (
-      <div className="p-6">
+      <div className="p-3 sm:p-6">
         <EmptyState icon={<LayoutDashboard className="h-8 w-8" />} title={<BiEmptyTitle {...ADMIN.failedDashboard} />} />
       </div>
     )
@@ -98,7 +98,7 @@ export function DashboardPage() {
   const maxHourly = Math.max(1, ...data.hourly_sales.map((h) => Number(h.sales_cfa)))
 
   return (
-    <div className="p-6 space-y-6 overflow-auto">
+    <div className="p-3 sm:p-6 space-y-6 overflow-auto">
       <div>
         <h1 className="text-lg font-bold text-text-primary">
           <BiPageTitle {...ADMIN.dashboardToday} />

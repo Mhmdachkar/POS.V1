@@ -199,7 +199,7 @@ export function CustomerActivityPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto min-w-0">
+      <div className="flex-1 min-w-0 overflow-x-auto overflow-y-auto min-w-0">
         {isLoading ? (
           <TableSkeleton />
         ) : isError ? (

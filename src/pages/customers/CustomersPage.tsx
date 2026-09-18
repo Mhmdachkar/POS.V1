@@ -169,7 +169,7 @@ export function CustomersPage() {
             ) : undefined
           }
         />
-        <div className="px-6 pb-4">
+        <div className="px-3 sm:px-6 pb-3 sm:pb-4">
           <FilterBar
             search={search}
             onSearchChange={handleSearchChange}
@@ -183,7 +183,7 @@ export function CustomersPage() {
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 min-w-0 overflow-x-auto overflow-y-auto">
         {isLoading ? (
           <TableSkeleton />
         ) : isError ? (

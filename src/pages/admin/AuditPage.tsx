@@ -185,9 +185,9 @@ export function AuditPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 min-w-0 overflow-x-auto overflow-y-auto">
         {isLoading && (
-          <div className="p-6 space-y-2">
+          <div className="p-3 sm:p-6 space-y-2">
             {Array.from({ length: 8 }).map((_, i) => (
               <Skeleton key={i} className="h-12" />
             ))}

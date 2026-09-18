@@ -107,11 +107,11 @@ export function ReportToolbar({
           </button>
         ))}
         {hasExport && (
-          <div className="relative ml-auto">
+          <div className="relative w-full sm:w-auto sm:ml-auto">
             <Button
               variant="secondary"
               size="sm"
-              className="gap-1.5"
+              className="gap-1.5 w-full sm:w-auto justify-center"
               disabled={exportDisabled}
               onClick={() => setExportOpen((o) => !o)}
             >

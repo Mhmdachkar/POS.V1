@@ -249,7 +249,7 @@ export function ReportsPage() {
           icon={<BarChart2 className="h-5 w-5" />}
           className="border-b-0"
         />
-        <div className="px-6 pb-4 space-y-3">
+        <div className="px-3 sm:px-6 pb-3 sm:pb-4 space-y-3">
           <ReportToolbar
             preset={preset}
             onPresetChange={setPreset}
@@ -282,7 +282,7 @@ export function ReportsPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 min-w-0 overflow-x-auto overflow-y-auto p-6">
         <UpdatingBanner visible={isFetching && hasActiveData} />
 
         {activeQuery.isLoading && !hasActiveData && (

@@ -177,9 +177,9 @@ export interface DrawerProps {
 }
 
 const drawerWidths = {
-  sm: 'max-w-sm',
-  md: 'max-w-md',
-  lg: 'max-w-lg',
+  sm: 'sm:max-w-sm',
+  md: 'sm:max-w-md',
+  lg: 'sm:max-w-lg',
 }
 
 export function Drawer({
@@ -205,9 +205,8 @@ export function Drawer({
             'fixed right-0 top-0 z-50 h-full w-full bg-surface shadow-lg border-l border-border',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right',
-            'duration-200',
+            'duration-200 flex flex-col',
             drawerWidths[width],
-            'flex flex-col',
           )}
         >
           {/* Header */}

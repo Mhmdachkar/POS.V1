@@ -58,7 +58,7 @@ export function DepotsPage() {
             </div>
           }
         />
-        <div className="px-6 pb-4 flex gap-1.5">
+        <div className="px-3 sm:px-6 pb-3 sm:pb-4 flex gap-1.5">
           {(['all', 'active', 'inactive'] as const).map((value) => (
             <button
               key={value}
@@ -75,7 +75,7 @@ export function DepotsPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 min-w-0 overflow-x-auto overflow-y-auto">
         {isLoading ? (
           <div className="space-y-px">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
         ) : isError ? (

@@ -24,9 +24,9 @@ function DepotContext() {
   if (!isAdmin || availableDepots.length === 0) {
     // Non-admin: just show the assigned depot name
     return (
-      <div className="flex items-center gap-2 text-sm font-medium text-text-primary">
+      <div className="flex items-center gap-2 text-sm font-medium text-text-primary min-w-0">
         <Building2 className="h-4 w-4 text-text-muted flex-shrink-0" />
-        <span>{displayName}</span>
+        <span className="truncate max-w-[9rem] sm:max-w-[14rem]">{displayName}</span>
       </div>
     )
   }
@@ -43,7 +43,7 @@ function DepotContext() {
           )}
         >
           <Building2 className="h-4 w-4 text-text-muted flex-shrink-0" />
-          <span className="max-w-[160px] truncate">{displayName}</span>
+          <span className="max-w-[7.5rem] sm:max-w-[160px] truncate">{displayName}</span>
           <ChevronDown className="h-3.5 w-3.5 text-text-muted flex-shrink-0" />
         </button>
       </DropdownMenu.Trigger>

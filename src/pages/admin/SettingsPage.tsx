@@ -70,18 +70,18 @@ export function SettingsPage() {
   }
 
   if (isLoading) {
-    return <div className="p-6 space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+    return <div className="p-3 sm:p-6 space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
   }
   if (isError || !data) {
     return (
-      <div className="p-6">
+      <div className="p-3 sm:p-6">
         <EmptyState icon={<Settings className="h-8 w-8" />} title={<BiEmptyTitle {...ADMIN.failedSettings} />} />
       </div>
     )
   }
 
   return (
-    <div className="p-6 max-w-xl">
+    <div className="p-3 sm:p-6 max-w-xl">
       <BiPageTitle {...ADMIN.settings} />
       <div className="mt-0.5 mb-6">
         <BiPageDescription {...ADMIN.settingsDesc} />
