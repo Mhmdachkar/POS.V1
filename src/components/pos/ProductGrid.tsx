@@ -14,7 +14,7 @@ import { ProductCard } from './ProductCard'
 import type { ProductWithUnits } from '@/types'
 import type { ProductUnit } from '@/types/database'
 
-const MIN_CARD_WIDTH = 148
+const MIN_CARD_WIDTH = 132
 
 function CatalogRefreshBanner({ onRetry }: { onRetry: () => void }) {
   return (

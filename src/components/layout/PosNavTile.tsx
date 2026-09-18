@@ -60,8 +60,8 @@ export function PosNavTile({
       ref={(el) => registerRef?.(el)}
       className={({ isActive }) =>
         cn(
-          'group relative z-[1] flex items-center gap-2 rounded-xl px-2.5 py-2 min-h-[2.875rem]',
-          'min-w-[3.25rem] sm:min-w-[6.75rem] flex-shrink-0 select-none',
+          'group relative z-[1] flex items-center gap-1 sm:gap-2 rounded-xl px-1 sm:px-2.5 py-1.5 sm:py-2 min-h-[2.5rem] sm:min-h-[2.875rem]',
+          'min-w-[2.5rem] sm:min-w-[6.75rem] flex-shrink-0 select-none',
           'transition-[color,transform] duration-200 ease-out',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
           'active:scale-[0.98]',
@@ -79,7 +79,7 @@ export function PosNavTile({
         <>
           <span
             className={cn(
-              'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg',
+              'flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-lg',
               'transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
               isActive
                 ? 'bg-primary text-primary-foreground shadow-sm scale-105'

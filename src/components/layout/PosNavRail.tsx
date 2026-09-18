@@ -72,7 +72,7 @@ export function PosNavRail({ items, className }: PosNavRailProps) {
     <div
       ref={railRef}
       className={cn(
-        'relative inline-flex items-center gap-1 p-1.5 rounded-2xl',
+        'relative inline-flex items-center gap-0.5 sm:gap-1 p-1 sm:p-1.5 rounded-2xl',
         'bg-surface-muted/80 backdrop-blur-sm border border-border/80',
         'shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_2px_8px_rgba(16,24,40,0.06)]',
         'max-w-full overflow-x-auto scrollbar-thin',

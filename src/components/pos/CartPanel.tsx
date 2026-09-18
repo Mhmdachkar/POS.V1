@@ -17,9 +17,11 @@ import { BilingualText } from '@/components/ui/BilingualText'
 
 export interface CartPanelProps {
   className?: string
+  /** Mobile: jump back to catalog from empty cart */
+  onBrowseProducts?: () => void
 }
 
-export function CartPanel({ className }: CartPanelProps) {
+export function CartPanel({ className, onBrowseProducts }: CartPanelProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const { items, clearCart } = usePOSStore(useShallow((s) => ({
     items: s.items,
@@ -70,6 +72,18 @@ export function CartPanel({ className }: CartPanelProps) {
             icon={<ShoppingCart className="h-8 w-8" />}
             title={<BiEmptyTitle {...POS.emptyCartTitle} />}
             description={<BiEmptyDescription {...POS.emptyCartHint} />}
+            action={
+              onBrowseProducts ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="lg:hidden"
+                  onClick={onBrowseProducts}
+                >
+                  <BiButtonInline {...POS.emptyCartBrowse} />
+                </Button>
+              ) : undefined
+            }
           />
         ) : (
           items.map((item) => (

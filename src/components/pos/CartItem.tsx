@@ -63,39 +63,57 @@ export function CartItem({ item }: CartItemProps) {
   }
 
   return (
-    <div className="flex items-center gap-2 py-1.5 min-h-[52px] border-b border-border last:border-0">
-      {hasPhoto ? (
-        <img
-          src={photoSrc}
-          alt=""
-          width={32}
-          height={32}
-          onError={() => setPhotoFailed(true)}
-          className="h-8 w-8 rounded-md object-contain object-center bg-surface-muted flex-shrink-0 p-0.5"
-        />
-      ) : (
-        <div className="h-8 w-8 rounded-md bg-surface-muted flex-shrink-0" />
-      )}
-
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-text-primary truncate">{item.product_name}</p>
-        <p className="text-xs text-text-secondary truncate">{item.unit_name}</p>
-        {available != null && rem != null && (
-          <p className="text-[10px] text-text-muted tabular-nums">
-            <BilingualText {...POS.available} variant="caption" layout="inline" />{' '}
-            {formatPieces(available)} ·{' '}
-            <BilingualText {...POS.left} variant="caption" layout="inline" />{' '}
-            {formatPieces(rem)}
-          </p>
+    <div className="flex flex-col gap-2 py-2.5 border-b border-border last:border-0 sm:flex-row sm:items-center sm:gap-2 sm:py-1.5 sm:min-h-[52px]">
+      <div className="flex items-start gap-2 min-w-0 flex-1">
+        {hasPhoto ? (
+          <img
+            src={photoSrc}
+            alt=""
+            width={36}
+            height={36}
+            onError={() => setPhotoFailed(true)}
+            className="h-9 w-9 rounded-md object-contain object-center bg-surface-muted flex-shrink-0 p-0.5"
+          />
+        ) : (
+          <div className="h-9 w-9 rounded-md bg-surface-muted flex-shrink-0" />
         )}
+
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-text-primary truncate">{item.product_name}</p>
+          <p className="text-xs text-text-secondary truncate">{item.unit_name}</p>
+          {available != null && rem != null && (
+            <p className="text-[10px] text-text-muted tabular-nums">
+              <BilingualText {...POS.available} variant="caption" layout="inline" />{' '}
+              {formatPieces(available)} ·{' '}
+              <BilingualText {...POS.left} variant="caption" layout="inline" />{' '}
+              {formatPieces(rem)}
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+          <span className="text-sm font-semibold financial-value text-text-primary tabular-nums">
+            {formatCFA(item.line_total_cfa)}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 text-text-muted hover:text-danger hover:bg-danger-bg sm:hidden"
+            aria-label={bilingualAriaLabel(POS.removeFromCartAria(item.product_name))}
+            onClick={() => removeItem(item.product_id, item.unit_level)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
-      <div className="flex items-center gap-1 flex-shrink-0">
+      <div className="flex items-center gap-1 flex-shrink-0 pl-11 sm:pl-0">
         <Button
           type="button"
           variant="secondary"
           size="icon"
-          className="h-9 w-9"
+          className="h-10 w-10 sm:h-9 sm:w-9"
           aria-label={bilingualAriaLabel(POS.decreaseQtyAria(item.product_name))}
           onClick={() => applyQuantity(item.quantity_in_unit - 1)}
         >
@@ -115,7 +133,7 @@ export function CartItem({ item }: CartItemProps) {
             }
           }}
           className={cn(
-            'w-11 h-9 text-center text-sm rounded-md border border-border bg-surface',
+            'w-12 h-10 sm:w-11 sm:h-9 text-center text-sm rounded-md border border-border bg-surface',
             'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary',
             'text-text-primary',
           )}
@@ -125,7 +143,7 @@ export function CartItem({ item }: CartItemProps) {
           type="button"
           variant="secondary"
           size="icon"
-          className="h-9 w-9"
+          className="h-10 w-10 sm:h-9 sm:w-9"
           aria-label={bilingualAriaLabel(POS.increaseQtyAria(item.product_name))}
           disabled={atMax}
           onClick={() => {
@@ -142,22 +160,18 @@ export function CartItem({ item }: CartItemProps) {
           productName={item.product_name}
           availablePieces={available}
         />
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="hidden sm:inline-flex h-9 w-9 text-text-muted hover:text-danger hover:bg-danger-bg flex-shrink-0"
+          aria-label={bilingualAriaLabel(POS.removeFromCartAria(item.product_name))}
+          onClick={() => removeItem(item.product_id, item.unit_level)}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
       </div>
-
-      <span className="text-sm font-semibold financial-value text-text-primary flex-shrink-0 w-[5.5rem] text-right">
-        {formatCFA(item.line_total_cfa)}
-      </span>
-
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="h-9 w-9 text-text-muted hover:text-danger hover:bg-danger-bg flex-shrink-0"
-        aria-label={bilingualAriaLabel(POS.removeFromCartAria(item.product_name))}
-        onClick={() => removeItem(item.product_id, item.unit_level)}
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
     </div>
   )
 }

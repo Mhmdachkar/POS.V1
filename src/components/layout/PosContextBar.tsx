@@ -191,21 +191,21 @@ export function PosContextBar() {
       aria-label="Contexte caisse"
       className="flex-shrink-0 border-b border-border bg-gradient-to-b from-surface via-surface to-background shadow-[0_1px_0_rgba(16,24,40,0.04)]"
     >
-      <div className="flex items-center gap-3 px-3 sm:px-5 min-h-[4.5rem] py-2.5">
+      <div className="flex items-center gap-2 sm:gap-3 px-2.5 sm:px-5 min-h-0 sm:min-h-[4.5rem] py-2 sm:py-2.5">
         {/* Where this register lives */}
         <div
           className={cn(
-            'flex items-center gap-3 flex-shrink-0 pr-3 sm:pr-4',
+            'flex items-center gap-2 sm:gap-3 flex-shrink-0 pr-2 sm:pr-4',
             'border-r border-border',
           )}
         >
           <div className="relative flex-shrink-0">
-            <div className="h-11 w-11 rounded-xl bg-primary flex items-center justify-center shadow-sm">
-              <ShoppingCart className="h-5 w-5 text-primary-foreground" aria-hidden="true" />
+            <div className="h-9 w-9 sm:h-11 sm:w-11 rounded-xl bg-primary flex items-center justify-center shadow-sm">
+              <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" aria-hidden="true" />
             </div>
-            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-success ring-2 ring-background" aria-hidden="true" />
+            <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-success ring-2 ring-background" aria-hidden="true" />
           </div>
-          <div className="min-w-0 max-w-[8rem] sm:max-w-[11rem] lg:max-w-[13rem]">
+          <div className="min-w-0 max-w-[7.5rem] sm:max-w-[11rem] lg:max-w-[13rem]">
             <span className="hidden sm:inline-flex items-center rounded-md bg-primary-subtle px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
               Caisse
             </span>
@@ -225,11 +225,11 @@ export function PosContextBar() {
         {/* Session — shift + account */}
         <div
           className={cn(
-            'flex items-center gap-2 flex-shrink-0 pl-2 sm:pl-3 border-l border-border',
+            'flex items-center gap-1.5 sm:gap-2 flex-shrink-0 pl-1.5 sm:pl-3 border-l border-border',
             'rounded-xl sm:bg-surface-muted/50 sm:px-2 sm:py-1 sm:border sm:border-border/60',
           )}
         >
-          <div className="flex flex-col items-end max-w-[10rem] min-w-0 leading-tight">
+          <div className="hidden md:flex flex-col items-end max-w-[10rem] min-w-0 leading-tight">
             <span className="hidden lg:block text-[10px] font-semibold uppercase tracking-wide text-text-muted">
               Service
             </span>

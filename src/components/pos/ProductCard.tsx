@@ -122,11 +122,13 @@ export function ProductCard({ product, onAddItem, onPhotoError }: ProductCardPro
             {!outOfStock && !atStockLimit && (
               <span
                 className={cn(
-                  'absolute bottom-1 right-1 flex h-6 w-6 items-center justify-center rounded-full',
+                  'absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-full',
                   'bg-surface/95 text-primary shadow-sm border border-border/60',
                   'opacity-0 scale-90 transition-all duration-150',
                   'group-hover/card:opacity-100 group-hover/card:scale-100',
                   'group-focus-within/card:opacity-100 group-focus-within/card:scale-100',
+                  // Touch devices have no hover — keep the affordance visible on small screens
+                  'max-lg:opacity-100 max-lg:scale-100',
                 )}
                 aria-hidden="true"
               >

@@ -2,6 +2,9 @@ import { bi } from './types'
 
 export const POS = {
   cart: bi('Panier', 'Cart'),
+  catalogTab: bi('Produits', 'Products'),
+  cartTab: bi('Panier', 'Cart'),
+  viewCart: bi('Voir le panier', 'View cart'),
   noItems: bi('Aucune ligne', 'No items'),
   completeSale: bi('Terminer la vente', 'Complete Sale'),
   cashReceived: bi('Espèces reçues', 'Cash Received'),
@@ -46,6 +49,7 @@ export const POS = {
   clearCart: bi('Vider', 'Clear'),
   emptyCartTitle: bi('Panier vide', 'Your cart is empty'),
   emptyCartHint: bi('Touchez un produit pour l\'ajouter.', 'Tap a product to add it.'),
+  emptyCartBrowse: bi('Voir les produits', 'Browse products'),
   clearCartConfirmTitle: bi('Vider le panier ?', 'Clear cart?'),
   clearCartConfirmMessage: bi(
     'Toutes les lignes de la vente en cours seront supprimées.',
