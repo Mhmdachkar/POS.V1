@@ -38,5 +38,9 @@ vitest-*.txt
 build-*.txt
 tsc-*.txt
 tmp-export-verify/
+
+# EYO Excel extract scratch (regenerate with _gen_eyo_seed.cjs)
+_eyo_xlsx/
+_eyo_xlsx.zip
 scripts/_fr_patch_*.mjs
 scripts/_bilingual_batch_*.mjs

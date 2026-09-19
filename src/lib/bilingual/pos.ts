@@ -135,9 +135,14 @@ export const POS = {
   ),
   showAll: bi('Tout afficher', 'Show all'),
   showing40Results: bi(
-    '40 résultats — affinez par recherche ou catégorie.',
-    'Showing 40 results — search or select a category to narrow.',
+    'Liste limitée — affinez par recherche ou catégorie.',
+    'List capped — search or select a category to narrow.',
   ),
+  showingCatalogCap: (n: number) =>
+    bi(
+      `${n} résultats (plafond) — affinez par recherche ou catégorie.`,
+      `Showing ${n} results (cap) — search or select a category to narrow.`,
+    ),
   inCartBadge: bi('Panier', 'Cart'),
   lowBadge: bi('Faible', 'Low'),
   outOfStock: bi('Rupture', 'Out of stock'),

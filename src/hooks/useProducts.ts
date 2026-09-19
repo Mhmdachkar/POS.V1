@@ -34,6 +34,9 @@ export const productKeys = {
 // Fetch helpers
 // ─────────────────────────────────────────────────────────────────
 
+/** Full depot browse for POS — must cover the EYO catalog (~262+). */
+export const POS_CATALOG_LIMIT = 500
+
 export async function fetchProductSearch(
   query: string,
   depotId: string | null,
@@ -44,7 +47,7 @@ export async function fetchProductSearch(
     .select('*, product_units(*)')
     .eq('is_active', true)
     .order('name')
-    .limit(40)
+    .limit(POS_CATALOG_LIMIT)
 
   if (depotId) {
     q = q.eq('depot_id', depotId)
@@ -62,7 +65,7 @@ export async function fetchProductSearch(
       .from('product_units')
       .select('product_id')
       .ilike('serial_number', `%${trimmed}%`)
-      .limit(40)
+      .limit(POS_CATALOG_LIMIT)
 
     const serialProductIds = (serialData ?? []).map((r: any) => r.product_id as string)
 

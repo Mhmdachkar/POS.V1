@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Package, Plus } from 'lucide-react'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { cn } from '@/lib/cn'
 import { formatCFA } from '@/lib/formatters'
-import { hasDisplayableProductPhoto, resolveProductPhotoUrl } from '@/lib/productPhotos'
+import { resolveProductPhotoUrl } from '@/lib/productPhotos'
 import { canAddProductUnit } from '@/lib/posCartActions'
 import { remainingPieces } from '@/lib/posCartStock'
 import { getProductStockStatus } from '@/types'
@@ -18,7 +18,6 @@ import type { ProductUnit } from '@/types/database'
 export interface ProductCardProps {
   product: ProductWithUnits
   onAddItem: (product: ProductWithUnits, unit: ProductUnit, qty: number) => void
-  onPhotoError?: () => void
 }
 
 function selectPresenceKey(productId: string) {
@@ -30,7 +29,14 @@ function selectPresenceKey(productId: string) {
   }
 }
 
-export function ProductCard({ product, onAddItem, onPhotoError }: ProductCardProps) {
+function primarySerial(product: ProductWithUnits): string | null {
+  const units = product.units ?? []
+  const piece = units.find((u) => u.unit_level === 0)
+  const serial = (piece ?? units[0])?.serial_number?.trim()
+  return serial || null
+}
+
+export function ProductCard({ product, onAddItem }: ProductCardProps) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [photoFailed, setPhotoFailed] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -49,6 +55,7 @@ export function ProductCard({ product, onAddItem, onPhotoError }: ProductCardPro
   const available = Number(product.current_stock_pieces)
   const remaining = remainingPieces(available, cartItems, product.id)
   const primaryUnit = product.units[0]
+  const serial = primarySerial(product)
   const canAddPrimary =
     !outOfStock &&
     !!primaryUnit &&
@@ -61,16 +68,9 @@ export function ProductCard({ product, onAddItem, onPhotoError }: ProductCardPro
     )
   const atStockLimit = !outOfStock && remaining <= 0
 
-  if (!hasDisplayableProductPhoto(product.photo_url, product.name)) {
-    return null
-  }
-
   const photoSrc = resolveProductPhotoUrl(product.photo_url, product.name)
-  const hasPhoto = Boolean(photoSrc) && !photoFailed
+  const showPhoto = Boolean(photoSrc) && !photoFailed
 
-  if (!hasPhoto) {
-    return null
-  }
   const units = product.units
   const multiUnit = units.length > 1
   const displayUnits = multiUnit ? units.slice(0, 2) : units.slice(0, 1)
@@ -93,7 +93,7 @@ export function ProductCard({ product, onAddItem, onPhotoError }: ProductCardPro
         <button
           ref={buttonRef}
           type="button"
-          aria-label={product.name}
+          aria-label={serial ? `${product.name} (${serial})` : product.name}
           disabled={addDisabled && units.length <= 1}
           onClick={handleTap}
           className={cn(
@@ -109,15 +109,23 @@ export function ProductCard({ product, onAddItem, onPhotoError }: ProductCardPro
           )}
         >
           <div className="relative aspect-[5/4] w-full border-b border-border/50">
-            <ProductPhotoFrame
-              src={photoSrc}
-              onError={() => {
-                setPhotoFailed(true)
-                onPhotoError?.()
-              }}
-              className="absolute inset-0"
-              interactive
-            />
+            {showPhoto ? (
+              <ProductPhotoFrame
+                src={photoSrc}
+                onError={() => setPhotoFailed(true)}
+                className="absolute inset-0"
+                interactive
+              />
+            ) : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-surface-muted px-2">
+                <Package className="h-7 w-7 text-text-muted/70" strokeWidth={1.5} />
+                {serial && (
+                  <span className="text-[9px] font-mono font-semibold text-text-secondary text-center break-all leading-tight">
+                    {serial}
+                  </span>
+                )}
+              </div>
+            )}
 
             {!outOfStock && !atStockLimit && (
               <span
@@ -127,7 +135,6 @@ export function ProductCard({ product, onAddItem, onPhotoError }: ProductCardPro
                   'opacity-0 scale-90 transition-all duration-150',
                   'group-hover/card:opacity-100 group-hover/card:scale-100',
                   'group-focus-within/card:opacity-100 group-focus-within/card:scale-100',
-                  // Touch devices have no hover — keep the affordance visible on small screens
                   'max-lg:opacity-100 max-lg:scale-100',
                 )}
                 aria-hidden="true"
@@ -170,6 +177,11 @@ export function ProductCard({ product, onAddItem, onPhotoError }: ProductCardPro
             <p className="text-xs font-semibold text-text-primary leading-tight line-clamp-2">
               {product.name}
             </p>
+            {serial && (
+              <p className="text-[10px] font-mono text-text-muted truncate" title={serial}>
+                {serial}
+              </p>
+            )}
 
             {outOfStock ? (
               <p className="text-[10px] font-medium text-danger-foreground">

@@ -40,4 +40,40 @@ describe('CEO Notes — derived stock display', () => {
       { unit_level: 0, unit_name: 'Piece', count: 0 },
     ])
   })
+
+  it('package conversion of 1 still divides remainders (does not dump early)', () => {
+    const unitsOne = [
+      { unit_level: 0, unit_name: 'Piece', conversion_to_base: 1 },
+      { unit_level: 1, unit_name: 'Package', conversion_to_base: 1 },
+      { unit_level: 2, unit_name: 'Carton', conversion_to_base: 24 },
+    ]
+    // 70 cartons exact
+    expect(stockHierarchyBreakdown(1680, unitsOne)).toEqual([
+      { unit_level: 2, unit_name: 'Carton', count: 70 },
+      { unit_level: 1, unit_name: 'Package', count: 0 },
+      { unit_level: 0, unit_name: 'Piece', count: 0 },
+    ])
+    // 70 cartons + 5 loose pieces (= 5 packages when pkg size is 1)
+    expect(stockHierarchyBreakdown(1685, unitsOne)).toEqual([
+      { unit_level: 2, unit_name: 'Carton', count: 70 },
+      { unit_level: 1, unit_name: 'Package', count: 5 },
+      { unit_level: 0, unit_name: 'Piece', count: 0 },
+    ])
+  })
+})
+
+describe('packingRulesFromUnits', () => {
+  it('reads pcs/package and packages/carton from relative_quantity', async () => {
+    const { packingRulesFromUnits } = await import('@/hooks/useInventory')
+    const rules = packingRulesFromUnits([
+      { unit_level: 0, unit_name: 'Piece', relative_quantity: null, conversion_to_base: 1 },
+      { unit_level: 1, unit_name: 'Paquet', relative_quantity: 12, conversion_to_base: 12 },
+      { unit_level: 2, unit_name: 'Carton', relative_quantity: 20, conversion_to_base: 240 },
+    ])
+    expect(rules).toMatchObject({
+      piecesPerPackage: 12,
+      packagesPerCarton: 20,
+      piecesPerCarton: 240,
+    })
+  })
 })

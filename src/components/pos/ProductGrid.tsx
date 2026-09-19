@@ -4,9 +4,8 @@ import { Link } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 import { Button, EmptyState, ProductCardSkeleton } from '@/components/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
-import { useMemo, useState, useCallback } from 'react'
-import { useProductSearch } from '@/hooks/useProducts'
-import { filterProductsForPosWall } from '@/lib/productPhotos'
+import { useMemo } from 'react'
+import { POS_CATALOG_LIMIT, useProductSearch } from '@/hooks/useProducts'
 import { COMMON } from '@/lib/bilingual/common'
 import { POS } from '@/lib/bilingual/pos'
 import { BiButtonInline, BiEmptyDescription, BiEmptyTitle } from '@/lib/bilingual/ui'
@@ -64,26 +63,7 @@ export function ProductGrid({
   const { data: products, isLoading, isError, isFetching, refetch } =
     catalogQueryProp ?? internalQuery
 
-  const [brokenPhotoIds, setBrokenPhotoIds] = useState<Set<string>>(() => new Set())
-
-  const productsWithPhotos = useMemo(
-    () => filterProductsForPosWall(products ?? []),
-    [products],
-  )
-
-  const visibleProducts = useMemo(
-    () => productsWithPhotos.filter((p) => !brokenPhotoIds.has(p.id)),
-    [productsWithPhotos, brokenPhotoIds],
-  )
-
-  const markPhotoBroken = useCallback((productId: string) => {
-    setBrokenPhotoIds((prev) => {
-      if (prev.has(productId)) return prev
-      const next = new Set(prev)
-      next.add(productId)
-      return next
-    })
-  }, [])
+  const visibleProducts = useMemo(() => products ?? [], [products])
 
   const gridStyle = {
     gridTemplateColumns: `repeat(auto-fill, minmax(${MIN_CARD_WIDTH}px, 1fr))`,
@@ -140,10 +120,7 @@ export function ProductGrid({
     )
   }
 
-  const noVisibleAfterPhotoFilter =
-    Boolean(products && products.length > 0 && visibleProducts.length === 0)
-
-  if (!products || products.length === 0 || noVisibleAfterPhotoFilter) {
+  if (!products || products.length === 0) {
     const inCategory = Boolean(categoryId && categoryName)
     return (
       <div className={cn('flex-1 min-h-0 overflow-y-auto', className)}>
@@ -151,9 +128,7 @@ export function ProductGrid({
         <EmptyState
           icon={<Search className="h-8 w-8" />}
           title={
-            noVisibleAfterPhotoFilter ? (
-              <BiEmptyTitle {...POS.noProductsWithPhotos} />
-            ) : inCategory ? (
+            inCategory ? (
               <BiEmptyTitle {...POS.noProductsInCategory(categoryName!)} />
             ) : query ? (
               <BiEmptyTitle {...POS.noProductsFound} />
@@ -162,9 +137,7 @@ export function ProductGrid({
             )
           }
           description={
-            noVisibleAfterPhotoFilter ? (
-              <BiEmptyDescription {...POS.noProductsWithPhotosHint} />
-            ) : inCategory ? (
+            inCategory ? (
               <BiEmptyDescription {...POS.tryAnotherCategory} />
             ) : query ? (
               <BiEmptyDescription {...POS.noProductsMatching(query)} />
@@ -189,19 +162,14 @@ export function ProductGrid({
       <div className={cn('flex-1 min-h-0 overflow-y-auto pos-discovery-canvas', className)}>
         {isError && <CatalogRefreshBanner onRetry={() => void refetch()} />}
         <div className="p-4">
-          {productsWithPhotos.length === 40 && (
+          {visibleProducts.length >= POS_CATALOG_LIMIT && (
             <p className="text-xs text-text-secondary mb-3 px-1">
-              <BilingualText {...POS.showing40Results} variant="caption" />
+              <BilingualText {...POS.showingCatalogCap(POS_CATALOG_LIMIT)} variant="caption" />
             </p>
           )}
           <div className="grid gap-2.5" style={gridStyle} data-testid="product-grid">
             {visibleProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onAddItem={onAddItem}
-                onPhotoError={() => markPhotoBroken(product.id)}
-              />
+              <ProductCard key={product.id} product={product} onAddItem={onAddItem} />
             ))}
           </div>
         </div>

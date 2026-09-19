@@ -31,6 +31,8 @@ function makeUnit(overrides: Partial<ProductUnit> = {}): ProductUnit {
     product_id: 'prod-water',
     unit_level: 0,
     unit_name: 'Piece',
+    serial_number: 'WATER-PCE',
+    relative_quantity: null,
     conversion_to_base: 1,
     cost_price_cfa: 200,
     selling_price_cfa: 350,
@@ -87,7 +89,7 @@ describe('ProductCard', () => {
     const product = makeProduct()
     render(<ProductCard product={product} onAddItem={onAddItem} />)
 
-    await user.click(screen.getByRole('button', { name: 'Water' }))
+    await user.click(screen.getByRole('button', { name: /Water/ }))
     expect(onAddItem).toHaveBeenCalledTimes(1)
     expect(onAddItem).toHaveBeenCalledWith(product, product.units[0], 1)
   })
@@ -98,7 +100,7 @@ describe('ProductCard', () => {
     const product = makeProduct({ units: [makeUnit(), packUnit()] })
     render(<ProductCard product={product} onAddItem={onAddItem} />)
 
-    await user.click(screen.getByRole('button', { name: 'Water' }))
+    await user.click(screen.getByRole('button', { name: /Water/ }))
     expect(onAddItem).not.toHaveBeenCalled()
     expect(
       screen.getByRole('dialog', { name: bilingualAriaLabel(POS.selectUnitAria('Water')) }),
@@ -115,8 +117,8 @@ describe('ProductCard', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'Water' })).toBeDisabled()
-    await user.click(screen.getByRole('button', { name: 'Water' }))
+    expect(screen.getByRole('button', { name: /Water/ })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: /Water/ }))
     expect(onAddItem).not.toHaveBeenCalled()
     expect(screen.getByText(POS.outOfStock.fr)).toBeInTheDocument()
   })
@@ -142,7 +144,7 @@ describe('ProductCard', () => {
       />,
     )
     expect(screen.getByText(POS.atMax.fr)).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Water' }))
+    await user.click(screen.getByRole('button', { name: /Water/ }))
     expect(onAddItem).not.toHaveBeenCalled()
   })
 
@@ -160,7 +162,7 @@ describe('ProductCard', () => {
       />,
     )
     expect(screen.getByText(POS.lowBadge.fr)).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Water' }))
+    await user.click(screen.getByRole('button', { name: /Water/ }))
     expect(onAddItem).toHaveBeenCalledTimes(1)
   })
 
@@ -288,12 +290,17 @@ describe('ProductGrid', () => {
     onClearCategory: vi.fn(),
   }
 
-  it('renders products with valid photos only', () => {
+  it('renders every catalog product including placeholder-photo rows', () => {
     vi.mocked(useProductSearch).mockReturnValue({
       data: [
         makeProduct(),
         makeProduct({ id: 'prod-soda', name: 'Soda', photo_url: 'https://cdn.example.com/soda.jpg' }),
-        makeProduct({ id: 'prod-bad', name: 'No Photo', photo_url: 'https://placehold.co/1' }),
+        makeProduct({
+          id: 'prod-bad',
+          name: 'No Photo',
+          photo_url: 'https://placehold.co/1',
+          units: [makeUnit({ product_id: 'prod-bad', serial_number: 'NO-PHOTO-PCE' })],
+        }),
       ],
       isLoading: false,
       isError: false,
@@ -301,9 +308,9 @@ describe('ProductGrid', () => {
       refetch: vi.fn(),
     } as never)
     render(<ProductGrid {...gridProps} />)
-    expect(screen.getByRole('button', { name: 'Water' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Soda' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'No Photo' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Water/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Soda/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /No Photo/ })).toBeInTheDocument()
   })
 
   it('shows loading skeletons', () => {
@@ -328,7 +335,7 @@ describe('ProductGrid', () => {
     } as never)
     render(<ProductGrid {...gridProps} />)
     expect(screen.queryByTestId('product-grid-loading')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Water' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Water/ })).toBeInTheDocument()
   })
 
   it('keeps cached products visible when a refresh errors', async () => {
@@ -341,7 +348,7 @@ describe('ProductGrid', () => {
       refetch,
     } as never)
     render(<ProductGrid {...gridProps} />)
-    expect(screen.getByRole('button', { name: 'Water' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Water/ })).toBeInTheDocument()
     expect(screen.getByTestId('catalog-refresh-error')).toBeInTheDocument()
     await userEvent.setup().click(screen.getByRole('button', { name: /Réessayer|Retry/i }))
     expect(refetch).toHaveBeenCalledTimes(1)
@@ -368,20 +375,29 @@ describe('ProductGrid', () => {
     expect(onClearCategory).toHaveBeenCalledTimes(1)
   })
 
-  it('shows empty state when every product lacks a valid photo', () => {
+  it('still renders products when photos are placeholders (serial fallback)', () => {
     vi.mocked(useProductSearch).mockReturnValue({
-      data: [makeProduct({ photo_url: 'https://placehold.co/x' })],
+      data: [
+        makeProduct({
+          id: 'prod-a',
+          name: 'Same Name',
+          photo_url: 'https://placehold.co/x',
+          units: [makeUnit({ product_id: 'prod-a', serial_number: '55-109-PCE' })],
+        }),
+      ],
       isLoading: false,
       isError: false,
       isFetching: false,
       refetch: vi.fn(),
     } as never)
     render(<ProductGrid {...gridProps} />)
-    expect(screen.getByText(POS.noProductsWithPhotos.fr)).toBeInTheDocument()
+    expect(screen.getByText('Same Name')).toBeInTheDocument()
+    expect(screen.getAllByText('55-109-PCE').length).toBeGreaterThan(0)
+    expect(screen.queryByText(POS.noProductsWithPhotos.fr)).not.toBeInTheDocument()
   })
 
-  it('shows the 40-result informational note', () => {
-    const products = Array.from({ length: 40 }, (_, i) =>
+  it('shows the catalog-cap informational note', () => {
+    const products = Array.from({ length: 500 }, (_, i) =>
       makeProduct({ id: `prod-${i}`, name: `Product ${i}`, photo_url: `/products/p-${i}.jpg` }),
     )
     vi.mocked(useProductSearch).mockReturnValue({
@@ -392,8 +408,6 @@ describe('ProductGrid', () => {
       refetch: vi.fn(),
     } as never)
     render(<ProductGrid {...gridProps} />)
-    expect(
-      screen.getByText(POS.showing40Results.fr),
-    ).toBeInTheDocument()
+    expect(screen.getByText(POS.showingCatalogCap(500).fr)).toBeInTheDocument()
   })
 })

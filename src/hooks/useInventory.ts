@@ -227,6 +227,10 @@ export function formatDerivedUnitQuantity(pieces: number, conversionToBase: numb
 /**
  * Hierarchical remainder breakdown of base-piece stock (display only, never stored).
  * Highest conversion first: e.g. 1234 with carton=600, package=12 → 2 / 2 / 10.
+ *
+ * Note: when opening stock is an exact multiple of carton size (EYO seed),
+ * package and piece counts are 0 — that means no loose remainder, not that
+ * packing rules are missing. Packing rules live in relative_quantity.
  */
 export function stockHierarchyBreakdown(
   pieces: number,
@@ -238,9 +242,13 @@ export function stockHierarchyBreakdown(
 
   for (const unit of sorted) {
     const conv = Number(unit.conversion_to_base)
-    if (unit.unit_level === 0 || !(conv > 1)) {
+    if (unit.unit_level === 0) {
       rows.push({ unit_level: unit.unit_level, unit_name: unit.unit_name, count: remaining })
       remaining = 0
+      continue
+    }
+    if (!(conv > 0)) {
+      rows.push({ unit_level: unit.unit_level, unit_name: unit.unit_name, count: 0 })
       continue
     }
     const count = Math.floor(remaining / conv)
@@ -249,6 +257,54 @@ export function stockHierarchyBreakdown(
   }
 
   return rows.sort((a, b) => b.unit_level - a.unit_level)
+}
+
+/** Packing rules from relative_quantity (not stock remainders). */
+export function packingRulesFromUnits(
+  units: Array<{
+    unit_level: number
+    unit_name: string
+    relative_quantity: number | null
+    conversion_to_base: number
+  }>,
+): {
+  piecesPerPackage: number | null
+  packagesPerCarton: number | null
+  piecesPerCarton: number | null
+  packageName: string
+  cartonName: string
+  pieceName: string
+} {
+  const sorted = [...units].sort((a, b) => a.unit_level - b.unit_level)
+  const piece = sorted.find((u) => u.unit_level === 0)
+  const pkg = sorted.find((u) => u.unit_level === 1)
+  const ctn = sorted.find((u) => u.unit_level === 2)
+  const piecesPerPackage =
+    pkg?.relative_quantity != null && Number(pkg.relative_quantity) > 0
+      ? Number(pkg.relative_quantity)
+      : pkg && Number(pkg.conversion_to_base) > 0
+        ? Number(pkg.conversion_to_base)
+        : null
+  const packagesPerCarton =
+    ctn?.relative_quantity != null && Number(ctn.relative_quantity) > 0
+      ? Number(ctn.relative_quantity)
+      : piecesPerPackage && ctn && Number(ctn.conversion_to_base) > 0
+        ? Number(ctn.conversion_to_base) / piecesPerPackage
+        : null
+  const piecesPerCarton =
+    ctn && Number(ctn.conversion_to_base) > 0
+      ? Number(ctn.conversion_to_base)
+      : piecesPerPackage && packagesPerCarton
+        ? piecesPerPackage * packagesPerCarton
+        : null
+  return {
+    piecesPerPackage,
+    packagesPerCarton,
+    piecesPerCarton,
+    packageName: pkg?.unit_name ?? 'Paquet',
+    cartonName: ctn?.unit_name ?? 'Carton',
+    pieceName: piece?.unit_name ?? 'Pièce',
+  }
 }
 
 /** Smallest configured selling unit (level 0, else 1, else 2). */

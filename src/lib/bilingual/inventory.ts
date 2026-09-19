@@ -63,6 +63,22 @@ export const INVENTORY = {
   unitsAndPricing: bi('Unités et tarifs', 'Units & pricing'),
   stockLevels: bi('Niveaux de stock', 'Stock levels'),
   stockSection: bi('Stock', 'Stock'),
+  stockAsUnits: bi('Composition du stock', 'Stock composition'),
+  stockExactCartonsHint: bi(
+    '0 paquet / 0 pièce = stock en cartons entiers (pas de reste). La règle d’emballage est ci-dessous.',
+    '0 package / 0 piece = stock is whole cartons (no loose remainder). Packing rules are below.',
+  ),
+  packingSection: bi('Règle d’emballage', 'Packing rule'),
+  packingOnePackage: (pcs: number, pieceName: string, packageName: string) =>
+    bi(
+      `1 ${packageName} = ${pcs} ${pieceName}${pcs !== 1 ? 's' : ''}`,
+      `1 ${packageName} = ${pcs} ${pieceName}${pcs !== 1 ? 's' : ''}`,
+    ),
+  packingOneCarton: (pkgs: number, packageName: string, pcs: number, pieceName: string) =>
+    bi(
+      `1 Carton = ${pkgs} ${packageName}${pkgs !== 1 ? 's' : ''} (= ${pcs} ${pieceName}${pcs !== 1 ? 's' : ''})`,
+      `1 Carton = ${pkgs} ${packageName}${pkgs !== 1 ? 's' : ''} (= ${pcs} ${pieceName}${pcs !== 1 ? 's' : ''})`,
+    ),
   costSection: bi('Coût', 'Cost'),
   monitoringSection: bi('Suivi', 'Monitoring'),
   deactivateProduct: bi('Désactiver le produit ?', 'Deactivate product?'),

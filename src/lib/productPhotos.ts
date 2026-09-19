@@ -22,6 +22,10 @@ export function isPlaceholderPhotoUrl(photoUrl: string | null | undefined): bool
   const url = trimUrl(photoUrl)
   if (!url) return true
   if (PLACEHOLDER_PHOTO_PATTERN.test(url)) return true
+  // Seed fallback 1×1 / missing tile — treat as no real photo
+  if (/\/_missing\.png(?:\?|$)/i.test(url) || /\/products\/eyo\/_missing/i.test(url)) {
+    return true
+  }
   return false
 }
 
@@ -64,8 +68,13 @@ export function hasDisplayableProductPhoto(
   return resolveProductPhotoUrl(photoUrl, productName) !== ''
 }
 
+/**
+ * POS catalog: keep every product. Cards render a serial fallback when the
+ * photo URL is missing, a known placeholder host, or fails to load.
+ * (Hiding on broken photos caused products to flash then vanish.)
+ */
 export function filterProductsForPosWall<
   T extends { photo_url: string; name: string },
 >(products: T[]): T[] {
-  return products.filter((p) => hasDisplayableProductPhoto(p.photo_url, p.name))
+  return products
 }

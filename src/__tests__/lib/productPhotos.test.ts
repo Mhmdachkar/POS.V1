@@ -30,7 +30,9 @@ describe('productPhotos', () => {
       { id: '2', name: 'Empty SKU', photo_url: '' },
       { id: '3', name: 'Other', photo_url: 'https://images.example.com/p.jpg' },
     ])
-    expect(rows.map((r) => r.id)).toEqual(['3'])
+    // POS keeps every catalog row; cards show a serial/name fallback when photos fail.
+    expect(rows.map((r) => r.id)).toEqual(['1', '2', '3'])
     expect(hasDisplayableProductPhoto('https://placehold.co/x')).toBe(false)
+    expect(hasDisplayableProductPhoto('/products/eyo/_missing.png')).toBe(false)
   })
 })

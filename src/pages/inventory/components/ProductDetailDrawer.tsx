@@ -17,6 +17,7 @@ import { getProductStockStatus } from '@/types'
 import { useProductDetail } from '@/hooks/useProducts'
 import {
   INACTIVE_PRODUCT_MESSAGE,
+  packingRulesFromUnits,
   stockHierarchyBreakdown,
   primarySellingUnit,
   useCategories,
@@ -140,15 +141,78 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
                   <span className="text-text-secondary font-normal"> / {sellingUnit.unit_name}</span>
                 </p>
               )}
-              <div className="mt-2 space-y-1">
-                {stockHierarchyBreakdown(product.current_stock_pieces, product.units).map((row) => (
-                  <p key={row.unit_level} className="text-xs text-text-secondary tabular-nums">
-                    <span className="font-medium text-text-primary">{row.count}</span>
-                    {' '}{row.unit_name}{row.count !== 1 ? 's' : ''}
-                  </p>
-                ))}
+              <p className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+                <BilingualText {...INVENTORY.stockAsUnits} variant="caption" layout="inline" />
+              </p>
+              <div className="mt-1 space-y-1">
+                {(() => {
+                  const rows = stockHierarchyBreakdown(product.current_stock_pieces, product.units)
+                  const exactCartons =
+                    rows.length >= 3 &&
+                    rows.find((r) => r.unit_level === 2)?.count !== 0 &&
+                    rows.find((r) => r.unit_level === 1)?.count === 0 &&
+                    rows.find((r) => r.unit_level === 0)?.count === 0
+                  return (
+                    <>
+                      {rows.map((row) => (
+                        <p key={row.unit_level} className="text-xs text-text-secondary tabular-nums">
+                          <span className="font-medium text-text-primary">{row.count}</span>
+                          {' '}
+                          {row.unit_name}
+                          {row.count !== 1 ? 's' : ''}
+                        </p>
+                      ))}
+                      {exactCartons && (
+                        <p className="text-[10px] text-text-muted pt-1 leading-snug">
+                          <BilingualText {...INVENTORY.stockExactCartonsHint} variant="caption" />
+                        </p>
+                      )}
+                    </>
+                  )
+                })()}
               </div>
             </div>
+
+            {(() => {
+              const packing = packingRulesFromUnits(product.units)
+              if (packing.piecesPerPackage == null && packing.packagesPerCarton == null) {
+                return null
+              }
+              return (
+                <>
+                  <SectionHeader title={<BiSectionTitle {...INVENTORY.packingSection} />} />
+                  <div className="rounded-xl border border-border bg-surface p-3 space-y-1.5">
+                    {packing.piecesPerPackage != null && (
+                      <p className="text-sm text-text-primary">
+                        <BilingualText
+                          {...INVENTORY.packingOnePackage(
+                            packing.piecesPerPackage,
+                            packing.pieceName,
+                            packing.packageName,
+                          )}
+                          variant="body"
+                          layout="inline"
+                        />
+                      </p>
+                    )}
+                    {packing.packagesPerCarton != null && packing.piecesPerCarton != null && (
+                      <p className="text-sm text-text-primary">
+                        <BilingualText
+                          {...INVENTORY.packingOneCarton(
+                            packing.packagesPerCarton,
+                            packing.packageName,
+                            packing.piecesPerCarton,
+                            packing.pieceName,
+                          )}
+                          variant="body"
+                          layout="inline"
+                        />
+                      </p>
+                    )}
+                  </div>
+                </>
+              )
+            })()}
 
             {/* Serial numbers */}
             <SectionHeader title={<BiSectionTitle {...INVENTORY.serialNumbers} />} />
