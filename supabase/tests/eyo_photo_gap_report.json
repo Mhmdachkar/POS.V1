@@ -1,0 +1,116 @@
+{
+  "products": 262,
+  "copied": 262,
+  "uploaded": 262,
+  "fail": 0,
+  "skippedExisting": 0,
+  "stillMissing": [],
+  "usedNeighbor": [
+    "10-34@22",
+    "48-4@26",
+    "21-2@101",
+    "21-3@102",
+    "21-4@103",
+    "21-5@104",
+    "CB-2@108",
+    "CB-3@109",
+    "55-7@124",
+    "55-8@125",
+    "47-20@138",
+    "47-21@139",
+    "3-5@159",
+    "3-6@160",
+    "13-6@208",
+    "13-7@209",
+    "13-8@210",
+    "20-2@216",
+    "20-3@217",
+    "20-5@219",
+    "20-6@220",
+    "44-2@227",
+    "44-3@228",
+    "46-7@237"
+  ],
+  "sharedItemNos": [
+    {
+      "itemNo": "45-1",
+      "occurrence": 1,
+      "serialBase": "45-1",
+      "oldSerialBase": "45-1-R12",
+      "id": "ad5f3af3-d8d9-40a7-b8cd-ec5de12b8c4c",
+      "name": "point lombrie 1''x12 1KG/box 700g"
+    },
+    {
+      "itemNo": "5-4",
+      "occurrence": 1,
+      "serialBase": "5-4",
+      "oldSerialBase": "5-4-R79",
+      "id": "e4b7b3d7-05ec-4a22-bd1b-95e38c616912",
+      "name": "sie a bois 3721 20‘’ 1mm"
+    },
+    {
+      "itemNo": "5-7",
+      "occurrence": 1,
+      "serialBase": "5-7",
+      "oldSerialBase": "5-7-R82",
+      "id": "d27cf1ce-1f67-4104-a798-abf1f5c64791",
+      "name": "couteau evia"
+    },
+    {
+      "itemNo": "53-1",
+      "occurrence": 1,
+      "serialBase": "53-1",
+      "oldSerialBase": "53-1-R83",
+      "id": "210a253d-cf9a-4066-bc25-3d987b9391dd",
+      "name": "brosse de terre HZ-9003"
+    },
+    {
+      "itemNo": "53-1",
+      "occurrence": 2,
+      "serialBase": "53-1-2",
+      "oldSerialBase": "53-1-R90",
+      "id": "ea9ce7ba-f0a0-4af9-98a5-9f5f5af2e52f",
+      "name": "bosse de terre HZ-9003"
+    },
+    {
+      "itemNo": "40-2",
+      "occurrence": 1,
+      "serialBase": "40-2",
+      "oldSerialBase": "40-2-R113",
+      "id": "693d7225-9bb2-4bfd-9ffe-02d12854f1e4",
+      "name": "pneu de brouette plein 25cm 14x4"
+    },
+    {
+      "itemNo": "40-2",
+      "occurrence": 2,
+      "serialBase": "40-2-2",
+      "oldSerialBase": "40-2-R114",
+      "id": "2077d0b5-b2e8-4050-9a1f-f398ddc3100d",
+      "name": "pneu de brouette plein 25cm 14x4 ORANGE COLOR"
+    },
+    {
+      "itemNo": "45-1",
+      "occurrence": 2,
+      "serialBase": "45-1-2",
+      "oldSerialBase": "45-1-R130",
+      "id": "e96935ec-5128-49c3-9f3b-7c2e3d2e13c7",
+      "name": "sesail 24\""
+    },
+    {
+      "itemNo": "5-4",
+      "occurrence": 2,
+      "serialBase": "5-4-2",
+      "oldSerialBase": "5-4-R188",
+      "id": "2fb08a9e-fded-4935-b660-38680b2fe0e7",
+      "name": "matchette M206B 18"
+    },
+    {
+      "itemNo": "5-7",
+      "occurrence": 2,
+      "serialBase": "5-7-2",
+      "oldSerialBase": "5-7-R190",
+      "id": "f603e5f8-2d98-4af2-af77-9e7283efd763",
+      "name": "fourche 3 dent rouge 1.3KG"
+    }
+  ]
+}

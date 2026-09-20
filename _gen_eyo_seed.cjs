@@ -122,7 +122,8 @@ for (let i = headerIdx + 1; i < matrix.length; i++) {
   });
 }
 
-// Disambiguate duplicate ITEM NO. values (same serial appears for different products)
+// Shared ITEM NO. values are still distinct products (different names/rows).
+// Keep stable UUIDs per excel row; serials stay searchable by the raw ITEM NO.
 const itemCounts = new Map();
 for (const p of rawProducts) {
   itemCounts.set(p.itemNo, (itemCounts.get(p.itemNo) || 0) + 1);
@@ -132,17 +133,20 @@ const products = rawProducts.map((p) => {
   const total = itemCounts.get(p.itemNo) || 1;
   const seen = (itemSeen.get(p.itemNo) || 0) + 1;
   itemSeen.set(p.itemNo, seen);
-  const isDup = total > 1;
-  const serialBase = isDup
-    ? `${p.itemNo.trim().toUpperCase().replace(/\s+/g, '-')}-R${p.excelRow}`
-    : p.itemNo.trim().toUpperCase().replace(/\s+/g, '-');
-  const fileBase = isDup ? `${safeFile(p.itemNo)}-R${p.excelRow}` : safeFile(p.itemNo);
-  const identityKey = isDup
+  const sharedItemNo = total > 1;
+  const itemToken = p.itemNo.trim().toUpperCase().replace(/\s+/g, '-');
+  // First row keeps plain ITEM; later rows with same ITEM get ITEM-2, ITEM-3, …
+  const serialBase = sharedItemNo && seen > 1 ? `${itemToken}-${seen}` : itemToken;
+  const fileBase =
+    sharedItemNo && seen > 1 ? `${safeFile(p.itemNo)}-${seen}` : safeFile(p.itemNo);
+  // UUID always includes excel row when ITEM NO is reused so both products exist
+  const identityKey = sharedItemNo
     ? `prod:${p.itemNo.toUpperCase()}:r${p.excelRow}`
     : `prod:${p.itemNo.toUpperCase()}`;
   return {
     ...p,
-    isDup,
+    sharedItemNo,
+    occurrence: seen,
     serialBase,
     fileBase,
     identityKey,
@@ -154,8 +158,8 @@ console.log(
   products.length,
   'unique item nos',
   itemCounts.size,
-  'dup rows',
-  products.filter((p) => p.isDup).length,
+  'shared-item-no rows',
+  products.filter((p) => p.sharedItemNo).length,
 );
 
 // --- Map drawing images to rows ---
@@ -182,11 +186,14 @@ const wsDr = drawing.wsDr || drawing;
 const anchors = [...asArray(wsDr.twoCellAnchor), ...asArray(wsDr.oneCellAnchor)];
 
 const rowToMedia = new Map();
+const rowSpan = new Map(); // prefer tighter spans when a row is covered by multiple anchors
 for (const a of anchors) {
   const from = a.from;
   if (!from) continue;
-  const row0 = Number(from.row);
-  if (!Number.isFinite(row0)) continue;
+  const rowFrom = Number(from.row);
+  if (!Number.isFinite(rowFrom)) continue;
+  const rowTo = Number(a.to?.row);
+  const rowEnd = Number.isFinite(rowTo) ? Math.max(rowFrom, rowTo) : rowFrom;
   const blip = a.pic?.blipFill?.blip;
   const rid =
     blip?.['@_r:embed'] ||
@@ -195,11 +202,17 @@ for (const a of anchors) {
   if (!rid) continue;
   const target = relMap.get(rid);
   if (!target) continue;
-  if (!rowToMedia.has(row0)) {
-    rowToMedia.set(row0, target.replace(/^\.\.\//, 'xl/'));
+  const media = target.replace(/^\.\.\//, 'xl/');
+  const span = rowEnd - rowFrom;
+  for (let r = rowFrom; r <= rowEnd; r++) {
+    const prevSpan = rowSpan.get(r);
+    if (prevSpan == null || span < prevSpan) {
+      rowToMedia.set(r, media);
+      rowSpan.set(r, span);
+    }
   }
 }
-console.log('image row mappings', rowToMedia.size);
+console.log('image row mappings (span-aware)', rowToMedia.size);
 
 ensureDir(OUT_IMG);
 // Clear previous product images (keep regenerating clean)
@@ -447,7 +460,9 @@ for (const p of products) {
   const serialPkg = p.serialBase + '-PKG';
   const serialCtn = p.serialBase + '-CTN';
 
-  lines.push(`  -- ${p.itemNo}: ${p.name}${p.isDup ? ` (excel row ${p.excelRow})` : ''}`);
+  lines.push(
+    `  -- ${p.itemNo}: ${p.name}${p.sharedItemNo ? ` (row ${p.excelRow}, occurrence ${p.occurrence})` : ''}`,
+  );
   lines.push(
     `  -- stock ${p.ctn} CTN x ${p.paquet} paquet x ${p.pcsPerPq} pcs = ${p.stockPieces} pieces`,
   );

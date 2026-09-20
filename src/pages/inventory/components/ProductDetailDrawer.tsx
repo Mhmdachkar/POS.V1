@@ -147,28 +147,27 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
               <div className="mt-1 space-y-1">
                 {(() => {
                   const rows = stockHierarchyBreakdown(product.current_stock_pieces, product.units)
-                  const exactCartons =
-                    rows.length >= 3 &&
-                    rows.find((r) => r.unit_level === 2)?.count !== 0 &&
-                    rows.find((r) => r.unit_level === 1)?.count === 0 &&
-                    rows.find((r) => r.unit_level === 0)?.count === 0
-                  return (
-                    <>
-                      {rows.map((row) => (
-                        <p key={row.unit_level} className="text-xs text-text-secondary tabular-nums">
-                          <span className="font-medium text-text-primary">{row.count}</span>
-                          {' '}
-                          {row.unit_name}
-                          {row.count !== 1 ? 's' : ''}
-                        </p>
-                      ))}
-                      {exactCartons && (
-                        <p className="text-[10px] text-text-muted pt-1 leading-snug">
-                          <BilingualText {...INVENTORY.stockExactCartonsHint} variant="caption" />
-                        </p>
-                      )}
-                    </>
-                  )
+                  // Hide zero remainders (e.g. exact carton stock → only "10 Cartons").
+                  const display = rows.filter((row) => Number(row.count) > 0)
+                  if (display.length === 0) {
+                    return (
+                      <p className="text-xs text-text-secondary tabular-nums">
+                        <span className="font-medium text-text-primary">0</span> pcs
+                      </p>
+                    )
+                  }
+                  return display.map((row) => {
+                    const label = row.unit_name
+                    const plural =
+                      row.count === 1 || /s$/i.test(label) ? label : `${label}s`
+                    return (
+                      <p key={row.unit_level} className="text-xs text-text-secondary tabular-nums">
+                        <span className="font-medium text-text-primary">{row.count}</span>
+                        {' '}
+                        {plural}
+                      </p>
+                    )
+                  })
                 })()}
               </div>
             </div>
