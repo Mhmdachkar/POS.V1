@@ -133,6 +133,7 @@ function createFilterAwareFrom(allRows: ProductRow[]) {
   let filtered = [...allRows]
   let range: [number, number] | null = null
   let selectArgs: unknown[] = []
+  let table = 'products'
 
   const builder: Record<string, unknown> = {}
 
@@ -143,6 +144,8 @@ function createFilterAwareFrom(allRows: ProductRow[]) {
   assign('select', (...args: unknown[]) => {
     calls.push('select')
     selectArgs = args
+    filtered = [...allRows]
+    range = null
     return builder
   })
   assign('order', () => {
@@ -157,9 +160,28 @@ function createFilterAwareFrom(allRows: ProductRow[]) {
   assign('ilike', (col: unknown, val: unknown) => {
     calls.push(`ilike:${String(col)}`)
     const needle = String(val).replace(/%/g, '').toLowerCase()
+    if (table === 'product_units') {
+      // Inventory catalog mock has no unit serials — no serial matches.
+      filtered = []
+      return builder
+    }
     filtered = filtered.filter((r) =>
       String((r as Record<string, unknown>)[String(col)]).toLowerCase().includes(needle),
     )
+    return builder
+  })
+  assign('or', (filter: unknown) => {
+    calls.push(`or:${String(filter)}`)
+    const text = String(filter)
+    const nameMatch = text.match(/name\.ilike\.%([^%]+)%/)
+    const needle = (nameMatch?.[1] ?? '').toLowerCase()
+    const idMatch = text.match(/id\.in\.\(([^)]*)\)/)
+    const ids = idMatch?.[1] ? idMatch[1].split(',').filter(Boolean) : []
+    filtered = allRows.filter((r) => {
+      const byName = needle ? r.name.toLowerCase().includes(needle) : false
+      const byId = ids.includes(r.id)
+      return byName || byId
+    })
     return builder
   })
   assign('lte', (col: unknown, val: unknown) => {
@@ -183,6 +205,9 @@ function createFilterAwareFrom(allRows: ProductRow[]) {
   })
 
   const execute = () => {
+    if (table === 'product_units') {
+      return Promise.resolve({ data: [], error: null })
+    }
     const count = filtered.length
     const page = range ? filtered.slice(range[0], range[1] + 1) : filtered
     return Promise.resolve({ data: page, error: null, count })
@@ -191,7 +216,13 @@ function createFilterAwareFrom(allRows: ProductRow[]) {
   builder.then = (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) =>
     execute().then(resolve, reject)
 
-  return { builder, calls, getSelectArgs: () => selectArgs }
+  const from = (name: string) => {
+    table = name
+    calls.push(`from:${name}`)
+    return builder
+  }
+
+  return { builder, calls, from, getSelectArgs: () => selectArgs }
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -281,8 +312,8 @@ describe('filter-before-pagination', () => {
   })
 
   it('returns an Out of Stock product that would live on page 4 of All', async () => {
-    const { builder } = createFilterAwareFrom(catalog)
-    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    const { from } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation((table: string) => from(table) as never)
 
     const unfilteredPage0: InventoryListFilters = {
       page: 0,
@@ -297,8 +328,8 @@ describe('filter-before-pagination', () => {
     expect(allFirst.data.find((p) => p.id === 'prod-90')).toBeUndefined()
     expect(allFirst.count).toBe(100)
 
-    const { builder: filteredBuilder, calls: filteredCalls } = createFilterAwareFrom(catalog)
-    vi.mocked(supabase.from).mockReturnValue(filteredBuilder as never)
+    const { from: filteredFrom, calls: filteredCalls } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation((table: string) => filteredFrom(table) as never)
 
     const result = await fetchInventoryList({
       ...unfilteredPage0,
@@ -317,8 +348,8 @@ describe('filter-before-pagination', () => {
   })
 
   it('uses count: exact on the filtered query', async () => {
-    const { builder, getSelectArgs } = createFilterAwareFrom(catalog)
-    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    const { from, getSelectArgs } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation((table: string) => from(table) as never)
 
     await fetchInventoryList({
       page: 0,
@@ -334,8 +365,8 @@ describe('filter-before-pagination', () => {
   })
 
   it('does not apply a React getStockStatus filter on the returned page', async () => {
-    const { builder } = createFilterAwareFrom(catalog)
-    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    const { from } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation((table: string) => from(table) as never)
 
     const result = await fetchInventoryList({
       page: 0,
@@ -358,9 +389,9 @@ describe('filter-before-pagination', () => {
 describe('list filters', () => {
   const catalog = buildCatalog()
 
-  it('applies name ilike when search is present', async () => {
-    const { builder, calls } = createFilterAwareFrom(catalog)
-    vi.mocked(supabase.from).mockReturnValue(builder as never)
+  it('applies name or serial or-filter when search is present', async () => {
+    const { from, calls } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation((table: string) => from(table) as never)
 
     await fetchInventoryList({
       page: 0,
@@ -371,7 +402,8 @@ describe('list filters', () => {
       depotId: null,
     })
 
-    expect(calls).toContain('ilike:name')
+    expect(calls).toContain('from:product_units')
+    expect(calls.some((c) => c.startsWith('or:name.ilike.%Product 001%'))).toBe(true)
   })
 
   it('puts categoryId on the list query key so each category is a server-side page', () => {
@@ -394,8 +426,8 @@ describe('list filters', () => {
   })
 
   it('applies category_id when category is selected', async () => {
-    const { builder, calls } = createFilterAwareFrom(catalog)
-    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    const { from, calls } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation((table: string) => from(table) as never)
 
     await fetchInventoryList({
       page: 0,
@@ -410,8 +442,8 @@ describe('list filters', () => {
   })
 
   it('omits depot eq filter when depotId is null (All Depots)', async () => {
-    const { builder, calls } = createFilterAwareFrom(catalog)
-    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    const { from, calls } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation((table: string) => from(table) as never)
 
     await fetchInventoryList({
       page: 0,
@@ -426,8 +458,8 @@ describe('list filters', () => {
   })
 
   it('applies depot_id when a depot is selected', async () => {
-    const { builder, calls } = createFilterAwareFrom(catalog)
-    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    const { from, calls } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation((table: string) => from(table) as never)
 
     const result = await fetchInventoryList({
       page: 0,
@@ -444,8 +476,8 @@ describe('list filters', () => {
   })
 
   it('keeps concrete product depot_id on All Depots rows', async () => {
-    const { builder } = createFilterAwareFrom(catalog)
-    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    const { from } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation((table: string) => from(table) as never)
 
     const result = await fetchInventoryList({
       page: 0,
@@ -667,7 +699,8 @@ describe('inventory activity query', () => {
 })
 
 describe('stock activity ledger query', () => {
-  function ledgerBuilder(calls: string[]) {
+  /** One builder per `from()` so Promise.all(name + serial) does not share table state. */
+  function ledgerBuilderForTable(table: string, calls: string[]) {
     const builder: Record<string, unknown> = {}
     builder.select = (sel: unknown, opts?: unknown) => {
       calls.push(`select:${String(sel)}`)
@@ -678,6 +711,11 @@ describe('stock activity ledger query', () => {
       calls.push(`eq:${String(col)}:${String(val)}`)
       return builder
     }
+    builder.in = (col: unknown, vals: unknown) => {
+      calls.push(`in:${String(col)}:${JSON.stringify(vals)}`)
+      return builder
+    }
+    builder.limit = () => builder
     builder.order = (col: unknown, opts: unknown) => {
       calls.push(`order:${String(col)}:${JSON.stringify(opts)}`)
       return builder
@@ -698,8 +736,14 @@ describe('stock activity ledger query', () => {
       calls.push(`range:${from}-${to}`)
       return builder
     }
-    builder.then = (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) =>
-      Promise.resolve({
+    builder.then = (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) => {
+      if (table === 'product_units') {
+        return Promise.resolve({ data: [], error: null }).then(resolve, reject)
+      }
+      if (table === 'products') {
+        return Promise.resolve({ data: [{ id: 'prod-1' }], error: null }).then(resolve, reject)
+      }
+      return Promise.resolve({
         data: [
           {
             id: 'tx-1',
@@ -720,15 +764,15 @@ describe('stock activity ledger query', () => {
         error: null,
         count: 1,
       }).then(resolve, reject)
+    }
     return builder
   }
 
   it('selects inventory_transactions with count, newest first, range last', async () => {
     const calls: string[] = []
-    const builder = ledgerBuilder(calls)
     vi.mocked(supabase.from).mockImplementation((table: string) => {
       calls.push(`from:${table}`)
-      return builder as never
+      return ledgerBuilderForTable(table, calls) as never
     })
 
     const bounds = stockActivityCreatedAtBounds('this_week')
@@ -741,7 +785,9 @@ describe('stock activity ledger query', () => {
       pageSize: STOCK_ACTIVITY_PAGE_SIZE,
     })
 
-    expect(calls[0]).toBe('from:inventory_transactions')
+    expect(calls).toContain('from:products')
+    expect(calls).toContain('from:product_units')
+    expect(calls).toContain('from:inventory_transactions')
     expect(calls).toContain(`select:${STOCK_ACTIVITY_SELECT}`)
     expect(STOCK_ACTIVITY_SELECT).toBe(
       '*, staff!created_by(full_name), products!product_id!inner(name, is_active), depots!depot_id(name, code)',
@@ -752,16 +798,16 @@ describe('stock activity ledger query', () => {
     expect(calls).toContain('eq:transaction_type:SALE')
     expect(calls).toContain(`gte:created_at:${bounds!.from}`)
     expect(calls).toContain(`lt:created_at:${bounds!.toExclusive}`)
-    expect(calls).toContain('ilike:products.name:%Water%')
+    expect(calls).toContain('in:product_id:["prod-1"]')
     expect(calls).toContain(`range:50-99`)
     expect(STOCK_ACTIVITY_PAGE_SIZE).toBe(50)
 
     const rangeIdx = calls.findIndex((c) => c.startsWith('range:'))
-    const ilikeIdx = calls.findIndex((c) => c.startsWith('ilike:'))
+    const inIdx = calls.findIndex((c) => c.startsWith('in:product_id:'))
     const eqTypeIdx = calls.findIndex((c) => c === 'eq:transaction_type:SALE')
-    expect(rangeIdx).toBe(calls.length - 1)
-    expect(ilikeIdx).toBeGreaterThan(-1)
-    expect(ilikeIdx).toBeLessThan(rangeIdx)
+    expect(rangeIdx).toBeGreaterThan(-1)
+    expect(inIdx).toBeGreaterThan(-1)
+    expect(inIdx).toBeLessThan(rangeIdx)
     expect(eqTypeIdx).toBeLessThan(rangeIdx)
 
     expect(result.count).toBe(1)
@@ -772,10 +818,9 @@ describe('stock activity ledger query', () => {
 
   it('omits depot, type, date, and search predicates when unset', async () => {
     const calls: string[] = []
-    const builder = ledgerBuilder(calls)
     vi.mocked(supabase.from).mockImplementation((table: string) => {
       calls.push(`from:${table}`)
-      return builder as never
+      return ledgerBuilderForTable(table, calls) as never
     })
 
     await fetchStockActivity({
@@ -792,6 +837,7 @@ describe('stock activity ledger query', () => {
     expect(calls.some((c) => c.startsWith('gte:created_at'))).toBe(false)
     expect(calls.some((c) => c.startsWith('lt:created_at'))).toBe(false)
     expect(calls.some((c) => c.startsWith('ilike:'))).toBe(false)
+    expect(calls.some((c) => c.startsWith('in:product_id:'))).toBe(false)
     expect(calls).toContain('range:0-49')
   })
 })

@@ -83,103 +83,123 @@ function createLedgerFrom(
 ) {
   const calls: string[] = []
   let queryCalls: string[] = []
-  let table = 'inventory_transactions'
-  let range: [number, number] | null = null
-  let typeFilter: string | null = null
-  let depotFilter: string | null = null
-  let search: string | null = null
-
-  const builder: Record<string, unknown> = {}
-
-  const rec = (msg: string) => {
-    if (table === 'inventory_transactions') queryCalls.push(msg)
-  }
-
-  builder.select = (...args: unknown[]) => {
-    rec(`select:${String(args[0])}`)
-    rec(`count:${JSON.stringify(args[1] ?? null)}`)
-    if (table === 'inventory_transactions') {
-      range = null
-      typeFilter = null
-      depotFilter = null
-      search = null
-    }
-    return builder
-  }
-  builder.order = (col: unknown, opts?: unknown) => {
-    rec(`order:${String(col)}:${JSON.stringify(opts ?? null)}`)
-    return builder
-  }
-  builder.eq = (col: unknown, val: unknown) => {
-    rec(`eq:${String(col)}:${String(val)}`)
-    if (table === 'inventory_transactions' && col === 'transaction_type') typeFilter = String(val)
-    if (table === 'inventory_transactions' && col === 'depot_id') depotFilter = String(val)
-    return builder
-  }
-  builder.gte = (col: unknown, val: unknown) => {
-    rec(`gte:${String(col)}:${String(val)}`)
-    return builder
-  }
-  builder.lt = (col: unknown, val: unknown) => {
-    rec(`lt:${String(col)}:${String(val)}`)
-    return builder
-  }
-  builder.ilike = (col: unknown, val: unknown) => {
-    rec(`ilike:${String(col)}:${String(val)}`)
-    if (table === 'inventory_transactions' && col === 'products.name') search = String(val)
-    return builder
-  }
-  builder.range = (from: unknown, to: unknown) => {
-    rec(`range:${from}-${to}`)
-    range = [Number(from), Number(to)]
-    return builder
-  }
-
-  const execute = () => {
-    if (table === 'depots') {
-      return Promise.resolve({
-        data: [{ id: 'depot-a', name: 'Depot Dakar', code: 'DKR', is_active: true }],
-        error: null,
-      })
-    }
-    if (table === 'categories') {
-      return Promise.resolve({ data: [], error: null })
-    }
-    if (table === 'products') {
-      return Promise.resolve({ data: [], error: null, count: 0 })
-    }
-    if (options.pending) {
-      return new Promise(() => {})
-    }
-    if (options.error) {
-      return Promise.resolve({ data: null, error: { message: 'load failed' }, count: 0 })
-    }
-
-    let filtered = [...allRows]
-    if (typeFilter) {
-      filtered = filtered.filter((r) => r.transaction_type === typeFilter)
-    }
-    if (depotFilter) {
-      filtered = filtered.filter((r) => r.depot_id === depotFilter)
-    }
-    if (search) {
-      const term = search.replace(/%/g, '').toLowerCase()
-      filtered = filtered.filter((r) => (r.products?.name ?? '').toLowerCase().includes(term))
-    }
-    const count = filtered.length
-    const page = range ? filtered.slice(range[0], range[1] + 1) : filtered
-    return Promise.resolve({ data: page, error: null, count })
-  }
-
-  builder.then = (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) =>
-    execute().then(resolve, reject)
 
   function from(name: string) {
-    table = name
     calls.push(`from:${name}`)
     if (name === 'inventory_transactions') {
       queryCalls = []
     }
+
+    // Per-from builder so Promise.all(name + serial) cannot clobber table state.
+    let range: [number, number] | null = null
+    let typeFilter: string | null = null
+    let depotFilter: string | null = null
+    let productIdIn: string[] | null = null
+    let nameSearch: string | null = null
+
+    const builder: Record<string, unknown> = {}
+    const rec = (msg: string) => {
+      if (name === 'inventory_transactions') queryCalls.push(msg)
+    }
+
+    builder.select = (...args: unknown[]) => {
+      rec(`select:${String(args[0])}`)
+      rec(`count:${JSON.stringify(args[1] ?? null)}`)
+      if (name === 'inventory_transactions') {
+        range = null
+        typeFilter = null
+        depotFilter = null
+        productIdIn = null
+      }
+      if (name === 'products') nameSearch = null
+      return builder
+    }
+    builder.order = (col: unknown, opts?: unknown) => {
+      rec(`order:${String(col)}:${JSON.stringify(opts ?? null)}`)
+      return builder
+    }
+    builder.eq = (col: unknown, val: unknown) => {
+      rec(`eq:${String(col)}:${String(val)}`)
+      if (name === 'inventory_transactions' && col === 'transaction_type') typeFilter = String(val)
+      if (name === 'inventory_transactions' && col === 'depot_id') depotFilter = String(val)
+      return builder
+    }
+    builder.gte = (col: unknown, val: unknown) => {
+      rec(`gte:${String(col)}:${String(val)}`)
+      return builder
+    }
+    builder.lt = (col: unknown, val: unknown) => {
+      rec(`lt:${String(col)}:${String(val)}`)
+      return builder
+    }
+    builder.ilike = (col: unknown, val: unknown) => {
+      rec(`ilike:${String(col)}:${String(val)}`)
+      if (name === 'products' && col === 'name') nameSearch = String(val)
+      return builder
+    }
+    builder.in = (col: unknown, vals: unknown) => {
+      rec(`in:${String(col)}:${JSON.stringify(vals)}`)
+      if (name === 'inventory_transactions' && col === 'product_id') {
+        productIdIn = (vals as string[]).map(String)
+      }
+      return builder
+    }
+    builder.limit = () => builder
+    builder.range = (fromIdx: unknown, to: unknown) => {
+      rec(`range:${fromIdx}-${to}`)
+      range = [Number(fromIdx), Number(to)]
+      return builder
+    }
+
+    builder.then = (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) => {
+      if (name === 'depots') {
+        return Promise.resolve({
+          data: [{ id: 'depot-a', name: 'Depot Dakar', code: 'DKR', is_active: true }],
+          error: null,
+        }).then(resolve, reject)
+      }
+      if (name === 'categories') {
+        return Promise.resolve({ data: [], error: null }).then(resolve, reject)
+      }
+      if (name === 'product_units') {
+        // No serial fixtures in this ledger mock
+        return Promise.resolve({ data: [], error: null }).then(resolve, reject)
+      }
+      if (name === 'products') {
+        const term = (nameSearch ?? '').replace(/%/g, '').toLowerCase()
+        const ids = allRows
+          .filter((r) => (r.products?.name ?? '').toLowerCase().includes(term))
+          .map((r) => r.product_id)
+        return Promise.resolve({
+          data: [...new Set(ids)].map((id) => ({ id })),
+          error: null,
+        }).then(resolve, reject)
+      }
+      if (options.pending) {
+        return new Promise(() => {})
+      }
+      if (options.error) {
+        return Promise.resolve({ data: null, error: { message: 'load failed' }, count: 0 }).then(
+          resolve,
+          reject,
+        )
+      }
+
+      let filtered = [...allRows]
+      if (typeFilter) {
+        filtered = filtered.filter((r) => r.transaction_type === typeFilter)
+      }
+      if (depotFilter) {
+        filtered = filtered.filter((r) => r.depot_id === depotFilter)
+      }
+      if (productIdIn) {
+        filtered = filtered.filter((r) => productIdIn!.includes(r.product_id))
+      }
+      const count = filtered.length
+      const page = range ? filtered.slice(range[0], range[1] + 1) : filtered
+      return Promise.resolve({ data: page, error: null, count }).then(resolve, reject)
+    }
+
     return builder
   }
 
@@ -282,24 +302,26 @@ describe('StockActivityPage', () => {
     expect(rangeIdx).toBeGreaterThan(eqIdx)
   })
 
-  it('search Water applies products.name ilike after debounce', async () => {
+  it('search Water matches product name or serial after debounce', async () => {
     const user = userEvent.setup()
-    const { from, queryCalls } = createLedgerFrom(catalog)
+    const { from, queryCalls, calls } = createLedgerFrom(catalog)
     vi.mocked(supabase.from).mockImplementation(from as never)
     renderPage()
-    await screen.findByPlaceholderText(/nom du produit|product name/i)
+    await screen.findByPlaceholderText(/nom ou n° de série|name or serial/i)
 
-    await user.type(screen.getByPlaceholderText(/nom du produit|product name/i), 'Water')
+    await user.type(screen.getByPlaceholderText(/nom ou n° de série|name or serial/i), 'Water')
 
     await waitFor(
       () => {
-        expect(queryCalls()).toContain('ilike:products.name:%Water%')
+        expect(calls).toContain('from:products')
+        expect(queryCalls().some((c) => c.startsWith('in:product_id:'))).toBe(true)
       },
       { timeout: INVENTORY_SEARCH_DEBOUNCE_MS + 750 },
     )
     const rangeIdx = queryCalls().findIndex((c) => c.startsWith('range:'))
-    const ilikeIdx = queryCalls().indexOf('ilike:products.name:%Water%')
-    expect(ilikeIdx).toBeLessThan(rangeIdx)
+    const inIdx = queryCalls().findIndex((c) => c.startsWith('in:product_id:'))
+    expect(inIdx).toBeGreaterThan(-1)
+    expect(rangeIdx).toBeGreaterThan(inIdx)
   })
 
   it('pagination next uses range(50,99)', async () => {

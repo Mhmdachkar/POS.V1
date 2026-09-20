@@ -68,7 +68,7 @@ describe('CEO Notes — serial search', () => {
     expect(rows[0].units[0].serial_number).toBe('ON-PCE-042')
   })
 
-  it('falls back to name-only ilike when no serial matches', async () => {
+  it('falls back to name-only or-filter when no serial matches', async () => {
     const productUnitsBuilder = {
       select: vi.fn().mockReturnThis(),
       ilike: vi.fn().mockReturnThis(),
@@ -91,8 +91,8 @@ describe('CEO Notes — serial search', () => {
     })
 
     await fetchProductSearch('cola', 'depot-a', null)
-    expect(productsBuilder.ilike).toHaveBeenCalledWith('name', '%cola%')
-    expect(productsBuilder.or).not.toHaveBeenCalled()
+    expect(productsBuilder.or).toHaveBeenCalledWith('name.ilike.%cola%')
+    expect(productsBuilder.ilike).not.toHaveBeenCalled()
   })
 
   it('does not persist typed Phase 16 catalog search keys', () => {

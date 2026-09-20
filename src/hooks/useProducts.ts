@@ -13,6 +13,10 @@ import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { CACHE_GC, CACHE_STALE, keepPlaceholderWhen } from '@/lib/cachePolicy'
+import {
+  findProductIdsBySerial,
+  nameOrSerialOrFilter,
+} from '@/lib/productSearch'
 import type { ProductWithUnits } from '@/types'
 
 // ─────────────────────────────────────────────────────────────────
@@ -58,23 +62,9 @@ export async function fetchProductSearch(
   }
 
   if (query.trim()) {
-    // CEO Notes: also search by serial number (case-insensitive)
-    // First, find products matching by serial number
     const trimmed = query.trim()
-    const { data: serialData } = await supabase
-      .from('product_units')
-      .select('product_id')
-      .ilike('serial_number', `%${trimmed}%`)
-      .limit(POS_CATALOG_LIMIT)
-
-    const serialProductIds = (serialData ?? []).map((r: any) => r.product_id as string)
-
-    if (serialProductIds.length > 0) {
-      // OR: match by name or by serial-found product IDs
-      q = q.or(`name.ilike.%${trimmed}%,id.in.(${serialProductIds.join(',')})`)
-    } else {
-      q = q.ilike('name', `%${trimmed}%`)
-    }
+    const serialProductIds = await findProductIdsBySerial(trimmed, POS_CATALOG_LIMIT)
+    q = q.or(nameOrSerialOrFilter(trimmed, serialProductIds))
   }
 
   const { data, error } = await q
@@ -102,7 +92,7 @@ export async function fetchProductSearch(
  * Uses a 300ms debounce on the query string to avoid hammering the DB
  * on every keystroke. Returns immediately for empty queries (all products).
  *
- * @param query     - The search string (name search, case-insensitive)
+ * @param query     - Search string (name or serial, case-insensitive)
  * @param depotId   - null = all depots (admin only); string = single depot
  * @param enabled   - set to false to suspend the query (e.g. when no depot)
  */

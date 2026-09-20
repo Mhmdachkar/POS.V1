@@ -15,7 +15,7 @@ export const POS = {
   total: bi('Total', 'Total'),
   exactCash: bi('Montant exact', 'Exact Cash'),
   walkIn: bi('Client de passage', 'Walk-in'),
-  searchProducts: bi('Rechercher un produit…', 'Search products…'),
+  searchProducts: bi('Rechercher par nom ou n° de série…', 'Search by name or serial…'),
   emptyCart: bi('Panier vide', 'Empty cart'),
   insufficientStock: bi('Stock insuffisant', 'Insufficient Stock'),
   remainingStock: (n: number) =>

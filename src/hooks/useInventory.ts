@@ -16,6 +16,11 @@ import { z } from 'zod'
 import { supabase } from '@/lib/supabase'
 import { rpc } from '@/lib/rpc'
 import { productKeys } from '@/hooks/useProducts'
+import {
+  findProductIdsBySerial,
+  findProductIdsMatchingNameOrSerial,
+  nameOrSerialOrFilter,
+} from '@/lib/productSearch'
 import { markReportsAndDashboardStale, type CacheInvalidator } from '@/lib/cacheInvalidation'
 import { CACHE_GC, CACHE_STALE, keepPlaceholderWhen } from '@/lib/cachePolicy'
 import {
@@ -374,7 +379,9 @@ export async function fetchInventoryList(
   }
 
   if (filters.search.trim()) {
-    q = q.ilike('name', `%${filters.search.trim()}%`)
+    const trimmed = filters.search.trim()
+    const serialProductIds = await findProductIdsBySerial(trimmed)
+    q = q.or(nameOrSerialOrFilter(trimmed, serialProductIds))
   }
 
   if (filters.categoryId) {
@@ -464,7 +471,13 @@ export async function fetchStockActivity(
   }
 
   if (filters.search.trim()) {
-    q = q.ilike('products.name', `%${filters.search.trim()}%`)
+    const matchingIds = await findProductIdsMatchingNameOrSerial(filters.search, {
+      depotId: filters.depotId,
+    })
+    if (matchingIds.length === 0) {
+      return { data: [], count: 0 }
+    }
+    q = q.in('product_id', matchingIds)
   }
 
   q = q.range(from, to)
