@@ -110,7 +110,11 @@ export function TransfersPage() {
       <div className="flex-shrink-0 border-b border-border bg-surface">
         <PageHeader
           title={<BiPageTitle {...TRANSFERS.pageTitle} />}
-          description={totalCount > 0 ? `${totalCount} transfer${totalCount !== 1 ? 's' : ''}` : 'Depot-to-depot stock transfers'}
+          description={
+            totalCount > 0
+              ? TRANSFERS.transferCount(totalCount).fr
+              : TRANSFERS.pageDesc.fr
+          }
           icon={<ArrowLeftRight className="h-5 w-5" />}
           className="border-b-0"
           actions={

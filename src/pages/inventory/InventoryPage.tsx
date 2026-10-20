@@ -174,7 +174,7 @@ export function InventoryPage() {
             canCreateProduct ? (
               <Button className="gap-1.5 flex-shrink-0 w-full sm:w-auto justify-center" onClick={() => setShowCreate(true)}>
                 <Plus className="h-4 w-4" />
-                New Product
+                {INVENTORY.addProduct.fr}
               </Button>
             ) : undefined
           }

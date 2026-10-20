@@ -81,12 +81,12 @@ export function CategoriesPage() {
         icon={<Tag className="h-5 w-5" />}
         description={
           tree?.length
-            ? `${tree.length} group${tree.length === 1 ? '' : 's'}`
+            ? `${tree.length} groupe${tree.length === 1 ? '' : 's'}`
             : undefined
         }
         actions={
           <Button className="gap-1.5" onClick={openNewCategory}>
-            <Plus className="h-4 w-4" /> New Category
+            <Plus className="h-4 w-4" /> {ADMIN.newCategory.fr}
           </Button>
         }
       />

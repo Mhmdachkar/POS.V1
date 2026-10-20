@@ -17,7 +17,7 @@
  */
 
 import { useEffect, useState } from 'react'
-import { BiEmptyTitle } from '@/lib/bilingual/ui'
+import { BiEmptyTitle, BiPageTitle } from '@/lib/bilingual/ui'
 import { SALES } from '@/lib/bilingual/sales'
 import { COMMON } from '@/lib/bilingual/common'
 import { POS } from '@/lib/bilingual/pos'
@@ -179,7 +179,7 @@ export function SalesPage() {
       {/* Single header band: PageHeader + FilterBar */}
       <div className="flex-shrink-0 border-b border-border bg-surface">
         <PageHeader
-          title={isDepotStaff ? 'Sales / orders' : 'Sales History'}
+          title={<BiPageTitle {...(isDepotStaff ? SALES.ordersTitle : SALES.historyTitle)} />}
           className="border-b-0"
         />
         <div className="px-3 sm:px-6 pb-3 sm:pb-4">

@@ -21,7 +21,7 @@ export type BilingualVariant =
 
 const variantConfig: Record<BilingualVariant, { fr: string; layout: BilingualLayout }> = {
   heading: {
-    fr: 'text-lg font-bold text-text-primary leading-tight',
+    fr: 'text-title text-text-primary leading-tight',
     layout: 'stack',
   },
   pageDescription: {
