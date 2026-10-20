@@ -31,7 +31,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <Label.Root
             htmlFor={inputId}
-            className="text-sm font-medium text-text-primary select-none"
+            className="text-label text-text-primary select-none"
           >
             {label}
           </Label.Root>
@@ -52,12 +52,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               'w-full h-9 rounded-md border bg-surface text-text-primary text-sm',
               'transition-colors duration-150',
               'placeholder:text-text-muted',
-              // Border
-              error
-                ? 'border-danger focus:border-danger focus:ring-danger/20'
-                : 'border-border focus:border-primary focus:ring-primary/20',
-              // Focus ring
-              'focus:outline-none focus:ring-2',
+              error ? 'border-danger' : 'border-border',
               // Padding — adjust for prefix/suffix
               prefix ? 'pl-9' : 'pl-3',
               suffix ? 'pr-9' : 'pr-3',
@@ -110,7 +105,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         {label && (
           <Label.Root
             htmlFor={inputId}
-            className="text-sm font-medium text-text-primary select-none"
+            className="text-label text-text-primary select-none"
           >
             {label}
           </Label.Root>
@@ -122,10 +117,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             'w-full rounded-md border bg-surface text-text-primary text-sm px-3 py-2',
             'transition-colors duration-150 resize-none',
             'placeholder:text-text-muted',
-            error
-              ? 'border-danger focus:border-danger focus:ring-danger/20'
-              : 'border-border focus:border-primary focus:ring-primary/20',
-            'focus:outline-none focus:ring-2',
+            error ? 'border-danger' : 'border-border',
             'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-surface-muted',
             className,
           )}

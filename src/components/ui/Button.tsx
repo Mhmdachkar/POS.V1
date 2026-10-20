@@ -8,20 +8,15 @@ import { cn } from '@/lib/cn'
 
 const variantClasses = {
   primary:
-    'bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-hover ' +
-    'shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+    'bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-hover shadow-sm',
   secondary:
-    'bg-surface text-text-primary border border-border hover:bg-surface-muted active:bg-surface-muted ' +
-    'shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+    'bg-surface text-text-primary border border-border hover:bg-surface-muted active:bg-surface-muted shadow-sm',
   outline:
-    'bg-transparent text-text-primary border border-border hover:bg-surface-muted ' +
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+    'bg-transparent text-text-primary border border-border hover:bg-surface-muted',
   ghost:
-    'bg-transparent text-text-secondary hover:bg-surface-muted hover:text-text-primary ' +
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+    'bg-transparent text-text-secondary hover:bg-surface-muted hover:text-text-primary',
   danger:
-    'bg-danger text-white hover:bg-danger/90 active:bg-danger/80 ' +
-    'shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2',
+    'bg-danger text-white hover:bg-danger/90 active:bg-danger/80 shadow-sm',
 } as const
 
 const sizeClasses = {
