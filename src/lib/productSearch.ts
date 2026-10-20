@@ -3,6 +3,7 @@
  */
 
 import { supabase } from '@/lib/supabase'
+import type { Product, ProductUnit } from '@/types/database'
 
 const DEFAULT_LIMIT = 500
 
@@ -21,7 +22,8 @@ export async function findProductIdsBySerial(
     .limit(limit)
 
   if (error) throw error
-  return [...new Set((data ?? []).map((row) => String(row.product_id)))]
+  const rows = (data ?? []) as Array<Pick<ProductUnit, 'product_id'>>
+  return [...new Set(rows.map((row) => String(row.product_id)))]
 }
 
 /**
@@ -62,12 +64,14 @@ export async function findProductIdsMatchingNameOrSerial(
       .eq('depot_id', depotId)
       .in('id', serialIds)
     if (depotError) throw depotError
-    scopedSerialIds = (depotRows ?? []).map((row) => String(row.id))
+    scopedSerialIds = ((depotRows ?? []) as Array<Pick<Product, 'id'>>).map((row) =>
+      String(row.id),
+    )
   }
 
   return [
     ...new Set([
-      ...(nameRows ?? []).map((row) => String(row.id)),
+      ...((nameRows ?? []) as Array<Pick<Product, 'id'>>).map((row) => String(row.id)),
       ...scopedSerialIds,
     ]),
   ]
