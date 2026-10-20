@@ -22,6 +22,8 @@ import {
 } from '@/hooks/useInventory'
 import type { ProductWithUnits } from '@/types'
 import type { z } from 'zod'
+import { t } from '@/lib/bilingual/types'
+
 
 type RestockForm = z.infer<typeof restockFormSchema>
 

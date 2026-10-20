@@ -2,6 +2,8 @@ import { MoneyDisplay } from '@/components/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { REPORTS } from '@/lib/bilingual/reports'
 import { formatPieces } from '@/lib/formatters'
+import { t } from '@/lib/bilingual/types'
+
 
 export function BreakdownList({
   rows,

@@ -26,7 +26,7 @@ import {
   BiTableHeader,
 } from '@/lib/bilingual/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
-import { bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
+import { t, bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
 import { commonPageOf } from '@/lib/bilingual/common'
 import { usePaymentList } from '@/hooks/useCustomers'
 

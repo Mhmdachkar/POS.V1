@@ -16,6 +16,8 @@ import type {
 import type { AdminCostReport } from '@/lib/rpc'
 import { formatPieces } from '@/lib/formatters'
 import { REPORTS } from '@/lib/bilingual/reports'
+import { t } from '@/lib/bilingual/types'
+
 
 export type ReportTabId =
   | 'overview'
@@ -294,19 +296,19 @@ export async function exportReportPrint(ctx: ReportExportContext): Promise<void>
   const title = `Rapport VHM — ${tab}`
   if (tab === 'overview' && sales) {
     printReportSummary(title, [
-      { label: REPORTS.grossSales.fr, value: cfaExportValue(sales.sales_activity_cfa) },
-      { label: REPORTS.returnsMetric.fr, value: cfaExportValue(sales.returns_activity_cfa) },
-      { label: REPORTS.netSales.fr, value: cfaExportValue(sales.net_sales_cfa) },
-      { label: REPORTS.cogs.fr, value: cfaExportValue(sales.cogs_cfa) },
-      { label: REPORTS.grossProfit.fr, value: cfaExportValue(sales.gross_profit_cfa) },
-      { label: REPORTS.transactionCount.fr, value: String(sales.transaction_count) },
-      { label: REPORTS.unitsSold.fr, value: formatPieces(Number(sales.units_sold)) },
+      { label: t(REPORTS.grossSales), value: cfaExportValue(sales.sales_activity_cfa) },
+      { label: t(REPORTS.returnsMetric), value: cfaExportValue(sales.returns_activity_cfa) },
+      { label: t(REPORTS.netSales), value: cfaExportValue(sales.net_sales_cfa) },
+      { label: t(REPORTS.cogs), value: cfaExportValue(sales.cogs_cfa) },
+      { label: t(REPORTS.grossProfit), value: cfaExportValue(sales.gross_profit_cfa) },
+      { label: t(REPORTS.transactionCount), value: String(sales.transaction_count) },
+      { label: t(REPORTS.unitsSold), value: formatPieces(Number(sales.units_sold)) },
     ])
   } else if (tab === 'inventory' && inventory) {
     printReportSummary(title, [
-      { label: REPORTS.currentInventoryValue.fr, value: cfaExportValue(inventory.inventory_value_cfa) },
-      { label: REPORTS.lowStock.fr, value: String(inventory.low_stock_count) },
-      { label: REPORTS.outOfStock.fr, value: String(inventory.out_of_stock_count) },
+      { label: t(REPORTS.currentInventoryValue), value: cfaExportValue(inventory.inventory_value_cfa) },
+      { label: t(REPORTS.lowStock), value: String(inventory.low_stock_count) },
+      { label: t(REPORTS.outOfStock), value: String(inventory.out_of_stock_count) },
     ])
   } else if (tab === 'customers' && customers) {
     printReportSummary(title, [
@@ -321,11 +323,11 @@ export async function exportReportPrint(ctx: ReportExportContext): Promise<void>
     ])
   } else if (tab === 'cost' && cost) {
     printReportSummary(title, [
-      { label: REPORTS.inventoryValueAtCost.fr, value: cfaExportValue(cost.inventory_totals.total_inventory_value_at_cost) },
-      { label: REPORTS.inventoryValueAtSelling.fr, value: cfaExportValue(cost.inventory_totals.total_inventory_value_at_selling) },
-      { label: REPORTS.potentialProfit.fr, value: cfaExportValue(cost.inventory_totals.total_potential_profit) },
-      { label: REPORTS.totalRestockCost.fr, value: cfaExportValue(cost.period_totals.total_restock_cost_cfa) },
-      { label: REPORTS.totalRestockPieces.fr, value: formatPieces(Number(cost.period_totals.total_restock_quantity_pieces)) },
+      { label: t(REPORTS.inventoryValueAtCost), value: cfaExportValue(cost.inventory_totals.total_inventory_value_at_cost) },
+      { label: t(REPORTS.inventoryValueAtSelling), value: cfaExportValue(cost.inventory_totals.total_inventory_value_at_selling) },
+      { label: t(REPORTS.potentialProfit), value: cfaExportValue(cost.inventory_totals.total_potential_profit) },
+      { label: t(REPORTS.totalRestockCost), value: cfaExportValue(cost.period_totals.total_restock_cost_cfa) },
+      { label: t(REPORTS.totalRestockPieces), value: formatPieces(Number(cost.period_totals.total_restock_quantity_pieces)) },
     ])
   }
 }

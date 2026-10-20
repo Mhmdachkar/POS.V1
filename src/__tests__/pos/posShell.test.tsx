@@ -432,3 +432,28 @@ describe('AppRail icons and accessibility', () => {
     expect(getByBilingualRole('link', NAV.overview)).toHaveAttribute('href', '/depot')
   })
 })
+
+describe('language switch', () => {
+  beforeEach(() => {
+    authorize(adminStaff())
+  })
+
+  it('turns the shell English in one click and back to French', async () => {
+    const user = userEvent.setup()
+    renderApp('/dashboard')
+
+    expect(screen.getByRole('link', { name: NAV.pos.fr })).toBeInTheDocument()
+    expect(screen.getByTestId('language-switch')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'EN' }))
+
+    expect(screen.getByRole('link', { name: NAV.pos.en })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: NAV.pos.fr })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: NAV.overview.en })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'FR' }))
+
+    expect(screen.getByRole('link', { name: NAV.pos.fr })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: NAV.pos.en })).not.toBeInTheDocument()
+  })
+})

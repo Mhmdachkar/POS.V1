@@ -12,7 +12,7 @@ import { INVENTORY } from '@/lib/bilingual/inventory'
 import { SALES } from '@/lib/bilingual/sales'
 import { SHIFT_COPY } from '@/lib/bilingual/shift'
 import { TRANSFERS } from '@/lib/bilingual/transfers'
-import { bilingualPlain } from '@/lib/bilingual/types'
+import { t, bilingualPlain } from '@/lib/bilingual/types'
 import { toastSuccessBi, toastErrorFromCode } from '@/lib/bilingual/toast'
 import { AlertTriangle } from 'lucide-react'
 import { Button, LoadingButton, Modal, Textarea } from '@/components/ui'
@@ -72,7 +72,7 @@ export function CancelTransferModal({
       open={open}
       onClose={handleClose}
       title={<BiModalTitle {...TRANSFERS.cancelTransfer} />}
-      description={TRANSFERS.cancelPendingNote.fr}
+      description={t(TRANSFERS.cancelPendingNote)}
       size="sm"
     >
       <div className="space-y-4">
@@ -84,14 +84,14 @@ export function CancelTransferModal({
             </p>
             <ul className="text-xs text-danger-foreground space-y-0.5 list-disc list-inside">
               <li>Status becomes Cancelled</li>
-              <li>{TRANSFERS.cancelEffectStock.fr}</li>
+              <li>{t(TRANSFERS.cancelEffectStock)}</li>
               <li>This draft cannot be reused — create a new transfer if needed</li>
             </ul>
           </div>
         </div>
 
         <Textarea
-          label={TRANSFERS.reasonOptional.fr}
+          label={t(TRANSFERS.reasonOptional)}
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder={bilingualPlain(TRANSFERS.cancelReasonPlaceholder)}
@@ -122,7 +122,7 @@ export function CancelTransferModal({
             disabled={!confirmed}
             onClick={handleCancel}
           >
-            {TRANSFERS.cancelTransfer.fr}
+            {t(TRANSFERS.cancelTransfer)}
           </LoadingButton>
         </div>
       </div>

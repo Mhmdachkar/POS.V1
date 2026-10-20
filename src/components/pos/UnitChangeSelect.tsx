@@ -1,7 +1,7 @@
 import { tryChangeCartUnit } from '@/lib/posCartActions'
 import { POS } from '@/lib/bilingual/pos'
 import { toastErrorBi } from '@/lib/bilingual/toast'
-import { bilingualAriaLabel } from '@/lib/bilingual/types'
+import { t, bilingualAriaLabel } from '@/lib/bilingual/types'
 import { useProductDetail } from '@/hooks/useProducts'
 import type { ProductUnit } from '@/types/database'
 

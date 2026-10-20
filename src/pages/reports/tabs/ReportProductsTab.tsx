@@ -8,6 +8,8 @@ import { formatPieces } from '@/lib/formatters'
 import type { AdminSalesReport, SalesReportProductRow } from '@/types/rpc'
 import { ProductDetailDrawer } from '@/pages/inventory/components/ProductDetailDrawer'
 import { ReportSection } from '../components/ReportSection'
+import { t } from '@/lib/bilingual/types'
+
 
 type SortKey = 'net_pieces' | 'net_sales_cfa' | 'gross_profit_cfa' | 'cogs_cfa'
 
@@ -47,18 +49,18 @@ export function ReportProductsTab({ sales, showDepotColumn }: ReportProductsTabP
     <>
       <ReportSection title={<BiSectionTitle {...REPORTS.productPerformance} />}>
         {sorted.length === 0 ? (
-          <p className="text-sm text-text-muted">{REPORTS.noNetProductSales.fr}</p>
+          <p className="text-sm text-text-muted">{t(REPORTS.noNetProductSales)}</p>
         ) : (
           <div className="overflow-x-auto border border-border rounded-md">
             <table className="w-full text-sm">
               <thead className="bg-surface-alt text-xs text-text-secondary">
                 <tr>
-                  <th className="text-left px-3 py-2 font-medium">{COMMON.product.fr}</th>
-                  {showDepotColumn && <th className="text-left px-3 py-2 font-medium">{COMMON.depot.fr}</th>}
-                  <th className="text-right px-3 py-2 font-medium cursor-pointer" onClick={() => toggleSort('net_pieces')}>{sortLabel('net_pieces', COMMON.qty.fr)}</th>
-                  <th className="text-right px-3 py-2 font-medium cursor-pointer" onClick={() => toggleSort('net_sales_cfa')}>{sortLabel('net_sales_cfa', REPORTS.netSalesLabel.fr)}</th>
-                  <th className="text-right px-3 py-2 font-medium cursor-pointer" onClick={() => toggleSort('gross_profit_cfa')}>{sortLabel('gross_profit_cfa', REPORTS.gp.fr)}</th>
-                  <th className="text-right px-3 py-2 font-medium cursor-pointer" onClick={() => toggleSort('cogs_cfa')}>{sortLabel('cogs_cfa', REPORTS.cogs.fr)}</th>
+                  <th className="text-left px-3 py-2 font-medium">{t(COMMON.product)}</th>
+                  {showDepotColumn && <th className="text-left px-3 py-2 font-medium">{t(COMMON.depot)}</th>}
+                  <th className="text-right px-3 py-2 font-medium cursor-pointer" onClick={() => toggleSort('net_pieces')}>{sortLabel('net_pieces', t(COMMON.qty))}</th>
+                  <th className="text-right px-3 py-2 font-medium cursor-pointer" onClick={() => toggleSort('net_sales_cfa')}>{sortLabel('net_sales_cfa', t(REPORTS.netSalesLabel))}</th>
+                  <th className="text-right px-3 py-2 font-medium cursor-pointer" onClick={() => toggleSort('gross_profit_cfa')}>{sortLabel('gross_profit_cfa', t(REPORTS.gp))}</th>
+                  <th className="text-right px-3 py-2 font-medium cursor-pointer" onClick={() => toggleSort('cogs_cfa')}>{sortLabel('cogs_cfa', t(REPORTS.cogs))}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

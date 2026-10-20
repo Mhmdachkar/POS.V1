@@ -29,6 +29,8 @@ import { useDepotStore } from '@/stores/depotStore'
 import { usePOSStore } from '@/stores/posStore'
 import type { CompleteSaleResult } from '@/types/rpc'
 import type { Customer } from '@/types/database'
+import { t } from '@/lib/bilingual/types'
+
 
 interface SaleSuccessModalProps {
   result: CompleteSaleResult
@@ -80,7 +82,7 @@ export function SaleSuccessModal({
             <CheckCircle className="h-7 w-7 text-success" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-text-primary">{POS.saleCompletedSuccess.fr}</h2>
+            <h2 className="text-lg font-bold text-text-primary">{t(POS.saleCompletedSuccess)}</h2>
             <p className="text-sm text-text-secondary mt-0.5 font-mono">
               {result.receipt_number}
             </p>
@@ -122,7 +124,7 @@ export function SaleSuccessModal({
               <MoneyDisplay amount={result.total_cfa} size="display" />
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-text-secondary">{SALES.amountApplied.fr}</span>
+              <span className="text-text-secondary">{t(SALES.amountApplied)}</span>
               <span className="text-text-primary">{formatCFA(result.amount_applied_cfa)}</span>
             </div>
             {isChange && (
@@ -133,7 +135,7 @@ export function SaleSuccessModal({
             )}
             {isBalance && (
               <div className="flex justify-between items-center text-sm">
-                <span className="text-text-secondary">{SALES.balanceAdded.fr}</span>
+                <span className="text-text-secondary">{t(SALES.balanceAdded)}</span>
                 <MoneyDisplay amount={result.balance_added_cfa} size="large" danger />
               </div>
             )}
@@ -153,14 +155,14 @@ export function SaleSuccessModal({
             disabled={!canPrint}
             title={
               saleError
-                ? POS.receiptLoadFailed.fr
+                ? t(POS.receiptLoadFailed)
                 : saleLoading
-                  ? POS.loadingReceipt.fr
+                  ? t(POS.loadingReceipt)
                   : undefined
             }
           >
             <Printer className="h-4 w-4" />
-            {POS.browserPrintFallback.fr}
+            {t(POS.browserPrintFallback)}
           </Button>
           <Button
             variant="primary"
@@ -170,7 +172,7 @@ export function SaleSuccessModal({
             autoFocus
           >
             <ShoppingCart className="h-4 w-4" />
-            {POS.newSale.fr}
+            {t(POS.newSale)}
           </Button>
         </div>
       </div>

@@ -8,7 +8,7 @@ import { BilingualText } from '@/components/ui/BilingualText'
 import { COMMON } from '@/lib/bilingual/common'
 import { REPORTS } from '@/lib/bilingual/reports'
 import { BiButtonInline } from '@/lib/bilingual/ui'
-import { bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
+import { t, bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
 
 const PRESETS: ReportPreset[] = ['today', 'yesterday', 'this_week', 'this_month', 'custom']
 

@@ -9,6 +9,8 @@ import { ADMIN } from '@/lib/bilingual/admin'
 import { DEPOT } from '@/lib/bilingual/depot'
 import { COMMON } from '@/lib/bilingual/common'
 import { BiButtonStack, BiModalTitle, BiTableHeader } from '@/lib/bilingual/ui'
+import { t } from '@/lib/bilingual/types'
+
 
 interface DepotFormModalProps {
   open: boolean

@@ -26,6 +26,8 @@ import {
 import { useAuthStore } from '@/stores/authStore'
 import type { CloseShiftResult } from '@/types/rpc'
 import { cn } from '@/lib/cn'
+import { t } from '@/lib/bilingual/types'
+
 
 interface CloseShiftModalProps {
   open: boolean
@@ -102,7 +104,7 @@ export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) 
     } catch (err) {
       const parsed = parseError(err)
       if (parsed.code === 'SHIFT_NOT_OPEN') {
-        setFormError(SHIFT_COPY.alreadyClosed.fr)
+        setFormError(t(SHIFT_COPY.alreadyClosed))
       } else {
         setFormError(parsed.message)
       }
@@ -118,23 +120,23 @@ export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) 
     <Modal
       open={open}
       onClose={handleDismiss}
-      title={result ? SHIFT_COPY.shiftClosed.fr : SHIFT_COPY.closeShift.fr}
-      description={result ? SHIFT_COPY.serverAuthoritative.fr : SHIFT_COPY.closeIrreversible.fr}
+      title={result ? t(SHIFT_COPY.shiftClosed) : t(SHIFT_COPY.closeShift)}
+      description={result ? t(SHIFT_COPY.serverAuthoritative) : t(SHIFT_COPY.closeIrreversible)}
       size="sm"
     >
       {result ? (
         <div className="space-y-4">
           <div className="rounded-md border border-border bg-surface-muted p-3 space-y-1.5">
-            <BreakdownRow label={SHIFT_COPY.openingFloat.fr} value={result.breakdown.opening_float_cfa} />
-            <BreakdownRow label={`+ ${SHIFT_COPY.salesCash.fr}`} value={result.breakdown.sales_cash_cfa} />
-            <BreakdownRow label={`+ ${SHIFT_COPY.customerPayments.fr}`} value={result.breakdown.customer_pmts_cfa} />
-            <BreakdownRow label={`− ${SHIFT_COPY.returnCash.fr}`} value={result.breakdown.return_cash_cfa} />
+            <BreakdownRow label={t(SHIFT_COPY.openingFloat)} value={result.breakdown.opening_float_cfa} />
+            <BreakdownRow label={`+ ${t(SHIFT_COPY.salesCash)}`} value={result.breakdown.sales_cash_cfa} />
+            <BreakdownRow label={`+ ${t(SHIFT_COPY.customerPayments)}`} value={result.breakdown.customer_pmts_cfa} />
+            <BreakdownRow label={`− ${t(SHIFT_COPY.returnCash)}`} value={result.breakdown.return_cash_cfa} />
             <div className="border-t border-border pt-1.5">
-              <BreakdownRow label={SHIFT_COPY.expectedCash.fr} value={result.expected_cash_cfa} emphasis />
+              <BreakdownRow label={t(SHIFT_COPY.expectedCash)} value={result.expected_cash_cfa} emphasis />
             </div>
-            <BreakdownRow label={SHIFT_COPY.actualCash.fr} value={result.actual_cash_cfa} />
+            <BreakdownRow label={t(SHIFT_COPY.actualCash)} value={result.actual_cash_cfa} />
             <BreakdownRow
-              label={SHIFT_COPY.discrepancy.fr}
+              label={t(SHIFT_COPY.discrepancy)}
               value={result.discrepancy_cfa}
               emphasis
               danger={result.discrepancy_cfa < 0}
@@ -142,7 +144,7 @@ export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) 
           </div>
           <div className="rounded-md border border-warning/20 bg-warning-bg px-3 py-2">
             <div className="flex items-baseline justify-between gap-3 text-sm">
-              <span className="text-warning-foreground">{SHIFT_COPY.salesWithoutShift.fr}</span>
+              <span className="text-warning-foreground">{t(SHIFT_COPY.salesWithoutShift)}</span>
               <span className="tabular-nums font-medium text-warning-foreground">
                 {unshiftedCount} vente{unshiftedCount === 1 ? '' : 's'} · {formatCFA(unshiftedTotal)}
               </span>
@@ -165,14 +167,14 @@ export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) 
 
           <div className="rounded-md border border-border bg-surface-muted p-3 space-y-1.5">
             <p className="text-xs font-semibold text-text-secondary uppercase">Estimé</p>
-            <BreakdownRow label={SHIFT_COPY.openingFloat.fr} value={shift.opening_float_cfa} />
-            <BreakdownRow label={`+ ${SHIFT_COPY.salesCash.fr}`} value={shift.running.sales_cash_cfa} />
-            <BreakdownRow label={`+ ${SHIFT_COPY.customerPayments.fr}`} value={shift.running.customer_pmts_cfa} />
-            <BreakdownRow label={`− ${SHIFT_COPY.returnCash.fr}`} value={shift.running.return_cash_cfa} />
-            <BreakdownRow label={SHIFT_COPY.estimatedExpected.fr} value={estimatedExpected} emphasis />
+            <BreakdownRow label={t(SHIFT_COPY.openingFloat)} value={shift.opening_float_cfa} />
+            <BreakdownRow label={`+ ${t(SHIFT_COPY.salesCash)}`} value={shift.running.sales_cash_cfa} />
+            <BreakdownRow label={`+ ${t(SHIFT_COPY.customerPayments)}`} value={shift.running.customer_pmts_cfa} />
+            <BreakdownRow label={`− ${t(SHIFT_COPY.returnCash)}`} value={shift.running.return_cash_cfa} />
+            <BreakdownRow label={t(SHIFT_COPY.estimatedExpected)} value={estimatedExpected} emphasis />
             {estimatedDiscrepancy !== null && (
               <BreakdownRow
-                label={SHIFT_COPY.estimatedDiscrepancy.fr}
+                label={t(SHIFT_COPY.estimatedDiscrepancy)}
                 value={estimatedDiscrepancy}
                 danger={estimatedDiscrepancy < 0}
               />
@@ -181,7 +183,7 @@ export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) 
 
           <div className="rounded-md border border-warning/20 bg-warning-bg px-3 py-2">
             <div className="flex items-baseline justify-between gap-3 text-sm">
-              <span className="text-warning-foreground">{SHIFT_COPY.salesWithoutShift.fr}</span>
+              <span className="text-warning-foreground">{t(SHIFT_COPY.salesWithoutShift)}</span>
               <span className="tabular-nums font-medium text-warning-foreground">
                 {unshiftedCount} vente{unshiftedCount === 1 ? '' : 's'} · {formatCFA(unshiftedTotal)}
               </span>
@@ -192,14 +194,14 @@ export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) 
           </div>
 
           <Input
-            label={SHIFT_COPY.actualCashInDrawer.fr}
+            label={t(SHIFT_COPY.actualCashInDrawer)}
             inputMode="decimal"
             value={actualStr}
             onChange={(e) => { setActualStr(e.target.value); setFormError(null) }}
-            error={actual === null && actualStr.trim() !== '' ? SHIFT_COPY.actualCashError.fr : undefined}
+            error={actual === null && actualStr.trim() !== '' ? t(SHIFT_COPY.actualCashError) : undefined}
           />
 
-          <p className="text-sm text-danger">{SHIFT_COPY.closeIrreversible.fr}</p>
+          <p className="text-sm text-danger">{t(SHIFT_COPY.closeIrreversible)}</p>
 
           <label className="flex items-start gap-2.5 cursor-pointer">
             <input
@@ -218,14 +220,14 @@ export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) 
 
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={handleDismiss} disabled={isPending}>
-              {COMMON.cancel.fr}
+              {t(COMMON.cancel)}
             </Button>
             <LoadingButton
               loading={isPending}
               disabled={!canSubmit}
               onClick={handleCloseShift}
             >
-              {SHIFT_COPY.closeShift.fr}
+              {t(SHIFT_COPY.closeShift)}
             </LoadingButton>
           </div>
         </div>

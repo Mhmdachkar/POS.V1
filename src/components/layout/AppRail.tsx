@@ -25,9 +25,9 @@ import { BilingualText } from '@/components/ui/BilingualText'
 import { AUTH_NAV, NAV, NAV_GROUP } from '@/lib/bilingual/nav'
 import { bilingualAriaLabel, bilingualPlain, type BilingualPair } from '@/lib/bilingual/types'
 import { useAuthStore } from '@/stores/authStore'
+import { useLocaleStore } from '@/stores/localeStore'
 import { supabase } from '@/lib/supabase'
 import type { StaffRole } from '@/types/database'
-import { AppLogo } from './AppLogo'
 
 interface NavItem {
   label: BilingualPair
@@ -125,44 +125,31 @@ function RailItem({
       aria-label={aria}
       title={!showLabel ? bilingualPlain(item.label) : undefined}
       className={cn(
-        'group relative flex transition-colors duration-150 select-none',
+        'group relative flex select-none transition-colors duration-150',
         showLabel
-          ? 'items-center gap-3 rounded-lg py-2 pl-2 pr-2.5 min-h-[40px]'
-          : 'flex-col items-center justify-center gap-1 rounded-lg py-2 px-1 min-h-[52px]',
+          ? 'items-center gap-2.5 h-9 px-2.5 rounded-md'
+          : 'items-center justify-center h-10 w-full',
         isActive
-          ? 'bg-primary/10 text-primary'
-          : 'text-text-secondary hover:bg-surface-muted hover:text-text-primary',
+          ? 'text-primary'
+          : 'text-text-secondary hover:text-text-primary',
       )}
     >
       {isActive && (
         <span
-          className={cn(
-            'absolute rounded-full bg-primary',
-            showLabel ? 'left-0 top-2 bottom-2 w-1' : 'top-1 left-1.5 right-1.5 h-1',
-          )}
+          className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-primary"
           aria-hidden="true"
         />
       )}
 
-      <span
-        className={cn(
-          'flex flex-shrink-0 items-center justify-center rounded-lg transition-colors',
-          showLabel ? 'h-8 w-8' : 'h-9 w-9',
-          isActive
-            ? 'bg-primary text-primary-foreground shadow-sm'
-            : 'bg-surface-muted text-text-secondary group-hover:bg-surface group-hover:text-text-primary',
-        )}
-      >
-        <Icon className={cn('text-current', showLabel ? 'h-4 w-4' : 'h-[18px] w-[18px]')} aria-hidden="true" />
-      </span>
+      <Icon
+        className="h-5 w-5 flex-shrink-0 text-current"
+        strokeWidth={isActive ? 2 : 1.75}
+        aria-hidden="true"
+      />
 
-      {!iconOnly && (
-        <span className={cn('min-w-0', !expanded && 'max-w-[4.25rem]')}>
-          <BilingualText
-            {...item.label}
-            variant={expanded ? 'nav' : 'navCollapsed'}
-            className={cn(!expanded && 'w-full items-center')}
-          />
+      {showLabel && (
+        <span className="min-w-0 truncate">
+          <BilingualText {...item.label} variant="nav" />
         </span>
       )}
     </NavLink>
@@ -179,11 +166,11 @@ function RailNavGroups({
   iconOnly: boolean
 }) {
   return (
-    <div className={cn('space-y-4', expanded && !iconOnly ? 'px-2' : 'px-1.5 space-y-3')}>
+    <div className={cn(expanded && !iconOnly ? 'px-2 space-y-5' : 'px-1 space-y-1')}>
       {groups.map((group) => (
-        <div key={group.title.fr}>
+        <div key={group.title.en}>
           {expanded && !iconOnly && (
-            <div className="px-2 mb-1.5">
+            <div className="px-2.5 mb-1">
               <BilingualText {...group.title} variant="navGroup" />
             </div>
           )}
@@ -208,7 +195,7 @@ function RailNavFlat({
   iconOnly: boolean
 }) {
   return (
-    <div className={cn('space-y-0.5', expanded && !iconOnly ? 'px-2' : 'px-1.5')}>
+    <div className={cn('space-y-0.5', expanded && !iconOnly ? 'px-2' : 'px-1')}>
       {items.map((item) => (
         <RailItem key={item.path} item={item} expanded={expanded} iconOnly={iconOnly} />
       ))}
@@ -224,6 +211,7 @@ export interface AppRailProps {
 }
 
 export function AppRail({ expanded, onToggle, drawer = false }: AppRailProps) {
+  useLocaleStore((s) => s.locale)
   const staff = useAuthStore((s) => s.staff)
   const clear = useAuthStore((s) => s.clear)
   const { pathname } = useLocation()
@@ -242,22 +230,19 @@ export function AppRail({ expanded, onToggle, drawer = false }: AppRailProps) {
   return (
     <nav
       className={cn(
-        'flex flex-col h-full flex-shrink-0 border-r border-border',
-        'bg-surface-muted transition-[width] duration-200 ease-in-out',
-        showExpanded ? 'w-[240px]' : 'w-[88px]',
+        'flex flex-col h-full flex-shrink-0 border-r border-border bg-surface',
+        'transition-[width] duration-200 ease-in-out',
+        showExpanded ? 'w-[220px]' : 'w-14',
       )}
       aria-label={bilingualAriaLabel({ fr: 'Navigation principale', en: 'Main navigation' })}
     >
-      <div
-        className={cn(
-          'flex items-center h-14 flex-shrink-0 border-b border-border bg-surface',
-          showExpanded ? 'gap-3 px-4' : 'justify-center px-2',
-        )}
-      >
-        <AppLogo compact={!showExpanded} />
-      </div>
+      {showExpanded && (
+        <div className="flex items-center h-14 flex-shrink-0 px-4">
+          <p className="text-[13px] font-semibold tracking-tight text-text-primary">VHM POS</p>
+        </div>
+      )}
 
-      <div className="flex-1 py-3 overflow-y-auto scrollbar-thin">
+      <div className={cn('flex-1 overflow-y-auto scrollbar-thin', showExpanded ? 'pt-1 pb-3' : 'py-3')}>
         {isAdmin ? (
           <RailNavGroups groups={ADMIN_GROUPS} expanded={showExpanded} iconOnly={posIconOnly} />
         ) : (
@@ -265,28 +250,21 @@ export function AppRail({ expanded, onToggle, drawer = false }: AppRailProps) {
         )}
       </div>
 
-      <div className="py-2 px-2 border-t border-border bg-surface space-y-0.5 flex-shrink-0">
+      <div className={cn('flex-shrink-0 pb-2', showExpanded ? 'px-2' : 'px-1')}>
         <button
           type="button"
           onClick={handleSignOut}
           className={cn(
-            'w-full rounded-lg text-danger-foreground font-semibold',
-            'hover:bg-danger-bg transition-colors duration-150',
+            'w-full text-text-secondary hover:text-text-primary transition-colors duration-150',
             showExpanded
-              ? 'flex items-center gap-3 px-2.5 py-2 text-sm'
-              : 'flex flex-col items-center justify-center gap-1 py-2 min-h-[48px] text-[10px]',
+              ? 'flex items-center gap-2.5 h-9 px-2.5 rounded-md'
+              : 'flex items-center justify-center h-10',
           )}
           aria-label={bilingualAriaLabel(AUTH_NAV.signOut)}
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-danger-bg flex-shrink-0">
-            <LogOut className="h-4 w-4 text-current" aria-hidden="true" />
-          </span>
-          {!posIconOnly && (
-            <BilingualText
-              {...AUTH_NAV.signOut}
-              variant={showExpanded ? 'nav' : 'navCollapsed'}
-              className={cn(!showExpanded && 'items-center')}
-            />
+          <LogOut className="h-5 w-5 flex-shrink-0 text-current" strokeWidth={1.75} aria-hidden="true" />
+          {showExpanded && (
+            <BilingualText {...AUTH_NAV.signOut} variant="nav" />
           )}
         </button>
 
@@ -295,26 +273,24 @@ export function AppRail({ expanded, onToggle, drawer = false }: AppRailProps) {
             type="button"
             onClick={onToggle}
             className={cn(
-              'w-full rounded-lg text-text-muted font-medium hover:bg-surface-muted hover:text-text-secondary',
-              'transition-colors duration-150',
+              'w-full text-text-muted hover:text-text-primary transition-colors duration-150',
               expanded
-                ? 'flex items-center gap-3 px-2.5 py-2 text-sm'
-                : 'flex flex-col items-center justify-center gap-1 py-2 min-h-[44px] text-[10px]',
+                ? 'flex items-center gap-2.5 h-9 px-2.5 rounded-md'
+                : 'flex items-center justify-center h-10',
             )}
             aria-label={bilingualAriaLabel(collapseLabel)}
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-muted flex-shrink-0">
-              {expanded ? (
-                <PanelLeftClose className="h-4 w-4 text-current" aria-hidden="true" />
-              ) : (
-                <PanelLeftOpen className="h-4 w-4 text-current" aria-hidden="true" />
-              )}
-            </span>
-            <BilingualText
-              {...collapseLabel}
-              variant={expanded ? 'nav' : 'navCollapsed'}
-              className={cn(!expanded && 'items-center font-semibold')}
-            />
+            {expanded ? (
+              <PanelLeftClose className="h-5 w-5 flex-shrink-0 text-current" strokeWidth={1.75} aria-hidden="true" />
+            ) : (
+              <PanelLeftOpen className="h-5 w-5 flex-shrink-0 text-current" strokeWidth={1.75} aria-hidden="true" />
+            )}
+            {expanded && (
+              <BilingualText
+                {...collapseLabel}
+                variant="nav"
+              />
+            )}
           </button>
         )}
       </div>

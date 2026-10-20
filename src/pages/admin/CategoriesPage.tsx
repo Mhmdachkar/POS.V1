@@ -23,6 +23,8 @@ import {
 } from '@/hooks/useAdminCategories'
 import type { Category } from '@/types/database'
 import { CategoryFormModal } from './components/CategoryFormModal'
+import { t } from '@/lib/bilingual/types'
+
 
 export function CategoriesPage() {
   const { data: tree, isLoading, isError } = useAdminCategoryTree()
@@ -86,7 +88,7 @@ export function CategoriesPage() {
         }
         actions={
           <Button className="gap-1.5" onClick={openNewCategory}>
-            <Plus className="h-4 w-4" /> {ADMIN.newCategory.fr}
+            <Plus className="h-4 w-4" /> {t(ADMIN.newCategory)}
           </Button>
         }
       />
@@ -156,8 +158,8 @@ export function CategoriesPage() {
         onClose={() => setReactivateId(null)}
         onConfirm={handleReactivate}
         title={<BiModalTitle {...ADMIN.reactivateCategory} />}
-        message={ADMIN.reactivateCategoryMessage.fr}
-        confirmLabel={ADMIN.reactivate.fr}
+        message={t(ADMIN.reactivateCategoryMessage)}
+        confirmLabel={t(ADMIN.reactivate)}
         isLoading={reactivating}
       />
     </div>
@@ -257,7 +259,7 @@ function CategoryBranch({
               onReactivate(node.id)
             }}
           >
-            {ADMIN.reactivate.fr}
+            {t(ADMIN.reactivate)}
           </LoadingButton>
         )}
       </div>
@@ -282,7 +284,7 @@ function CategoryBranch({
             depth={depth}
             products={products ?? []}
             loading={productsLoading}
-            emptyLabel={node.children.length === 0 ? ADMIN.noSubcategoriesOrProducts.fr : ADMIN.noProductsInCategory.fr}
+            emptyLabel={node.children.length === 0 ? t(ADMIN.noSubcategoriesOrProducts) : t(ADMIN.noProductsInCategory)}
           />
         </div>
       ) : null}

@@ -29,6 +29,8 @@ import {
 } from '@/lib/shiftAttribution'
 import { useAuthStore } from '@/stores/authStore'
 import { CloseShiftModal } from './CloseShiftModal'
+import { t } from '@/lib/bilingual/types'
+
 
 function SectionHeader({ title }: { title: ReactNode }) {
   return (
@@ -128,7 +130,7 @@ export function ShiftDetailDrawer({ shiftId, onClose }: ShiftDetailDrawerProps) 
             ))}
           </div>
         ) : isError || !shift ? (
-          <p className="text-sm text-danger">{SHIFT_COPY.failedDetail.fr}</p>
+          <p className="text-sm text-danger">{t(SHIFT_COPY.failedDetail)}</p>
         ) : (
           <div>
             <div className="flex items-center gap-2 mb-4 -mt-1">
@@ -136,26 +138,26 @@ export function ShiftDetailDrawer({ shiftId, onClose }: ShiftDetailDrawerProps) 
             </div>
 
             <div className="rounded-md border border-border px-3 py-2 mb-4 space-y-1">
-              <DetailRow label={SHIFT_COPY.shiftLabel.fr} value={formatShiftTimeRange(shift.opened_at, shift.closed_at)} />
-              <DetailRow label={COMMON.cashier.fr} value={shift.cashier_name ?? '—'} />
+              <DetailRow label={t(SHIFT_COPY.shiftLabel)} value={formatShiftTimeRange(shift.opened_at, shift.closed_at)} />
+              <DetailRow label={t(COMMON.cashier)} value={shift.cashier_name ?? '—'} />
             </div>
 
             <SectionHeader title={<BiSectionTitle {...SHIFT_COPY.cashSummary} />} />
             <div className="space-y-0">
               <CashRow
-                label={SHIFT_COPY.openingFloat.fr}
+                label={t(SHIFT_COPY.openingFloat)}
                 value={<MoneyDisplay amount={shift.opening_float_cfa} size="small" />}
               />
               <CashRow
-                label={SHIFT_COPY.salesCash.fr}
+                label={t(SHIFT_COPY.salesCash)}
                 value={<MoneyDisplay amount={shift.running.sales_cash_cfa} size="small" />}
               />
               <CashRow
-                label={SHIFT_COPY.customerPayments.fr}
+                label={t(SHIFT_COPY.customerPayments)}
                 value={<MoneyDisplay amount={shift.running.customer_pmts_cfa} size="small" />}
               />
               <CashRow
-                label={SHIFT_COPY.returnCash.fr}
+                label={t(SHIFT_COPY.returnCash)}
                 value={
                   <MoneyDisplay
                     amount={
@@ -171,7 +173,7 @@ export function ShiftDetailDrawer({ shiftId, onClose }: ShiftDetailDrawerProps) 
 
             <div className="mt-3 rounded-md bg-surface-muted px-3 py-2 space-y-1">
               <CashRow
-                label={SHIFT_COPY.expectedCash.fr}
+                label={t(SHIFT_COPY.expectedCash)}
                 strong
                 value={
                   <MoneyDisplay
@@ -181,7 +183,7 @@ export function ShiftDetailDrawer({ shiftId, onClose }: ShiftDetailDrawerProps) 
                 }
               />
               <CashRow
-                label={SHIFT_COPY.actualCash.fr}
+                label={t(SHIFT_COPY.actualCash)}
                 strong
                 value={
                   isOpen ? (
@@ -206,7 +208,7 @@ export function ShiftDetailDrawer({ shiftId, onClose }: ShiftDetailDrawerProps) 
                     hasDiscrepancy ? 'text-danger-foreground' : 'text-text-secondary',
                   )}
                 >
-                  {SHIFT_COPY.discrepancy.fr}
+                  {t(SHIFT_COPY.discrepancy)}
                 </span>
                 <MoneyDisplay
                   amount={discrepancy}
@@ -222,7 +224,7 @@ export function ShiftDetailDrawer({ shiftId, onClose }: ShiftDetailDrawerProps) 
             >
               <div className="flex items-baseline justify-between gap-3">
                 <span className="text-xs font-semibold uppercase tracking-wide text-warning-foreground">
-                  {SHIFT_COPY.salesWithoutShift.fr}
+                  {t(SHIFT_COPY.salesWithoutShift)}
                 </span>
                 <span className="text-sm font-medium tabular-nums text-warning-foreground">
                   {unshiftedCount} vente{unshiftedCount === 1 ? '' : 's'} · {formatCFA(unshiftedTotal)}
@@ -235,17 +237,17 @@ export function ShiftDetailDrawer({ shiftId, onClose }: ShiftDetailDrawerProps) 
             </div>
 
             <SectionHeader title={<BiSectionTitle {...SHIFT_COPY.shiftDetails} />} />
-            <DetailRow label={COMMON.depot.fr} value={shift.depot_name} />
-            <DetailRow label={COMMON.cashier.fr} value={shift.cashier_name ?? '—'} />
-            <DetailRow label={SHIFT_COPY.opened.fr} value={formatDateTime(shift.opened_at)} />
+            <DetailRow label={t(COMMON.depot)} value={shift.depot_name} />
+            <DetailRow label={t(COMMON.cashier)} value={shift.cashier_name ?? '—'} />
+            <DetailRow label={t(SHIFT_COPY.opened)} value={formatDateTime(shift.opened_at)} />
             <DetailRow
-              label={SHIFT_COPY.closed.fr}
+              label={t(SHIFT_COPY.closed)}
               value={isOpen ? '—' : formatDateTime(shift.closed_at)}
             />
             {!isOpen && (
-              <DetailRow label={SHIFT_COPY.closedBy.fr} value={shift.closed_by_name ?? '—'} />
+              <DetailRow label={t(SHIFT_COPY.closedBy)} value={shift.closed_by_name ?? '—'} />
             )}
-            <DetailRow label={SHIFT_COPY.shiftId.fr} value={shift.id} mono />
+            <DetailRow label={t(SHIFT_COPY.shiftId)} value={shift.id} mono />
 
             {canClose && (
               <>

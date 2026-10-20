@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { BiEmptyTitle, BiModalTitle, BiPageTitle, BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
 import { COMMON } from '@/lib/bilingual/common'
 import { ADMIN } from '@/lib/bilingual/admin'
-import { bilingualPlain } from '@/lib/bilingual/types'
+import { t, bilingualPlain } from '@/lib/bilingual/types'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
 import { INVENTORY } from '@/lib/bilingual/inventory'
 import { SALES } from '@/lib/bilingual/sales'
@@ -82,7 +82,7 @@ export function AuditPage() {
   function exportCsv() {
     downloadCsv(
       `audit-log-${range.startDate}_${range.endDate}.csv`,
-      [ADMIN.auditHeaders.occurred.fr, ADMIN.auditHeaders.actor.fr, ADMIN.auditHeaders.action.fr, ADMIN.auditHeaders.entityType.fr, ADMIN.auditHeaders.entityId.fr, ADMIN.auditHeaders.depotId.fr],
+      [t(ADMIN.auditHeaders.occurred), t(ADMIN.auditHeaders.actor), t(ADMIN.auditHeaders.action), t(ADMIN.auditHeaders.entityType), t(ADMIN.auditHeaders.entityId), t(ADMIN.auditHeaders.depotId)],
       rows.map((r) => [
         r.occurred_at,
         r.actor_name ?? '',
@@ -99,7 +99,7 @@ export function AuditPage() {
       <div className="border-b border-border bg-surface flex-shrink-0">
         <PageHeader
           title={<BiPageTitle {...ADMIN.auditLog} />}
-          description={ADMIN.auditDesc.fr}
+          description={t(ADMIN.auditDesc)}
           icon={<ClipboardList className="h-5 w-5" />}
           className="border-b-0"
         />
@@ -132,7 +132,7 @@ export function AuditPage() {
           <p className="text-xs text-text-muted">
             {depotId
               ? `${depotName ?? 'Depot'} — events for this depot only`
-              : ADMIN.allDepotsIncludesGlobal.fr}
+              : t(ADMIN.allDepotsIncludesGlobal)}
           </p>
 
           <div className="flex flex-wrap gap-3">
@@ -141,7 +141,7 @@ export function AuditPage() {
               onChange={(e) => { setAction(e.target.value); setPage(0) }}
               className="h-9 px-2 rounded-md border border-border bg-surface text-sm"
             >
-              <option value="">{ADMIN.allActions.fr}</option>
+              <option value="">{t(ADMIN.allActions)}</option>
               {AUDIT_ACTIONS.map((a) => (
                 <option key={a} value={a}>{a}</option>
               ))}
@@ -151,7 +151,7 @@ export function AuditPage() {
               onChange={(e) => { setEntityType(e.target.value); setPage(0) }}
               className="h-9 px-2 rounded-md border border-border bg-surface text-sm"
             >
-              <option value="">{ADMIN.allEntityTypes.fr}</option>
+              <option value="">{t(ADMIN.allEntityTypes)}</option>
               {AUDIT_ENTITY_TYPES.map((t) => (
                 <option key={t} value={t}>{t}</option>
               ))}
@@ -161,7 +161,7 @@ export function AuditPage() {
               onChange={(e) => { setActorId(e.target.value); setPage(0) }}
               className="h-9 px-2 rounded-md border border-border bg-surface text-sm max-w-xs"
             >
-              <option value="">{ADMIN.allActors.fr}</option>
+              <option value="">{t(ADMIN.allActors)}</option>
               {(staffList?.data ?? []).map((s) => (
                 <option key={s.id} value={s.id}>{s.full_name}</option>
               ))}
@@ -179,7 +179,7 @@ export function AuditPage() {
               disabled={rows.length === 0}
               className="h-9 px-3 rounded-md border border-border text-sm hover:bg-surface-muted disabled:opacity-50"
             >
-              {COMMON.exportCsv.fr}
+              {t(COMMON.exportCsv)}
             </button>
           </div>
         </div>
@@ -242,7 +242,7 @@ export function AuditPage() {
               onClick={() => setPage((p) => p - 1)}
               className="px-3 py-1 border rounded-md disabled:opacity-40"
             >
-              {COMMON.previous.fr}
+              {t(COMMON.previous)}
             </button>
             <span className="tabular-nums px-2">
               {page + 1} / {totalPages}
@@ -253,7 +253,7 @@ export function AuditPage() {
               onClick={() => setPage((p) => p + 1)}
               className="px-3 py-1 border rounded-md disabled:opacity-40"
             >
-              {COMMON.next.fr}
+              {t(COMMON.next)}
             </button>
           </div>
         </div>

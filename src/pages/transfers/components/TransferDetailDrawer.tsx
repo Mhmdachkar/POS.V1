@@ -18,6 +18,8 @@ import { canMutateTransfer, useTransferDetail } from '@/hooks/useTransfers'
 import { useAuthStore } from '@/stores/authStore'
 import { CompleteTransferModal } from './CompleteTransferModal'
 import { CancelTransferModal } from './CancelTransferModal'
+import { t } from '@/lib/bilingual/types'
+
 
 function SectionHeader({ title }: { title: ReactNode }) {
   return (
@@ -106,28 +108,28 @@ export function TransferDetailDrawer({ transferId, onClose }: TransferDetailDraw
 
             <SectionHeader title={<BiSectionTitle {...TRANSFERS.sectionTransfer} />} />
             <DetailRow label="ID" value={transfer.id} mono />
-            <DetailRow label={TRANSFERS.fromDepot.fr} value={transfer.from_depot_name} />
-            <DetailRow label={TRANSFERS.toDepot.fr} value={transfer.to_depot_name} />
-            {transfer.note && <DetailRow label={COMMON.notes.fr} value={transfer.note} />}
+            <DetailRow label={t(TRANSFERS.fromDepot)} value={transfer.from_depot_name} />
+            <DetailRow label={t(TRANSFERS.toDepot)} value={transfer.to_depot_name} />
+            {transfer.note && <DetailRow label={t(COMMON.notes)} value={transfer.note} />}
 
             <SectionHeader title={<BiSectionTitle {...TRANSFERS.created} />} />
-            <DetailRow label={TRANSFERS.by.fr} value={transfer.created_by_name ?? '—'} />
-            <DetailRow label={TRANSFERS.at.fr} value={formatDateTime(transfer.created_at)} />
+            <DetailRow label={t(TRANSFERS.by)} value={transfer.created_by_name ?? '—'} />
+            <DetailRow label={t(TRANSFERS.at)} value={formatDateTime(transfer.created_at)} />
 
             {transfer.status === 'completed' && (
               <>
                 <SectionHeader title={<BiSectionTitle {...TRANSFERS.completedSection} />} />
-                <DetailRow label={TRANSFERS.by.fr} value={transfer.completed_by_name ?? '—'} />
-                <DetailRow label={TRANSFERS.at.fr} value={formatDateTime(transfer.completed_at)} />
+                <DetailRow label={t(TRANSFERS.by)} value={transfer.completed_by_name ?? '—'} />
+                <DetailRow label={t(TRANSFERS.at)} value={formatDateTime(transfer.completed_at)} />
               </>
             )}
 
             {transfer.status === 'cancelled' && (
               <>
                 <SectionHeader title={<BiSectionTitle {...TRANSFERS.cancelledSection} />} />
-                <DetailRow label={TRANSFERS.by.fr} value={transfer.cancelled_by_name ?? '—'} />
-                <DetailRow label={TRANSFERS.at.fr} value={formatDateTime(transfer.cancelled_at)} />
-                <DetailRow label={COMMON.reason.fr} value={transfer.cancel_reason?.trim() || '—'} />
+                <DetailRow label={t(TRANSFERS.by)} value={transfer.cancelled_by_name ?? '—'} />
+                <DetailRow label={t(TRANSFERS.at)} value={formatDateTime(transfer.cancelled_at)} />
+                <DetailRow label={t(COMMON.reason)} value={transfer.cancel_reason?.trim() || '—'} />
               </>
             )}
 

@@ -11,7 +11,7 @@ import { StaffFormModal } from './StaffFormModal'
 import { ADMIN } from '@/lib/bilingual/admin'
 import { COMMON } from '@/lib/bilingual/common'
 import { BiButtonStack, BiTableHeader } from '@/lib/bilingual/ui'
-import { bilingualAriaLabel } from '@/lib/bilingual/types'
+import { t, bilingualAriaLabel } from '@/lib/bilingual/types'
 
 function DetailRow({ label, value }: { label: React.ReactNode; value: React.ReactNode }) {
   return (

@@ -3,27 +3,31 @@ import { ChevronDown, User, LogOut, Building2, Menu } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 import { ADMIN } from '@/lib/bilingual/admin'
-import { AUTH_NAV } from '@/lib/bilingual/nav'
+import { AUTH_NAV, NAV } from '@/lib/bilingual/nav'
 import { COMMON } from '@/lib/bilingual/common'
-import { bilingualPlain } from '@/lib/bilingual/types'
+import { bilingualPlain, t } from '@/lib/bilingual/types'
 import { ShiftChip } from '@/components/pos/ShiftChip'
 import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
+import { useLocaleStore } from '@/stores/localeStore'
 import { supabase } from '@/lib/supabase'
 import { AppLogo } from './AppLogo'
+import { LanguageSwitch } from './LanguageSwitch'
 
 export interface TopBarProps {
   /** Opens the mobile AppRail drawer (shown only below md). */
   onOpenMobileNav?: () => void
 }
 
-const ROLE_LABEL: Record<string, string> = {
-  admin: bilingualPlain(ADMIN.roleAdmin),
-  cashier: bilingualPlain(ADMIN.roleCashier),
-  depot_staff: bilingualPlain(ADMIN.roleDepotStaff),
+function roleLabel(role: string | undefined): string {
+  if (role === 'admin') return t(ADMIN.roleAdmin)
+  if (role === 'cashier') return t(ADMIN.roleCashier)
+  if (role === 'depot_staff') return t(ADMIN.roleDepotStaff)
+  return role ?? ''
 }
 
 function DepotContext({ posMode }: { posMode: boolean }) {
+  useLocaleStore((s) => s.locale)
   const staff = useAuthStore((s) => s.staff)
   const { currentDepotId, currentDepotName, availableDepots, setCurrentDepot } = useDepotStore()
   const isAdmin = staff?.role === 'admin'
@@ -54,7 +58,7 @@ function DepotContext({ posMode }: { posMode: boolean }) {
         <button
           type="button"
           data-testid={posMode ? 'pos-depot-label' : undefined}
-          aria-label="Choisir le dépôt"
+          aria-label={t(COMMON.chooseDepot)}
           className={cn(
             'flex items-center gap-2 text-sm font-medium text-text-primary rounded-md',
             'px-2.5 py-1.5 border border-border bg-surface hover:bg-surface-muted',
@@ -114,6 +118,7 @@ function DepotContext({ posMode }: { posMode: boolean }) {
 }
 
 function UserMenu() {
+  useLocaleStore((s) => s.locale)
   const staff = useAuthStore((s) => s.staff)
   const clear = useAuthStore((s) => s.clear)
 
@@ -131,7 +136,7 @@ function UserMenu() {
             'flex items-center gap-2 rounded-md px-2 py-1.5 sm:px-2.5',
             'hover:bg-surface-muted transition-colors duration-150',
           )}
-          aria-label="Menu utilisateur"
+          aria-label={t(COMMON.userMenu)}
         >
           <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
             <User className="h-3.5 w-3.5 text-primary" />
@@ -141,7 +146,7 @@ function UserMenu() {
               {staff?.full_name ?? '—'}
             </p>
             <p className="text-xs text-text-muted leading-none mt-0.5">
-              {ROLE_LABEL[staff?.role ?? ''] ?? staff?.role}
+              {roleLabel(staff?.role)}
             </p>
           </div>
           <ChevronDown className="h-3.5 w-3.5 text-text-muted flex-shrink-0 hidden sm:block" />
@@ -182,6 +187,7 @@ function UserMenu() {
 }
 
 export function TopBar({ onOpenMobileNav }: TopBarProps) {
+  useLocaleStore((s) => s.locale)
   const { pathname } = useLocation()
   const posMode = pathname === '/pos'
   const staff = useAuthStore((s) => s.staff)
@@ -201,7 +207,7 @@ export function TopBar({ onOpenMobileNav }: TopBarProps) {
             'text-text-primary hover:bg-surface-muted transition-colors duration-150',
           )}
           onClick={onOpenMobileNav}
-          aria-label="Ouvrir le menu"
+          aria-label={t(COMMON.openMenu)}
         >
           <Menu className="h-5 w-5" aria-hidden="true" />
         </button>
@@ -214,15 +220,14 @@ export function TopBar({ onOpenMobileNav }: TopBarProps) {
 
       <div className="flex-1 min-w-0" />
 
+      <LanguageSwitch compact />
+
       <div
-        className={cn(
-          'flex items-center gap-1.5 flex-shrink-0',
-          'rounded-lg border border-border bg-surface-muted/70 px-1.5 py-0.5 sm:px-2 sm:py-1',
-        )}
+        className="flex items-center gap-1.5 flex-shrink-0"
         data-testid="topbar-shift"
       >
-        <span className="hidden sm:inline text-[10px] font-semibold uppercase tracking-wide text-text-muted">
-          Service
+        <span className="hidden sm:inline text-[11px] font-medium text-text-muted">
+          {t(NAV.shift)}
         </span>
         <ShiftChip posDepotId={posDepotId} />
       </div>

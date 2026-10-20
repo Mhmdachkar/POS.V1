@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { POS } from '@/lib/bilingual/pos'
-import { bi, bilingualAriaLabel } from '@/lib/bilingual/types'
+import { t, bi, bilingualAriaLabel } from '@/lib/bilingual/types'
 import { formatCFA } from '@/lib/formatters'
 import { effectiveFinalTotal, usePOSStore } from '@/stores/posStore'
 import { useShallow } from 'zustand/react/shallow'
@@ -15,7 +15,7 @@ export function ExactCashButton() {
     })),
   )
   const total = effectiveFinalTotal(calculatedTotal, overrideTotalCfa)
-  const label = bi(`${POS.exactPrefix.fr} : ${formatCFA(total)}`, `${POS.exactPrefix.en}: ${formatCFA(total)}`)
+  const label = bi(`${t(POS.exactPrefix)} : ${formatCFA(total)}`, `${POS.exactPrefix.en}: ${formatCFA(total)}`)
 
   return (
     <Button

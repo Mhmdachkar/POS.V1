@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { useDepotContextSync } from '@/hooks/useDepotContextSync'
+import { COMMON } from '@/lib/bilingual/common'
+import { t } from '@/lib/bilingual/types'
+import { useLocaleStore } from '@/stores/localeStore'
 import { AppRail } from './AppRail'
 import { TopBar } from './TopBar'
 
@@ -21,6 +24,7 @@ import { TopBar } from './TopBar'
  * On /pos the rail is icon-only; main is overflow-hidden (POS workspace).
  */
 export function AppShell() {
+  const locale = useLocaleStore((s) => s.locale)
   const [railExpanded, setRailExpanded] = useState(true)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const location = useLocation()
@@ -55,7 +59,7 @@ export function AppShell() {
           <button
             type="button"
             className="absolute inset-0 bg-black/40"
-            aria-label="Fermer le menu"
+            aria-label={t(COMMON.closeMenu)}
             onClick={() => setMobileNavOpen(false)}
           />
           <div className="absolute inset-y-0 left-0 z-10 flex shadow-xl">
@@ -81,7 +85,7 @@ export function AppShell() {
           role="main"
           id="main-content"
         >
-          <Outlet />
+          <Outlet key={locale} />
         </main>
       </div>
     </div>

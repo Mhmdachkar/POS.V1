@@ -6,6 +6,8 @@ import type { AdminCustomersReport } from '@/types/rpc'
 import { CustomerDetailDrawer } from '@/pages/customers/components/CustomerDetailDrawer'
 import { ReportMetric } from '../components/ReportMetric'
 import { ReportSection } from '../components/ReportSection'
+import { t } from '@/lib/bilingual/types'
+
 
 interface ReportCustomersTabProps {
   customers: AdminCustomersReport
@@ -18,7 +20,7 @@ export function ReportCustomersTab({ customers, depotScoped }: ReportCustomersTa
   return (
     <div className="space-y-8">
       <p className="text-sm text-text-secondary">
-        {REPORTS.balancesGlobalNote.fr}
+        {t(REPORTS.balancesGlobalNote)}
         {depotScoped && ' Les paiements de période ci-dessous sont attribués via le dépôt du service le cas échéant.'}
       </p>
 

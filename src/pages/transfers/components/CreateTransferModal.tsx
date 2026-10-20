@@ -16,7 +16,7 @@ import { INVENTORY } from '@/lib/bilingual/inventory'
 import { SALES } from '@/lib/bilingual/sales'
 import { SHIFT_COPY } from '@/lib/bilingual/shift'
 import { TRANSFERS } from '@/lib/bilingual/transfers'
-import { bilingualPlain } from '@/lib/bilingual/types'
+import { t, bilingualPlain } from '@/lib/bilingual/types'
 import { toastSuccessBi } from '@/lib/bilingual/toast'
 import { Plus, Trash2 } from 'lucide-react'
 import { Button, LoadingButton, Modal } from '@/components/ui'
@@ -143,11 +143,11 @@ export function CreateTransferModal({
     setFormError(null)
 
     if (!fromDepotId || !toDepotId) {
-      setFormError(TRANSFERS.chooseDepotsError.fr)
+      setFormError(t(TRANSFERS.chooseDepotsError))
       return
     }
     if (fromDepotId === toDepotId) {
-      setFormError(TRANSFERS.sameDepotError.fr)
+      setFormError(t(TRANSFERS.sameDepotError))
       return
     }
 
@@ -159,15 +159,15 @@ export function CreateTransferModal({
     }))
 
     if (parsed.some((item) => !item.from_product_id || !item.to_product_id)) {
-      setFormError(TRANSFERS.lineProductsError.fr)
+      setFormError(t(TRANSFERS.lineProductsError))
       return
     }
     if (parsed.some((item) => !(item.quantity_in_unit > 0))) {
-      setFormError(TRANSFERS.qtyPositiveError.fr)
+      setFormError(t(TRANSFERS.qtyPositiveError))
       return
     }
     if (hasDuplicateSourceProducts(parsed)) {
-      setFormError(TRANSFERS.duplicateSourceError.fr)
+      setFormError(t(TRANSFERS.duplicateSourceError))
       return
     }
 
@@ -194,7 +194,7 @@ export function CreateTransferModal({
       open={open}
       onClose={onClose}
       title={<BiModalTitle {...TRANSFERS.createTransfer} />}
-      description={TRANSFERS.createDraftDesc.fr}
+      description={t(TRANSFERS.createDraftDesc)}
       size="2xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -267,7 +267,7 @@ export function CreateTransferModal({
                 className="grid grid-cols-[minmax(8rem,1fr)_minmax(8rem,1fr)_7rem_7rem_5.5rem_2.25rem] gap-2 items-end"
               >
                 <select
-                  aria-label={TRANSFERS.sourceProductAria.fr}
+                  aria-label={t(TRANSFERS.sourceProductAria)}
                   value={line.from_product_id}
                   onChange={(e) => updateLine(line.key, { from_product_id: e.target.value, to_product_id: '' })}
                   disabled={!fromDepotId || isPending}
@@ -286,7 +286,7 @@ export function CreateTransferModal({
                 </select>
 
                 <select
-                  aria-label={TRANSFERS.destProductAria.fr}
+                  aria-label={t(TRANSFERS.destProductAria)}
                   value={line.to_product_id}
                   onChange={(e) => updateLine(line.key, { to_product_id: e.target.value })}
                   disabled={!toDepotId || isPending}
@@ -301,7 +301,7 @@ export function CreateTransferModal({
                 </select>
 
                 <select
-                  aria-label={TRANSFERS.unitAria.fr}
+                  aria-label={t(TRANSFERS.unitAria)}
                   value={line.unit_level}
                   onChange={(e) => updateLine(line.key, { unit_level: Number(e.target.value) })}
                   disabled={!source || isPending}
@@ -315,7 +315,7 @@ export function CreateTransferModal({
                 </select>
 
                 <input
-                  aria-label={TRANSFERS.quantityAria.fr}
+                  aria-label={t(TRANSFERS.quantityAria)}
                   type="number"
                   min="0"
                   step="any"
@@ -332,7 +332,7 @@ export function CreateTransferModal({
 
                 <button
                   type="button"
-                  aria-label={TRANSFERS.removeLineAria.fr}
+                  aria-label={t(TRANSFERS.removeLineAria)}
                   onClick={() => removeLine(line.key)}
                   disabled={lines.length === 1 || isPending}
                   className="h-9 w-9 inline-flex items-center justify-center rounded-md border border-border text-text-secondary hover:bg-surface-muted disabled:opacity-40"

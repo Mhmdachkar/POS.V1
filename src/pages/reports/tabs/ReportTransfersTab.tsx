@@ -8,6 +8,8 @@ import { useTransfersList } from '@/hooks/useTransfers'
 import { TransferDetailDrawer } from '@/pages/transfers/components/TransferDetailDrawer'
 import { ReportSection } from '../components/ReportSection'
 import type { TransferStatus } from '@/types/database'
+import { t } from '@/lib/bilingual/types'
+
 
 interface ReportTransfersTabProps {
   depotId: string | null
@@ -36,7 +38,7 @@ export function ReportTransfersTab({ depotId }: ReportTransfersTabProps) {
     <div className="space-y-8">
       <ReportSection title={<BiSectionTitle {...REPORTS.summaryByStatus} />}>
         {rows.length === 0 ? (
-          <p className="text-sm text-text-muted">{TRANSFERS.noTransfers.fr}</p>
+          <p className="text-sm text-text-muted">{t(TRANSFERS.noTransfers)}</p>
         ) : (
           <ul className="flex flex-wrap gap-3 text-sm">
             {Array.from(byStatus.entries()).map(([status, count]) => (

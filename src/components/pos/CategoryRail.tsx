@@ -3,7 +3,7 @@ import { cn } from '@/lib/cn'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { COMMON } from '@/lib/bilingual/common'
 import { POS } from '@/lib/bilingual/pos'
-import { bilingualAriaLabel } from '@/lib/bilingual/types'
+import { t, bilingualAriaLabel } from '@/lib/bilingual/types'
 
 export interface CategoryRailProps {
   activeId: string | null

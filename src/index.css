@@ -63,8 +63,8 @@
     --shadow-lg: 0 8px 24px rgba(16, 24, 40, 0.12);
 
     /* --- AppRail widths --- */
-    --rail-width-collapsed: 88px;
-    --rail-width-expanded: 240px;
+    --rail-width-collapsed: 56px;
+    --rail-width-expanded: 220px;
 
     /* --- TopBar height --- */
     --topbar-height: 56px;

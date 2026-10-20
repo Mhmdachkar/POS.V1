@@ -24,7 +24,7 @@ import type { Customer } from '@/types/database'
 import { COMMON } from '@/lib/bilingual/common'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
 import { BiButtonStack, BiModalTitle, BiTableHeader } from '@/lib/bilingual/ui'
-import { bilingualPlain } from '@/lib/bilingual/types'
+import { t, bilingualPlain } from '@/lib/bilingual/types'
 
 interface CustomerFormModalProps {
   open: boolean

@@ -23,7 +23,7 @@ import { Modal, Button, LoadingButton, Textarea } from '@/components/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { COMMON } from '@/lib/bilingual/common'
 import { BiButtonStack, BiModalTitle, BiTableHeader } from '@/lib/bilingual/ui'
-import { bilingualPlain } from '@/lib/bilingual/types'
+import { t, bilingualPlain } from '@/lib/bilingual/types'
 import { formatCFA } from '@/lib/formatters'
 import { rpc } from '@/lib/rpc'
 import { computeReturnLineRefund, computeReturnRefundPreview, computeReturnRefundTotal } from '@/lib/returnRefundPreview'
@@ -118,11 +118,11 @@ function ReturnItemRow({ ri, onChange }: ReturnItemRowProps) {
             <BilingualText {...SALES.eachPrice} variant="caption" layout="inline" />
           </p>
           <p className="text-xs text-text-muted mt-0.5">
-            {SALES.originalQty.fr}: {item.quantity_in_unit}
-            {alreadyReturned > 0 && ` · ${SALES.alreadyReturned.fr}: ${alreadyReturned}`}
+            {t(SALES.originalQty)}: {item.quantity_in_unit}
+            {alreadyReturned > 0 && ` · ${t(SALES.alreadyReturned)}: ${alreadyReturned}`}
             {returnable > 0
-              ? ` · ${SALES.returnable.fr}: ${returnable}`
-              : ` · ${SALES.fullyReturned.fr}`}
+              ? ` · ${t(SALES.returnable)}: ${returnable}`
+              : ` · ${t(SALES.fullyReturned)}`}
           </p>
         </div>
         <div className="text-right flex-shrink-0">

@@ -70,6 +70,10 @@ export const COMMON = {
   previous: bi('← Précédent', '← Previous'),
   next: bi('Suivant →', 'Next →'),
   unknown: bi('Inconnu', 'Unknown'),
+  language: bi('Langue', 'Language'),
+  openMenu: bi('Ouvrir le menu', 'Open menu'),
+  userMenu: bi('Menu utilisateur', 'User menu'),
+  chooseDepot: bi('Choisir le dépôt', 'Choose depot'),
 } as const satisfies Record<string, BilingualPair>
 
 export function commonPageOf(page: number, total: number) {

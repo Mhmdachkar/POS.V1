@@ -33,6 +33,8 @@ import { useDepotStore } from '@/stores/depotStore'
 import { RestockModal } from './RestockModal'
 import { AdjustmentModal } from './AdjustmentModal'
 import { ProductFormModal } from './ProductFormModal'
+import { t } from '@/lib/bilingual/types'
+
 
 function SectionHeader({ title }: { title: ReactNode }) {
   return (
@@ -283,12 +285,12 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
             <SectionHeader title={<BiSectionTitle {...INVENTORY.monitoringSection} />} />
             <div className="space-y-0">
               <DetailRow
-                label={INVENTORY.trackLowStock.fr}
+                label={t(INVENTORY.trackLowStock)}
                 value={product.track_low_stock ? 'On' : 'Off'}
               />
               {product.track_low_stock && (
                 <DetailRow
-                  label={INVENTORY.threshold.fr}
+                  label={t(INVENTORY.threshold)}
                   value={
                     product.low_stock_threshold == null
                       ? '—'
@@ -407,7 +409,7 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
                   loading={reactivating}
                 >
                   <UserCheck className="h-4 w-4" />
-                  {INVENTORY.reactivateProduct.fr}
+                  {t(INVENTORY.reactivateProduct)}
                 </LoadingButton>
               )}
             </div>

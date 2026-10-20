@@ -35,6 +35,8 @@ import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
 import type { ShiftStatus } from '@/types/database'
 import { ShiftDetailDrawer } from './components/ShiftDetailDrawer'
+import { t } from '@/lib/bilingual/types'
+
 
 const STATUS_CHIPS: FilterBarChip[] = [
   { value: 'all', label: 'Tout / All' },
@@ -125,7 +127,7 @@ export function ShiftsPage() {
             <EmptyState
               icon={<Clock className="h-8 w-8" />}
               title={<BiEmptyTitle {...SHIFT_COPY.failedToLoad} />}
-              description={COMMON.checkConnection.fr}
+              description={t(COMMON.checkConnection)}
             />
           </div>
         ) : shifts.length === 0 ? (

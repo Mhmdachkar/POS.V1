@@ -14,6 +14,8 @@ import { BilingualText } from '@/components/ui/BilingualText'
 import { POS } from '@/lib/bilingual/pos'
 import type { ProductWithUnits } from '@/types'
 import type { ProductUnit } from '@/types/database'
+import { t } from '@/lib/bilingual/types'
+
 
 export interface ProductCardProps {
   product: ProductWithUnits

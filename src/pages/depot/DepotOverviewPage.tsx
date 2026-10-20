@@ -17,7 +17,7 @@ import { useDepotOverview } from '@/hooks/useDepotOverview'
 import { useDepotStore } from '@/stores/depotStore'
 import { SaleDetailDrawer } from '@/pages/sales/components/SaleDetailDrawer'
 import { useState } from 'react'
-import { bi, type BilingualPair } from '@/lib/bilingual/types'
+import { t, bi, type BilingualPair } from '@/lib/bilingual/types'
 
 function MetricCard({
   label,
@@ -125,7 +125,7 @@ export function DepotOverviewPage() {
                         onClick={() => setSelectedSaleId(id)}
                       >
                         <BilingualText
-                          {...bi(`${DEPOT.openSalePrefix.fr} ${id.slice(0, 8)}…`, `${DEPOT.openSalePrefix.en} ${id.slice(0, 8)}…`)}
+                          {...bi(`${t(DEPOT.openSalePrefix)} ${id.slice(0, 8)}…`, `${DEPOT.openSalePrefix.en} ${id.slice(0, 8)}…`)}
                           variant="body"
                           layout="inline"
                         />

@@ -36,7 +36,7 @@ import { CUSTOMERS } from '@/lib/bilingual/customers'
 
 import { BiTabLabel } from '@/lib/bilingual/ui'
 
-import { bilingualAriaLabel, type BilingualPair } from '@/lib/bilingual/types'
+import { t, bilingualAriaLabel, type BilingualPair } from '@/lib/bilingual/types'
 
 
 

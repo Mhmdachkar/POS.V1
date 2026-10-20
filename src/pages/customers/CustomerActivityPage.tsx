@@ -45,6 +45,7 @@ import {
 import { useAuthStore } from '@/stores/authStore'
 import { SaleDetailDrawer } from '@/pages/sales/components/SaleDetailDrawer'
 import { CustomerFinancialSummary } from './components/CustomerFinancialSummary'
+import { t } from '@/lib/bilingual/types'
 import {
   ActivityFilterTabs,
   ActivityTypeBadge,
@@ -56,7 +57,7 @@ const ACTIVITY_GRID =
 
 function TableSkeleton() {
   return (
-    <div className="space-y-px" role="status" aria-label={CUSTOMERS.loadingActivity.fr}>
+    <div className="space-y-px" role="status" aria-label={t(CUSTOMERS.loadingActivity)}>
       {Array.from({ length: 8 }).map((_, i) => (
         <div
           key={i}
@@ -116,7 +117,7 @@ export function CustomerActivityPage() {
       if (kind === 'xlsx') downloadCustomerAccountXlsx(dataset)
       else printCustomerAccountPdf(dataset)
     } catch (err) {
-      setExportError(parseError(err).message || CUSTOMERS.exportAccountFailed.fr)
+      setExportError(parseError(err).message || t(CUSTOMERS.exportAccountFailed))
     } finally {
       setExporting(false)
     }
@@ -135,13 +136,13 @@ export function CustomerActivityPage() {
           </Link>
         </div>
         <PageHeader
-          title={loadingCustomer ? CUSTOMERS.customerActivity.fr : (customer?.name ?? CUSTOMERS.customerActivity.fr)}
+          title={loadingCustomer ? t(CUSTOMERS.customerActivity) : (customer?.name ?? t(CUSTOMERS.customerActivity))}
           className="border-b-0 pt-2"
           actions={
             customer ? (
               <div className="flex flex-col items-end gap-2">
                 <div className="text-right">
-                  <p className="text-xs text-text-secondary">{CUSTOMERS.outstandingBalance.fr}</p>
+                  <p className="text-xs text-text-secondary">{t(CUSTOMERS.outstandingBalance)}</p>
                   <MoneyDisplay
                     amount={customer.balance_owed_cfa}
                     size="medium"
@@ -254,7 +255,7 @@ export function CustomerActivityPage() {
                   <span className="text-sm text-text-secondary truncate min-w-0">
                     {event.description}
                     {event.isReversed && (
-                      <Badge variant="neutral" className="ml-2 text-[10px]">{CUSTOMERS.activityReversed.fr}</Badge>
+                      <Badge variant="neutral" className="ml-2 text-[10px]">{t(CUSTOMERS.activityReversed)}</Badge>
                     )}
                   </span>
                   <span className="text-sm text-text-secondary whitespace-nowrap">
