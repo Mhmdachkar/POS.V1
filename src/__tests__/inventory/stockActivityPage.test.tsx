@@ -18,6 +18,7 @@ import {
   stockActivityCreatedAtBounds,
 } from '@/hooks/useInventory'
 import { formatPieces } from '@/lib/formatters'
+import { INVENTORY } from '@/lib/bilingual/inventory'
 import type { InventoryTransactionType } from '@/types/database'
 import type { Staff } from '@/types/database'
 
@@ -280,7 +281,7 @@ describe('StockActivityPage', () => {
 
     expect(await screen.findByRole('heading', { name: /activité du stock|stock activity/i })).toBeInTheDocument()
     expect(screen.getAllByText(/Mouvements de stock|Stock movements for the current depot/i).length).toBeGreaterThan(0)
-    expect(screen.queryByRole('button', { name: 'New Product' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: INVENTORY.addProduct.fr })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Inventory' })).not.toBeInTheDocument()
   })
 
