@@ -39,6 +39,7 @@ import { SaleDetailDrawer } from '@/pages/sales/components/SaleDetailDrawer'
 import { RecordPaymentModal } from './RecordPaymentModal'
 import { CustomerFormModal } from './CustomerFormModal'
 import { CustomerFinancialSummary } from './CustomerFinancialSummary'
+import { t } from '@/lib/bilingual/types'
 import {
   ActivityEventRow,
   ActivityFilterTabs,
@@ -135,7 +136,7 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
       if (kind === 'xlsx') downloadCustomerAccountXlsx(dataset)
       else printCustomerAccountPdf(dataset)
     } catch (err) {
-      setActionError(parseError(err).message || CUSTOMERS.exportAccountFailed.fr)
+      setActionError(parseError(err).message || t(CUSTOMERS.exportAccountFailed))
     } finally {
       setExporting(false)
     }
@@ -152,7 +153,7 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
         title={loadingCustomer ? 'Customer Details' : (customer?.name ?? 'Customer Details')}
         description={
           customer
-            ? (customer.is_active ? CUSTOMERS.activeCustomer.fr : CUSTOMERS.inactiveCustomer.fr)
+            ? (customer.is_active ? t(CUSTOMERS.activeCustomer) : t(CUSTOMERS.inactiveCustomer))
             : undefined
         }
         width="lg"
@@ -164,19 +165,19 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
             ))}
           </div>
         ) : !customer ? (
-          <p className="text-sm text-text-muted">{CUSTOMERS.notFoundShort.fr}</p>
+          <p className="text-sm text-text-muted">{t(CUSTOMERS.notFoundShort)}</p>
         ) : (
           <div className="space-y-1">
             <SectionHeader title={<BiSectionTitle {...CUSTOMERS.balanceSection} />} />
             <div className="rounded-md border border-border bg-surface-muted p-3">
-              <p className="text-xs text-text-secondary mb-1">{CUSTOMERS.outstandingBalance.fr}</p>
+              <p className="text-xs text-text-secondary mb-1">{t(CUSTOMERS.outstandingBalance)}</p>
               <MoneyDisplay
                 amount={customer.balance_owed_cfa}
                 size="medium"
                 danger={customer.balance_owed_cfa > 0}
               />
               <p className="text-xs text-text-muted mt-1">
-                {CUSTOMERS.balanceHelp.fr}
+                {t(CUSTOMERS.balanceHelp)}
               </p>
             </div>
 
@@ -189,12 +190,12 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
             />
 
             <SectionHeader title={<BiSectionTitle {...CUSTOMERS.contactSection} />} />
-            <DetailRow label={CUSTOMERS.phone.fr} value={contactValue(customer.phone)} />
-            <DetailRow label={CUSTOMERS.address.fr} value={contactValue(customer.address)} />
-            <DetailRow label={CUSTOMERS.colSince.fr} value={formatDate(customer.created_at)} />
+            <DetailRow label={t(CUSTOMERS.phone)} value={contactValue(customer.phone)} />
+            <DetailRow label={t(CUSTOMERS.address)} value={contactValue(customer.address)} />
+            <DetailRow label={t(CUSTOMERS.colSince)} value={formatDate(customer.created_at)} />
             {!customer.is_active && customer.deactivated_at && (
               <DetailRow
-                label={ADMIN.deactivatedAt.fr}
+                label={t(ADMIN.deactivatedAt)}
                 value={
                   <span className="text-warning-foreground">{formatDate(customer.deactivated_at)}</span>
                 }
@@ -203,14 +204,14 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
 
             <div className="flex items-end justify-between gap-3 mt-4 mb-2">
               <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">
-                {CUSTOMERS.accountActivity.fr}
+                {t(CUSTOMERS.accountActivity)}
               </p>
               <Link
                 to={`/customers/${customer.id}/activity`}
                 onClick={onClose}
                 className="text-sm font-medium text-primary hover:underline"
               >
-                {CUSTOMERS.viewAllActivity.fr}
+                {t(CUSTOMERS.viewAllActivity)}
               </Link>
             </div>
             <ActivityFilterTabs
@@ -219,16 +220,16 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
               className="mb-2"
             />
             {loadingActivity ? (
-              <div className="space-y-2" role="status" aria-label={CUSTOMERS.loadingActivity.fr}>
+              <div className="space-y-2" role="status" aria-label={t(CUSTOMERS.loadingActivity)}>
                 {Array.from({ length: 3 }).map((_, i) => (
                   <Skeleton key={i} className="h-10 w-full" />
                 ))}
               </div>
             ) : activityError ? (
               <div className="rounded-md border border-border px-3 py-2">
-                <p className="text-sm text-text-primary">{CUSTOMERS.failedActivity.fr}</p>
+                <p className="text-sm text-text-primary">{t(CUSTOMERS.failedActivity)}</p>
                 <Button variant="secondary" size="sm" className="mt-2" onClick={() => void refetchActivity()}>
-                  {CUSTOMERS.tryAgain.fr}
+                  {t(CUSTOMERS.tryAgain)}
                 </Button>
               </div>
             ) : events.length === 0 ? (
@@ -284,7 +285,7 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
                 disabled={!hasOutstanding}
               >
                 <Banknote className="h-4 w-4" />
-                {CUSTOMERS.recordPayment.fr}
+                {t(CUSTOMERS.recordPayment)}
               </Button>
 
               <Button
@@ -293,7 +294,7 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
                 onClick={() => setShowEditModal(true)}
               >
                 <Edit className="h-4 w-4" />
-                {CUSTOMERS.editCustomerBtn.fr}
+                {t(CUSTOMERS.editCustomerBtn)}
               </Button>
 
               {isAdmin && customer.is_active && (
@@ -305,7 +306,7 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
                   disabled={isActioning}
                 >
                   <UserX className="h-4 w-4" />
-                  {CUSTOMERS.deactivateCustomer.fr}
+                  {t(CUSTOMERS.deactivateCustomer)}
                 </LoadingButton>
               )}
               {isAdmin && !customer.is_active && (
@@ -317,7 +318,7 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
                   disabled={isActioning}
                 >
                   <UserCheck className="h-4 w-4" />
-                  {CUSTOMERS.reactivateCustomer.fr}
+                  {t(CUSTOMERS.reactivateCustomer)}
                 </LoadingButton>
               )}
             </div>

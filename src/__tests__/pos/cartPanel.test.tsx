@@ -14,6 +14,10 @@ import type { ProductUnit } from '@/types/database'
 import { POS } from '@/lib/bilingual/pos'
 import { bilingualAriaLabel, getByBilingualRole } from '../helpers/bilingualQueries'
 
+function removeButtons(product = 'Water') {
+  return screen.getAllByRole('button', { name: bilingualAriaLabel(POS.removeFromCartAria(product)) })
+}
+
 vi.mock('@/hooks/useProducts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useProducts')>()
   return {
@@ -139,7 +143,7 @@ describe('CartItem', () => {
     const item = usePOSStore.getState().items[0]
     render(<CartItem item={item} />)
 
-    await user.click(getByBilingualRole('button', POS.removeFromCartAria('Water')))
+    await user.click(removeButtons()[0])
     expect(usePOSStore.getState().items).toHaveLength(0)
   })
 
@@ -270,7 +274,7 @@ describe('CartPanel', () => {
     const { rerender } = render(<CartItem item={usePOSStore.getState().items[0]} />)
     const rowAtOne = screen.getByText('Water').closest('[class*="min-h-[52px]"]') as HTMLElement
     expect(rowAtOne).toBeTruthy()
-    expect(rowAtOne).toHaveClass('min-h-[52px]')
+    expect(rowAtOne).toHaveClass('sm:min-h-[52px]')
     expect(rowAtOne.className).not.toMatch(/\bflex-1\b/)
 
     usePOSStore.getState().updateQuantity('prod-water', 0, 6)
@@ -283,10 +287,12 @@ describe('CartPanel', () => {
   it('uses 36px quantity and remove targets', () => {
     addLine()
     render(<CartItem item={usePOSStore.getState().items[0]} />)
-    expect(getByBilingualRole('button', POS.increaseQtyAria('Water'))).toHaveClass('h-9', 'w-9')
-    expect(getByBilingualRole('button', POS.decreaseQtyAria('Water'))).toHaveClass('h-9', 'w-9')
-    expect(getByBilingualRole('button', POS.removeFromCartAria('Water'))).toHaveClass('h-9', 'w-9')
-    expect(screen.getByLabelText(bilingualAriaLabel(POS.qtyAria('Water')))).toHaveClass('h-9')
+    expect(getByBilingualRole('button', POS.increaseQtyAria('Water'))).toHaveClass('sm:h-9', 'sm:w-9')
+    expect(getByBilingualRole('button', POS.decreaseQtyAria('Water'))).toHaveClass('sm:h-9', 'sm:w-9')
+    for (const btn of removeButtons()) {
+      expect(btn).toHaveClass('h-9', 'w-9')
+    }
+    expect(screen.getByLabelText(bilingualAriaLabel(POS.qtyAria('Water')))).toHaveClass('sm:h-9')
   })
 
   it('disables + at stock max; - and remove still work', async () => {
@@ -308,7 +314,7 @@ describe('CartPanel', () => {
     expect(usePOSStore.getState().items[0].quantity_in_unit).toBe(9)
     expect(getByBilingualRole('button', POS.increaseQtyAria('Water'))).toBeEnabled()
 
-    await user.click(getByBilingualRole('button', POS.removeFromCartAria('Water')))
+    await user.click(removeButtons()[0])
     expect(usePOSStore.getState().items).toHaveLength(0)
   })
 

@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { CategoriesPage } from '@/pages/admin/CategoriesPage'
+import { ADMIN } from '@/lib/bilingual/admin'
 import { buildCategoryTree, findCategoryPath } from '@/hooks/useAdminCategories'
 
 const rows = [
@@ -71,7 +72,7 @@ describe('CategoriesPage accordion', () => {
   it('creates a top-level category without asking for a parent', async () => {
     const user = userEvent.setup()
     wrap(<CategoriesPage />)
-    await user.click(screen.getByRole('button', { name: 'New Category' }))
+    await user.click(screen.getByRole('button', { name: ADMIN.newCategory.fr }))
     expect(screen.getByRole('heading', { name: /nouvelle catégorie|new category/i })).toBeInTheDocument()
     expect(screen.queryByLabelText('Parent')).not.toBeInTheDocument()
     expect(screen.queryByText('Root category')).not.toBeInTheDocument()

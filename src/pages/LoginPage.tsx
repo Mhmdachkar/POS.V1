@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -6,33 +6,39 @@ import { z } from 'zod'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore, selectAuthLoadState } from '@/stores/authStore'
+import { useLocaleStore } from '@/stores/localeStore'
 import { resolvePostLoginPath, waitForAuthSettlement } from '@/lib/postLoginRedirect'
 import { LoadingButton } from '@/components/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
+import { LanguageSwitch } from '@/components/layout/LanguageSwitch'
 import { cn } from '@/lib/cn'
 import { AUTH } from '@/lib/bilingual/auth'
 import { BiButtonStack } from '@/lib/bilingual/ui'
 import { toastSuccessBi } from '@/lib/bilingual/toast'
-import { bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
+import { bilingualAriaLabel, bilingualPlain, t } from '@/lib/bilingual/types'
 
-const loginSchema = z.object({
-  username: z
-    .string()
-    .min(1, bilingualPlain(AUTH.usernameRequired))
-    .max(60, bilingualPlain(AUTH.usernameTooLong))
-    .regex(/^[a-zA-Z0-9._-]+$/, bilingualPlain(AUTH.usernameInvalid)),
-  password: z.string().min(1, bilingualPlain(AUTH.passwordRequired)),
-})
+function buildLoginSchema() {
+  return z.object({
+    username: z
+      .string()
+      .min(1, bilingualPlain(AUTH.usernameRequired))
+      .max(60, bilingualPlain(AUTH.usernameTooLong))
+      .regex(/^[a-zA-Z0-9._-]+$/, bilingualPlain(AUTH.usernameInvalid)),
+    password: z.string().min(1, bilingualPlain(AUTH.passwordRequired)),
+  })
+}
 
-type LoginFormData = z.infer<typeof loginSchema>
+type LoginFormData = z.infer<ReturnType<typeof buildLoginSchema>>
 
 export function LoginPage() {
+  const locale = useLocaleStore((s) => s.locale)
   const navigate    = useNavigate()
   const location    = useLocation()
   const [showPassword, setShowPassword] = useState(false)
 
   const authLoadState = useAuthStore(selectAuthLoadState)
   const staff         = useAuthStore((s) => s.staff)
+  const loginSchema = useMemo(() => buildLoginSchema(), [locale])
 
   const {
     register,
@@ -85,11 +91,14 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="fixed top-4 right-4">
+        <LanguageSwitch />
+      </div>
       <div className="w-full max-w-sm">
 
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-primary mb-4">
-            <span className="text-primary-foreground text-xl font-bold">V</span>
+          <div className="inline-flex items-center justify-center h-10 w-10 rounded-md bg-[#111827] mb-4">
+            <span className="text-white text-sm font-semibold">V</span>
           </div>
           <h1 className="text-2xl font-bold text-text-primary">VHM POS</h1>
           <BilingualText {...AUTH.signInToContinue} variant="pageDescription" className="mt-1" />
@@ -107,7 +116,7 @@ export function LoginPage() {
                 type="text"
                 autoComplete="username"
                 autoFocus
-                placeholder={AUTH.enterUsername.fr}
+                placeholder={t(AUTH.enterUsername)}
                 {...register('username')}
                 className={cn(
                   'h-9 w-full rounded-md border bg-surface text-text-primary text-sm px-3',
@@ -134,7 +143,7 @@ export function LoginPage() {
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
-                  placeholder={AUTH.enterPassword.fr}
+                  placeholder={t(AUTH.enterPassword)}
                   {...register('password')}
                   className={cn(
                     'h-9 w-full rounded-md border bg-surface text-text-primary text-sm pl-3 pr-10',

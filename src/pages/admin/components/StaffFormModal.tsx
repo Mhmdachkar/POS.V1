@@ -10,7 +10,7 @@ import type { AdminStaffRole } from '@/types/rpc'
 import { ADMIN } from '@/lib/bilingual/admin'
 import { COMMON } from '@/lib/bilingual/common'
 import { BiButtonStack, BiModalTitle, BiTableHeader } from '@/lib/bilingual/ui'
-import { bilingualPlain } from '@/lib/bilingual/types'
+import { t, bilingualPlain } from '@/lib/bilingual/types'
 
 interface StaffFormModalProps {
   open: boolean
@@ -27,7 +27,7 @@ interface FormState {
 }
 
 function roleOptionLabel(pair: { fr: string; en: string }) {
-  return pair.fr
+  return t(pair)
 }
 
 export function StaffFormModal({ open, onClose, staff }: StaffFormModalProps) {

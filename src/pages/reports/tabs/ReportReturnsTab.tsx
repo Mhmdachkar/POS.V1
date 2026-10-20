@@ -6,6 +6,8 @@ import { formatDateTime, formatPieces } from '@/lib/formatters'
 import type { AdminSalesReport } from '@/types/rpc'
 import { ReportMetric } from '../components/ReportMetric'
 import { ReportSection } from '../components/ReportSection'
+import { t } from '@/lib/bilingual/types'
+
 
 interface ReportReturnsTabProps {
   sales: AdminSalesReport
@@ -17,7 +19,7 @@ export function ReportReturnsTab({ sales }: ReportReturnsTabProps) {
       <div className="grid md:grid-cols-3 gap-3 max-w-3xl">
         <ReportMetric label={<BiTableHeader {...REPORTS.returnsActivity} />} amount={Number(sales.returns_activity_cfa)} />
         <div className="rounded-lg border border-border bg-surface px-4 py-3">
-          <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">{REPORTS.returnCount.fr}</p>
+          <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">{t(REPORTS.returnCount)}</p>
           <p className="mt-1 text-lg font-semibold tabular-nums">{sales.returns.length}</p>
         </div>
         <ReportMetric label={<BiTableHeader {...REPORTS.netAfterReturns} />} amount={Number(sales.net_sales_cfa)} />
@@ -32,8 +34,8 @@ export function ReportReturnsTab({ sales }: ReportReturnsTabProps) {
               <thead className="bg-surface-alt text-xs">
                 <tr>
                   <th className="text-left px-3 py-2">Quand</th>
-                  <th className="text-left px-3 py-2">{COMMON.receipt.fr}</th>
-                  <th className="text-left px-3 py-2">{COMMON.cashier.fr}</th>
+                  <th className="text-left px-3 py-2">{t(COMMON.receipt)}</th>
+                  <th className="text-left px-3 py-2">{t(COMMON.cashier)}</th>
                   <th className="text-right px-3 py-2">Remboursement</th>
                   <th className="text-right px-3 py-2">Espèces</th>
                   <th className="text-right px-3 py-2">Ajust. solde</th>

@@ -8,6 +8,8 @@ import type { Category } from '@/types/database'
 import { ADMIN } from '@/lib/bilingual/admin'
 import { COMMON } from '@/lib/bilingual/common'
 import { BiButtonStack, BiModalTitle, BiTableHeader } from '@/lib/bilingual/ui'
+import { t } from '@/lib/bilingual/types'
+
 
 interface CategoryFormModalProps {
   open: boolean

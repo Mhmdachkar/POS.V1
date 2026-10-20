@@ -10,6 +10,7 @@ import { ProductDetailDrawer } from '@/pages/inventory/components/ProductDetailD
 import type { ProductWithUnits } from '@/types'
 import type { AdminDashboardSummary } from '@/types/rpc'
 import { ADMIN } from '@/lib/bilingual/admin'
+import { INVENTORY } from '@/lib/bilingual/inventory'
 
 vi.mock('@/hooks/useAdminCategories', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useAdminCategories')>()
@@ -169,7 +170,7 @@ describe('Admin gates and copy', () => {
   it('hides New Product when All Depots is selected', () => {
     depotState.currentDepotId = null
     wrap(<InventoryPage />)
-    expect(screen.queryByRole('button', { name: /new product/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: INVENTORY.addProduct.fr })).not.toBeInTheDocument()
   })
 
   it('hides product admin mutations in All Depots', () => {

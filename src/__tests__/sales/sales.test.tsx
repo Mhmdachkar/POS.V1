@@ -281,7 +281,7 @@ describe('SalesPage', () => {
     vi.mocked(supabase.from).mockReturnValue(builder as never)
     renderSales()
     expect(await screen.findByText('DKR-00000000')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Sales History' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: SALES.historyTitle.fr })).toBeInTheDocument()
   })
 
   it('renders empty state when no sales match', async () => {
@@ -370,7 +370,7 @@ describe('SalesPage', () => {
     const { builder, calls } = createFilterAwareFrom(catalog)
     vi.mocked(supabase.from).mockReturnValue(builder as never)
     renderSales()
-    expect(await screen.findByRole('heading', { name: 'Sales History' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: SALES.historyTitle.fr })).toBeInTheDocument()
 
     const next = await screen.findByRole('button', { name: 'Next →' })
     await user.click(next)

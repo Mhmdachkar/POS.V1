@@ -15,7 +15,7 @@ import {
   BiPageTitle,
   BiTableHeader,
 } from '@/lib/bilingual/ui'
-import { bilingualPlain } from '@/lib/bilingual/types'
+import { t, bilingualPlain } from '@/lib/bilingual/types'
 
 export function SettingsPage() {
   const { data, isLoading, isError } = useBusinessSettings()
@@ -114,7 +114,7 @@ export function SettingsPage() {
               className="w-full h-9 px-3 rounded-md border border-border text-sm bg-surface"
             />
             <p className="text-xs text-text-muted mt-1">
-              {ADMIN.lastUpdated.fr} {formatDateTime(data.rate_updated_at)}
+              {t(ADMIN.lastUpdated)} {formatDateTime(data.rate_updated_at)}
               <span className="block text-[10px]">{ADMIN.lastUpdated.en} {formatDateTime(data.rate_updated_at)}</span>
             </p>
           </div>

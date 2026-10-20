@@ -29,6 +29,7 @@ import { ReportVoidsTab } from './tabs/ReportVoidsTab'
 import { ReportTransfersTab } from './tabs/ReportTransfersTab'
 import { ReportAuditTab } from './tabs/ReportAuditTab'
 import { ReportCostTab } from './tabs/ReportCostTab'
+import { t } from '@/lib/bilingual/types'
 import {
   exportReportCsv,
   exportReportPrint,

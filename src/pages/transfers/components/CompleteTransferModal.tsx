@@ -23,6 +23,8 @@ import {
   type TransferDetailData,
 } from '@/hooks/useTransfers'
 import { useQueryClient } from '@tanstack/react-query'
+import { t } from '@/lib/bilingual/types'
+
 
 interface CompleteTransferModalProps {
   open: boolean
@@ -75,7 +77,7 @@ export function CompleteTransferModal({
       open={open}
       onClose={handleClose}
       title={<BiModalTitle {...TRANSFERS.completeTransfer} />}
-      description={TRANSFERS.completeIrreversible.fr}
+      description={t(TRANSFERS.completeIrreversible)}
       size="sm"
     >
       <div className="space-y-4">
@@ -86,9 +88,9 @@ export function CompleteTransferModal({
               Move stock from {transfer.from_depot_name} to {transfer.to_depot_name}?
             </p>
             <ul className="text-xs text-text-secondary space-y-0.5 list-disc list-inside">
-              <li>{TRANSFERS.completeEffectSource.fr}</li>
-              <li>{TRANSFERS.completeEffectDest.fr}</li>
-              <li>{TRANSFERS.completeEffectFinal.fr}</li>
+              <li>{t(TRANSFERS.completeEffectSource)}</li>
+              <li>{t(TRANSFERS.completeEffectDest)}</li>
+              <li>{t(TRANSFERS.completeEffectFinal)}</li>
             </ul>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { cn } from '@/lib/cn'
-import { bilingualAriaLabel, type BilingualPair } from '@/lib/bilingual/types'
+import { bilingualAriaLabel, t, type BilingualPair } from '@/lib/bilingual/types'
+import { useLocaleStore } from '@/stores/localeStore'
 
 export type BilingualLayout = 'stack' | 'inline'
 
@@ -19,61 +20,61 @@ export type BilingualVariant =
   | 'filter'
   | 'inline'
 
-const variantConfig: Record<BilingualVariant, { fr: string; layout: BilingualLayout }> = {
+const variantConfig: Record<BilingualVariant, { text: string; layout: BilingualLayout }> = {
   heading: {
-    fr: 'text-lg font-bold text-text-primary leading-tight',
+    text: 'text-title text-text-primary leading-tight',
     layout: 'stack',
   },
   pageDescription: {
-    fr: 'text-sm text-text-secondary leading-snug',
+    text: 'text-sm text-text-secondary leading-snug',
     layout: 'stack',
   },
   nav: {
-    fr: 'text-sm font-semibold leading-tight text-inherit',
+    text: 'text-[13px] font-medium leading-tight text-inherit',
     layout: 'stack',
   },
   navCollapsed: {
-    fr: 'text-[10px] font-semibold leading-tight text-center text-inherit line-clamp-2',
+    text: 'text-[10px] font-medium leading-tight text-center text-inherit line-clamp-2',
     layout: 'stack',
   },
   navGroup: {
-    fr: 'text-[10px] font-bold uppercase tracking-wider text-text-muted',
+    text: 'text-[11px] font-medium text-text-muted',
     layout: 'stack',
   },
   button: {
-    fr: 'text-inherit font-medium leading-tight',
+    text: 'text-inherit font-medium leading-tight',
     layout: 'stack',
   },
   buttonInline: {
-    fr: 'text-inherit font-medium',
+    text: 'text-inherit font-medium',
     layout: 'inline',
   },
   tableHeader: {
-    fr: 'text-xs font-semibold text-text-secondary leading-tight',
+    text: 'text-xs font-semibold text-text-secondary leading-tight',
     layout: 'stack',
   },
   badge: {
-    fr: 'text-xs font-medium leading-tight',
+    text: 'text-xs font-medium leading-tight',
     layout: 'stack',
   },
   body: {
-    fr: 'text-sm text-text-primary leading-snug',
+    text: 'text-sm text-text-primary leading-snug',
     layout: 'stack',
   },
   caption: {
-    fr: 'text-xs text-text-secondary leading-snug',
+    text: 'text-xs text-text-secondary leading-snug',
     layout: 'stack',
   },
   toast: {
-    fr: 'text-sm font-medium text-inherit leading-snug',
+    text: 'text-sm font-medium text-inherit leading-snug',
     layout: 'stack',
   },
   filter: {
-    fr: 'text-sm font-medium leading-tight',
+    text: 'text-sm font-medium leading-tight',
     layout: 'stack',
   },
   inline: {
-    fr: 'text-inherit',
+    text: 'text-inherit',
     layout: 'inline',
   },
 }
@@ -83,7 +84,7 @@ export interface BilingualTextProps extends BilingualPair {
   layout?: BilingualLayout
   className?: string
   frClassName?: string
-  /** Kept for call-site compatibility; English is never rendered. */
+  /** Kept for call-site compatibility. */
   enClassName?: string
   /** When true, sets aria-label on the wrapper (use on interactive parents if needed). */
   ariaLabel?: boolean
@@ -91,12 +92,11 @@ export interface BilingualTextProps extends BilingualPair {
 }
 
 /**
- * French-only label primitive (production UI language).
- * `en` on BilingualPair is retained for catalogs/tests but is not shown.
+ * Renders the active-locale string from a `{ fr, en }` pair.
  */
 export function BilingualText({
   fr,
-  en: _en,
+  en,
   variant = 'body',
   layout,
   className,
@@ -104,8 +104,10 @@ export function BilingualText({
   ariaLabel = false,
   as: Tag = 'span',
 }: BilingualTextProps) {
+  useLocaleStore((s) => s.locale)
   const cfg = variantConfig[variant]
   const effectiveLayout = layout ?? cfg.layout
+  const label = t({ fr, en })
 
   return (
     <Tag
@@ -115,9 +117,9 @@ export function BilingualText({
           : 'inline-flex flex-col items-start',
         className,
       )}
-      {...(ariaLabel ? { 'aria-label': bilingualAriaLabel({ fr, en: _en }) } : {})}
+      {...(ariaLabel ? { 'aria-label': bilingualAriaLabel({ fr, en }) } : {})}
     >
-      <span className={cn(cfg.fr, frClassName)}>{fr}</span>
+      <span className={cn(cfg.text, frClassName)}>{label}</span>
     </Tag>
   )
 }

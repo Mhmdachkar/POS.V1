@@ -7,7 +7,7 @@ import { BilingualText } from '@/components/ui/BilingualText'
 import { AUTH } from '@/lib/bilingual/auth'
 import { BiButtonStack, BiPageDescription, BiPageTitle } from '@/lib/bilingual/ui'
 import { toastErrorBi } from '@/lib/bilingual/toast'
-import { bilingualPlain } from '@/lib/bilingual/types'
+import { t, bilingualPlain } from '@/lib/bilingual/types'
 
 /**
  * DeactivatedPage — shown when staff.is_active = false.

@@ -1,21 +1,33 @@
-/** French UI copy pair. `en` retained for catalogs/tests; production UI shows French only. */
+/** French / English UI copy pair. `t()` picks the active locale. */
+import { useLocaleStore } from '@/stores/localeStore'
+
+export type Locale = 'fr' | 'en'
 export type BilingualPair = { fr: string; en: string }
 
 export function bi(fr: string, en: string): BilingualPair {
   return { fr, en }
 }
 
-/** Accessible label — French only (production language). */
-export function bilingualAriaLabel({ fr }: BilingualPair): string {
-  return fr
+export function currentLocale(): Locale {
+  return useLocaleStore.getState().locale
 }
 
-/** Plain string for placeholders, Zod, and string-only contexts — French only. */
-export function bilingualPlain({ fr }: BilingualPair): string {
-  return fr
+/** Active-locale string for placeholders, buttons, and Zod. */
+export function t(pair: BilingualPair): string {
+  return pair[currentLocale()]
 }
 
-/** Compact label for receipts/print — French only. */
-export function bilingualCompactLabel({ fr }: BilingualPair): string {
-  return fr
+/** Accessible label in the active locale. */
+export function bilingualAriaLabel(pair: BilingualPair): string {
+  return t(pair)
+}
+
+/** Plain string for placeholders, Zod, and string-only contexts. */
+export function bilingualPlain(pair: BilingualPair): string {
+  return t(pair)
+}
+
+/** Compact label for receipts/print. */
+export function bilingualCompactLabel(pair: BilingualPair): string {
+  return t(pair)
 }

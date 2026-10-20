@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { BiButtonStack, BiEmptyTitle, BiPageTitle } from '@/lib/bilingual/ui'
 import { ADMIN } from '@/lib/bilingual/admin'
 import { DEPOT } from '@/lib/bilingual/depot'
-import { bilingualPlain } from '@/lib/bilingual/types'
+import { t, bilingualPlain } from '@/lib/bilingual/types'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
 import { SHIFT_COPY } from '@/lib/bilingual/shift'
 import { TRANSFERS } from '@/lib/bilingual/transfers'
@@ -36,7 +36,7 @@ export function DepotsPage() {
       <div className="flex-shrink-0 border-b border-border bg-surface">
         <PageHeader
           title={<BiPageTitle {...ADMIN.depots} />}
-          description={totalCount > 0 ? `${totalCount} dépôt${totalCount !== 1 ? 's' : ''}` : ADMIN.depotsDesc.fr}
+          description={totalCount > 0 ? `${totalCount} dépôt${totalCount !== 1 ? 's' : ''}` : t(ADMIN.depotsDesc)}
           icon={<Building2 className="h-5 w-5" />}
           className="border-b-0"
           actions={

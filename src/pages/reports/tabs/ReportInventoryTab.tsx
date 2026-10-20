@@ -9,6 +9,8 @@ import type { StockStatus } from '@/types'
 import { ProductDetailDrawer } from '@/pages/inventory/components/ProductDetailDrawer'
 import { ReportMetric } from '../components/ReportMetric'
 import { ReportSection } from '../components/ReportSection'
+import { t } from '@/lib/bilingual/types'
+
 
 interface ReportInventoryTabProps {
   inventory: AdminInventoryReport
@@ -64,11 +66,11 @@ export function ReportInventoryTab({ inventory, showDepotColumn }: ReportInvento
 
   return (
     <div className="space-y-8">
-      <ReportMetric label={REPORTS.currentInventoryValue.fr} amount={Number(inventory.inventory_value_cfa)} className="max-w-xs" />
+      <ReportMetric label={t(REPORTS.currentInventoryValue)} amount={Number(inventory.inventory_value_cfa)} className="max-w-xs" />
 
       <ReportSection title={<BiSectionTitle {...REPORTS.currentStock} />}>
         {inventory.current_stock.length === 0 ? (
-          <p className="text-sm text-text-muted">{REPORTS.noStockRows.fr}</p>
+          <p className="text-sm text-text-muted">{t(REPORTS.noStockRows)}</p>
         ) : (
           <div className="overflow-x-auto border border-border rounded-md max-h-80 overflow-y-auto">
             <table className="w-full text-sm">
@@ -108,7 +110,7 @@ export function ReportInventoryTab({ inventory, showDepotColumn }: ReportInvento
       <div className="grid md:grid-cols-2 gap-6">
         <ReportSection title={<BiSectionTitle {...REPORTS.periodMovement} />}>
           {inventory.period_movement.length === 0 ? (
-            <p className="text-sm text-text-muted">{REPORTS.noLedgerActivity.fr}</p>
+            <p className="text-sm text-text-muted">{t(REPORTS.noLedgerActivity)}</p>
           ) : (
             <ul className="text-sm space-y-1">
               {inventory.period_movement.map((m) => (
@@ -122,7 +124,7 @@ export function ReportInventoryTab({ inventory, showDepotColumn }: ReportInvento
         </ReportSection>
         <ReportSection title={<BiSectionTitle {...REPORTS.adjustments} />}>
           {inventory.adjustment_breakdown.length === 0 ? (
-            <p className="text-sm text-text-muted">{REPORTS.noAdjustments.fr}</p>
+            <p className="text-sm text-text-muted">{t(REPORTS.noAdjustments)}</p>
           ) : (
             <ul className="text-sm space-y-1">
               {inventory.adjustment_breakdown.map((a) => (

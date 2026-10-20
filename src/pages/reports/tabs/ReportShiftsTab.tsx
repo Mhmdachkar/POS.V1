@@ -9,6 +9,8 @@ import type { AdminCashReport, AdminSalesReport } from '@/types/rpc'
 import { ShiftDetailDrawer } from '@/pages/shifts/components/ShiftDetailDrawer'
 import { ReportMetric } from '../components/ReportMetric'
 import { ReportSection } from '../components/ReportSection'
+import { t } from '@/lib/bilingual/types'
+
 
 interface ReportShiftsTabProps {
   cash: AdminCashReport
@@ -36,7 +38,7 @@ export function ReportShiftsTab({ cash, sales }: ReportShiftsTabProps) {
 
       <ReportSection title={<BiSectionTitle {...REPORTS.openShifts} />}>
         {cash.open_shifts.length === 0 ? (
-          <p className="text-sm text-text-muted">{COMMON.none.fr}</p>
+          <p className="text-sm text-text-muted">{t(COMMON.none)}</p>
         ) : (
           <ul className="divide-y divide-border border border-border rounded-md text-sm">
             {cash.open_shifts.map((s) => (
@@ -59,15 +61,15 @@ export function ReportShiftsTab({ cash, sales }: ReportShiftsTabProps) {
 
       <ReportSection title={<BiSectionTitle {...REPORTS.closedShiftsInPeriod} />}>
         {cash.closed_shifts.length === 0 ? (
-          <p className="text-sm text-text-muted">{COMMON.none.fr}</p>
+          <p className="text-sm text-text-muted">{t(COMMON.none)}</p>
         ) : (
           <div className="overflow-x-auto border border-border rounded-md">
             <table className="w-full text-sm">
               <thead className="bg-surface-alt text-xs text-text-secondary">
                 <tr>
-                  <th className="text-left px-3 py-2">{SHIFT_STATUS.closed.fr}</th>
-                  <th className="text-left px-3 py-2">{COMMON.cashier.fr}</th>
-                  <th className="text-left px-3 py-2">{COMMON.depot.fr}</th>
+                  <th className="text-left px-3 py-2">{t(SHIFT_STATUS.closed)}</th>
+                  <th className="text-left px-3 py-2">{t(COMMON.cashier)}</th>
+                  <th className="text-left px-3 py-2">{t(COMMON.depot)}</th>
                   <th className="text-right px-3 py-2">Attendu</th>
                   <th className="text-right px-3 py-2">Réel</th>
                   <th className="text-right px-3 py-2">Écart</th>

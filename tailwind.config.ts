@@ -44,7 +44,7 @@ export default {
         text: {
           primary: '#111827',
           secondary: '#667085',
-          muted: '#98A2B3',
+          muted: '#667085',
         },
       },
       borderRadius: {
@@ -66,6 +66,8 @@ export default {
         mono: ['"JetBrains Mono"', '"Fira Code"', 'monospace'],
       },
       fontSize: {
+        label: ['12px', { lineHeight: '16px', fontWeight: '500' }],
+        title: ['20px', { lineHeight: '26px', fontWeight: '700' }],
         // Financial display sizes
         'financial-sm': ['22px', { lineHeight: '28px', fontWeight: '600' }],
         'financial-md': ['28px', { lineHeight: '34px', fontWeight: '700' }],

@@ -12,6 +12,8 @@ import { BiButtonInline, BiEmptyDescription, BiEmptyTitle } from '@/lib/bilingua
 import { ProductCard } from './ProductCard'
 import type { ProductWithUnits } from '@/types'
 import type { ProductUnit } from '@/types/database'
+import { t } from '@/lib/bilingual/types'
+
 
 const MIN_CARD_WIDTH = 132
 

@@ -1,10 +1,11 @@
 /**
  * CEO Notes — admin depot context survives hard reload via localStorage.
+ * /pos forces a concrete depot; leaving /pos restores the previous scope.
  */
 
 import { beforeEach, describe, expect, it } from 'vitest'
-import { render, waitFor } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { act, render, waitFor } from '@testing-library/react'
+import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { vi } from 'vitest'
 import {
@@ -14,10 +15,10 @@ import {
   writePersistedAdminDepot,
 } from '@/lib/depotContextPersistence'
 import { AppShell } from '@/components/layout/AppShell'
-import { PosShell } from '@/components/layout/PosShell'
 import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
 import type { Staff } from '@/types/database'
+import { COMMON } from '@/lib/bilingual/common'
 
 vi.mock('@/hooks/useInventory', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useInventory')>()
@@ -33,9 +34,6 @@ vi.mock('@/hooks/useInventory', async (importOriginal) => {
   }
 })
 
-vi.mock('@/components/layout/PosContextBar', () => ({
-  PosContextBar: () => <div data-testid="pos-context-bar" />,
-}))
 vi.mock('@/components/layout/AppRail', () => ({
   AppRail: () => <div data-testid="app-rail" />,
 }))
@@ -119,7 +117,7 @@ describe('depotContextPersistence helpers', () => {
   })
 })
 
-describe('PosShell / AppShell admin depot restore', () => {
+describe('AppShell admin depot restore', () => {
   beforeEach(() => {
     localStorage.clear()
     useDepotStore.setState({
@@ -135,25 +133,32 @@ describe('PosShell / AppShell admin depot restore', () => {
     })
   })
 
-  function renderShell(kind: 'pos' | 'app') {
+  function renderShell(path: string) {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    const Shell = kind === 'pos' ? PosShell : AppShell
-    return render(
-      <MemoryRouter initialEntries={['/']}>
-        <QueryClientProvider client={client}>
-          <Routes>
-            <Route element={<Shell />}>
-              <Route index element={<div>page</div>} />
-            </Route>
-          </Routes>
-        </QueryClientProvider>
-      </MemoryRouter>,
+    const router = createMemoryRouter(
+      [
+        {
+          element: <AppShell />,
+          children: [
+            { path: '/', element: <div>page</div> },
+            { path: '/pos', element: <div>pos-page</div> },
+            { path: '/dashboard', element: <div>dashboard-page</div> },
+          ],
+        },
+      ],
+      { initialEntries: [path] },
     )
+    const view = render(
+      <QueryClientProvider client={client}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    )
+    return { ...view, router }
   }
 
-  it('PosShell restores persisted admin depot after empty store (hard reload)', async () => {
+  it('AppShell on /pos restores persisted admin depot after empty store (hard reload)', async () => {
     writePersistedAdminDepot('admin-1', { id: 'depot-a', name: 'Depot Dakar' })
-    renderShell('pos')
+    renderShell('/pos')
     await waitFor(() => {
       expect(useDepotStore.getState().currentDepotId).toBe('depot-a')
       expect(useDepotStore.getState().currentDepotName).toBe('Depot Dakar')
@@ -162,26 +167,49 @@ describe('PosShell / AppShell admin depot restore', () => {
 
   it('AppShell restores persisted admin depot after empty store (hard reload)', async () => {
     writePersistedAdminDepot('admin-1', { id: 'depot-b', name: 'Depot Abidjan' })
-    renderShell('app')
+    renderShell('/')
     await waitFor(() => {
       expect(useDepotStore.getState().currentDepotId).toBe('depot-b')
       expect(useDepotStore.getState().currentDepotName).toBe('Depot Abidjan')
     })
   })
 
-  it('PosShell defaults to first active depot when none selected (so catalog can load)', async () => {
-    renderShell('pos')
+  it('AppShell on /pos defaults to first active depot when none selected (so catalog can load)', async () => {
+    renderShell('/pos')
     await waitFor(() => {
       expect(useDepotStore.getState().currentDepotId).toBe('depot-a')
       expect(useDepotStore.getState().currentDepotName).toBe('Depot Dakar')
     })
   })
 
-  it('PosShell overrides persisted All Depots with a concrete depot for selling', async () => {
+  it('AppShell on /pos overrides persisted All Depots with a concrete depot for selling', async () => {
     writePersistedAdminDepot('admin-1', { id: null, name: null })
-    renderShell('pos')
+    renderShell('/pos')
     await waitFor(() => {
       expect(useDepotStore.getState().currentDepotId).toBe('depot-a')
+    })
+  })
+
+  it('leaving /pos restores the previous All Depots scope', async () => {
+    writePersistedAdminDepot('admin-1', { id: null, name: null })
+    const { router } = renderShell('/dashboard')
+    await waitFor(() => {
+      expect(useDepotStore.getState().currentDepotId).toBeNull()
+    })
+
+    await act(async () => {
+      await router.navigate('/pos')
+    })
+    await waitFor(() => {
+      expect(useDepotStore.getState().currentDepotId).toBe('depot-a')
+    })
+
+    await act(async () => {
+      await router.navigate('/dashboard')
+    })
+    await waitFor(() => {
+      expect(useDepotStore.getState().currentDepotId).toBeNull()
+      expect(useDepotStore.getState().currentDepotName).toBe(COMMON.allDepots.fr)
     })
   })
 })

@@ -1,6 +1,6 @@
 import { Input } from '@/components/ui'
 import { POS } from '@/lib/bilingual/pos'
-import { bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
+import { t, bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
 import { parseCFAInput } from '@/lib/formatters'
 import { usePOSStore } from '@/stores/posStore'
 

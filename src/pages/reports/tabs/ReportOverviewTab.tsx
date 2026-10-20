@@ -16,6 +16,8 @@ import type { AdminCustomersReport, AdminInventoryReport, AdminSalesReport } fro
 import { ReportMetric } from '../components/ReportMetric'
 import { ReportSection } from '../components/ReportSection'
 import { formatCFA, formatPieces } from '@/lib/formatters'
+import { t } from '@/lib/bilingual/types'
+
 
 function cfaTooltipValue(value: unknown): string {
   const n = typeof value === 'number' ? value : Number(value ?? 0)
@@ -42,7 +44,7 @@ export function ReportOverviewTab({ sales, inventory, customers }: ReportOvervie
   }))
 
   const byCategory = sales.by_category.map((c) => ({
-    name: c.category_name ?? REPORTS.uncategorized.fr,
+    name: c.category_name ?? t(REPORTS.uncategorized),
     gross: Number(c.sales_activity_cfa),
   }))
 
@@ -73,19 +75,19 @@ export function ReportOverviewTab({ sales, inventory, customers }: ReportOvervie
         <ReportMetric
           label={<BiTableHeader {...REPORTS.voided} />}
           amount={Number(sales.voided_amount_cfa)}
-          secondaryText={REPORTS.voidedCount(sales.voided_count).fr}
+          secondaryText={t(REPORTS.voidedCount(sales.voided_count))}
           danger={sales.voided_count > 0}
         />
         <ReportMetric
           label={<BiTableHeader {...REPORTS.noShiftSales} />}
           amount={Number(sales.no_shift_amount_cfa)}
-          secondaryText={REPORTS.noShiftCount(sales.no_shift_count).fr}
+          secondaryText={t(REPORTS.noShiftCount(sales.no_shift_count))}
         />
         {customers && (
           <ReportMetric
             label={<BiTableHeader {...REPORTS.customerPayments} />}
             amount={Number(customers.payment_activity_cfa)}
-            secondaryText={REPORTS.paymentCount(customers.payment_activity_count).fr}
+            secondaryText={t(REPORTS.paymentCount(customers.payment_activity_count))}
           />
         )}
       </div>
@@ -100,9 +102,9 @@ export function ReportOverviewTab({ sales, inventory, customers }: ReportOvervie
                 <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatCFA(v).replace(/\s/g, '')} />
                 <Tooltip formatter={cfaTooltipValue} />
                 <Legend />
-                <Line type="monotone" dataKey="gross" name={REPORTS.chartGross.fr} stroke="#2563eb" dot={false} strokeWidth={2} />
-                <Line type="monotone" dataKey="returns" name={REPORTS.chartReturns.fr} stroke="#dc2626" dot={false} strokeWidth={2} />
-                <Line type="monotone" dataKey="net" name={REPORTS.chartNet.fr} stroke="#16a34a" dot={false} strokeWidth={2} />
+                <Line type="monotone" dataKey="gross" name={t(REPORTS.chartGross)} stroke="#2563eb" dot={false} strokeWidth={2} />
+                <Line type="monotone" dataKey="returns" name={t(REPORTS.chartReturns)} stroke="#dc2626" dot={false} strokeWidth={2} />
+                <Line type="monotone" dataKey="net" name={t(REPORTS.chartNet)} stroke="#16a34a" dot={false} strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -119,7 +121,7 @@ export function ReportOverviewTab({ sales, inventory, customers }: ReportOvervie
                   <XAxis type="number" tick={{ fontSize: 11 }} />
                   <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 11 }} />
                   <Tooltip formatter={cfaTooltipValue} />
-                  <Bar dataKey="net" fill="#2563eb" name={REPORTS.chartNetSalesBar.fr} />
+                  <Bar dataKey="net" fill="#2563eb" name={t(REPORTS.chartNetSalesBar)} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -134,7 +136,7 @@ export function ReportOverviewTab({ sales, inventory, customers }: ReportOvervie
                   <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={50} />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip formatter={cfaTooltipValue} />
-                  <Bar dataKey="gross" fill="#7c3aed" name={REPORTS.chartGrossBar.fr} />
+                  <Bar dataKey="gross" fill="#7c3aed" name={t(REPORTS.chartGrossBar)} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

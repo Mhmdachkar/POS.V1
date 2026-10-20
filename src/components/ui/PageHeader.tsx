@@ -34,7 +34,7 @@ export function PageHeader({
           <div className="flex-shrink-0 text-text-secondary">{icon}</div>
         )}
         <div className="min-w-0">
-          <h1 className="text-base sm:text-lg font-bold text-text-primary">{title}</h1>
+          <h1 className="text-title text-text-primary">{title}</h1>
           {description && (
             <div className="text-sm text-text-secondary mt-0.5">{description}</div>
           )}

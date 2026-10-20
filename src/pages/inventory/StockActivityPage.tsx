@@ -39,7 +39,7 @@ import {
   BiTableHeader,
 } from '@/lib/bilingual/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
-import { bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
+import { t, bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
 
 export const STOCK_ACTIVITY_DESCRIPTION = bilingualPlain(INVENTORY.stockActivityDesc)
 
@@ -64,12 +64,14 @@ const TYPE_CHIPS: FilterBarChip[] = [
   ),
 ]
 
-const DATE_PRESETS: Array<{ value: StockActivityDatePreset; label: string }> = [
-  { value: 'today', label: bilingualPlain(COMMON.today) },
-  { value: 'this_week', label: bilingualPlain(COMMON.thisWeek) },
-  { value: 'this_month', label: bilingualPlain(COMMON.thisMonth) },
-  { value: 'all', label: bilingualPlain(COMMON.all) },
-]
+function datePresets(): Array<{ value: StockActivityDatePreset; label: string }> {
+  return [
+    { value: 'today', label: bilingualPlain(COMMON.today) },
+    { value: 'this_week', label: bilingualPlain(COMMON.thisWeek) },
+    { value: 'this_month', label: bilingualPlain(COMMON.thisMonth) },
+    { value: 'all', label: bilingualPlain(COMMON.all) },
+  ]
+}
 
 const GRID_WITH_DEPOT =
   'grid-cols-[minmax(9.5rem,10.5rem)_minmax(8rem,1.3fr)_minmax(6rem,0.8fr)_7.25rem_6.25rem_minmax(6rem,1fr)_minmax(6rem,0.8fr)]'
@@ -247,7 +249,7 @@ export function StockActivityPage() {
                 }}
                 className="w-40"
               >
-                {DATE_PRESETS.map((opt) => (
+                {datePresets().map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>

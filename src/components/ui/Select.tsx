@@ -23,7 +23,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         {label && (
           <Label.Root
             htmlFor={selectId}
-            className="text-sm font-medium text-text-primary select-none"
+            className="text-label text-text-primary select-none"
           >
             {label}
           </Label.Root>
@@ -35,10 +35,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           className={cn(
             'w-full h-9 px-3 rounded-md border bg-surface text-text-primary text-sm',
             'transition-colors duration-150',
-            error
-              ? 'border-danger focus:border-danger focus:ring-danger/20'
-              : 'border-border focus:border-primary focus:ring-primary/20',
-            'focus:outline-none focus:ring-2',
+            error ? 'border-danger' : 'border-border',
             'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-surface-muted',
             className,
           )}

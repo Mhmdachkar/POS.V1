@@ -17,7 +17,7 @@
  */
 
 import { useEffect, useState } from 'react'
-import { BiEmptyTitle } from '@/lib/bilingual/ui'
+import { BiEmptyTitle, BiPageTitle } from '@/lib/bilingual/ui'
 import { SALES } from '@/lib/bilingual/sales'
 import { COMMON } from '@/lib/bilingual/common'
 import { POS } from '@/lib/bilingual/pos'
@@ -40,6 +40,8 @@ import { useDepotStore } from '@/stores/depotStore'
 import { SaleDetailDrawer } from './components/SaleDetailDrawer'
 import type { SaleStatus } from '@/types/database'
 import type { FulfillmentStatus } from '@/lib/printPayload'
+import { t } from '@/lib/bilingual/types'
+
 
 /** Receipt-number search debounce. Do not query on every keystroke. */
 export const SALES_SEARCH_DEBOUNCE_MS = 300
@@ -103,11 +105,13 @@ function TableSkeleton({
 // SalesPage (main export)
 // ─────────────────────────────────────────────────────────────────
 
-const FULFILLMENT_CHIPS: Array<{ value: FulfillmentStatus | 'all'; label: string }> = [
-  { value: 'all', label: SALES.allFulfillment.fr },
-  { value: 'pending', label: SALES.pendingRelease.fr },
-  { value: 'released', label: SALES.released.fr },
-]
+function fulfillmentChips(): Array<{ value: FulfillmentStatus | 'all'; label: string }> {
+  return [
+    { value: 'all', label: t(SALES.allFulfillment) },
+    { value: 'pending', label: t(SALES.pendingRelease) },
+    { value: 'released', label: t(SALES.released) },
+  ]
+}
 
 export function SalesPage() {
   const [search, setSearch] = useState('')
@@ -179,14 +183,14 @@ export function SalesPage() {
       {/* Single header band: PageHeader + FilterBar */}
       <div className="flex-shrink-0 border-b border-border bg-surface">
         <PageHeader
-          title={isDepotStaff ? 'Sales / orders' : 'Sales History'}
+          title={<BiPageTitle {...(isDepotStaff ? SALES.ordersTitle : SALES.historyTitle)} />}
           className="border-b-0"
         />
         <div className="px-3 sm:px-6 pb-3 sm:pb-4">
           <FilterBar
             search={search}
             onSearchChange={handleSearchChange}
-            searchPlaceholder={SALES.searchReceiptPlaceholder.fr}
+            searchPlaceholder={t(SALES.searchReceiptPlaceholder)}
             chips={STATUS_CHIPS}
             activeChip={statusFilter ?? 'all'}
             onChipChange={handleChipChange}
@@ -194,7 +198,7 @@ export function SalesPage() {
           />
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {(isDepotStaff || staff?.role === 'admin') &&
-              FULFILLMENT_CHIPS.map((opt) => (
+              fulfillmentChips().map((opt) => (
                 <button
                   key={opt.value}
                   type="button"
@@ -226,7 +230,7 @@ export function SalesPage() {
             <EmptyState
               icon={<Receipt className="h-8 w-8" />}
               title={<BiEmptyTitle {...SALES.failedToLoad} />}
-              description={COMMON.checkConnection.fr}
+              description={t(COMMON.checkConnection)}
             />
           </div>
         ) : sales.length === 0 ? (
@@ -236,8 +240,8 @@ export function SalesPage() {
               title={<BiEmptyTitle {...SALES.noSales} />}
               description={
                 search || statusFilter
-                  ? SALES.noSalesMatch.fr
-                  : SALES.noSalesYet.fr
+                  ? t(SALES.noSalesMatch)
+                  : t(SALES.noSalesYet)
               }
             />
           </div>
@@ -298,7 +302,7 @@ export function SalesPage() {
                   ) : null}
                 </span>
                 <span className="text-sm text-text-secondary truncate min-w-0">
-                  {sale.customer_name ?? <span className="text-text-muted italic">{POS.walkIn.fr}</span>}
+                  {sale.customer_name ?? <span className="text-text-muted italic">{t(POS.walkIn)}</span>}
                 </span>
                 <span className="text-right">
                   <MoneyDisplay

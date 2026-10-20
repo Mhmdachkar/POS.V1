@@ -18,7 +18,7 @@ import { CUSTOMERS } from '@/lib/bilingual/customers'
 import { POS } from '@/lib/bilingual/pos'
 import { NAV } from '@/lib/bilingual/nav'
 import { BiButtonInline, BiButtonStack } from '@/lib/bilingual/ui'
-import { bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
+import { t, bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
 import type { Customer } from '@/types/database'
 
 // ─────────────────────────────────────────────────────────────────

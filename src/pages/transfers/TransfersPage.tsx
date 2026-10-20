@@ -29,13 +29,17 @@ import type { TransferStatus } from '@/types/database'
 import { TransferDetailDrawer } from './components/TransferDetailDrawer'
 import { CreateTransferModal } from './components/CreateTransferModal'
 import { TRANSFER_STATUS } from '@/lib/bilingual/status'
+import { t } from '@/lib/bilingual/types'
 
-const STATUS_OPTIONS: Array<{ value: TransferStatus | null; label: string }> = [
-  { value: null, label: COMMON.all.fr },
-  { value: 'pending', label: TRANSFER_STATUS.pending.fr },
-  { value: 'completed', label: TRANSFER_STATUS.completed.fr },
-  { value: 'cancelled', label: TRANSFER_STATUS.cancelled.fr },
-]
+
+function statusOptions(): Array<{ value: TransferStatus | null; label: string }> {
+  return [
+    { value: null, label: t(COMMON.all) },
+    { value: 'pending', label: t(TRANSFER_STATUS.pending) },
+    { value: 'completed', label: t(TRANSFER_STATUS.completed) },
+    { value: 'cancelled', label: t(TRANSFER_STATUS.cancelled) },
+  ]
+}
 
 export function clampTransferPage(page: number, totalPages: number): number {
   if (page <= 0) return 0
@@ -110,7 +114,11 @@ export function TransfersPage() {
       <div className="flex-shrink-0 border-b border-border bg-surface">
         <PageHeader
           title={<BiPageTitle {...TRANSFERS.pageTitle} />}
-          description={totalCount > 0 ? `${totalCount} transfer${totalCount !== 1 ? 's' : ''}` : 'Depot-to-depot stock transfers'}
+          description={
+            totalCount > 0
+              ? t(TRANSFERS.transferCount(totalCount))
+              : t(TRANSFERS.pageDesc)
+          }
           icon={<ArrowLeftRight className="h-5 w-5" />}
           className="border-b-0"
           actions={
@@ -120,12 +128,12 @@ export function TransfersPage() {
               className="gap-1.5"
             >
               <Plus className="h-4 w-4" />
-              {TRANSFERS.createTransfer.fr}
+              {t(TRANSFERS.createTransfer)}
             </Button>
           }
         />
         <div className="px-3 sm:px-6 pb-3 sm:pb-4 flex gap-1.5 overflow-x-auto">
-          {STATUS_OPTIONS.map((opt) => (
+          {statusOptions().map((opt) => (
             <button
               key={String(opt.value)}
               type="button"
@@ -151,7 +159,7 @@ export function TransfersPage() {
             <EmptyState
               icon={<ArrowLeftRight className="h-8 w-8" />}
               title={<BiEmptyTitle {...TRANSFERS.failedToLoad} />}
-              description={COMMON.checkConnection.fr}
+              description={t(COMMON.checkConnection)}
             />
           </div>
         ) : transfers.length === 0 ? (
@@ -161,8 +169,8 @@ export function TransfersPage() {
               title={<BiEmptyTitle {...TRANSFERS.noTransfers} />}
               description={
                 statusFilter
-                  ? TRANSFERS.noTransfersMatch.fr
-                  : TRANSFERS.createFirstHint.fr
+                  ? t(TRANSFERS.noTransfersMatch)
+                  : t(TRANSFERS.createFirstHint)
               }
             />
           </div>
@@ -171,10 +179,10 @@ export function TransfersPage() {
             <div className="sticky top-0 bg-surface-muted border-b border-border z-[1]">
               <div className={cn('grid gap-4 px-4 py-2 items-center', gridCols)}>
                 <span className="text-xs font-semibold text-text-secondary uppercase">Status</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">{TRANSFERS.sourceCol.fr}</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">{TRANSFERS.destinationCol.fr}</span>
+                <span className="text-xs font-semibold text-text-secondary uppercase">{t(TRANSFERS.sourceCol)}</span>
+                <span className="text-xs font-semibold text-text-secondary uppercase">{t(TRANSFERS.destinationCol)}</span>
                 <span className="text-xs font-semibold text-text-secondary uppercase text-right">Items</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">{TRANSFERS.createdBy.fr}</span>
+                <span className="text-xs font-semibold text-text-secondary uppercase">{t(TRANSFERS.createdBy)}</span>
                 <span className="text-xs font-semibold text-text-secondary uppercase text-right">Created</span>
               </div>
             </div>

@@ -45,7 +45,7 @@ import {
   BiTableHeader,
 } from '@/lib/bilingual/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
-import { bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
+import { t, bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
 import { useCustomerList, type CustomerListFilter } from '@/hooks/useCustomers'
 import { useAuthStore } from '@/stores/authStore'
 import { CustomerDetailDrawer } from './components/CustomerDetailDrawer'

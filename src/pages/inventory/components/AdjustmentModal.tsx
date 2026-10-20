@@ -26,16 +26,20 @@ import {
 import type { ProductWithUnits } from '@/types'
 import type { InventoryAdjustmentType } from '@/types/rpc'
 import type { z } from 'zod'
+import { t } from '@/lib/bilingual/types'
+
 
 type AdjustmentForm = z.infer<typeof adjustmentFormSchema>
 
-const ADJUSTMENT_TYPES: Array<{ value: InventoryAdjustmentType; label: string }> = [
-  { value: 'DAMAGE', label: 'Damage' },
-  { value: 'LOSS', label: 'Loss' },
-  { value: 'EXPIRY', label: 'Expiry' },
-  { value: 'COUNT_CORRECTION', label: INVENTORY.countCorrection.fr },
-  { value: 'OTHER', label: 'Other' },
-]
+function adjustmentTypes(): Array<{ value: InventoryAdjustmentType; label: string }> {
+  return [
+    { value: 'DAMAGE', label: 'Damage' },
+    { value: 'LOSS', label: 'Loss' },
+    { value: 'EXPIRY', label: 'Expiry' },
+    { value: 'COUNT_CORRECTION', label: t(INVENTORY.countCorrection) },
+    { value: 'OTHER', label: 'Other' },
+  ]
+}
 
 const REDUCTION_TYPES: InventoryAdjustmentType[] = ['DAMAGE', 'LOSS', 'EXPIRY']
 
@@ -110,7 +114,7 @@ export function AdjustmentModal({ open, onClose, product }: AdjustmentModalProps
             {...register('adjustment_type')}
             className="w-full h-9 px-3 rounded-md border border-border bg-surface text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
           >
-            {ADJUSTMENT_TYPES.map((opt) => (
+            {adjustmentTypes().map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
@@ -131,7 +135,7 @@ export function AdjustmentModal({ open, onClose, product }: AdjustmentModalProps
           <p className="text-xs text-text-muted mt-1">
             {isReduction
               ? 'Enter a positive amount to remove. Sent to the server as a negative quantity.'
-              : INVENTORY.signedAdjustmentHint.fr}
+              : t(INVENTORY.signedAdjustmentHint)}
           </p>
           {errors.quantity && (
             <p className="text-xs text-danger mt-1">{errors.quantity.message}</p>
@@ -159,12 +163,12 @@ export function AdjustmentModal({ open, onClose, product }: AdjustmentModalProps
 
         <div className="rounded-lg bg-surface-muted border border-border p-3 text-sm space-y-1">
           <div className="flex justify-between">
-            <span className="text-text-secondary">{INVENTORY.currentStock.fr}</span>
+            <span className="text-text-secondary">{t(INVENTORY.currentStock)}</span>
             <span className="font-medium tabular-nums">{formatPieces(product.current_stock_pieces)}</span>
           </div>
           {estimate != null && (
             <div className="flex justify-between">
-              <span className="text-text-secondary">{INVENTORY.estimatedResult.fr}</span>
+              <span className="text-text-secondary">{t(INVENTORY.estimatedResult)}</span>
               <span className="font-medium tabular-nums">~ {formatPieces(estimate)}</span>
             </div>
           )}

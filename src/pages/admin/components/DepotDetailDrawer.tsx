@@ -9,6 +9,8 @@ import { ADMIN } from '@/lib/bilingual/admin'
 import { COMMON } from '@/lib/bilingual/common'
 import { DEPOT } from '@/lib/bilingual/depot'
 import { BiButtonStack, BiTableHeader } from '@/lib/bilingual/ui'
+import { t } from '@/lib/bilingual/types'
+
 
 function DetailRow({ label, value }: { label: React.ReactNode; value: React.ReactNode }) {
   return (

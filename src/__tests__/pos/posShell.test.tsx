@@ -1,9 +1,7 @@
 /**
- * Phase 13B / 13F — POS shell: PosShell / PosContextBar / ShiftChip routing.
- *
- * 13B: /pos renders PosShell for cashier and admin; ShiftChip semantics.
- * 13F: Cashier ops routes (/sales, /customers, /payments, /shifts) also
- *      render PosShell (via OpsShell). Admin ops routes keep AppShell.
+ * Shared AppShell routing: every authed route uses AppRail + TopBar.
+ * ShiftChip stays visible on /pos. Active nav is unique (Caisse is not
+ * active on /sales). POS-only chrome (PosContextBar / PosNavRail) is gone.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -19,12 +17,12 @@ import { useDepotStore } from '@/stores/depotStore'
 import type { Staff } from '@/types/database'
 import { AUTH_NAV, NAV } from '@/lib/bilingual/nav'
 import { POS } from '@/lib/bilingual/pos'
+import { COMMON } from '@/lib/bilingual/common'
 import {
   bilingualAriaLabel,
   getByBilingualRole,
   getByLabelBi,
   LAYOUT_ARIA,
-  queryByLabelBi,
 } from '../helpers/bilingualQueries'
 
 vi.mock('@/hooks/useInventory', async (importOriginal) => {
@@ -119,11 +117,11 @@ function authorize(staff: Staff) {
   })
 }
 
-// ─────────────────────────────────────────────────────────────────
-// POS shell routing (13B + 13F)
-// ─────────────────────────────────────────────────────────────────
+function cashierNav() {
+  return getByLabelBi(LAYOUT_ARIA.mainNav)
+}
 
-describe('POS shell routing', () => {
+describe('shared AppShell routing', () => {
   beforeEach(() => {
     authorize(cashierStaff())
     useDepotStore.setState({
@@ -133,56 +131,47 @@ describe('POS shell routing', () => {
     })
   })
 
-  // ── /pos ────────────────────────────────────────────────────────
-
-  it('renders PosShell for cashier /pos without AppRail or TopBar', () => {
+  it('renders AppShell for cashier /pos with AppRail, TopBar, and ShiftChip', () => {
     renderApp('/pos')
-    expect(screen.getByTestId('pos-context-bar')).toBeInTheDocument()
-    expect(screen.getByLabelText('Contexte caisse')).toBeInTheDocument()
-    expect(queryByLabelBi(LAYOUT_ARIA.mainNav)).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Open POS' })).not.toBeInTheDocument()
+    expect(screen.getByRole('banner')).toBeInTheDocument()
+    expect(getByLabelBi(LAYOUT_ARIA.mainNav)).toBeInTheDocument()
+    expect(screen.getByTestId('shift-chip')).toBeInTheDocument()
+    expect(screen.queryByTestId('pos-context-bar')).not.toBeInTheDocument()
     expect(screen.queryByText(/sales will not be attributed/)).not.toBeInTheDocument()
     expect(screen.getByText('product-search')).toBeInTheDocument()
   })
 
-  // ── Cashier ops routes → PosShell (13F) ────────────────────────
-
-  it('renders PosShell for cashier /sales', () => {
+  it('renders AppShell for cashier /sales', () => {
     renderApp('/sales')
     expect(screen.getByText('sales-page')).toBeInTheDocument()
-    expect(screen.getByTestId('pos-context-bar')).toBeInTheDocument()
-    expect(queryByLabelBi(LAYOUT_ARIA.mainNav)).not.toBeInTheDocument()
+    expect(getByLabelBi(LAYOUT_ARIA.mainNav)).toBeInTheDocument()
+    expect(screen.getByRole('banner')).toBeInTheDocument()
+    expect(screen.queryByTestId('pos-context-bar')).not.toBeInTheDocument()
   })
 
-  it('renders PosShell for cashier /customers', () => {
+  it('renders AppShell for cashier /customers', () => {
     renderApp('/customers')
     expect(screen.getByText('customers-page')).toBeInTheDocument()
-    expect(screen.getByTestId('pos-context-bar')).toBeInTheDocument()
-    expect(queryByLabelBi(LAYOUT_ARIA.mainNav)).not.toBeInTheDocument()
+    expect(getByLabelBi(LAYOUT_ARIA.mainNav)).toBeInTheDocument()
   })
 
-  it('renders PosShell for cashier customer activity', () => {
+  it('renders AppShell for cashier customer activity', () => {
     renderApp('/customers/cust-1/activity')
     expect(screen.getByText('customer-activity-page')).toBeInTheDocument()
-    expect(screen.getByTestId('pos-context-bar')).toBeInTheDocument()
-    expect(queryByLabelBi(LAYOUT_ARIA.mainNav)).not.toBeInTheDocument()
+    expect(getByLabelBi(LAYOUT_ARIA.mainNav)).toBeInTheDocument()
   })
 
-  it('renders PosShell for cashier /payments', () => {
+  it('renders AppShell for cashier /payments', () => {
     renderApp('/payments')
     expect(screen.getByText('payments-page')).toBeInTheDocument()
-    expect(screen.getByTestId('pos-context-bar')).toBeInTheDocument()
-    expect(queryByLabelBi(LAYOUT_ARIA.mainNav)).not.toBeInTheDocument()
+    expect(getByLabelBi(LAYOUT_ARIA.mainNav)).toBeInTheDocument()
   })
 
-  it('renders PosShell for cashier /shifts', () => {
+  it('renders AppShell for cashier /shifts', () => {
     renderApp('/shifts')
     expect(screen.getByText('shifts-page')).toBeInTheDocument()
-    expect(screen.getByTestId('pos-context-bar')).toBeInTheDocument()
-    expect(queryByLabelBi(LAYOUT_ARIA.mainNav)).not.toBeInTheDocument()
+    expect(getByLabelBi(LAYOUT_ARIA.mainNav)).toBeInTheDocument()
   })
-
-  // ── Admin ops routes → AppShell (13F) ──────────────────────────
 
   it('keeps AppShell (AppRail + TopBar) on admin /sales', () => {
     authorize(adminStaff())
@@ -224,17 +213,15 @@ describe('POS shell routing', () => {
     expect(screen.queryByTestId('pos-context-bar')).not.toBeInTheDocument()
   })
 
-  // ── Admin /pos → PosShell ──────────────────────────────────────
-
-  it('renders PosShell for admin /pos with Overview return', () => {
+  it('renders AppShell for admin /pos with Overview in the rail', () => {
     authorize(adminStaff())
     renderApp('/pos')
-    expect(screen.getByTestId('pos-context-bar')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: "Vue d'ensemble" })).toHaveAttribute('href', '/dashboard')
-    expect(queryByLabelBi(LAYOUT_ARIA.mainNav)).not.toBeInTheDocument()
+    expect(screen.getByRole('banner')).toBeInTheDocument()
+    expect(getByBilingualRole('link', NAV.overview)).toHaveAttribute('href', '/dashboard')
+    expect(screen.queryByTestId('pos-context-bar')).not.toBeInTheDocument()
   })
 
-  it('admin AppShell AppRail includes POS as primary entry', () => {
+  it('admin AppShell AppRail includes POS as an entry', () => {
     authorize(adminStaff())
     renderApp('/sales')
 
@@ -244,11 +231,7 @@ describe('POS shell routing', () => {
   })
 })
 
-// ─────────────────────────────────────────────────────────────────
-// PosContextBar navigation tiles (13F)
-// ─────────────────────────────────────────────────────────────────
-
-describe('PosContextBar navigation tiles', () => {
+describe('AppShell navigation', () => {
   beforeEach(() => {
     authorize(cashierStaff())
     useDepotStore.setState({
@@ -258,9 +241,9 @@ describe('PosContextBar navigation tiles', () => {
     })
   })
 
-  it('renders five navigation tiles for cashier', () => {
+  it('renders five navigation items for cashier', () => {
     renderApp('/pos')
-    const nav = screen.getByLabelText('Navigation caisse')
+    const nav = cashierNav()
     expect(nav.querySelector('a[href="/pos"]')).not.toBeNull()
     expect(nav.querySelector('a[href="/sales"]')).not.toBeNull()
     expect(nav.querySelector('a[href="/customers"]')).not.toBeNull()
@@ -268,70 +251,74 @@ describe('PosContextBar navigation tiles', () => {
     expect(nav.querySelector('a[href="/shifts"]')).not.toBeNull()
   })
 
-  it('marks the active route tile with aria-current="page"', () => {
+  it('marks the active nav item uniquely — Caisse is not active on /sales', () => {
     renderApp('/sales')
-    const nav = screen.getByLabelText('Navigation caisse')
+    const nav = cashierNav()
     const salesLink = nav.querySelector('a[href="/sales"]')
-    expect(salesLink).toHaveAttribute('aria-current', 'page')
-    // other tiles are not active
     const posLink = nav.querySelector('a[href="/pos"]')
+    expect(salesLink).toHaveAttribute('aria-current', 'page')
     expect(posLink).not.toHaveAttribute('aria-current', 'page')
   })
 
-  it('marks /pos tile active only on exact /pos (end=true)', () => {
+  it('marks /pos active only on exact /pos (end=true)', () => {
     renderApp('/pos')
-    const nav = screen.getByLabelText('Navigation caisse')
+    const nav = cashierNav()
     const posLink = nav.querySelector('a[href="/pos"]')
     expect(posLink).toHaveAttribute('aria-current', 'page')
   })
 
-  it('renders depot name in identity row', () => {
+  it('renders depot name in the top bar', () => {
     renderApp('/pos')
     expect(screen.getByText('Depot Dakar')).toBeInTheDocument()
   })
 
-  it('renders ShiftChip in identity row', () => {
+  it('renders ShiftChip in the top bar on /pos', () => {
     renderApp('/pos')
     expect(screen.getByTestId('shift-chip')).toBeInTheDocument()
+    expect(screen.getByTestId('topbar-shift')).toBeInTheDocument()
   })
 
-  it('renders cashier full name in identity row', () => {
+  it('renders cashier full name in the top bar', () => {
     renderApp('/pos')
-    // full_name appears in identity row (truncated span)
-    const contextBar = screen.getByTestId('pos-context-bar')
-    expect(contextBar).toHaveTextContent('Cashier Dakar')
+    expect(screen.getByRole('banner')).toHaveTextContent('Cashier Dakar')
   })
 
-  it('does not render Overview link for cashier', () => {
+  it('does not render Overview for cashier', () => {
     renderApp('/pos')
-    expect(screen.queryByRole('link', { name: "Vue d'ensemble" })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: NAV.overview.fr })).not.toBeInTheDocument()
   })
 
-  it('renders five tiles and Overview link for admin on /pos', () => {
+  it('renders cashier routes plus Overview in the rail for admin on /pos', () => {
     authorize(adminStaff())
     renderApp('/pos')
-    const nav = screen.getByLabelText('Navigation caisse')
+    const nav = getByLabelBi(LAYOUT_ARIA.mainNav)
     expect(nav.querySelector('a[href="/pos"]')).not.toBeNull()
     expect(nav.querySelector('a[href="/sales"]')).not.toBeNull()
     expect(nav.querySelector('a[href="/customers"]')).not.toBeNull()
     expect(nav.querySelector('a[href="/payments"]')).not.toBeNull()
     expect(nav.querySelector('a[href="/shifts"]')).not.toBeNull()
-    expect(screen.getByRole('link', { name: "Vue d'ensemble" })).toHaveAttribute('href', '/dashboard')
+    expect(getByBilingualRole('link', NAV.overview)).toHaveAttribute('href', '/dashboard')
   })
 
-  it('has no duplicate navigation (no AppRail links alongside tiles for cashier)', () => {
+  it('has a single main navigation landmark', () => {
     renderApp('/pos')
-    // Only one nav landmark: Navigation caisse (no Main navigation)
     const navLandmarks = screen.getAllByRole('navigation')
     const labels = navLandmarks.map((el) => el.getAttribute('aria-label'))
-    expect(labels).not.toContain(bilingualAriaLabel(LAYOUT_ARIA.mainNav))
-    expect(labels).toContain('Navigation caisse')
+    expect(labels).toContain(bilingualAriaLabel(LAYOUT_ARIA.mainNav))
+    expect(labels).not.toContain('Navigation caisse')
+  })
+
+  it('does not show Tous les dépôts on admin /pos', () => {
+    authorize(adminStaff())
+    useDepotStore.setState({
+      currentDepotId: null,
+      currentDepotName: null,
+      availableDepots: [],
+    })
+    renderApp('/pos')
+    expect(screen.queryByText(COMMON.allDepots.fr)).not.toBeInTheDocument()
   })
 })
-
-// ─────────────────────────────────────────────────────────────────
-// ShiftChip (CEO Notes — static no-shift badge; no picker)
-// ─────────────────────────────────────────────────────────────────
 
 describe('ShiftChip', () => {
   beforeEach(() => {
@@ -402,6 +389,7 @@ describe('AppRail icons and accessibility', () => {
     }
     expect(getByBilingualRole('link', NAV.overview)).toHaveClass('text-primary')
     expect(getByBilingualRole('link', NAV.sales)).toHaveClass('text-text-secondary')
+    expect(getByBilingualRole('link', NAV.pos)).toHaveClass('text-text-secondary')
     expect(nav.querySelector('a[href="/pos"]')).not.toBeNull()
     expect(getByBilingualRole('button', AUTH_NAV.signOut).querySelector('svg')).toHaveClass(
       'text-current',
@@ -415,6 +403,7 @@ describe('AppRail icons and accessibility', () => {
     renderRail(true)
     expect(getByBilingualRole('link', NAV.overview)).toHaveClass('text-primary')
     expect(getByBilingualRole('link', NAV.sales)).toHaveClass('text-text-secondary')
+    expect(getByBilingualRole('link', NAV.pos)).not.toHaveClass('text-primary')
     expect(screen.getByText('VHM POS')).toBeInTheDocument()
     expect(getByBilingualRole('button', AUTH_NAV.collapseRail)).toBeInTheDocument()
   })
@@ -441,5 +430,30 @@ describe('AppRail icons and accessibility', () => {
       'text-current',
     )
     expect(getByBilingualRole('link', NAV.overview)).toHaveAttribute('href', '/depot')
+  })
+})
+
+describe('language switch', () => {
+  beforeEach(() => {
+    authorize(adminStaff())
+  })
+
+  it('turns the shell English in one click and back to French', async () => {
+    const user = userEvent.setup()
+    renderApp('/dashboard')
+
+    expect(screen.getByRole('link', { name: NAV.pos.fr })).toBeInTheDocument()
+    expect(screen.getByTestId('language-switch')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'EN' }))
+
+    expect(screen.getByRole('link', { name: NAV.pos.en })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: NAV.pos.fr })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: NAV.overview.en })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'FR' }))
+
+    expect(screen.getByRole('link', { name: NAV.pos.fr })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: NAV.pos.en })).not.toBeInTheDocument()
   })
 })

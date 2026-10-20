@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { BiButtonStack, BiEmptyTitle, BiPageTitle } from '@/lib/bilingual/ui'
-import { bilingualPlain } from '@/lib/bilingual/types'
+import { t, bilingualPlain } from '@/lib/bilingual/types'
 import { ADMIN } from '@/lib/bilingual/admin'
 import { COMMON } from '@/lib/bilingual/common'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
@@ -16,18 +16,22 @@ import { useDepotOptions } from '@/hooks/useInventory'
 import { StaffDetailDrawer } from './components/StaffDetailDrawer'
 import { StaffFormModal } from './components/StaffFormModal'
 
-const STATUS_FILTERS: Array<{ value: StaffStatusFilter; label: string }> = [
-  { value: 'all', label: COMMON.all.fr },
-  { value: 'active', label: COMMON.active.fr },
-  { value: 'inactive', label: COMMON.inactive.fr },
-]
+function statusFilters(): Array<{ value: StaffStatusFilter; label: string }> {
+  return [
+    { value: 'all', label: t(COMMON.all) },
+    { value: 'active', label: t(COMMON.active) },
+    { value: 'inactive', label: t(COMMON.inactive) },
+  ]
+}
 
-const ROLE_FILTERS: Array<{ value: StaffRoleFilter; label: string }> = [
-  { value: 'all', label: ADMIN.filterAllRoles.fr },
-  { value: 'admin', label: 'Admin' },
-  { value: 'cashier', label: 'Cashier' },
-  { value: 'depot_staff', label: ADMIN.roleDepotStaff.fr },
-]
+function roleFilters(): Array<{ value: StaffRoleFilter; label: string }> {
+  return [
+    { value: 'all', label: t(ADMIN.filterAllRoles) },
+    { value: 'admin', label: 'Admin' },
+    { value: 'cashier', label: 'Cashier' },
+    { value: 'depot_staff', label: t(ADMIN.roleDepotStaff) },
+  ]
+}
 
 /** Name | Username | Role | Depot | Status */
 const STAFF_GRID =
@@ -76,7 +80,7 @@ export function StaffPage() {
       <div className="flex-shrink-0 border-b border-border bg-surface">
         <PageHeader
           title={<BiPageTitle {...ADMIN.staff} />}
-          description={totalCount > 0 ? ADMIN.staffCount(totalCount).fr : ADMIN.manageStaff.fr}
+          description={totalCount > 0 ? t(ADMIN.staffCount(totalCount)) : t(ADMIN.manageStaff)}
           icon={<UserCog className="h-5 w-5" />}
           className="border-b-0"
           actions={
@@ -99,7 +103,7 @@ export function StaffPage() {
           }
         />
         <div className="px-3 sm:px-6 pb-3 sm:pb-4 flex flex-wrap gap-1.5">
-          {STATUS_FILTERS.map((opt) => (
+          {statusFilters().map((opt) => (
             <button
               key={opt.value}
               type="button"
@@ -112,7 +116,7 @@ export function StaffPage() {
               {opt.label}
             </button>
           ))}
-          {ROLE_FILTERS.map((opt) => (
+          {roleFilters().map((opt) => (
             <button
               key={opt.value}
               type="button"
@@ -133,11 +137,11 @@ export function StaffPage() {
           <TableSkeleton />
         ) : isError ? (
           <div className="p-8">
-            <EmptyState icon={<UserCog className="h-8 w-8" />} title={<BiEmptyTitle {...ADMIN.failedStaff} />} description={COMMON.checkConnection.fr} />
+            <EmptyState icon={<UserCog className="h-8 w-8" />} title={<BiEmptyTitle {...ADMIN.failedStaff} />} description={t(COMMON.checkConnection)} />
           </div>
         ) : rows.length === 0 ? (
           <div className="p-8">
-            <EmptyState icon={<UserCog className="h-8 w-8" />} title={<BiEmptyTitle {...ADMIN.noStaff} />} description={ADMIN.noStaffHint.fr} />
+            <EmptyState icon={<UserCog className="h-8 w-8" />} title={<BiEmptyTitle {...ADMIN.noStaff} />} description={t(ADMIN.noStaffHint)} />
           </div>
         ) : (
           <>

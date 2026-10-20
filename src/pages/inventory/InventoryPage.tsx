@@ -36,6 +36,8 @@ import { useDepotStore } from '@/stores/depotStore'
 import { useAuthStore } from '@/stores/authStore'
 import { ProductDetailDrawer } from './components/ProductDetailDrawer'
 import { ProductFormModal } from './components/ProductFormModal'
+import { t } from '@/lib/bilingual/types'
+
 
 export function clampInventoryPage(page: number, totalPages: number): number {
   if (page <= 0) return 0
@@ -46,12 +48,14 @@ export function clampInventoryPage(page: number, totalPages: number): number {
 
 type StockFilter = StockStatus | 'all'
 
-const STOCK_FILTERS: Array<{ value: StockFilter; label: string }> = [
-  { value: 'all', label: 'All' },
-  { value: 'out_of_stock', label: INVENTORY.outOfStockFilter.fr },
-  { value: 'low_stock', label: 'Low Stock' },
-  { value: 'healthy', label: 'Healthy' },
-]
+function stockFilters(): Array<{ value: StockFilter; label: string }> {
+  return [
+    { value: 'all', label: 'All' },
+    { value: 'out_of_stock', label: t(INVENTORY.outOfStockFilter) },
+    { value: 'low_stock', label: 'Low Stock' },
+    { value: 'healthy', label: 'Healthy' },
+  ]
+}
 
 function TableSkeleton({
   gridCols,
@@ -174,7 +178,7 @@ export function InventoryPage() {
             canCreateProduct ? (
               <Button className="gap-1.5 flex-shrink-0 w-full sm:w-auto justify-center" onClick={() => setShowCreate(true)}>
                 <Plus className="h-4 w-4" />
-                New Product
+                {t(INVENTORY.addProduct)}
               </Button>
             ) : undefined
           }
@@ -187,8 +191,8 @@ export function InventoryPage() {
                 type="search"
                 value={search}
                 onChange={handleSearchChange}
-                placeholder={INVENTORY.searchProducts.fr}
-                aria-label={INVENTORY.searchProducts.fr}
+                placeholder={t(INVENTORY.searchProducts)}
+                aria-label={t(INVENTORY.searchProducts)}
                 className={cn(
                   'w-full h-9 pl-9 pr-3 rounded-md border border-border bg-surface',
                   'text-sm text-text-primary placeholder:text-text-muted',
@@ -201,7 +205,7 @@ export function InventoryPage() {
               onChange={handleCategoryChange}
               className="h-9 w-full sm:w-auto px-3 rounded-md border border-border bg-surface text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
             >
-              <option value="">{COMMON.allCategories.fr}</option>
+              <option value="">{t(COMMON.allCategories)}</option>
               {(categories ?? []).map((cat) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.name}
@@ -211,7 +215,7 @@ export function InventoryPage() {
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex gap-1.5 overflow-x-auto scrollbar-thin min-w-0 max-w-full">
-              {STOCK_FILTERS.map((opt) => (
+              {stockFilters().map((opt) => (
                 <button
                   key={opt.value}
                   type="button"
@@ -244,7 +248,7 @@ export function InventoryPage() {
             <EmptyState
               icon={<Package className="h-8 w-8" />}
               title={<BiEmptyTitle {...INVENTORY.failedToLoad} />}
-              description={COMMON.checkConnection.fr}
+              description={t(COMMON.checkConnection)}
             />
           </div>
         ) : products.length === 0 ? (
@@ -254,8 +258,8 @@ export function InventoryPage() {
               title={<BiEmptyTitle {...INVENTORY.noProducts} />}
               description={
                 search || categoryId || stockStatus !== 'all'
-                  ? INVENTORY.noProductsMatch.fr
-                  : INVENTORY.noProductsInView.fr
+                  ? t(INVENTORY.noProductsMatch)
+                  : t(INVENTORY.noProductsInView)
               }
             />
           </div>

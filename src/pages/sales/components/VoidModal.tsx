@@ -11,7 +11,7 @@ import { COMMON } from '@/lib/bilingual/common'
 import { SALES } from '@/lib/bilingual/sales'
 import { BiButtonStack, BiModalTitle, BiPageDescription } from '@/lib/bilingual/ui'
 import { toastErrorFromCode, toastSuccessBi } from '@/lib/bilingual/toast'
-import { bilingualPlain } from '@/lib/bilingual/types'
+import { t, bilingualPlain } from '@/lib/bilingual/types'
 import { rpc } from '@/lib/rpc'
 import type { SaleDetailData } from '@/hooks/useSales'
 

@@ -37,6 +37,8 @@ import { processingShiftId, resolveLoadedPosShiftContext } from '@/lib/posShiftC
 import { useAuthStore } from '@/stores/authStore'
 import { useRecordPayment } from '@/hooks/useCustomers'
 import type { Customer } from '@/types/database'
+import { t } from '@/lib/bilingual/types'
+
 
 interface RecordPaymentModalProps {
   open: boolean
@@ -103,7 +105,7 @@ export function RecordPaymentModal({
 
     // Client-side validation (server also validates; these are UX guards only)
     if (!amountStr || isNaN(amount) || amount <= 0) {
-      setAmountError(CUSTOMERS.paymentAmountError.fr)
+      setAmountError(t(CUSTOMERS.paymentAmountError))
       return
     }
     if (amount > customer.balance_owed_cfa) {
@@ -169,7 +171,7 @@ export function RecordPaymentModal({
               <span className="font-medium text-text-primary">{customer.name}</span>
             </div>
             <div className="flex justify-between text-text-secondary">
-              <span>{CUSTOMERS.newBalanceOwed.fr}</span>
+              <span>{t(CUSTOMERS.newBalanceOwed)}</span>
               <span className={`font-semibold tabular-nums ${successResult.new_balance_owed_cfa > 0 ? 'text-warning-foreground' : 'text-success-foreground'}`}>
                 {formatCFA(successResult.new_balance_owed_cfa)}
               </span>
@@ -197,7 +199,7 @@ export function RecordPaymentModal({
               <p className="text-xs text-text-muted">{customer.phone}</p>
             )}
             <div className="flex items-baseline justify-between pt-1 border-t border-border">
-              <span className="text-xs text-text-secondary">{CUSTOMERS.balanceOwedLabel.fr}</span>
+              <span className="text-xs text-text-secondary">{t(CUSTOMERS.balanceOwedLabel)}</span>
               <span className="text-base font-bold text-danger tabular-nums">
                 {formatCFA(customer.balance_owed_cfa)}
               </span>

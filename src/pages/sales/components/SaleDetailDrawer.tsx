@@ -42,6 +42,8 @@ import type { BusinessSettings } from '@/types/database'
 import type { SaleDetailData } from '@/hooks/useSales'
 import { ReturnModal } from './ReturnModal'
 import { VoidModal } from './VoidModal'
+import { t } from '@/lib/bilingual/types'
+
 
 // ─────────────────────────────────────────────────────────────────
 // Section header
@@ -98,7 +100,7 @@ function SalePrintReceipt({
   return (
     <Button variant="secondary" className="w-full gap-2" onClick={handlePrint}>
       <Printer className="h-4 w-4" />
-      {SALES.browserPrintFallback.fr}
+      {t(SALES.browserPrintFallback)}
     </Button>
   )
 }
@@ -151,12 +153,12 @@ function SaleFulfillmentPanel({ sale }: { sale: SaleDetailData }) {
         fulfillment.status === 'released' ? (
           <>
             <DetailRow
-              label={SALES.releasedBy.fr}
+              label={t(SALES.releasedBy)}
               value={fulfillment.released_by_name ?? '—'}
               bold
             />
             <DetailRow
-              label={SALES.releasedAt.fr}
+              label={t(SALES.releasedAt)}
               value={
                 fulfillment.released_at
                   ? formatDateTime(fulfillment.released_at)
@@ -165,10 +167,10 @@ function SaleFulfillmentPanel({ sale }: { sale: SaleDetailData }) {
             />
           </>
         ) : (
-          <DetailRow label={SALES.releaseStatus.fr} value={SALES.pendingRelease.fr} bold />
+          <DetailRow label={t(SALES.releaseStatus)} value={t(SALES.pendingRelease)} bold />
         )
       ) : (
-        <p className="text-sm text-text-muted">{SALES.noFulfillmentRecord.fr}</p>
+        <p className="text-sm text-text-muted">{t(SALES.noFulfillmentRecord)}</p>
       )}
 
       {canRelease && fulfillment?.status === 'pending' && (
@@ -179,7 +181,7 @@ function SaleFulfillmentPanel({ sale }: { sale: SaleDetailData }) {
           onClick={() => void handleRelease()}
         >
           <PackageCheck className="h-4 w-4" />
-          {SALES.releaseOrder.fr}
+          {t(SALES.releaseOrder)}
         </Button>
       )}
 
@@ -190,14 +192,14 @@ function SaleFulfillmentPanel({ sale }: { sale: SaleDetailData }) {
         <div className="space-y-2 text-sm">
           {cashierJob && (staff?.role === 'admin' || staff?.role === 'cashier') && (
             <DetailRow
-              label={SALES.customerReceipt.fr}
+              label={t(SALES.customerReceipt)}
               value={printJobStatusLabel(cashierJob.status)}
             />
           )}
           {depotJob && (staff?.role === 'admin' || staff?.role === 'depot_staff') && (
             <>
               <DetailRow
-                label={SALES.depotOrder.fr}
+                label={t(SALES.depotOrder)}
                 value={printJobStatusLabel(depotJob.status)}
               />
               {(staff?.role === 'depot_staff' || staff?.role === 'admin') && (
@@ -207,13 +209,13 @@ function SaleFulfillmentPanel({ sale }: { sale: SaleDetailData }) {
                   className="w-full"
                   onClick={() => void handleRequeueDepot()}
                 >
-                  {SALES.reprintDepot.fr}
+                  {t(SALES.reprintDepot)}
                 </Button>
               )}
             </>
           )}
           {!cashierJob && !depotJob && (
-            <p className="text-text-muted">{SALES.noPrintJobs.fr}</p>
+            <p className="text-text-muted">{t(SALES.noPrintJobs)}</p>
           )}
         </div>
       )}
@@ -272,7 +274,7 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
       <Drawer
         open={!!saleId}
         onClose={onClose}
-        title={sale ? sale.receipt_number : SALES.saleDetails.fr}
+        title={sale ? sale.receipt_number : t(SALES.saleDetails)}
         description={sale ? `${formatDateTime(sale.created_at)}` : undefined}
         width="lg"
       >
@@ -283,7 +285,7 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
             ))}
           </div>
         ) : isError || !sale ? (
-          <p className="text-sm text-danger">{SALES.failedDetail.fr}</p>
+          <p className="text-sm text-danger">{t(SALES.failedDetail)}</p>
         ) : (
           <div className="space-y-1">
             <div className="flex items-center gap-2 mb-4">
@@ -292,10 +294,10 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
 
             {/* Sale info */}
             <SectionHeader title={<BiSectionTitle {...SALES.saleInfo} />} />
-            <DetailRow label={SALES.receiptNumber.fr} value={<span className="font-mono">{sale.receipt_number}</span>} />
-            <DetailRow label={COMMON.date.fr} value={formatDateTime(sale.created_at)} />
+            <DetailRow label={t(SALES.receiptNumber)} value={<span className="font-mono">{sale.receipt_number}</span>} />
+            <DetailRow label={t(COMMON.date)} value={formatDateTime(sale.created_at)} />
             <DetailRow
-              label={SALES.soldBy.fr}
+              label={t(SALES.soldBy)}
               value={
                 <span className="inline-flex items-center gap-2">
                   <span>{sale.cashier_name ?? '—'}</span>
@@ -313,13 +315,13 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
             />
             {sale.customer_name && (
               <>
-                <DetailRow label={COMMON.customer.fr} value={sale.customer_name} bold />
+                <DetailRow label={t(COMMON.customer)} value={sale.customer_name} bold />
                 {sale.customer_phone && (
-                  <DetailRow label={CUSTOMERS.phone.fr} value={sale.customer_phone} />
+                  <DetailRow label={t(CUSTOMERS.phone)} value={sale.customer_phone} />
                 )}
                 {sale.customer_balance_owed_cfa != null && (
                   <DetailRow
-                    label={SALES.currentBalance.fr}
+                    label={t(SALES.currentBalance)}
                     value={
                       <MoneyDisplay
                         amount={sale.customer_balance_owed_cfa}
@@ -373,15 +375,15 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
             {/* Financials */}
             <SectionHeader title={<BiSectionTitle {...SALES.financials} />} />
             <DetailRow
-              label={POS.subtotal.fr}
+              label={t(POS.subtotal)}
               value={<MoneyDisplay amount={sale.subtotal_cfa} size="small" />}
             />
             {sale.discount_amount_cfa > 0 && (
               <DetailRow
                 label={
                   sale.discount_type === 'flat'
-                    ? SALES.flatDiscount.fr
-                    : `${SALES.percentDiscount.fr} (${sale.discount_value}%)`
+                    ? t(SALES.flatDiscount)
+                    : `${t(SALES.percentDiscount)} (${sale.discount_value}%)`
                 }
                 value={
                   <MoneyDisplay
@@ -395,11 +397,11 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
             {sale.admin_override_total_cfa != null ? (
               <>
                 <DetailRow
-                  label={SALES.calculatedTotal.fr}
+                  label={t(SALES.calculatedTotal)}
                   value={<MoneyDisplay amount={sale.total_cfa} size="small" className="text-text-secondary line-through" />}
                 />
                 <DetailRow
-                  label={SALES.adjustedTotal.fr}
+                  label={t(SALES.adjustedTotal)}
                   value={<MoneyDisplay amount={sale.admin_override_total_cfa} size="medium" />}
                   bold
                 />
@@ -409,21 +411,21 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
               </>
             ) : (
               <DetailRow
-                label={COMMON.total.fr}
+                label={t(COMMON.total)}
                 value={<MoneyDisplay amount={sale.total_cfa} size="medium" />}
               />
             )}
             <DetailRow
-              label={SALES.cashReceived.fr}
+              label={t(SALES.cashReceived)}
               value={<MoneyDisplay amount={sale.amount_tendered_cfa} size="small" />}
             />
             <DetailRow
-              label={SALES.amountApplied.fr}
+              label={t(SALES.amountApplied)}
               value={<MoneyDisplay amount={sale.amount_applied_cfa} size="small" />}
             />
             {sale.change_given_cfa > 0 && (
               <DetailRow
-                label={POS.change.fr}
+                label={t(POS.change)}
                 value={
                   <MoneyDisplay
                     amount={sale.change_given_cfa}
@@ -435,7 +437,7 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
             )}
             {sale.balance_added_cfa > 0 && (
               <DetailRow
-                label={SALES.balanceAdded.fr}
+                label={t(SALES.balanceAdded)}
                 value={
                   <MoneyDisplay
                     amount={sale.balance_added_cfa}
@@ -484,7 +486,7 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
               <>
                 <SectionHeader title={<BiSectionTitle {...SALES.voidSale} />} />
                 <div className="rounded-md bg-surface-muted border border-border p-3 text-sm">
-                  <p className="text-text-secondary">{SALES.saleVoidedBanner.fr}</p>
+                  <p className="text-text-secondary">{t(SALES.saleVoidedBanner)}</p>
                 </div>
               </>
             )}
@@ -511,7 +513,7 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
                   onClick={() => setShowReturn(true)}
                 >
                   <RotateCcw className="h-4 w-4" />
-                  {SALES.returnTitle.fr}
+                  {t(SALES.returnTitle)}
                 </Button>
               )}
               {canMutateSale && canVoid && (
@@ -521,7 +523,7 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
                   onClick={() => setShowVoid(true)}
                 >
                   <XCircle className="h-4 w-4" />
-                  {SALES.voidSale.fr}
+                  {t(SALES.voidSale)}
                 </Button>
               )}
             </div>

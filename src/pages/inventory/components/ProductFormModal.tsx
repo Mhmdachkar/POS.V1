@@ -38,6 +38,8 @@ import { useCreateProduct, useUpdateProduct } from '@/hooks/useAdminProducts'
 import { CategoryPathPicker } from './CategoryPathPicker'
 import type { ProductWithUnits } from '@/types'
 import type { ProductUnitInput } from '@/types/rpc'
+import { t } from '@/lib/bilingual/types'
+
 
 interface ProductFormModalProps {
   open: boolean

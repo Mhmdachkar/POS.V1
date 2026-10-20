@@ -2,6 +2,8 @@ import { MoneyDisplay, Skeleton } from '@/components/ui'
 import { BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
 import type { CustomerActivitySummary } from '@/hooks/useCustomerActivity'
+import { t } from '@/lib/bilingual/types'
+
 
 function SummaryCell({
   label,
@@ -56,12 +58,12 @@ export function CustomerFinancialSummary({
         ))
       ) : (
         <>
-          <SummaryCell label={CUSTOMERS.activityFilterSales.fr} count={summary.sales.count} totalCfa={summary.sales.totalCfa} />
-          <SummaryCell label={CUSTOMERS.activityFilterReturns.fr} count={summary.returns.count} totalCfa={summary.returns.totalCfa} />
-          <SummaryCell label={CUSTOMERS.activityFilterPayments.fr} count={summary.payments.count} totalCfa={summary.payments.totalCfa} />
+          <SummaryCell label={t(CUSTOMERS.activityFilterSales)} count={summary.sales.count} totalCfa={summary.sales.totalCfa} />
+          <SummaryCell label={t(CUSTOMERS.activityFilterReturns)} count={summary.returns.count} totalCfa={summary.returns.totalCfa} />
+          <SummaryCell label={t(CUSTOMERS.activityFilterPayments)} count={summary.payments.count} totalCfa={summary.payments.totalCfa} />
           <div className="px-3 py-2.5 text-center bg-surface">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">
-              {CUSTOMERS.balanceOwed.fr}
+              {t(CUSTOMERS.balanceOwed)}
             </p>
             <p className="mt-1 text-base font-semibold tabular-nums text-text-primary">&nbsp;</p>
             <MoneyDisplay

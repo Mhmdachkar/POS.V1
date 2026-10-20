@@ -3,7 +3,7 @@ import { Input, Select } from '@/components/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { parseCFAInput } from '@/lib/formatters'
 import { POS } from '@/lib/bilingual/pos'
-import { bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
+import { t, bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
 import { useShallow } from 'zustand/react/shallow'
 import { usePOSStore } from '@/stores/posStore'
 

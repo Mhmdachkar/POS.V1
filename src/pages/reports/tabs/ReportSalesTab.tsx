@@ -13,6 +13,8 @@ import { SaleDetailDrawer } from '@/pages/sales/components/SaleDetailDrawer'
 import { ReportMetric } from '../components/ReportMetric'
 import { ReportSection } from '../components/ReportSection'
 import { BreakdownList, BreakdownListPieces } from '../components/BreakdownList'
+import { t } from '@/lib/bilingual/types'
+
 
 interface ReportSalesTabProps {
   sales: AdminSalesReport
@@ -110,7 +112,7 @@ export function ReportSalesTab({
           <BreakdownListPieces
             rows={sales.by_category.map((c) => ({
               key: c.category_id ?? 'none',
-              label: c.category_name ?? REPORTS.uncategorized.fr,
+              label: c.category_name ?? t(REPORTS.uncategorized),
               pieces: Number(c.net_pieces),
               amount: Number(c.sales_activity_cfa),
             }))}
@@ -130,13 +132,13 @@ export function ReportSalesTab({
         ) : (
           <>
             <div className={cn('grid gap-2 px-3 py-2 text-xs font-semibold text-text-secondary border-b border-border', gridCols)}>
-              <span>{COMMON.receipt.fr}</span>
-              <span>{COMMON.date.fr}</span>
-              <span>{COMMON.cashier.fr}</span>
-              {showDepotColumn && <span>{COMMON.depot.fr}</span>}
-              <span>{COMMON.customer.fr}</span>
-              <span className="text-right">{COMMON.total.fr}</span>
-              <span className="text-right">{COMMON.status.fr}</span>
+              <span>{t(COMMON.receipt)}</span>
+              <span>{t(COMMON.date)}</span>
+              <span>{t(COMMON.cashier)}</span>
+              {showDepotColumn && <span>{t(COMMON.depot)}</span>}
+              <span>{t(COMMON.customer)}</span>
+              <span className="text-right">{t(COMMON.total)}</span>
+              <span className="text-right">{t(COMMON.status)}</span>
             </div>
             <div className="divide-y divide-border border border-border rounded-md overflow-hidden">
               {rows.map((sale) => (
@@ -155,7 +157,7 @@ export function ReportSalesTab({
                   {showDepotColumn && (
                     <span className="truncate text-xs">{depotNameById.get(sale.depot_id) ?? sale.depot_id}</span>
                   )}
-                  <span className="truncate">{sale.customer_name ?? POS.walkIn.fr}</span>
+                  <span className="truncate">{sale.customer_name ?? t(POS.walkIn)}</span>
                   <MoneyDisplay
                     amount={authoritativeSaleTotal(sale)}
                     size="small"

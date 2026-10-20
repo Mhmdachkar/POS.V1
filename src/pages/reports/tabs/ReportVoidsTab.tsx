@@ -9,6 +9,8 @@ import { useSalesList } from '@/hooks/useSales'
 import { SaleDetailDrawer } from '@/pages/sales/components/SaleDetailDrawer'
 import { ReportMetric } from '../components/ReportMetric'
 import { ReportSection } from '../components/ReportSection'
+import { t } from '@/lib/bilingual/types'
+
 
 interface ReportVoidsTabProps {
   sales: AdminSalesReport
@@ -45,9 +47,9 @@ export function ReportVoidsTab({
     <div className="space-y-8">
       <div className="grid md:grid-cols-2 gap-3 max-w-lg">
         <ReportMetric
-          label={REPORTS.voidedReceipts.fr}
+          label={t(REPORTS.voidedReceipts)}
           amount={Number(sales.voided_amount_cfa)}
-          secondaryText={REPORTS.voidedCount(sales.voided_count).fr}
+          secondaryText={t(REPORTS.voidedCount(sales.voided_count))}
           danger
         />
       </div>

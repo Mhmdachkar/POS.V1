@@ -3,8 +3,6 @@ import { useAuthStore } from '@/stores/authStore'
 
 // Layout + Guards
 import { AppShell } from '@/components/layout/AppShell'
-import { PosShell } from '@/components/layout/PosShell'
-import { OpsShell } from '@/components/layout/OpsShell'
 import { AuthGuard } from '@/components/auth/AuthGuard'
 import { RoleGuard } from '@/components/auth/RoleGuard'
 
@@ -57,60 +55,36 @@ function RoleRedirect() {
 //
 // Structure:
 //   /login               — Public
-//   /pos                 — AuthGuard > RoleGuard(cashier, admin) > PosShell
+//   Authenticated        — AuthGuard > AppShell (shared chrome)
+//     /pos               — RoleGuard(cashier, admin)
+//     /sales /customers /payments /shifts — RoleGuard(cashier, admin, depot_staff)
+//     /dashboard /reports /admin/*        — RoleGuard(admin)
+//     /depot /inventory /transfers        — RoleGuard(depot_staff, admin)
 //
-//   /sales               — AuthGuard > RoleGuard(cashier, admin) > OpsShell
-//   /customers             OpsShell: cashier → PosShell chrome
-//   /payments                        admin   → AppShell chrome
-//   /shifts
-//
-//   /                    — AuthGuard > AppShell > role redirect
-//     (admin only)
-//     /dashboard         — Admin overview
-//     /reports           — Reports workspace
-//     /admin/staff       — Staff management
-//     /admin/depots      — Depot management
-//     /admin/categories  — Category management
-//     /admin/audit       — Audit log
-//     /admin/settings    — Business settings
-//
-//     (depot_staff + admin)
-//     /inventory         — Inventory management
-//     /transfers         — Stock transfers
-//
+// RoleGuards and paths are unchanged. POS, ops, and back-office share AppShell.
 // ─────────────────────────────────────────────────────────────────
 
 export function AppRoutes() {
   return (
     <Routes>
-      {/* Public */}
       <Route path="/login" element={<LoginPage />} />
 
-      {/* Authenticated: POS uses PosShell; all other pages use AppShell */}
       <Route element={<AuthGuard />}>
-        <Route element={<RoleGuard roles={['cashier', 'admin']} redirectTo="/inventory" />}>
-          <Route element={<PosShell />}>
+        <Route element={<AppShell />}>
+          <Route index element={<RoleRedirect />} />
+
+          <Route element={<RoleGuard roles={['cashier', 'admin']} redirectTo="/inventory" />}>
             <Route path="/pos" element={<POSPage />} />
           </Route>
-        </Route>
 
-        {/* Ops pages: PosShell chrome for cashier, AppShell chrome for admin */}
-        <Route element={<RoleGuard roles={['cashier', 'admin', 'depot_staff']} redirectTo="/inventory" />}>
-          <Route element={<OpsShell />}>
+          <Route element={<RoleGuard roles={['cashier', 'admin', 'depot_staff']} redirectTo="/inventory" />}>
             <Route path="/sales"     element={<SalesPage />} />
             <Route path="/customers" element={<CustomersPage />} />
             <Route path="/customers/:customerId/activity" element={<CustomerActivityPage />} />
             <Route path="/payments"  element={<PaymentsPage />} />
             <Route path="/shifts"    element={<ShiftsPage />} />
           </Route>
-        </Route>
 
-        <Route element={<AppShell />}>
-
-          {/* Root: redirect based on role */}
-          <Route index element={<RoleRedirect />} />
-
-          {/* ── Admin only ── */}
           <Route element={<RoleGuard roles={['admin']} redirectTo="/pos" />}>
             <Route path="/dashboard"         element={<DashboardPage />} />
             <Route path="/reports"           element={<ReportsPage />} />
@@ -121,7 +95,6 @@ export function AppRoutes() {
             <Route path="/admin/settings"    element={<SettingsPage />} />
           </Route>
 
-          {/* ── Depot Staff + Admin ── */}
           <Route element={<RoleGuard roles={['depot_staff', 'admin']} redirectTo="/pos" />}>
             <Route path="/depot"                element={<DepotOverviewPage />} />
             <Route path="/inventory"            element={<InventoryPage />} />
@@ -129,7 +102,6 @@ export function AppRoutes() {
             <Route path="/transfers"            element={<TransfersPage />} />
           </Route>
 
-          {/* Catch-all */}
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Route>

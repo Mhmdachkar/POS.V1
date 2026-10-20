@@ -3,9 +3,16 @@
  */
 import { afterEach } from 'vitest'
 import '@testing-library/jest-dom'
+import { useLocaleStore } from '@/stores/localeStore'
 
 afterEach(() => {
   vi.useRealTimers()
+  useLocaleStore.setState({ locale: 'fr' })
+  try {
+    localStorage.setItem('vhm-pos-locale', 'fr')
+  } catch {
+    /* jsdom */
+  }
 })
 
 if (typeof globalThis.ResizeObserver === 'undefined') {
