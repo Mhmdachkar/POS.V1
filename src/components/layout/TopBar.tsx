@@ -1,49 +1,68 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { ChevronDown, User, LogOut, Building2, Menu } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
 import { cn } from '@/lib/cn'
+import { ADMIN } from '@/lib/bilingual/admin'
+import { AUTH_NAV } from '@/lib/bilingual/nav'
+import { COMMON } from '@/lib/bilingual/common'
+import { bilingualPlain } from '@/lib/bilingual/types'
+import { ShiftChip } from '@/components/pos/ShiftChip'
 import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
 import { supabase } from '@/lib/supabase'
+import { AppLogo } from './AppLogo'
 
 export interface TopBarProps {
   /** Opens the mobile AppRail drawer (shown only below md). */
   onOpenMobileNav?: () => void
 }
 
-// ─────────────────────────────────────────────────────────────────
-// Depot selector (admin: switchable; cashier/staff: display only)
-// ─────────────────────────────────────────────────────────────────
+const ROLE_LABEL: Record<string, string> = {
+  admin: bilingualPlain(ADMIN.roleAdmin),
+  cashier: bilingualPlain(ADMIN.roleCashier),
+  depot_staff: bilingualPlain(ADMIN.roleDepotStaff),
+}
 
-function DepotContext() {
+function DepotContext({ posMode }: { posMode: boolean }) {
   const staff = useAuthStore((s) => s.staff)
-  const { currentDepotName, availableDepots, setCurrentDepot } = useDepotStore()
+  const { currentDepotId, currentDepotName, availableDepots, setCurrentDepot } = useDepotStore()
   const isAdmin = staff?.role === 'admin'
-
-  const displayName = currentDepotName ?? 'All Depots'
+  const firstActive = availableDepots.find((d) => d.is_active !== false)
+  const displayName =
+    currentDepotName ??
+    (posMode ? (firstActive?.name ?? bilingualPlain(COMMON.depot)) : bilingualPlain(COMMON.allDepots))
 
   if (!isAdmin || availableDepots.length === 0) {
-    // Non-admin: just show the assigned depot name
     return (
-      <div className="flex items-center gap-2 text-sm font-medium text-text-primary min-w-0">
+      <div
+        className="flex items-center gap-2 text-sm font-medium text-text-primary min-w-0"
+        data-testid={posMode ? 'pos-depot-label' : undefined}
+      >
         <Building2 className="h-4 w-4 text-text-muted flex-shrink-0" />
-        <span className="truncate max-w-[9rem] sm:max-w-[14rem]">{displayName}</span>
+        <span className="truncate max-w-[7rem] sm:max-w-[14rem]">{displayName}</span>
       </div>
     )
   }
 
-  // Admin: dropdown to switch depot context
+  const switchable = posMode
+    ? availableDepots.filter((d) => d.is_active !== false)
+    : availableDepots
+
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
         <button
+          type="button"
+          data-testid={posMode ? 'pos-depot-label' : undefined}
+          aria-label="Choisir le dépôt"
           className={cn(
             'flex items-center gap-2 text-sm font-medium text-text-primary rounded-md',
             'px-2.5 py-1.5 border border-border bg-surface hover:bg-surface-muted',
-            'transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1',
+            'transition-colors duration-150',
           )}
         >
           <Building2 className="h-4 w-4 text-text-muted flex-shrink-0" />
-          <span className="max-w-[7.5rem] sm:max-w-[160px] truncate">{displayName}</span>
+          <span className="max-w-[6.5rem] sm:max-w-[160px] truncate">{displayName}</span>
           <ChevronDown className="h-3.5 w-3.5 text-text-muted flex-shrink-0" />
         </button>
       </DropdownMenu.Trigger>
@@ -60,23 +79,26 @@ function DepotContext() {
           align="start"
           sideOffset={6}
         >
-          {/* All Depots option */}
-          <DropdownMenu.Item
-            className="flex items-center px-2.5 py-2 text-sm rounded-md cursor-pointer text-text-primary hover:bg-surface-muted focus:outline-none focus:bg-surface-muted"
-            onSelect={() => setCurrentDepot(null, 'All Depots')}
-          >
-            All Depots
-          </DropdownMenu.Item>
+          {!posMode && (
+            <>
+              <DropdownMenu.Item
+                className="flex items-center px-2.5 py-2 text-sm rounded-md cursor-pointer text-text-primary hover:bg-surface-muted focus:outline-none focus:bg-surface-muted"
+                onSelect={() => setCurrentDepot(null, bilingualPlain(COMMON.allDepots))}
+              >
+                {bilingualPlain(COMMON.allDepots)}
+              </DropdownMenu.Item>
+              <DropdownMenu.Separator className="my-1 h-px bg-border" />
+            </>
+          )}
 
-          <DropdownMenu.Separator className="my-1 h-px bg-border" />
-
-          {availableDepots.map((depot) => (
+          {switchable.map((depot) => (
             <DropdownMenu.Item
               key={depot.id}
               className={cn(
                 'flex items-center justify-between px-2.5 py-2 text-sm rounded-md cursor-pointer',
                 'text-text-primary hover:bg-surface-muted focus:outline-none focus:bg-surface-muted',
                 !depot.is_active && 'opacity-50',
+                posMode && currentDepotId === depot.id && 'bg-primary-subtle text-primary font-semibold',
               )}
               onSelect={() => setCurrentDepot(depot.id, depot.name)}
               disabled={!depot.is_active}
@@ -91,10 +113,6 @@ function DepotContext() {
   )
 }
 
-// ─────────────────────────────────────────────────────────────────
-// User menu
-// ─────────────────────────────────────────────────────────────────
-
 function UserMenu() {
   const staff = useAuthStore((s) => s.staff)
   const clear = useAuthStore((s) => s.clear)
@@ -104,32 +122,26 @@ function UserMenu() {
     clear()
   }
 
-  const roleLabel: Record<string, string> = {
-    admin: 'Admin',
-    cashier: 'Cashier',
-    depot_staff: 'Depot Staff',
-  }
-
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
         <button
+          type="button"
           className={cn(
-            'flex items-center gap-2 rounded-md px-2.5 py-1.5',
+            'flex items-center gap-2 rounded-md px-2 py-1.5 sm:px-2.5',
             'hover:bg-surface-muted transition-colors duration-150',
-            'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1',
           )}
           aria-label="Menu utilisateur"
         >
           <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
             <User className="h-3.5 w-3.5 text-primary" />
           </div>
-          <div className="text-left hidden sm:block">
-            <p className="text-xs font-semibold text-text-primary leading-none">
+          <div className="text-left hidden sm:block min-w-0">
+            <p className="text-xs font-semibold text-text-primary leading-none truncate max-w-[9rem]">
               {staff?.full_name ?? '—'}
             </p>
             <p className="text-xs text-text-muted leading-none mt-0.5">
-              {roleLabel[staff?.role ?? ''] ?? staff?.role}
+              {ROLE_LABEL[staff?.role ?? ''] ?? staff?.role}
             </p>
           </div>
           <ChevronDown className="h-3.5 w-3.5 text-text-muted flex-shrink-0 hidden sm:block" />
@@ -148,7 +160,6 @@ function UserMenu() {
           align="end"
           sideOffset={6}
         >
-          {/* Profile info */}
           <div className="px-3 py-2.5 border-b border-border mb-1">
             <p className="text-sm font-semibold text-text-primary">{staff?.full_name}</p>
             <p className="text-xs text-text-muted">@{staff?.username}</p>
@@ -162,7 +173,7 @@ function UserMenu() {
             onSelect={handleSignOut}
           >
             <LogOut className="h-4 w-4 flex-shrink-0" />
-            Sign out
+            {bilingualPlain(AUTH_NAV.signOut)}
           </DropdownMenu.Item>
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
@@ -170,14 +181,16 @@ function UserMenu() {
   )
 }
 
-// ─────────────────────────────────────────────────────────────────
-// TopBar
-// ─────────────────────────────────────────────────────────────────
-
 export function TopBar({ onOpenMobileNav }: TopBarProps) {
+  const { pathname } = useLocation()
+  const posMode = pathname === '/pos'
+  const staff = useAuthStore((s) => s.staff)
+  const currentDepotId = useDepotStore((s) => s.currentDepotId)
+  const posDepotId = staff?.role === 'cashier' ? staff.depot_id : currentDepotId
+
   return (
     <header
-      className="h-14 bg-surface border-b border-border flex items-center px-4 gap-3 sm:gap-4 flex-shrink-0 z-20"
+      className="h-14 bg-surface border-b border-border flex items-center px-2.5 sm:px-4 gap-2 sm:gap-3 flex-shrink-0 z-20"
       role="banner"
     >
       {onOpenMobileNav && (
@@ -186,7 +199,6 @@ export function TopBar({ onOpenMobileNav }: TopBarProps) {
           className={cn(
             'md:hidden flex items-center justify-center h-9 w-9 rounded-md flex-shrink-0',
             'text-text-primary hover:bg-surface-muted transition-colors duration-150',
-            'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1',
           )}
           onClick={onOpenMobileNav}
           aria-label="Ouvrir le menu"
@@ -195,9 +207,25 @@ export function TopBar({ onOpenMobileNav }: TopBarProps) {
         </button>
       )}
 
-      <DepotContext />
+      <AppLogo compact className="sm:hidden flex-shrink-0" />
+      <AppLogo className="hidden sm:flex flex-shrink-0" />
+
+      <DepotContext posMode={posMode} />
 
       <div className="flex-1 min-w-0" />
+
+      <div
+        className={cn(
+          'flex items-center gap-1.5 flex-shrink-0',
+          'rounded-lg border border-border bg-surface-muted/70 px-1.5 py-0.5 sm:px-2 sm:py-1',
+        )}
+        data-testid="topbar-shift"
+      >
+        <span className="hidden sm:inline text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+          Service
+        </span>
+        <ShiftChip posDepotId={posDepotId} />
+      </div>
 
       <UserMenu />
     </header>

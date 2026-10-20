@@ -27,12 +27,12 @@ import { bilingualAriaLabel, bilingualPlain, type BilingualPair } from '@/lib/bi
 import { useAuthStore } from '@/stores/authStore'
 import { supabase } from '@/lib/supabase'
 import type { StaffRole } from '@/types/database'
+import { AppLogo } from './AppLogo'
 
 interface NavItem {
   label: BilingualPair
   path: string
   icon: React.ElementType
-  isPrimary?: boolean
 }
 
 interface NavGroup {
@@ -44,7 +44,7 @@ const ADMIN_GROUPS: NavGroup[] = [
   {
     title: NAV_GROUP.overview,
     items: [
-      { label: NAV.pos, path: '/pos', icon: ShoppingCart, isPrimary: true },
+      { label: NAV.pos, path: '/pos', icon: ShoppingCart },
       { label: NAV.overview, path: '/dashboard', icon: LayoutDashboard },
     ],
   },
@@ -77,14 +77,14 @@ const ADMIN_GROUPS: NavGroup[] = [
 
 const NAV_ITEMS: Record<Exclude<StaffRole, 'admin'>, NavItem[]> = {
   cashier: [
-    { label: NAV.pos, path: '/pos', icon: ShoppingCart, isPrimary: true },
+    { label: NAV.pos, path: '/pos', icon: ShoppingCart },
     { label: NAV.sales, path: '/sales', icon: Receipt },
     { label: NAV.customers, path: '/customers', icon: Users },
     { label: NAV.payments, path: '/payments', icon: Banknote },
     { label: NAV.shift, path: '/shifts', icon: Clock },
   ],
   depot_staff: [
-    { label: NAV.overview, path: '/depot', icon: Warehouse, isPrimary: true },
+    { label: NAV.overview, path: '/depot', icon: Warehouse },
     { label: NAV.sales, path: '/sales', icon: Receipt },
     { label: NAV.inventory, path: '/inventory', icon: Package },
     { label: NAV.stockActivity, path: '/inventory/activity', icon: TrendingUp },
@@ -99,41 +99,46 @@ function isRailPathActive(pathname: string, path: string, end: boolean): boolean
 }
 
 function railEnd(path: string): boolean {
-  return path === '/inventory' || path === '/depot'
+  return path === '/inventory' || path === '/depot' || path === '/pos'
 }
 
-function RailItem({ item, expanded }: { item: NavItem; expanded: boolean }) {
+function RailItem({
+  item,
+  expanded,
+  iconOnly,
+}: {
+  item: NavItem
+  expanded: boolean
+  iconOnly: boolean
+}) {
   const Icon = item.icon
   const { pathname } = useLocation()
   const end = railEnd(item.path)
   const isActive = isRailPathActive(pathname, item.path, end)
   const aria = bilingualAriaLabel(item.label)
+  const showLabel = expanded && !iconOnly
 
   return (
     <NavLink
       to={item.path}
       end={end}
       aria-label={aria}
-      title={!expanded ? bilingualPlain(item.label) : undefined}
+      title={!showLabel ? bilingualPlain(item.label) : undefined}
       className={cn(
         'group relative flex transition-colors duration-150 select-none',
-        expanded
+        showLabel
           ? 'items-center gap-3 rounded-lg py-2 pl-2 pr-2.5 min-h-[40px]'
           : 'flex-col items-center justify-center gap-1 rounded-lg py-2 px-1 min-h-[52px]',
         isActive
-          ? expanded
-            ? 'bg-primary/10 text-primary'
-            : 'bg-primary/10 text-primary'
-          : item.isPrimary
-            ? 'text-primary hover:bg-primary/5'
-            : 'text-text-secondary hover:bg-surface-muted hover:text-text-primary',
+          ? 'bg-primary/10 text-primary'
+          : 'text-text-secondary hover:bg-surface-muted hover:text-text-primary',
       )}
     >
       {isActive && (
         <span
           className={cn(
             'absolute rounded-full bg-primary',
-            expanded ? 'left-0 top-2 bottom-2 w-1' : 'top-1 left-1.5 right-1.5 h-1',
+            showLabel ? 'left-0 top-2 bottom-2 w-1' : 'top-1 left-1.5 right-1.5 h-1',
           )}
           aria-hidden="true"
         />
@@ -142,24 +147,24 @@ function RailItem({ item, expanded }: { item: NavItem; expanded: boolean }) {
       <span
         className={cn(
           'flex flex-shrink-0 items-center justify-center rounded-lg transition-colors',
-          expanded ? 'h-8 w-8' : 'h-9 w-9',
+          showLabel ? 'h-8 w-8' : 'h-9 w-9',
           isActive
             ? 'bg-primary text-primary-foreground shadow-sm'
-            : item.isPrimary
-              ? 'bg-primary/15 text-primary group-hover:bg-primary/20'
-              : 'bg-surface-muted text-text-secondary group-hover:bg-surface group-hover:text-text-primary',
+            : 'bg-surface-muted text-text-secondary group-hover:bg-surface group-hover:text-text-primary',
         )}
       >
-        <Icon className={cn('text-current', expanded ? 'h-4 w-4' : 'h-[18px] w-[18px]')} aria-hidden="true" />
+        <Icon className={cn('text-current', showLabel ? 'h-4 w-4' : 'h-[18px] w-[18px]')} aria-hidden="true" />
       </span>
 
-      <span className={cn('min-w-0', !expanded && 'max-w-[4.25rem]')}>
-        <BilingualText
-          {...item.label}
-          variant={expanded ? 'nav' : 'navCollapsed'}
-          className={cn(!expanded && 'w-full items-center')}
-        />
-      </span>
+      {!iconOnly && (
+        <span className={cn('min-w-0', !expanded && 'max-w-[4.25rem]')}>
+          <BilingualText
+            {...item.label}
+            variant={expanded ? 'nav' : 'navCollapsed'}
+            className={cn(!expanded && 'w-full items-center')}
+          />
+        </span>
+      )}
     </NavLink>
   )
 }
@@ -167,22 +172,24 @@ function RailItem({ item, expanded }: { item: NavItem; expanded: boolean }) {
 function RailNavGroups({
   groups,
   expanded,
+  iconOnly,
 }: {
   groups: NavGroup[]
   expanded: boolean
+  iconOnly: boolean
 }) {
   return (
-    <div className={cn('space-y-4', expanded ? 'px-2' : 'px-1.5 space-y-3')}>
+    <div className={cn('space-y-4', expanded && !iconOnly ? 'px-2' : 'px-1.5 space-y-3')}>
       {groups.map((group) => (
         <div key={group.title.fr}>
-          {expanded && (
+          {expanded && !iconOnly && (
             <div className="px-2 mb-1.5">
               <BilingualText {...group.title} variant="navGroup" />
             </div>
           )}
           <div className="space-y-0.5">
             {group.items.map((item) => (
-              <RailItem key={item.path} item={item} expanded={expanded} />
+              <RailItem key={item.path} item={item} expanded={expanded} iconOnly={iconOnly} />
             ))}
           </div>
         </div>
@@ -194,14 +201,16 @@ function RailNavGroups({
 function RailNavFlat({
   items,
   expanded,
+  iconOnly,
 }: {
   items: NavItem[]
   expanded: boolean
+  iconOnly: boolean
 }) {
   return (
-    <div className={cn('space-y-0.5', expanded ? 'px-2' : 'px-1.5')}>
+    <div className={cn('space-y-0.5', expanded && !iconOnly ? 'px-2' : 'px-1.5')}>
       {items.map((item) => (
-        <RailItem key={item.path} item={item} expanded={expanded} />
+        <RailItem key={item.path} item={item} expanded={expanded} iconOnly={iconOnly} />
       ))}
     </div>
   )
@@ -217,9 +226,11 @@ export interface AppRailProps {
 export function AppRail({ expanded, onToggle, drawer = false }: AppRailProps) {
   const staff = useAuthStore((s) => s.staff)
   const clear = useAuthStore((s) => s.clear)
+  const { pathname } = useLocation()
   const role: StaffRole = staff?.role ?? 'cashier'
   const isAdmin = role === 'admin'
-  const showExpanded = drawer || expanded
+  const posIconOnly = pathname === '/pos' && !drawer
+  const showExpanded = drawer || (!posIconOnly && expanded)
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -235,7 +246,7 @@ export function AppRail({ expanded, onToggle, drawer = false }: AppRailProps) {
         'bg-surface-muted transition-[width] duration-200 ease-in-out',
         showExpanded ? 'w-[240px]' : 'w-[88px]',
       )}
-      aria-label="Navigation principale"
+      aria-label={bilingualAriaLabel({ fr: 'Navigation principale', en: 'Main navigation' })}
     >
       <div
         className={cn(
@@ -243,28 +254,14 @@ export function AppRail({ expanded, onToggle, drawer = false }: AppRailProps) {
           showExpanded ? 'gap-3 px-4' : 'justify-center px-2',
         )}
       >
-        <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center flex-shrink-0 shadow-sm">
-          <span className="text-primary-foreground text-sm font-bold">V</span>
-        </div>
-        {showExpanded && (
-          <div className="min-w-0">
-            <p className="text-sm font-bold text-text-primary leading-none tracking-tight">VHM POS</p>
-            <BilingualText
-              fr="Back-office"
-              en="Back office"
-              variant="caption"
-              className="mt-0.5"
-              frClassName="text-[10px] font-semibold uppercase tracking-wide text-text-muted"
-            />
-          </div>
-        )}
+        <AppLogo compact={!showExpanded} />
       </div>
 
       <div className="flex-1 py-3 overflow-y-auto scrollbar-thin">
         {isAdmin ? (
-          <RailNavGroups groups={ADMIN_GROUPS} expanded={showExpanded} />
+          <RailNavGroups groups={ADMIN_GROUPS} expanded={showExpanded} iconOnly={posIconOnly} />
         ) : (
-          <RailNavFlat items={NAV_ITEMS[role]} expanded={showExpanded} />
+          <RailNavFlat items={NAV_ITEMS[role]} expanded={showExpanded} iconOnly={posIconOnly} />
         )}
       </div>
 
@@ -284,14 +281,16 @@ export function AppRail({ expanded, onToggle, drawer = false }: AppRailProps) {
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-danger-bg flex-shrink-0">
             <LogOut className="h-4 w-4 text-current" aria-hidden="true" />
           </span>
-          <BilingualText
-            {...AUTH_NAV.signOut}
-            variant={showExpanded ? 'nav' : 'navCollapsed'}
-            className={cn(!showExpanded && 'items-center')}
-          />
+          {!posIconOnly && (
+            <BilingualText
+              {...AUTH_NAV.signOut}
+              variant={showExpanded ? 'nav' : 'navCollapsed'}
+              className={cn(!showExpanded && 'items-center')}
+            />
+          )}
         </button>
 
-        {!drawer && (
+        {!drawer && !posIconOnly && (
           <button
             type="button"
             onClick={onToggle}
