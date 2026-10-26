@@ -188,4 +188,12 @@ export const POS = {
     'Réservé administrateur',
     'Admin only',
   ),
+  overrideOutOfRange: bi(
+    'Le total modifié doit être entre 1 et le total calculé.',
+    'Adjusted total must be between 1 and the calculated total.',
+  ),
+  overrideNeedsReason: bi(
+    'Indiquez un motif pour modifier le total.',
+    'Enter a reason to adjust the total.',
+  ),
 } as const

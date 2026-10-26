@@ -31,3 +31,21 @@ export function canCompleteZeroPayable(
 ): boolean {
   return isAdmin && zeroTotalReasonOk(reason)
 }
+
+/** B3: override is allowed only in [1, calculated total]. */
+export function isOverrideOutOfRange(
+  overrideCfa: number | null,
+  calculatedTotalCfa: number,
+): boolean {
+  if (overrideCfa == null || !Number.isFinite(overrideCfa)) return false
+  return overrideCfa < 1 || overrideCfa > calculatedTotalCfa
+}
+
+export function needsPriceExceptionReason(
+  isAdmin: boolean,
+  isZeroPayable: boolean,
+  overrideCfa: number | null,
+): boolean {
+  return isZeroPayable || (isAdmin && overrideCfa != null)
+}
+

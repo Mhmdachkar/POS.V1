@@ -259,6 +259,18 @@ export function messageForCodeBilingual(
       'A total of CFA 0 must be approved by an administrator.',
     )
   }
+  if (code === 'INVALID_AMOUNT' && details?.reason === 'override_total_out_of_range') {
+    return bi(
+      'Le total modifié doit être entre 1 et le total calculé.',
+      'Adjusted total must be between 1 and the calculated total.',
+    )
+  }
+  if (code === 'INVALID_INPUT' && details?.reason === 'override_requires_reason') {
+    return bi(
+      'Indiquez un motif pour modifier le total.',
+      'Enter a reason to adjust the total.',
+    )
+  }
   if (code === 'INVALID_INPUT' && details?.reason === 'zero_total_requires_reason') {
     return bi(
       'Indiquez un motif pour un total de 0 CFA.',

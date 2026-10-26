@@ -13,9 +13,11 @@ import { cn } from '@/lib/cn'
 import { useShallow } from 'zustand/react/shallow'
 import { effectiveFinalTotal, usePOSStore } from '@/stores/posStore'
 import {
-  canCompleteZeroPayable,
   isDiscountOutOfRange,
+  isOverrideOutOfRange,
   isZeroPayableTotal,
+  needsPriceExceptionReason,
+  zeroTotalReasonOk,
 } from '@/lib/zeroTotalSale'
 import { rpc } from '@/lib/rpc'
 import { parseError } from '@/lib/errors'
@@ -104,7 +106,13 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
   const isDiscountInvalid = isDiscountOutOfRange(discountType, discountValue, totals.subtotal_cfa)
   const payableCfa = effectiveFinalTotal(totals.total_cfa, isAdmin ? overrideTotalCfa : null)
   const isZeroPayable = showCheckout && isZeroPayableTotal(payableCfa)
-  const zeroTotalBlocked = isZeroPayable && !canCompleteZeroPayable(!!isAdmin, priceExceptionReason)
+  const overrideInvalid = isAdmin && isOverrideOutOfRange(overrideTotalCfa, totals.total_cfa)
+  const needsReason = showCheckout && !isDiscountInvalid && needsPriceExceptionReason(
+    !!isAdmin,
+    isZeroPayable,
+    isAdmin ? overrideTotalCfa : null,
+  )
+  const reasonBlocked = needsReason && !(isAdmin && zeroTotalReasonOk(priceExceptionReason))
   const isCashNegative = cashTendered < 0
   const exceedsKnownStock = cartExceedsKnownStock(items, getAvailablePieces)
 
@@ -112,7 +120,8 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
     showCheckout &&
     !isCreditWithoutCustomer &&
     !isDiscountInvalid &&
-    !zeroTotalBlocked &&
+    !overrideInvalid &&
+    !reasonBlocked &&
     !isCashNegative &&
     !isSubmitting &&
     !exceedsKnownStock &&
@@ -129,8 +138,13 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
       if (isDiscountInvalid) {
         toastErrorBi(discountType === 'flat' ? POS.discountFlatError : POS.discountPercentError)
       }
-      if (zeroTotalBlocked) {
-        toastErrorBi(isAdmin ? POS.zeroTotalNeedsReason : POS.zeroTotalNeedsAdmin)
+      if (overrideInvalid) toastErrorBi(POS.overrideOutOfRange)
+      if (reasonBlocked) {
+        toastErrorBi(
+          isZeroPayable
+            ? (isAdmin ? POS.zeroTotalNeedsReason : POS.zeroTotalNeedsAdmin)
+            : POS.overrideNeedsReason,
+        )
       }
       return
     }
@@ -188,7 +202,7 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
     ensureIdempotencyKey, setSubmitting, setSaleResult,
     isWalkIn, customer, items, cashTendered, discountType, discountValue,
     depotId, overrideTotalCfa, priceExceptionReason, isAdmin,
-    isDiscountInvalid, zeroTotalBlocked, queryClient,
+    isDiscountInvalid, overrideInvalid, reasonBlocked, isZeroPayable, queryClient,
     processingShiftId, shiftGateReady, hasOpenShift,
   ])
 
@@ -204,7 +218,7 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
 
   const creditWarningId = isCreditWithoutCustomer ? 'pos-credit-warning' : undefined
   const stockMessageId = exceedsKnownStock ? 'pos-stock-warning' : undefined
-  const zeroTotalId = isZeroPayable && !isDiscountInvalid ? 'pos-zero-total-warning' : undefined
+  const zeroTotalId = needsReason ? 'pos-zero-total-warning' : undefined
   const describedBy = [creditWarningId, stockMessageId, zeroTotalId].filter(Boolean).join(' ') || undefined
 
   return (
@@ -246,7 +260,7 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
         </p>
       )}
 
-      {isZeroPayable && !isDiscountInvalid && (
+      {needsReason && (
         isAdmin ? (
           <Textarea
             id="pos-zero-total-warning"
@@ -256,7 +270,7 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
             onChange={(e) => setPriceExceptionReason(e.target.value)}
             error={
               !priceExceptionReason.trim()
-                ? bilingualPlain(POS.zeroTotalNeedsReason)
+                ? bilingualPlain(isZeroPayable ? POS.zeroTotalNeedsReason : POS.overrideNeedsReason)
                 : undefined
             }
             rows={2}

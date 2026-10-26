@@ -1,7 +1,8 @@
 import { MoneyDisplay } from '@/components/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { POS } from '@/lib/bilingual/pos'
-import { bi } from '@/lib/bilingual/types'
+import { bi, bilingualPlain } from '@/lib/bilingual/types'
+import { isOverrideOutOfRange } from '@/lib/zeroTotalSale'
 import { useShallow } from 'zustand/react/shallow'
 import { effectiveFinalTotal, usePOSStore } from '@/stores/posStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -24,6 +25,7 @@ export function CheckoutSummary() {
   const isChangeGiven = totals.change_given_cfa > 0
   const isBalanceAdded = totals.balance_added_cfa > 0
   const hasOverride = isAdmin && overrideTotalCfa != null
+  const overrideInvalid = isOverrideOutOfRange(overrideTotalCfa, totals.total_cfa)
 
   const discountLabel =
     discountType === 'percent'
@@ -74,7 +76,8 @@ export function CheckoutSummary() {
           <BilingualText {...POS.modifyTotal} variant="caption" className="text-warning-foreground flex-shrink-0" />
           <input
             type="number"
-            min={0}
+            min={1}
+            max={totals.total_cfa}
             step="any"
             placeholder={String(totals.total_cfa)}
             value={overrideTotalCfa != null ? overrideTotalCfa : ''}
@@ -82,10 +85,20 @@ export function CheckoutSummary() {
               const v = e.target.value.trim()
               setOverrideTotalCfa(v === '' ? null : Number(v))
             }}
-            className="flex-1 h-7 px-2 rounded text-sm tabular-nums bg-surface border border-warning/30 focus:outline-none focus:ring-1 focus:ring-warning/40 text-right"
+            className={`flex-1 h-7 px-2 rounded text-sm tabular-nums bg-surface border focus:outline-none focus:ring-1 text-right ${
+              overrideInvalid
+                ? 'border-danger focus:ring-danger/40'
+                : 'border-warning/30 focus:ring-warning/40'
+            }`}
             aria-label="Modification du total (admin)"
+            aria-invalid={overrideInvalid || undefined}
           />
         </div>
+      )}
+      {isAdmin && overrideInvalid && (
+        <p role="status" className="text-xs text-danger-foreground">
+          {bilingualPlain(POS.overrideOutOfRange)}
+        </p>
       )}
 
       {/* Adjusted / final total (shown when override active) */}

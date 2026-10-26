@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   canCompleteZeroPayable,
   isDiscountOutOfRange,
+  isOverrideOutOfRange,
   isZeroPayableTotal,
+  needsPriceExceptionReason,
   zeroTotalReasonOk,
 } from '@/lib/zeroTotalSale'
 
@@ -25,5 +27,15 @@ describe('B2 zero-total and discount range', () => {
     expect(canCompleteZeroPayable(true, '   ')).toBe(false)
     expect(canCompleteZeroPayable(true, 'Courtesy waiver')).toBe(true)
     expect(zeroTotalReasonOk('ok')).toBe(true)
+  })
+
+  it('B3: override must be between 1 and the calculated total', () => {
+    expect(isOverrideOutOfRange(null, 3500)).toBe(false)
+    expect(isOverrideOutOfRange(1, 3500)).toBe(false)
+    expect(isOverrideOutOfRange(3500, 3500)).toBe(false)
+    expect(isOverrideOutOfRange(0, 3500)).toBe(true)
+    expect(isOverrideOutOfRange(3501, 3500)).toBe(true)
+    expect(needsPriceExceptionReason(true, false, 1750)).toBe(true)
+    expect(needsPriceExceptionReason(true, false, null)).toBe(false)
   })
 })
