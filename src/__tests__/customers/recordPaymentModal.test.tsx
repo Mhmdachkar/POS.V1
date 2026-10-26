@@ -108,7 +108,7 @@ describe('RecordPaymentModal', () => {
     } as never)
   })
 
-  it('warns and still records when there is no valid shift', async () => {
+  it('B8: blocks recording a payment when there is no open shift', async () => {
     const user = userEvent.setup()
     const mutateAsync = vi.fn().mockResolvedValue({
       amount_cfa: 1000,
@@ -120,14 +120,32 @@ describe('RecordPaymentModal', () => {
       isPending: false,
     } as never)
     renderModal(null)
-    expect(screen.getByText(/can still be recorded and will not be attributed/)).toBeInTheDocument()
+    expect(
+      screen.getByText(/ouvrez un service pour encaisser|open a shift to complete a sale/i),
+    ).toBeInTheDocument()
+    await user.type(screen.getByPlaceholderText('0'), '1000')
+    expect(screen.getByRole('button', { name: 'Record Payment' })).toBeDisabled()
+    expect(mutateAsync).not.toHaveBeenCalled()
+  })
+
+  it('B8: attaches a payment to the cashier depot open shift', async () => {
+    const user = userEvent.setup()
+    const mutateAsync = vi.fn().mockResolvedValue({
+      amount_cfa: 1000,
+      new_balance_owed_cfa: 4000,
+    })
+    vi.mocked(useRecordPayment).mockReturnValue({
+      mutateAsync,
+      isPending: false,
+    } as never)
+    renderModal(null)
     await user.type(screen.getByPlaceholderText('0'), '1000')
     await user.click(screen.getByRole('button', { name: 'Record Payment' }))
     await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1))
     expect(mutateAsync).toHaveBeenCalledWith(expect.objectContaining({
       p_customer_id: 'cust-1',
       p_amount_cfa: 1000,
-      p_shift_id: null,
+      p_shift_id: 'shift-1',
     }))
   })
 

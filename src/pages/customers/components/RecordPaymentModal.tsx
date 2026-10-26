@@ -33,7 +33,7 @@ import { Badge } from '@/components/ui/Badge'
 import { formatCFA } from '@/lib/formatters'
 import { parseError } from '@/lib/errors'
 import { authorizedOpenShifts, clearStalePosShift, useOpenShifts } from '@/hooks/useShifts'
-import { processingShiftId, resolveLoadedPosShiftContext } from '@/lib/posShiftContext'
+import { resolveRequiredShiftId } from '@/lib/posShiftContext'
 import { useAuthStore } from '@/stores/authStore'
 import { useRecordPayment } from '@/hooks/useCustomers'
 import type { Customer } from '@/types/database'
@@ -70,13 +70,15 @@ export function RecordPaymentModal({
   const { mutateAsync: recordPayment, isPending } = useRecordPayment()
   const staff = useAuthStore((s) => s.staff)
   const { data: openShifts, isLoading: openShiftsLoading } = useOpenShifts()
-  const shiftCtx = resolveLoadedPosShiftContext(
+  const cashierDepotId = staff?.role === 'cashier' ? staff.depot_id : null
+  const effectiveShiftId = resolveRequiredShiftId(
     shiftId,
-    null,
+    cashierDepotId,
+    staff?.id,
     authorizedOpenShifts(staff, openShifts),
-    openShiftsLoading,
   )
-  const effectiveShiftId = processingShiftId(shiftId, shiftCtx)
+  const hasOpenShift = !!effectiveShiftId
+  const shiftGateReady = !openShiftsLoading
 
   useEffect(() => {
     if (open) {
@@ -104,6 +106,10 @@ export function RecordPaymentModal({
     const amount = parseFloat(amountStr)
 
     // Client-side validation (server also validates; these are UX guards only)
+    if (!shiftGateReady || !hasOpenShift) {
+      setGeneralError(t(SHIFT_COPY.openShiftRequired))
+      return
+    }
     if (!amountStr || isNaN(amount) || amount <= 0) {
       setAmountError(t(CUSTOMERS.paymentAmountError))
       return
@@ -215,10 +221,10 @@ export function RecordPaymentModal({
             </div>
           )}
 
-          {!shiftCtx.hasValidShift && (
+          {shiftGateReady && !hasOpenShift && (
             <div className="rounded-md bg-warning-bg border border-warning/20 px-3 py-2">
               <p className="text-xs text-warning-foreground">
-                No valid shift selected. This payment can still be recorded and will not be attributed to a shift close.
+                {t(SHIFT_COPY.openShiftRequired)}
               </p>
             </div>
           )}
@@ -268,7 +274,11 @@ export function RecordPaymentModal({
             <Button type="button" variant="secondary" onClick={onClose} disabled={isPending}>
               Cancel
             </Button>
-            <LoadingButton type="submit" loading={isPending}>
+            <LoadingButton
+              type="submit"
+              loading={isPending}
+              disabled={!shiftGateReady || !hasOpenShift}
+            >
               Record Payment
             </LoadingButton>
           </div>

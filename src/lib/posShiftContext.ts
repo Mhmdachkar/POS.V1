@@ -8,6 +8,9 @@
 export interface PosShiftLike {
   id: string
   depot_id: string
+  cashier_id?: string
+  opened_at?: string
+  status?: string
 }
 
 export interface PosShiftContext {
@@ -35,6 +38,49 @@ export function processingShiftId(
   ctx: PosShiftContext,
 ): string | null {
   return ctx.hasValidShift ? (shiftId ?? null) : null
+}
+
+/**
+ * Open shift used for a sale, refund, or payment at this depot.
+ * Prefers a still-valid preferred id, then this staff member's open shift,
+ * then the most recently opened shift at the depot.
+ */
+export function pickOpenShiftId(
+  depotId: string | null | undefined,
+  staffId: string | null | undefined,
+  openShifts: PosShiftLike[] | null | undefined,
+): string | null {
+  const matches = (openShifts ?? []).filter((shift) => {
+    if (shift.status && shift.status !== 'open') return false
+    if (depotId && shift.depot_id !== depotId) return false
+    return true
+  })
+  if (matches.length === 0) return null
+  const own = staffId
+    ? matches.filter((shift) => shift.cashier_id === staffId)
+    : []
+  const pool = own.length > 0 ? own : matches
+  const sorted = [...pool].sort((a, b) =>
+    (b.opened_at ?? '').localeCompare(a.opened_at ?? ''),
+  )
+  return sorted[0]?.id ?? null
+}
+
+export function resolveRequiredShiftId(
+  preferredShiftId: string | null | undefined,
+  depotId: string | null | undefined,
+  staffId: string | null | undefined,
+  openShifts: PosShiftLike[] | null | undefined,
+): string | null {
+  const matches = (openShifts ?? []).filter((shift) => {
+    if (shift.status && shift.status !== 'open') return false
+    if (depotId && shift.depot_id !== depotId) return false
+    return true
+  })
+  if (preferredShiftId && matches.some((shift) => shift.id === preferredShiftId)) {
+    return preferredShiftId
+  }
+  return pickOpenShiftId(depotId, staffId, matches)
 }
 
 /** While the open-shift list is still loading, keep the selected id (no flash). */

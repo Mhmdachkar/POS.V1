@@ -4,7 +4,7 @@
  * Financial preview only — all authoritative values come from the server.
  * The server's response replaces the preview after a successful sale.
  *
- * CEO Notes: shift workflow removed. New sales always use p_shift_id = null.
+ * An open shift is required (B8). Sales attach to the depot's open shift.
  * Admin can supply p_override_total_cfa; Cashier cannot (server-enforced).
  */
 
@@ -29,6 +29,9 @@ import { DiscountRow } from './DiscountRow'
 import { CashSection } from './CashSection'
 import { CheckoutSummary } from './CheckoutSummary'
 import { CommitButton } from './CommitButton'
+import { authorizedOpenShifts, useOpenShifts } from '@/hooks/useShifts'
+import { resolveRequiredShiftId } from '@/lib/posShiftContext'
+import { SHIFT_COPY } from '@/lib/bilingual/shift'
 
 interface PaymentPanelProps {
   depotId: string | null
@@ -40,6 +43,15 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
   const inFlight = useRef(false)
   const staff = useAuthStore((s) => s.staff)
   const { getAvailablePieces } = usePosCatalogStock()
+  const { data: openShifts, isLoading: openShiftsLoading } = useOpenShifts()
+  const processingShiftId = resolveRequiredShiftId(
+    null,
+    depotId,
+    staff?.id,
+    authorizedOpenShifts(staff, openShifts),
+  )
+  const hasOpenShift = !!processingShiftId
+  const shiftGateReady = !openShiftsLoading
 
   const {
     items,
@@ -92,7 +104,9 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
     !isDiscountInvalid &&
     !isCashNegative &&
     !isSubmitting &&
-    !exceedsKnownStock
+    !exceedsKnownStock &&
+    shiftGateReady &&
+    hasOpenShift
 
   const handleCompleteSale = useCallback(async () => {
     if (inFlight.current) return
@@ -100,6 +114,7 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
       if (isCartEmpty) toastErrorBi(POS.addProductsBeforeSale)
       if (isCreditWithoutCustomer) toastErrorBi(POS.creditNeedsCustomer)
       if (exceedsKnownStock) toastErrorBi(POS.cartExceedsStock)
+      if (shiftGateReady && !hasOpenShift) toastErrorBi(SHIFT_COPY.openShiftRequired)
       return
     }
 
@@ -123,7 +138,7 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
         p_display_currency:    'CFA',
         p_discount_type:       discountType,
         p_discount_value:      discountType ? discountValue : null,
-        p_shift_id:            null,    // CEO Notes: no active shift
+        p_shift_id:            processingShiftId,
         p_idempotency_key:     key,
         // Admin always sends the 10th arg (null = no override). Cashier omits it.
         ...(isAdmin ? { p_override_total_cfa: overrideTotalCfa } : {}),
@@ -143,7 +158,7 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
       invalidateAfterSaleSettled(queryClient, {
         saleId: result.data?.sale_id,
         customerId: customer?.id,
-        shiftId: null,
+        shiftId: processingShiftId,
       })
       wakeLocalPrintAgent()
     } finally {
@@ -155,6 +170,7 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
     ensureIdempotencyKey, setSubmitting, setSaleResult,
     isWalkIn, customer, items, cashTendered, discountType, discountValue,
     depotId, overrideTotalCfa, staff?.role, queryClient,
+    processingShiftId, shiftGateReady, hasOpenShift,
   ])
 
   useEffect(() => {
@@ -201,6 +217,12 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
       {exceedsKnownStock && (
         <p id="pos-stock-warning" role="status" className="text-xs text-warning-foreground">
           <BilingualText {...POS.cartExceedsStock} variant="caption" />
+        </p>
+      )}
+
+      {showCheckout && shiftGateReady && !hasOpenShift && (
+        <p id="pos-shift-warning" role="status" className="text-xs text-warning-foreground">
+          <BilingualText {...SHIFT_COPY.openShiftRequired} variant="caption" />
         </p>
       )}
 

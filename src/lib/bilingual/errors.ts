@@ -84,8 +84,8 @@ export const ERROR_MESSAGES_BI: Record<VhmErrorCode, BilingualPair> = {
   ),
   SHIFT_NOT_FOUND: bi('Service introuvable.', 'Shift not found.'),
   SHIFT_NOT_OPEN: bi(
-    'Aucun service ouvert. Ouvrez un service avant de continuer.',
-    'No open shift found. Please open a shift before proceeding.',
+    'Ouvrez un service pour encaisser, rembourser ou enregistrer un paiement.',
+    'Open a shift to complete a sale, process a refund, or record a payment.',
   ),
   CONCURRENT_UPDATE: bi(
     'Enregistrement modifié par une autre opération. Réessayez.',

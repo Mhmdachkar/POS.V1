@@ -138,8 +138,8 @@ export const SALES = {
     'Cash refund counts toward the selected processing shift, not the original sale shift.',
   ),
   noProcessingShift: bi(
-    'Aucun service de traitement valide. Remboursement espèces non rattaché.',
-    'No valid processing shift. Cash refund will be unattributed.',
+    'Ouvrez un service pour traiter ce retour.',
+    'Open a shift to process this return.',
   ),
   returnReasonPlaceholder: bi('Motif du retour…', 'Reason for return…'),
 

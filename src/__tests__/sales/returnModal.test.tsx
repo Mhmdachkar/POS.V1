@@ -595,34 +595,26 @@ describe('ReturnModal', () => {
     expect(vi.mocked(rpc.processReturn).mock.calls[0][0].p_shift_id).not.toBe('sale-original-shift')
   })
 
-  it('still processes a return without a valid shift and shows the unattributed warning', async () => {
+  it('B8: blocks a return without an open shift', async () => {
     const user = userEvent.setup()
     vi.mocked(useOpenShifts).mockReturnValue({ data: [], isLoading: false } as never)
     vi.mocked(rpc.processReturn).mockResolvedValue(successResult)
     renderModal(makeSale(), {}, null)
     await user.click(screen.getByRole('button', { name: /tout retourner|return all/i }))
     expect(
-      screen.getAllByText(
-        /non rattaché|remboursement espèces non rattaché|cash refund will be unattributed/i,
-      ).length,
+      screen.getAllByText(/ouvrez un service pour traiter ce retour|open a shift to process this return/i).length,
     ).toBeGreaterThan(0)
-    await user.click(screen.getByRole('button', { name: /traiter un retour|process return/i }))
-    expect(rpc.processReturn).toHaveBeenCalledTimes(1)
-    expect(vi.mocked(rpc.processReturn).mock.calls[0][0].p_shift_id).toBeNull()
+    expect(screen.getByRole('button', { name: /traiter un retour|process return/i })).toBeDisabled()
+    expect(rpc.processReturn).not.toHaveBeenCalled()
   })
 
-  it('treats a stale processing shift as unattributed', async () => {
+  it('B8: falls back to the depot open shift when the preferred id is stale', async () => {
     const user = userEvent.setup()
     vi.mocked(rpc.processReturn).mockResolvedValue(successResult)
     renderModal(makeSale(), {}, 'stale-shift')
     await user.click(screen.getByRole('button', { name: /tout retourner|return all/i }))
-    expect(
-      screen.getAllByText(
-        /non rattaché|remboursement espèces non rattaché|cash refund will be unattributed/i,
-      ).length,
-    ).toBeGreaterThan(0)
     await user.click(screen.getByRole('button', { name: /traiter un retour|process return/i }))
-    expect(vi.mocked(rpc.processReturn).mock.calls[0][0].p_shift_id).toBeNull()
+    expect(vi.mocked(rpc.processReturn).mock.calls[0][0].p_shift_id).toBe('shift-1')
   })
 
   it('lets the cashier refund less than the full value while still returning stock qty', async () => {

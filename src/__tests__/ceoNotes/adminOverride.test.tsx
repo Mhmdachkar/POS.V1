@@ -35,6 +35,32 @@ vi.mock('@/hooks/useCustomers', async (importOriginal) => {
   }
 })
 
+vi.mock('@/hooks/useShifts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/useShifts')>()
+  return {
+    ...actual,
+    useOpenShifts: vi.fn(() => ({
+      data: [{
+        id: 'shift-1',
+        depot_id: 'depot-a',
+        cashier_id: 'cashier-1',
+        opening_float_cfa: 1000,
+        opened_at: '2026-09-13T08:00:00Z',
+        closed_at: null,
+        closed_by: null,
+        expected_cash_cfa: null,
+        actual_cash_cfa: null,
+        discrepancy_cfa: null,
+        status: 'open',
+        depot_name: 'Depot Dakar',
+        cashier_name: 'Cashier Dakar',
+        closed_by_name: null,
+      }],
+      isLoading: false,
+    })),
+  }
+})
+
 function cashierStaff(): Staff {
   return {
     id: 'cashier-1',
@@ -358,7 +384,7 @@ describe('CEO Notes — PaymentPanel override payload', () => {
     await waitFor(() => expect(rpc.completeSale).toHaveBeenCalledTimes(1))
     expect(vi.mocked(rpc.completeSale).mock.calls[0][0]).toMatchObject({
       p_override_total_cfa: 800,
-      p_shift_id: null,
+      p_shift_id: 'shift-1',
     })
   })
 

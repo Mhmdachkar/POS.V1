@@ -38,7 +38,7 @@ import {
   roundCfa2,
 } from '@/lib/returnRefundPreview'
 import { authorizedOpenShifts, clearStalePosShift, useOpenShifts } from '@/hooks/useShifts'
-import { processingShiftId, resolveLoadedPosShiftContext } from '@/lib/posShiftContext'
+import { resolveRequiredShiftId } from '@/lib/posShiftContext'
 import { useAuthStore } from '@/stores/authStore'
 import type { SaleDetailData, SaleItemDetail } from '@/hooks/useSales'
 import {
@@ -398,13 +398,14 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
   const inFlight = useRef(false)
   const staff = useAuthStore((s) => s.staff)
   const { data: openShifts, isLoading: openShiftsLoading } = useOpenShifts()
-  const shiftCtx = resolveLoadedPosShiftContext(
+  const effectiveShiftId = resolveRequiredShiftId(
     shiftId,
-    null,
+    sale.depot_id,
+    staff?.id,
     authorizedOpenShifts(staff, openShifts),
-    openShiftsLoading,
   )
-  const effectiveShiftId = processingShiftId(shiftId, shiftCtx)
+  const hasOpenShift = !!effectiveShiftId
+  const shiftGateReady = !openShiftsLoading
 
   const selectedItems = useMemo(
     () => returnableItems.filter((ri) => ri.selected > 0),
@@ -444,7 +445,7 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
   )
 
   const noItemsSelected = selectedItems.length === 0
-  const canSubmit = !noItemsSelected && !isLoading
+  const canSubmit = !noItemsSelected && !isLoading && shiftGateReady && hasOpenShift
 
   const handleSubmit = async () => {
     if (inFlight.current) return
@@ -536,6 +537,12 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
           <BilingualText {...SALES.refundCustomHint} variant="caption" />
         </p>
 
+        {shiftGateReady && !hasOpenShift && (
+          <p className="text-xs text-warning-foreground bg-warning-bg border border-warning/20 rounded-md px-2.5 py-1.5">
+            <BilingualText {...SALES.noProcessingShift} variant="caption" />
+          </p>
+        )}
+
         <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
           {returnableItems.map((ri, idx) => (
             <ReturnItemRow
@@ -583,7 +590,7 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
             <p className="text-xs text-text-muted">
               <BilingualText {...SALES.serverRefundNote} variant="caption" />
             </p>
-            {shiftCtx.hasValidShift ? (
+            {hasOpenShift ? (
               <p className="text-xs text-text-secondary">
                 <BilingualText {...SALES.cashRefundShiftNote} variant="caption" />
               </p>
