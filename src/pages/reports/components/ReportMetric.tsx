@@ -22,7 +22,7 @@ export function ReportMetric({
   className,
 }: ReportMetricProps) {
   return (
-    <div className={cn('rounded-lg border border-border bg-surface px-4 py-3', className)}>
+    <div className={cn('rounded-lg border border-border-strong bg-surface px-4 py-3', className)}>
       <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">{label}</p>
       <div className="mt-1">
         <MoneyDisplay amount={amount} size="medium" danger={danger} />

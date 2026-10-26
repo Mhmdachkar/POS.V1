@@ -14,6 +14,7 @@ import { BilingualText } from '@/components/ui/BilingualText'
 import { POS } from '@/lib/bilingual/pos'
 import { toastErrorBi } from '@/lib/bilingual/toast'
 import { bilingualAriaLabel } from '@/lib/bilingual/types'
+import { APP_BUSINESS_FALLBACK } from '@/lib/formatters'
 import { CategoryRail } from '@/components/pos/CategoryRail'
 import { ProductGrid } from '@/components/pos/ProductGrid'
 import { CartPanel } from '@/components/pos/CartPanel'
@@ -21,7 +22,7 @@ import { PaymentPanel } from '@/components/pos/PaymentPanel'
 import { PosStockProvider } from '@/components/pos/PosStockProvider'
 import { SaleSuccessModal } from './components/SaleSuccessModal'
 import { useCategories } from '@/hooks/useInventory'
-import { fetchProductSearch, productKeys, useProductSearch } from '@/hooks/useProducts'
+import { fetchProductSearch, productKeys, usePOSProductCatalog } from '@/hooks/useProducts'
 import { settingsKeys } from '@/hooks/useBusinessSettings'
 import { CACHE_GC, CACHE_STALE } from '@/lib/cachePolicy'
 import { cn } from '@/lib/cn'
@@ -40,7 +41,7 @@ export function POSPage() {
   const depotId   = useDepotStore((s) => s.currentDepotId)
   const queryClient = useQueryClient()
   const businessName =
-    queryClient.getQueryData<BusinessSettings>(settingsKeys.current)?.business_name ?? 'VHM POS'
+    queryClient.getQueryData<BusinessSettings>(settingsKeys.current)?.business_name ?? APP_BUSINESS_FALLBACK
   const [query, setQuery] = useState('')
   const [categoryId, setCategoryId] = useState<string | null>(null)
   const [mobilePane, setMobilePane] = useState<MobilePane>('catalog')
@@ -61,7 +62,7 @@ export function POSPage() {
 
   const categoryName = categories?.find((c) => c.id === categoryId)?.name ?? null
 
-  const catalogQuery = useProductSearch(
+  const catalogQuery = usePOSProductCatalog(
     query,
     effectiveDepotId,
     !!effectiveDepotId,

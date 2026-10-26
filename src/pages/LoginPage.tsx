@@ -16,6 +16,7 @@ import { AUTH } from '@/lib/bilingual/auth'
 import { BiButtonStack } from '@/lib/bilingual/ui'
 import { toastSuccessBi } from '@/lib/bilingual/toast'
 import { bilingualAriaLabel, bilingualPlain, t } from '@/lib/bilingual/types'
+import { APP_DISPLAY_NAME, APP_LOGO_LETTER } from '@/lib/formatters'
 
 function buildLoginSchema() {
   return z.object({
@@ -98,9 +99,9 @@ export function LoginPage() {
 
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center h-10 w-10 rounded-md bg-[#111827] mb-4">
-            <span className="text-white text-sm font-semibold">V</span>
+            <span className="text-white text-sm font-semibold">{APP_LOGO_LETTER}</span>
           </div>
-          <h1 className="text-2xl font-bold text-text-primary">VHM POS</h1>
+          <h1 className="text-2xl font-bold text-text-primary">{APP_DISPLAY_NAME}</h1>
           <BilingualText {...AUTH.signInToContinue} variant="pageDescription" className="mt-1" />
         </div>
 
@@ -130,7 +131,7 @@ export function LoginPage() {
                 disabled={isSubmitting}
               />
               {errors.username && (
-                <p className="text-xs text-danger">{errors.username.message}</p>
+                <p className="text-xs text-danger-foreground">{errors.username.message}</p>
               )}
             </div>
 
@@ -167,7 +168,7 @@ export function LoginPage() {
                 </button>
               </div>
               {errors.password && (
-                <p className="text-xs text-danger">{errors.password.message}</p>
+                <p className="text-xs text-danger-foreground">{errors.password.message}</p>
               )}
             </div>
 

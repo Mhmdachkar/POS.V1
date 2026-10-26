@@ -95,6 +95,16 @@ export const SALES = {
   returnQty: bi('Qté retour', 'Return qty'),
   returnAll: bi('Tout retourner', 'Return all'),
   selectQtyHint: bi('Choisissez les quantités à retourner ci-dessus', 'Select quantities to return above'),
+  refundAmount: bi('Montant à rembourser', 'Refund amount'),
+  refundFullValue: bi('Valeur complète', 'Full value'),
+  refundMax: (amount: string) =>
+    bi(`Maximum ${amount}`, `Maximum ${amount}`),
+  refundCustomHint: bi(
+    'Le stock revient au dépôt pour la quantité choisie. Vous pouvez rembourser moins que la valeur complète.',
+    'Stock returns to the depot for the chosen quantity. You can refund less than the full value.',
+  ),
+  stockRestored: bi('Stock rétabli au dépôt', 'Stock restored to depot'),
+  customRefundBadge: bi('Montant personnalisé', 'Custom amount'),
   refundPreview: bi('Aperçu remboursement', 'Refund Preview'),
   totalRefund: bi('Remboursement total', 'Total refund'),
   balanceReduction: bi('Réduction du solde', 'Balance reduction'),

@@ -91,6 +91,39 @@ export function computeReturnRefundTotal(lines: ReturnLineRefundInput[]): number
   return lines.reduce((sum, line) => sum + computeReturnLineRefund(line), 0)
 }
 
+/** Remaining CFA that can still be refunded on this sale line. */
+export function remainingRefundableCfa(
+  netLineTotalCfa: number,
+  alreadyRefundedCfa: number,
+): number {
+  return Math.max(roundCfa2(netLineTotalCfa - Math.max(alreadyRefundedCfa, 0)), 0)
+}
+
+/**
+ * Custom refund for a selected quantity: 0 up to the computed full value
+ * of those units. Never above remaining refundable on the line.
+ */
+export function clampCustomRefund(amount: number, maxCfa: number): number {
+  if (!Number.isFinite(amount) || amount <= 0) return 0
+  const max = Math.max(roundCfa2(maxCfa), 0)
+  return Math.min(roundCfa2(amount), max)
+}
+
+export interface ResolveLineRefundInput extends ReturnLineRefundInput {
+  /** When set, overrides the proportional/residual amount (still capped). */
+  customRefundCfa?: number | null
+}
+
+/**
+ * Refund used for preview and submit.
+ * Stock restore is driven by selectedQty; money can be lower than the full line value.
+ */
+export function resolveLineRefund(input: ResolveLineRefundInput): number {
+  const computed = computeReturnLineRefund(input)
+  if (input.customRefundCfa == null) return computed
+  return clampCustomRefund(input.customRefundCfa, computed)
+}
+
 export function computeReturnRefundPreview(
   input: ReturnRefundPreviewInput,
 ): ReturnRefundPreview {

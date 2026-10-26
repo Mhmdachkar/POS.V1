@@ -102,9 +102,9 @@ export function ReportOverviewTab({ sales, inventory, customers }: ReportOvervie
                 <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatCFA(v).replace(/\s/g, '')} />
                 <Tooltip formatter={cfaTooltipValue} />
                 <Legend />
-                <Line type="monotone" dataKey="gross" name={t(REPORTS.chartGross)} stroke="#2563eb" dot={false} strokeWidth={2} />
-                <Line type="monotone" dataKey="returns" name={t(REPORTS.chartReturns)} stroke="#dc2626" dot={false} strokeWidth={2} />
-                <Line type="monotone" dataKey="net" name={t(REPORTS.chartNet)} stroke="#16a34a" dot={false} strokeWidth={2} />
+                <Line type="monotone" dataKey="gross" name={t(REPORTS.chartGross)} stroke="var(--color-primary)" dot={false} strokeWidth={2} />
+                <Line type="monotone" dataKey="returns" name={t(REPORTS.chartReturns)} stroke="var(--color-danger)" dot={false} strokeWidth={2} />
+                <Line type="monotone" dataKey="net" name={t(REPORTS.chartNet)} stroke="var(--color-success)" dot={false} strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -121,7 +121,7 @@ export function ReportOverviewTab({ sales, inventory, customers }: ReportOvervie
                   <XAxis type="number" tick={{ fontSize: 11 }} />
                   <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 11 }} />
                   <Tooltip formatter={cfaTooltipValue} />
-                  <Bar dataKey="net" fill="#2563eb" name={t(REPORTS.chartNetSalesBar)} />
+                  <Bar dataKey="net" fill="var(--color-primary)" name={t(REPORTS.chartNetSalesBar)} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -136,7 +136,7 @@ export function ReportOverviewTab({ sales, inventory, customers }: ReportOvervie
                   <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={50} />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip formatter={cfaTooltipValue} />
-                  <Bar dataKey="gross" fill="#7c3aed" name={t(REPORTS.chartGrossBar)} />
+                  <Bar dataKey="gross" fill="var(--color-primary)" name={t(REPORTS.chartGrossBar)} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -151,7 +151,7 @@ export function ReportOverviewTab({ sales, inventory, customers }: ReportOvervie
               <div className="uppercase tracking-wide">
                 <BiTableHeader {...REPORTS.lowStock} />
               </div>
-              <p className="mt-1 text-2xl font-semibold tabular-nums">{inventory.low_stock_count}</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums text-warning-foreground">{inventory.low_stock_count}</p>
               <p className="text-xs text-text-muted mt-1">
                 <BiTableHeader {...REPORTS.skusBelowThresholdShort} />
               </p>
@@ -160,7 +160,7 @@ export function ReportOverviewTab({ sales, inventory, customers }: ReportOvervie
               <div className="uppercase tracking-wide">
                 <BiTableHeader {...REPORTS.outOfStock} />
               </div>
-              <p className="mt-1 text-2xl font-semibold tabular-nums">{inventory.out_of_stock_count}</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums text-danger-foreground">{inventory.out_of_stock_count}</p>
             </div>
           </div>
         </ReportSection>

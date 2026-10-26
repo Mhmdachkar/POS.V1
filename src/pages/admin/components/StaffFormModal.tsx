@@ -190,7 +190,7 @@ export function StaffFormModal({ open, onClose, staff }: StaffFormModalProps) {
 
         {general && (
           <div className={cn('rounded-md bg-danger-bg border border-danger/20 px-3 py-2')}>
-            <p className="text-sm text-danger">{general}</p>
+            <p className="text-sm text-danger-foreground">{general}</p>
           </div>
         )}
 

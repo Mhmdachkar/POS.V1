@@ -85,7 +85,7 @@ function CreateCustomerForm({ onCreated, onCancel, initialName = '' }: CreateCus
             nameError ? 'border-danger' : 'border-border',
           )}
         />
-        {nameError && <p className="text-xs text-danger mt-0.5">{nameError}</p>}
+        {nameError && <p className="text-xs text-danger-foreground mt-0.5">{nameError}</p>}
       </div>
       <input
         type="tel"

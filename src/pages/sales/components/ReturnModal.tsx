@@ -4,14 +4,16 @@
  * Workflow:
  *   1. Show returnable items (original qty - already returned qty)
  *   2. Cashier selects return quantities per item (UI blocks over-return)
- *   3. Cashier enters reason (optional)
- *   4. Show refund preview: total, balance reduction, cash (SQL C1 split)
- *   5. Submit via rpc.processReturn() with computed p_cash_refund_cfa
+ *   3. Cashier may lower the refund below the full value of those units
+ *   4. Stock still returns to the depot for the chosen quantity
+ *   5. Show refund preview: total, balance reduction, cash (SQL C1 split)
+ *   6. Submit via rpc.processReturn() with qty + optional refund_amount_cfa
  *
  * Critical requirements:
  *   - NEVER sends quantity_pieces — server derives it from frozen sale data
- *   - Only sends: { sale_item_id, quantity_in_unit }
- *   - p_cash_refund_cfa is the helper-computed cash, not a cashier override
+ *   - Sends: { sale_item_id, quantity_in_unit, refund_amount_cfa }
+ *   - Custom refund is capped at the computed value for the selected qty
+ *   - p_cash_refund_cfa is the helper-computed cash split, not a cashier override
  */
 
 import { useState, useMemo, useRef } from 'react'
@@ -24,9 +26,13 @@ import { BilingualText } from '@/components/ui/BilingualText'
 import { COMMON } from '@/lib/bilingual/common'
 import { BiButtonStack, BiModalTitle, BiTableHeader } from '@/lib/bilingual/ui'
 import { t, bilingualPlain } from '@/lib/bilingual/types'
-import { formatCFA } from '@/lib/formatters'
+import { formatCFA, formatThousandsInput, parseCFAInput } from '@/lib/formatters'
 import { rpc } from '@/lib/rpc'
-import { computeReturnLineRefund, computeReturnRefundPreview, computeReturnRefundTotal } from '@/lib/returnRefundPreview'
+import {
+  computeReturnLineRefund,
+  computeReturnRefundPreview,
+  resolveLineRefund,
+} from '@/lib/returnRefundPreview'
 import { authorizedOpenShifts, clearStalePosShift, useOpenShifts } from '@/hooks/useShifts'
 import { processingShiftId, resolveLoadedPosShiftContext } from '@/lib/posShiftContext'
 import { useAuthStore } from '@/stores/authStore'
@@ -42,6 +48,8 @@ interface ReturnableItem {
   alreadyRefunded: number   // refund_amount_cfa already returned for this sale_item
   returnable: number        // original - alreadyReturned
   selected: number          // what the cashier is returning now
+  /** null = follow computed full value; string = cashier-edited CFA input */
+  refundDraft: string | null
 }
 
 function priorReturnTotals(
@@ -70,6 +78,24 @@ function lineRefundInput(ri: ReturnableItem) {
   }
 }
 
+function computedLineRefund(ri: ReturnableItem): number {
+  return computeReturnLineRefund(lineRefundInput(ri))
+}
+
+function customRefundFromDraft(draft: string | null): number | null {
+  if (draft == null) return null
+  if (draft.trim() === '') return 0
+  const parsed = parseCFAInput(draft)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function resolvedRefund(ri: ReturnableItem): number {
+  return resolveLineRefund({
+    ...lineRefundInput(ri),
+    customRefundCfa: customRefundFromDraft(ri.refundDraft),
+  })
+}
+
 function buildReturnableItems(
   items: SaleItemDetail[],
   returns: SaleDetailData['returns'],
@@ -83,6 +109,7 @@ function buildReturnableItems(
       alreadyRefunded,
       returnable,
       selected: 0, // start at 0 — cashier explicitly picks quantity
+      refundDraft: null,
     }
   })
 }
@@ -93,31 +120,33 @@ function buildReturnableItems(
 
 interface ReturnItemRowProps {
   ri: ReturnableItem
-  onChange: (qty: number) => void
+  onChangeQty: (qty: number) => void
+  onChangeRefund: (draft: string | null) => void
 }
 
-function ReturnItemRow({ ri, onChange }: ReturnItemRowProps) {
-  const { item, returnable, selected, alreadyReturned } = ri
-  const estimatedRefund =
-    selected > 0 ? computeReturnLineRefund(lineRefundInput(ri)) : 0
+function ReturnItemRow({ ri, onChangeQty, onChangeRefund }: ReturnItemRowProps) {
+  const { item, returnable, selected, alreadyReturned, refundDraft } = ri
+  const fullValue = selected > 0 ? computedLineRefund(ri) : 0
+  const refund = selected > 0 ? resolvedRefund(ri) : 0
+  const isCustom = refundDraft != null && refund !== fullValue
 
   return (
     <div
       className={cn(
-        'p-3 rounded-md border',
+        'rounded-xl border p-4 space-y-3',
         returnable <= 0
           ? 'border-border opacity-50 bg-surface-muted'
-          : 'border-border bg-surface',
+          : 'border-border bg-surface shadow-sm',
       )}
     >
-      <div className="flex items-start justify-between gap-2 mb-2">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-text-primary">{item.product_name}</p>
-          <p className="text-xs text-text-secondary">
+          <p className="text-sm font-semibold text-text-primary">{item.product_name}</p>
+          <p className="text-xs text-text-secondary mt-0.5">
             {item.unit_name} · {formatCFA(item.unit_price_cfa)}{' '}
             <BilingualText {...SALES.eachPrice} variant="caption" layout="inline" />
           </p>
-          <p className="text-xs text-text-muted mt-0.5">
+          <p className="text-xs text-text-muted mt-1">
             {t(SALES.originalQty)}: {item.quantity_in_unit}
             {alreadyReturned > 0 && ` · ${t(SALES.alreadyReturned)}: ${alreadyReturned}`}
             {returnable > 0
@@ -125,65 +154,105 @@ function ReturnItemRow({ ri, onChange }: ReturnItemRowProps) {
               : ` · ${t(SALES.fullyReturned)}`}
           </p>
         </div>
-        <div className="text-right flex-shrink-0">
-          <p className="text-xs text-text-muted">
-            <BilingualText {...SALES.estRefund} variant="caption" />
-          </p>
-          <p className="text-sm font-semibold text-text-primary">
-            {selected > 0 ? formatCFA(estimatedRefund) : '—'}
-          </p>
-        </div>
+        {selected > 0 && (
+          <div className="text-right flex-shrink-0">
+            {isCustom && (
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-warning-foreground mb-0.5">
+                <BilingualText {...SALES.customRefundBadge} variant="caption" layout="inline" />
+              </p>
+            )}
+            <p className="text-base font-bold tabular-nums text-text-primary">
+              {formatCFA(refund)}
+            </p>
+            {isCustom && (
+              <p className="text-[11px] text-text-muted line-through tabular-nums">
+                {formatCFA(fullValue)}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Quantity selector */}
       {returnable > 0 && (
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-text-secondary">
-            <BilingualText {...SALES.returnQty} variant="caption" layout="inline" />:
-          </span>
-          <button
-            type="button"
-            onClick={() => onChange(Math.max(0, selected - 1))}
-            disabled={selected <= 0}
-            className={cn(
-              'h-7 w-7 rounded flex items-center justify-center border border-border bg-surface',
-              'hover:bg-surface-muted transition-colors',
-              'disabled:opacity-50 disabled:cursor-not-allowed',
-            )}
-          >
-            <Minus className="h-3 w-3" />
-          </button>
-          <input
-            type="number"
-            min={0}
-            max={returnable}
-            value={selected}
-            onChange={(e) => {
-              const v = parseInt(e.target.value)
-              if (!isNaN(v)) onChange(Math.max(0, Math.min(returnable, v)))
-            }}
-            className="w-14 h-7 text-center text-sm rounded border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-          />
-          <button
-            type="button"
-            onClick={() => onChange(Math.min(returnable, selected + 1))}
-            disabled={selected >= returnable}
-            className={cn(
-              'h-7 w-7 rounded flex items-center justify-center border border-border bg-surface',
-              'hover:bg-surface-muted transition-colors',
-              'disabled:opacity-50 disabled:cursor-not-allowed',
-            )}
-          >
-            <Plus className="h-3 w-3" />
-          </button>
-          {returnable > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-text-secondary">
+              <BilingualText {...SALES.returnQty} variant="caption" layout="inline" />
+            </span>
             <button
               type="button"
-              onClick={() => onChange(returnable)}
-              className="text-xs text-primary hover:text-primary-hover underline"
+              onClick={() => onChangeQty(Math.max(0, selected - 1))}
+              disabled={selected <= 0}
+              className={cn(
+                'h-8 w-8 rounded-md flex items-center justify-center border border-border bg-surface',
+                'hover:bg-surface-muted transition-colors',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
+              )}
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </button>
+            <input
+              type="number"
+              min={0}
+              max={returnable}
+              value={selected}
+              onChange={(e) => {
+                const v = parseInt(e.target.value)
+                if (!isNaN(v)) onChangeQty(Math.max(0, Math.min(returnable, v)))
+              }}
+              className="w-14 h-8 text-center text-sm rounded-md border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            />
+            <button
+              type="button"
+              onClick={() => onChangeQty(Math.min(returnable, selected + 1))}
+              disabled={selected >= returnable}
+              className={cn(
+                'h-8 w-8 rounded-md flex items-center justify-center border border-border bg-surface',
+                'hover:bg-surface-muted transition-colors',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
+              )}
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onChangeQty(returnable)}
+              className="text-xs text-primary hover:text-primary-hover font-medium"
             >
               <BilingualText {...SALES.returnAll} variant="caption" layout="inline" />
             </button>
+          </div>
+
+          {selected > 0 && (
+            <div className="flex-1 min-w-0">
+              <label className="block text-[11px] font-semibold uppercase tracking-wide text-text-muted mb-1">
+                <BilingualText {...SALES.refundAmount} variant="caption" layout="inline" />
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  aria-label={bilingualPlain(SALES.refundAmount)}
+                  value={
+                    refundDraft == null
+                      ? formatThousandsInput(String(fullValue))
+                      : refundDraft
+                  }
+                  onChange={(e) => onChangeRefund(formatThousandsInput(e.target.value))}
+                  className="h-8 w-full min-w-0 rounded-md border border-border bg-surface px-2.5 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                />
+                <button
+                  type="button"
+                  onClick={() => onChangeRefund(null)}
+                  className="text-xs text-primary hover:text-primary-hover font-medium whitespace-nowrap"
+                >
+                  <BilingualText {...SALES.refundFullValue} variant="caption" layout="inline" />
+                </button>
+              </div>
+              <p className="text-[11px] text-text-muted mt-1">
+                {t(SALES.refundMax(formatCFA(fullValue)))}
+              </p>
+            </div>
           )}
         </div>
       )}
@@ -191,21 +260,28 @@ function ReturnItemRow({ ri, onChange }: ReturnItemRowProps) {
   )
 }
 
-function PreviewRow({
+function PreviewMetric({
   label,
   amount,
-  emphasize,
+  tone,
 }: {
   label: React.ReactNode
   amount: number
-  emphasize?: boolean
+  tone?: 'neutral' | 'info' | 'success'
 }) {
   return (
-    <div className="flex justify-between text-sm">
-      <span className="text-text-secondary">{label}</span>
-      <span className={cn('font-semibold', emphasize && 'text-info-foreground')}>
+    <div className="rounded-lg bg-surface px-3 py-2.5 border border-border">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">{label}</p>
+      <p
+        className={cn(
+          'mt-1 text-sm font-bold tabular-nums',
+          tone === 'info' && 'text-info-foreground',
+          tone === 'success' && 'text-success-foreground',
+          !tone && 'text-text-primary',
+        )}
+      >
         {formatCFA(amount)}
-      </span>
+      </p>
     </div>
   )
 }
@@ -245,7 +321,7 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
   )
 
   const estimatedRefundTotal = useMemo(
-    () => computeReturnRefundTotal(selectedItems.map(lineRefundInput)),
+    () => selectedItems.reduce((sum, ri) => sum + resolvedRefund(ri), 0),
     [selectedItems],
   )
 
@@ -282,6 +358,7 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
         p_items: selectedItems.map((ri) => ({
           sale_item_id:    ri.item.id,
           quantity_in_unit: ri.selected,
+          refund_amount_cfa: resolvedRefund(ri),
           // NOTE: no quantity_pieces — server derives it from frozen sale data
         })),
         p_reason:       reason.trim() || null,
@@ -311,7 +388,39 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
 
   const updateQty = (idx: number, qty: number) => {
     setReturnableItems((prev) =>
-      prev.map((ri, i) => (i === idx ? { ...ri, selected: qty } : ri)),
+      prev.map((ri, i) => {
+        if (i !== idx) return ri
+        const next = { ...ri, selected: qty }
+        if (next.refundDraft == null) return next
+        const parsed = customRefundFromDraft(next.refundDraft) ?? 0
+        return {
+          ...next,
+          refundDraft: formatThousandsInput(String(resolveLineRefund({
+            ...lineRefundInput(next),
+            customRefundCfa: parsed,
+          }))),
+        }
+      }),
+    )
+  }
+
+  const updateRefund = (idx: number, draft: string | null) => {
+    setReturnableItems((prev) =>
+      prev.map((ri, i) => {
+        if (i !== idx) return ri
+        if (draft == null) return { ...ri, refundDraft: null }
+        const max = computedLineRefund({ ...ri, refundDraft: draft })
+        const parsed = customRefundFromDraft(draft) ?? 0
+        const clamped = resolveLineRefund({
+          ...lineRefundInput(ri),
+          customRefundCfa: parsed,
+        })
+        // Keep typing mid-edit unless the value exceeds the max.
+        if (parsed > max) {
+          return { ...ri, refundDraft: formatThousandsInput(String(clamped)) }
+        }
+        return { ...ri, refundDraft: draft }
+      }),
     )
   }
 
@@ -320,16 +429,20 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
       open={open}
       onClose={handleClose}
       title={<BiModalTitle {...SALES.returnModalTitle(sale.receipt_number)} />}
-      size="lg"
+      size="xl"
     >
       <div className="space-y-4">
-        {/* Items */}
-        <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+        <p className="text-xs text-text-secondary rounded-lg bg-primary-subtle border border-primary/15 px-3 py-2">
+          <BilingualText {...SALES.refundCustomHint} variant="caption" />
+        </p>
+
+        <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
           {returnableItems.map((ri, idx) => (
             <ReturnItemRow
               key={ri.item.id}
               ri={ri}
-              onChange={(qty) => updateQty(idx, qty)}
+              onChangeQty={(qty) => updateQty(idx, qty)}
+              onChangeRefund={(draft) => updateRefund(idx, draft)}
             />
           ))}
         </div>
@@ -341,17 +454,31 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
         )}
 
         {!noItemsSelected && (
-          <div className="rounded-md bg-surface-muted border border-border p-3 space-y-2">
-            <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">
-              <BiTableHeader {...SALES.refundPreview} />
-            </p>
-            <PreviewRow label={<BiTableHeader {...SALES.totalRefund} />} amount={preview.refundAmountCfa} />
-            <PreviewRow
-              label={<BiTableHeader {...SALES.balanceReduction} />}
-              amount={preview.balanceAdjustmentCfa}
-              emphasize={preview.balanceAdjustmentCfa > 0}
-            />
-            <PreviewRow label={<BiTableHeader {...SALES.cashRefund} />} amount={preview.cashRefundCfa} />
+          <div className="rounded-xl bg-surface-muted border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">
+                <BiTableHeader {...SALES.refundPreview} />
+              </p>
+              <p className="text-[11px] font-medium text-success-foreground">
+                <BilingualText {...SALES.stockRestored} variant="caption" layout="inline" />
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <PreviewMetric
+                label={<BiTableHeader {...SALES.totalRefund} />}
+                amount={preview.refundAmountCfa}
+              />
+              <PreviewMetric
+                label={<BiTableHeader {...SALES.balanceReduction} />}
+                amount={preview.balanceAdjustmentCfa}
+                tone={preview.balanceAdjustmentCfa > 0 ? 'info' : 'neutral'}
+              />
+              <PreviewMetric
+                label={<BiTableHeader {...SALES.cashRefund} />}
+                amount={preview.cashRefundCfa}
+                tone="success"
+              />
+            </div>
             <p className="text-xs text-text-muted">
               <BilingualText {...SALES.serverRefundNote} variant="caption" />
             </p>

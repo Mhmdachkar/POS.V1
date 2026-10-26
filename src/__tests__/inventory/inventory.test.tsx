@@ -544,7 +544,7 @@ describe('restock RPC mapping', () => {
 describe('adjustment RPC mapping', () => {
   it('DAMAGE maps +5 UI to -5 RPC', () => {
     expect(toAdjustmentRpcQuantity('DAMAGE', 5)).toBe(-5)
-    expect(toAdjustRpcParams('prod-1', 'DAMAGE', 5, null).p_quantity_pieces).toBe(-5)
+    expect(toAdjustRpcParams('prod-1', 'DAMAGE', 5, 1, null).p_quantity_pieces).toBe(-5)
   })
 
   it('LOSS maps +5 UI to -5 RPC', () => {
@@ -564,12 +564,14 @@ describe('adjustment RPC mapping', () => {
     expect(toAdjustmentRpcQuantity('OTHER', -3)).toBe(-3)
     const missing = adjustmentFormSchema.safeParse({
       adjustment_type: 'OTHER',
-      quantity: -3,
+      unit_level: 0,
+      quantity_in_unit: -3,
       reason: '',
     })
     const ok = adjustmentFormSchema.safeParse({
       adjustment_type: 'OTHER',
-      quantity: -3,
+      unit_level: 0,
+      quantity_in_unit: -3,
       reason: 'found extra crate',
     })
     expect(missing.success).toBe(false)
@@ -579,13 +581,14 @@ describe('adjustment RPC mapping', () => {
   it('rejects zero quantity', () => {
     const zero = adjustmentFormSchema.safeParse({
       adjustment_type: 'COUNT_CORRECTION',
-      quantity: 0,
+      unit_level: 0,
+      quantity_in_unit: 0,
     })
     expect(zero.success).toBe(false)
   })
 
   it('never includes currentDepotId on RPC params', () => {
-    const params = toAdjustRpcParams('prod-b', 'DAMAGE', 2, 'broken')
+    const params = toAdjustRpcParams('prod-b', 'DAMAGE', 2, 1, 'broken')
     expect(params.p_product_id).toBe('prod-b')
     expect(params).not.toHaveProperty('p_depot_id')
     expect(params).not.toHaveProperty('currentDepotId')
@@ -916,8 +919,8 @@ describe('inactive product UI', () => {
     )
 
     expect(screen.getAllByText(INACTIVE_PRODUCT_MESSAGE).length).toBeGreaterThan(0)
-    expect(screen.getByRole('button', { name: /restock/i })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /adjust inventory/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /réapprovisionner|restock/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /ajustement de stock|stock adjustment/i })).toBeDisabled()
   })
 
   it('still maps PRODUCT_INACTIVE RPC errors', () => {

@@ -242,7 +242,7 @@ describe('SaleSuccessModal', () => {
     const receipt = document.getElementById('vhm-receipt')
     expect(receipt).toBeTruthy()
     const text = receipt?.textContent ?? ''
-    expect(text).toContain('VHM POS')
+    expect(text).toContain('Aquilux POS')
     expect(text).toContain('LOT: DKR')
     expect(text).toContain('DKR-00000042')
     expect(text).toContain('Aminata Diallo')

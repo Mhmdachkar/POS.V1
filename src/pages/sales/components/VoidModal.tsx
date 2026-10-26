@@ -70,7 +70,7 @@ export function VoidModal({ open, onClose, sale, onSuccess }: VoidModalProps) {
     >
       <div className="space-y-4">
         <div className="flex items-start gap-3 p-3 rounded-md bg-danger-bg border border-danger/20">
-          <AlertTriangle className="h-5 w-5 text-danger flex-shrink-0 mt-0.5" />
+          <AlertTriangle className="h-5 w-5 text-danger-foreground flex-shrink-0 mt-0.5" />
           <div className="space-y-1">
             <p className="text-sm font-semibold text-danger-foreground">
               <BilingualText {...SALES.voidConfirmReceipt(sale.receipt_number)} variant="body" layout="inline" />

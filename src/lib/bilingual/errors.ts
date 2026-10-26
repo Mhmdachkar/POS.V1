@@ -235,6 +235,24 @@ export function messageForCodeBilingual(
   if (code === 'INVALID_AMOUNT' && details?.reason === CASH_REFUND_MISMATCH_REASON) {
     return CASH_REFUND_MISMATCH_BI
   }
+  if (code === 'INVALID_AMOUNT' && details?.reason === 'refund_exceeds_line') {
+    return bi(
+      'Le montant du retour dépasse la valeur des articles sélectionnés.',
+      'Refund amount exceeds the value of the selected items.',
+    )
+  }
+  if (code === 'INVALID_AMOUNT' && details?.reason === 'refund_amount_cannot_be_negative') {
+    return bi(
+      'Le montant du retour ne peut pas être négatif.',
+      'Refund amount cannot be negative.',
+    )
+  }
+  if (code === 'INVALID_AMOUNT' && details?.reason === 'refund_amount_invalid') {
+    return bi(
+      'Entrez un montant de retour valide.',
+      'Enter a valid refund amount.',
+    )
+  }
   if (code === 'INVALID_INPUT' && details?.reason === 'low_stock_threshold_required') {
     return bi(
       'Entrez un seuil de stock faible lorsque le suivi est activé.',

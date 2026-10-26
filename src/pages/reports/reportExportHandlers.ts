@@ -293,7 +293,7 @@ export async function exportReportPrint(ctx: ReportExportContext): Promise<void>
     printSalesExportPdf(dataset)
     return
   }
-  const title = `Rapport VHM — ${tab}`
+  const title = `Rapport Aquilux — ${tab}`
   if (tab === 'overview' && sales) {
     printReportSummary(title, [
       { label: t(REPORTS.grossSales), value: cfaExportValue(sales.sales_activity_cfa) },

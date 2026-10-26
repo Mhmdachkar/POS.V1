@@ -75,7 +75,7 @@ export function CategoryFormModal({ open, onClose, category, parent = null }: Ca
         </div>
         {general && (
           <div className="rounded-md bg-danger-bg border border-danger/20 px-3 py-2">
-            <p className="text-sm text-danger">{general}</p>
+            <p className="text-sm text-danger-foreground">{general}</p>
           </div>
         )}
         <div className="flex gap-3 justify-end">

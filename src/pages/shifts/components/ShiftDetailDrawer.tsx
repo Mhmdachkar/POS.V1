@@ -130,7 +130,7 @@ export function ShiftDetailDrawer({ shiftId, onClose }: ShiftDetailDrawerProps) 
             ))}
           </div>
         ) : isError || !shift ? (
-          <p className="text-sm text-danger">{t(SHIFT_COPY.failedDetail)}</p>
+          <p className="text-sm text-danger-foreground">{t(SHIFT_COPY.failedDetail)}</p>
         ) : (
           <div>
             <div className="flex items-center gap-2 mb-4 -mt-1">

@@ -4,7 +4,9 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fetchProductSearch, productKeys } from '@/hooks/useProducts'
+import { filterProductsCatalog } from '@/lib/productSearch'
 import { shouldPersistCatalogQuery } from '@/lib/queryPersistence'
+import type { ProductWithUnits } from '@/types'
 import { supabase } from '@/lib/supabase'
 
 describe('CEO Notes — serial search', () => {
@@ -99,5 +101,36 @@ describe('CEO Notes — serial search', () => {
     expect(shouldPersistCatalogQuery(productKeys.search('', 'depot-a', null))).toBe(true)
     expect(shouldPersistCatalogQuery(productKeys.search('ON-PCE', 'depot-a', null))).toBe(false)
     expect(shouldPersistCatalogQuery(productKeys.search('cola', 'depot-a', 'cat-1'))).toBe(false)
+  })
+})
+
+describe('POS in-memory catalog filter', () => {
+  const catalog: ProductWithUnits[] = [
+    {
+      id: 'p1',
+      name: 'Red Sofa',
+      category_id: 'cat-meubles',
+      units: [{ serial_number: '9-1' } as ProductWithUnits['units'][0]],
+    } as ProductWithUnits,
+    {
+      id: 'p2',
+      name: 'Stabilizer',
+      category_id: 'cat-divers',
+      units: [{ serial_number: 'STAB2000W' } as ProductWithUnits['units'][0]],
+    } as ProductWithUnits,
+  ]
+
+  it('matches name or serial substring without debounce semantics', () => {
+    expect(filterProductsCatalog(catalog, { query: 'sofa' }).map((p) => p.id)).toEqual(['p1'])
+    expect(filterProductsCatalog(catalog, { query: 'stab' }).map((p) => p.id)).toEqual(['p2'])
+    expect(filterProductsCatalog(catalog, { query: '9-1' }).map((p) => p.id)).toEqual(['p1'])
+  })
+
+  it('applies category filter together with query', () => {
+    const rows = filterProductsCatalog(catalog, {
+      query: 's',
+      categoryId: 'cat-divers',
+    })
+    expect(rows.map((p) => p.id)).toEqual(['p2'])
   })
 })

@@ -11,7 +11,7 @@
 
 import { useEffect, useState } from 'react'
 import { BiEmptyTitle, BiPageDescription, BiPageTitle } from '@/lib/bilingual/ui'
-import { COMMON } from '@/lib/bilingual/common'
+import { COMMON, commonPageOf } from '@/lib/bilingual/common'
 import { ADMIN } from '@/lib/bilingual/admin'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
 import { SHIFT_COPY } from '@/lib/bilingual/shift'
@@ -23,6 +23,7 @@ import { cn } from '@/lib/cn'
 import { resolveProductPhotoUrl } from '@/lib/productPhotos'
 import { ActiveBadge, Button, EmptyState, PageHeader, Skeleton, StockStatusBadge } from '@/components/ui'
 import { formatCFA, formatDate, formatPieces } from '@/lib/formatters'
+import { formatStockCompact } from '@/lib/stockQuantityDisplay'
 import { getProductStockStatus, type StockStatus } from '@/types'
 import { productPerfMark } from '@/lib/productPerf'
 import {
@@ -50,10 +51,10 @@ type StockFilter = StockStatus | 'all'
 
 function stockFilters(): Array<{ value: StockFilter; label: string }> {
   return [
-    { value: 'all', label: 'All' },
+    { value: 'all', label: t(COMMON.all) },
     { value: 'out_of_stock', label: t(INVENTORY.outOfStockFilter) },
-    { value: 'low_stock', label: 'Low Stock' },
-    { value: 'healthy', label: 'Healthy' },
+    { value: 'low_stock', label: t(INVENTORY.lowStockFilter) },
+    { value: 'healthy', label: t(INVENTORY.healthyFilter) },
   ]
 }
 
@@ -268,16 +269,16 @@ export function InventoryPage() {
             <div className="sticky top-0 bg-surface-muted border-b border-border z-[1]">
               <div className={cn('grid gap-4 px-4 py-2 items-center', gridCols)}>
                 <span className="text-xs font-semibold text-text-secondary uppercase w-8" />
-                <span className="text-xs font-semibold text-text-secondary uppercase">Product</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Category</span>
+                <span className="text-xs font-semibold text-text-secondary uppercase">{t(COMMON.product)}</span>
+                <span className="text-xs font-semibold text-text-secondary uppercase">{t(INVENTORY.category)}</span>
                 {showDepotColumn && (
-                  <span className="text-xs font-semibold text-text-secondary uppercase">Depot</span>
+                  <span className="text-xs font-semibold text-text-secondary uppercase">{t(COMMON.depot)}</span>
                 )}
-                <span className="text-xs font-semibold text-text-secondary uppercase text-right">Price</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase text-right">Stock</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Status</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Track</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Updated</span>
+                <span className="text-xs font-semibold text-text-secondary uppercase text-right">{t(COMMON.price)}</span>
+                <span className="text-xs font-semibold text-text-secondary uppercase text-right">{t(INVENTORY.stockSection)}</span>
+                <span className="text-xs font-semibold text-text-secondary uppercase">{t(COMMON.status)}</span>
+                <span className="text-xs font-semibold text-text-secondary uppercase">{t(INVENTORY.monitoringSection)}</span>
+                <span className="text-xs font-semibold text-text-secondary uppercase">{t(COMMON.updated)}</span>
               </div>
             </div>
 
@@ -340,14 +341,17 @@ export function InventoryPage() {
                     return unit ? formatCFA(unit.selling_price_cfa) : '—'
                   })()}
                 </span>
-                <span className="text-sm font-semibold tabular-nums text-right text-text-primary">
-                  {formatPieces(product.current_stock_pieces)}
+                <span
+                  className="text-sm font-semibold tabular-nums text-right text-text-primary truncate"
+                  title={formatPieces(product.current_stock_pieces)}
+                >
+                  {formatStockCompact(product.current_stock_pieces, product.units ?? null)}
                 </span>
                 <span className="min-w-0">
                   <StockStatusBadge status={getProductStockStatus(product)} />
                 </span>
                 <span className="text-sm text-text-secondary whitespace-nowrap">
-                  {product.track_low_stock ? 'On' : 'Off'}
+                  {product.track_low_stock ? t(COMMON.yes) : t(COMMON.no)}
                 </span>
                 <span className="text-sm text-text-secondary whitespace-nowrap">
                   {formatDate(product.updated_at)}
@@ -358,7 +362,7 @@ export function InventoryPage() {
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-border">
                 <span className="text-sm text-text-secondary">
-                  Page {page + 1} of {totalPages}
+                  {t(commonPageOf(page + 1, totalPages))}
                 </span>
                 <div className="flex gap-2">
                   <button
@@ -367,7 +371,7 @@ export function InventoryPage() {
                     disabled={page === 0}
                     className="px-3 h-8 text-sm rounded-md border border-border bg-surface hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    ← Previous
+                    {t(COMMON.previous)}
                   </button>
                   <button
                     type="button"
@@ -375,7 +379,7 @@ export function InventoryPage() {
                     disabled={page >= totalPages - 1}
                     className="px-3 h-8 text-sm rounded-md border border-border bg-surface hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    Next →
+                    {t(COMMON.next)}
                   </button>
                 </div>
               </div>

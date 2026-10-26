@@ -4,9 +4,12 @@
 
 import { describe, it, expect } from 'vitest'
 import {
+  clampCustomRefund,
   computeReturnLineRefund,
   computeReturnRefundPreview,
   computeReturnRefundTotal,
+  remainingRefundableCfa,
+  resolveLineRefund,
   roundCfa2,
 } from '@/lib/returnRefundPreview'
 
@@ -198,6 +201,33 @@ describe('roundCfa2 / computeReturnLineRefund / computeReturnRefundTotal', () =>
     })
     expect(refund).toBe(roundCfa2(NET_950 - priorRefund))
     expect(refund).toBe(633.33)
+  })
+
+  it('remainingRefundableCfa never goes below zero', () => {
+    expect(remainingRefundableCfa(950, 316.67)).toBe(633.33)
+    expect(remainingRefundableCfa(600, 600)).toBe(0)
+    expect(remainingRefundableCfa(600, 700)).toBe(0)
+  })
+
+  it('clampCustomRefund caps at the computed max and floors at 0', () => {
+    expect(clampCustomRefund(100, 200)).toBe(100)
+    expect(clampCustomRefund(250, 200)).toBe(200)
+    expect(clampCustomRefund(-5, 200)).toBe(0)
+    expect(clampCustomRefund(Number.NaN, 200)).toBe(0)
+  })
+
+  it('resolveLineRefund uses computed amount unless a lower custom value is set', () => {
+    const line = {
+      originalQty: 3,
+      selectedQty: 3,
+      netLineTotalCfa: 600,
+      alreadyReturnedQty: 0,
+      alreadyRefundedCfa: 0,
+    }
+    expect(resolveLineRefund(line)).toBe(600)
+    expect(resolveLineRefund({ ...line, customRefundCfa: 250 })).toBe(250)
+    expect(resolveLineRefund({ ...line, customRefundCfa: 0 })).toBe(0)
+    expect(resolveLineRefund({ ...line, customRefundCfa: 999 })).toBe(600)
   })
 
   it('C1 receives the exact rounded/residual total, not the unrounded proportion', () => {

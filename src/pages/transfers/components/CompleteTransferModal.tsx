@@ -82,7 +82,7 @@ export function CompleteTransferModal({
     >
       <div className="space-y-4">
         <div className="flex items-start gap-3 p-3 rounded-md bg-warning-bg border border-warning/20">
-          <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
+          <AlertTriangle className="h-5 w-5 text-warning-foreground flex-shrink-0 mt-0.5" />
           <div className="space-y-1">
             <p className="text-sm font-semibold text-text-primary">
               Move stock from {transfer.from_depot_name} to {transfer.to_depot_name}?

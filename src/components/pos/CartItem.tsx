@@ -99,7 +99,7 @@ export function CartItem({ item }: CartItemProps) {
             type="button"
             variant="ghost"
             size="icon"
-            className="h-9 w-9 text-text-muted hover:text-danger hover:bg-danger-bg sm:hidden"
+            className="h-9 w-9 text-text-muted hover:text-danger-foreground hover:bg-danger-bg sm:hidden"
             aria-label={bilingualAriaLabel(POS.removeFromCartAria(item.product_name))}
             onClick={() => removeItem(item.product_id, item.unit_level)}
           >
@@ -165,7 +165,7 @@ export function CartItem({ item }: CartItemProps) {
           type="button"
           variant="ghost"
           size="icon"
-          className="hidden sm:inline-flex h-9 w-9 text-text-muted hover:text-danger hover:bg-danger-bg flex-shrink-0"
+          className="hidden sm:inline-flex h-9 w-9 text-text-muted hover:text-danger-foreground hover:bg-danger-bg flex-shrink-0"
           aria-label={bilingualAriaLabel(POS.removeFromCartAria(item.product_name))}
           onClick={() => removeItem(item.product_id, item.unit_level)}
         >

@@ -6,7 +6,7 @@ import type { SaleDetailData } from '@/hooks/useSales'
 
 function sample(overrides: Partial<ReceiptData> = {}): ReceiptData {
   return {
-    businessName: 'VHM POS',
+    businessName: 'Aquilux POS',
     depotName: 'Depot Dakar',
     receiptNumber: 'DKR-00000010',
     createdAt: '2026-09-16T01:45:00Z',
@@ -37,7 +37,7 @@ function sample(overrides: Partial<ReceiptData> = {}): ReceiptData {
 describe('buildReceiptHtml', () => {
   it('renders a structured POS ticket with store, items, cash, and PAYÉ', () => {
     const html = buildReceiptHtml(sample())
-    expect(html).toContain('VHM POS')
+    expect(html).toContain('Aquilux POS')
     expect(html).toContain('Depot Dakar')
     expect(html).toContain('LOT: DKR')
     expect(html).toContain('DKR-00000010')
@@ -119,7 +119,7 @@ describe('printReceiptHtml', () => {
 
   it('prints from a body-level node and blanks the document title', () => {
     const print = vi.spyOn(window, 'print').mockImplementation(() => {})
-    document.title = 'VHM POS'
+    document.title = 'Aquilux POS'
     printReceiptHtml(buildReceiptHtml(sample()), 'vhm-receipt-drawer')
     const root = document.getElementById('vhm-receipt-drawer')
     expect(root).toBeTruthy()
@@ -185,7 +185,7 @@ describe('receiptDataFromSaleDetail', () => {
       }],
       payments: [],
     }
-    const data = receiptDataFromSaleDetail(sale, 'VHM POS', 'Depot Dakar')
+    const data = receiptDataFromSaleDetail(sale, 'Aquilux POS', 'Depot Dakar')
     expect(data.createdAt).toBe('2026-09-16T01:45:00Z')
     expect(data.receiptNumber).toBe('DKR-00000010')
     expect(data.items[0].product_name).toBe('Cola Can 33cl')

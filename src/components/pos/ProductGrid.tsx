@@ -5,7 +5,7 @@ import { cn } from '@/lib/cn'
 import { Button, EmptyState, ProductCardSkeleton } from '@/components/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { useMemo } from 'react'
-import { POS_CATALOG_LIMIT, useProductSearch } from '@/hooks/useProducts'
+import { POS_CATALOG_LIMIT, usePOSProductCatalog } from '@/hooks/useProducts'
 import { COMMON } from '@/lib/bilingual/common'
 import { POS } from '@/lib/bilingual/pos'
 import { BiButtonInline, BiEmptyDescription, BiEmptyTitle } from '@/lib/bilingual/ui'
@@ -32,7 +32,7 @@ function CatalogRefreshBanner({ onRetry }: { onRetry: () => void }) {
   )
 }
 
-type CatalogQuery = ReturnType<typeof useProductSearch>
+type CatalogQuery = ReturnType<typeof usePOSProductCatalog>
 
 export interface ProductGridProps {
   depotId: string | null
@@ -56,7 +56,7 @@ export function ProductGrid({
   onClearCategory,
   className,
 }: ProductGridProps) {
-  const internalQuery = useProductSearch(
+  const internalQuery = usePOSProductCatalog(
     query,
     depotId,
     !!depotId && !catalogQueryProp,

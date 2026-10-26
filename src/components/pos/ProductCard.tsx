@@ -103,14 +103,21 @@ export function ProductCard({ product, onAddItem }: ProductCardProps) {
             'bg-surface border transition-all duration-150 ease-out',
             'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1',
             'hover:shadow-sm active:scale-[0.99]',
-            outOfStock || (atStockLimit && units.length <= 1)
-              ? 'opacity-55 border-border cursor-not-allowed'
-              : inCart
-                ? 'border-primary/40 ring-1 ring-primary/15'
-                : 'border-border/80 hover:border-primary/30',
+            outOfStock
+              ? 'border-border cursor-not-allowed'
+              : atStockLimit && units.length <= 1
+                ? 'opacity-55 border-border cursor-not-allowed'
+                : inCart
+                  ? 'border-primary/40 ring-1 ring-primary/15'
+                  : 'border-border/80 hover:border-primary/30',
           )}
         >
-          <div className="relative aspect-[5/4] w-full border-b border-border/50">
+          <div
+            className={cn(
+              'relative aspect-[5/4] w-full border-b border-border/50',
+              outOfStock && 'opacity-55',
+            )}
+          >
             {showPhoto ? (
               <ProductPhotoFrame
                 src={photoSrc}
@@ -146,15 +153,20 @@ export function ProductCard({ product, onAddItem }: ProductCardProps) {
             )}
 
             {presence.kind === 'one' && (
-              <span className="absolute top-1 right-1 min-w-[1.25rem] h-5 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+              <span className="absolute top-1 right-1 min-w-[1.25rem] h-5 px-1 rounded-full bg-surface text-primary border border-primary text-[10px] font-bold flex items-center justify-center">
                 ×{presence.qty}
               </span>
             )}
             {presence.kind === 'multi' && (
               <Tooltip.Root delayDuration={200}>
                 <Tooltip.Trigger asChild>
-                  <span className="absolute top-1 right-1 h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[9px] font-semibold flex items-center">
-                    <BilingualText {...POS.inCartBadge} variant="caption" layout="inline" />
+                  <span className="absolute top-1 right-1 h-5 px-1.5 rounded-full bg-surface text-primary border border-primary text-[9px] font-semibold flex items-center">
+                    <BilingualText
+                      {...POS.inCartBadge}
+                      variant="caption"
+                      layout="inline"
+                      frClassName="text-[9px] text-primary"
+                    />
                   </span>
                 </Tooltip.Trigger>
                 <Tooltip.Portal>
@@ -169,8 +181,13 @@ export function ProductCard({ product, onAddItem }: ProductCardProps) {
             )}
 
             {lowStock && !outOfStock && (
-              <span className="absolute top-1 left-1 px-1 py-px rounded text-[9px] font-semibold uppercase bg-warning/90 text-white">
-                <BilingualText {...POS.lowBadge} variant="caption" layout="inline" />
+              <span className="absolute top-1 left-1 px-1 py-px rounded text-[11px] font-semibold uppercase bg-warning-bg text-warning-foreground">
+                <BilingualText
+                  {...POS.lowBadge}
+                  variant="caption"
+                  layout="inline"
+                  frClassName="text-[11px] font-semibold uppercase text-warning-foreground"
+                />
               </span>
             )}
           </div>
@@ -186,8 +203,13 @@ export function ProductCard({ product, onAddItem }: ProductCardProps) {
             )}
 
             {outOfStock ? (
-              <p className="text-[10px] font-medium text-danger-foreground">
-                <BilingualText {...POS.outOfStock} variant="caption" layout="inline" />
+              <p className="text-[11px] font-medium text-danger-foreground">
+                <BilingualText
+                  {...POS.outOfStock}
+                  variant="caption"
+                  layout="inline"
+                  frClassName="text-[11px] font-medium text-danger-foreground"
+                />
               </p>
             ) : primaryUnit ? (
               <div className="space-y-1">
@@ -200,7 +222,7 @@ export function ProductCard({ product, onAddItem }: ProductCardProps) {
                       <span className="text-[9px] font-medium uppercase text-text-muted truncate">
                         {unit.unit_name}
                       </span>
-                      <span className="text-[10px] font-bold text-text-primary financial-value whitespace-nowrap">
+                      <span className="text-[13px] font-bold text-text-primary financial-value whitespace-nowrap">
                         {formatCFA(unit.selling_price_cfa)}
                       </span>
                     </span>

@@ -120,7 +120,7 @@ export function SettingsPage() {
           </div>
           {error && (
             <div className="rounded-md bg-danger-bg border border-danger/20 px-3 py-2">
-              <p className="text-sm text-danger">{error}</p>
+              <p className="text-sm text-danger-foreground">{error}</p>
             </div>
           )}
           <div className="flex justify-end">

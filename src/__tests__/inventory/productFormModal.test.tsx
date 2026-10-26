@@ -394,9 +394,7 @@ describe('ProductFormModal low-stock settings', () => {
     await user.click(screen.getByRole('button', { name: /Create Product|Créer le produit/i }))
 
     expect(createProduct).not.toHaveBeenCalled()
-    expect(
-      screen.getByText(/Activez au moins une unité|remplissez tous les champs requis/i),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toBeInTheDocument()
   })
 
   it('keeps level 0 enabled on edit and saves serial hierarchy', async () => {

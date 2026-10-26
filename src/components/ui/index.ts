@@ -33,6 +33,9 @@ export type { SkeletonProps } from './Skeleton'
 export { LoadingButton } from './LoadingButton'
 export type { LoadingButtonProps } from './LoadingButton'
 
+export { FormActionGuide } from './FormActionGuide'
+export type { FormActionGuideProps } from './FormActionGuide'
+
 export { EmptyState } from './EmptyState'
 export type { EmptyStateProps } from './EmptyState'
 

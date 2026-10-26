@@ -9,7 +9,7 @@ import { ProductCard } from '@/components/pos/ProductCard'
 import { UnitPickerPopover } from '@/components/pos/UnitPickerPopover'
 import { CategoryRail } from '@/components/pos/CategoryRail'
 import { ProductGrid } from '@/components/pos/ProductGrid'
-import { useProductSearch } from '@/hooks/useProducts'
+import { usePOSProductCatalog } from '@/hooks/useProducts'
 import { usePOSStore } from '@/stores/posStore'
 import type { ProductWithUnits } from '@/types'
 import type { ProductUnit } from '@/types/database'
@@ -21,7 +21,7 @@ vi.mock('@/hooks/useProducts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useProducts')>()
   return {
     ...actual,
-    useProductSearch: vi.fn(),
+    usePOSProductCatalog: vi.fn(),
   }
 })
 
@@ -73,7 +73,7 @@ function packUnit(): ProductUnit {
 
 beforeEach(() => {
   usePOSStore.getState().startNewSale()
-  vi.mocked(useProductSearch).mockReturnValue({
+  vi.mocked(usePOSProductCatalog).mockReturnValue({
     data: [],
     isLoading: false,
     isError: false,
@@ -291,7 +291,7 @@ describe('ProductGrid', () => {
   }
 
   it('renders every catalog product including placeholder-photo rows', () => {
-    vi.mocked(useProductSearch).mockReturnValue({
+    vi.mocked(usePOSProductCatalog).mockReturnValue({
       data: [
         makeProduct(),
         makeProduct({ id: 'prod-soda', name: 'Soda', photo_url: 'https://cdn.example.com/soda.jpg' }),
@@ -314,7 +314,7 @@ describe('ProductGrid', () => {
   })
 
   it('shows loading skeletons', () => {
-    vi.mocked(useProductSearch).mockReturnValue({
+    vi.mocked(usePOSProductCatalog).mockReturnValue({
       data: undefined,
       isLoading: true,
       isError: false,
@@ -326,7 +326,7 @@ describe('ProductGrid', () => {
   })
 
   it('does not replace cached products with a skeleton while refetching', () => {
-    vi.mocked(useProductSearch).mockReturnValue({
+    vi.mocked(usePOSProductCatalog).mockReturnValue({
       data: [makeProduct()],
       isLoading: false,
       isError: false,
@@ -340,7 +340,7 @@ describe('ProductGrid', () => {
 
   it('keeps cached products visible when a refresh errors', async () => {
     const refetch = vi.fn()
-    vi.mocked(useProductSearch).mockReturnValue({
+    vi.mocked(usePOSProductCatalog).mockReturnValue({
       data: [makeProduct()],
       isLoading: false,
       isError: true,
@@ -376,7 +376,7 @@ describe('ProductGrid', () => {
   })
 
   it('still renders products when photos are placeholders (serial fallback)', () => {
-    vi.mocked(useProductSearch).mockReturnValue({
+    vi.mocked(usePOSProductCatalog).mockReturnValue({
       data: [
         makeProduct({
           id: 'prod-a',
@@ -400,7 +400,7 @@ describe('ProductGrid', () => {
     const products = Array.from({ length: 500 }, (_, i) =>
       makeProduct({ id: `prod-${i}`, name: `Product ${i}`, photo_url: `/products/p-${i}.jpg` }),
     )
-    vi.mocked(useProductSearch).mockReturnValue({
+    vi.mocked(usePOSProductCatalog).mockReturnValue({
       data: products,
       isLoading: false,
       isError: false,

@@ -77,7 +77,7 @@ export function TransferDetailDrawer({ transferId, onClose }: TransferDetailDraw
             ))}
           </div>
         ) : isError || !transfer ? (
-          <BilingualText {...TRANSFERS.failedDetail} variant="body" as="p" className="text-danger" />
+          <BilingualText {...TRANSFERS.failedDetail} variant="body" as="p" className="text-danger-foreground" />
         ) : (
           <div className="space-y-1">
             <div className="flex items-center justify-between gap-2 mb-4">

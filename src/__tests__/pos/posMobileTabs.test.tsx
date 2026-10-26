@@ -26,7 +26,7 @@ vi.mock('@/hooks/useProducts', async (importOriginal) => {
   const actual = await importOriginal()
   return {
     ...actual,
-    useProductSearch: vi.fn(() => ({
+    usePOSProductCatalog: vi.fn(() => ({
       data: [],
       isLoading: false,
       isError: false,

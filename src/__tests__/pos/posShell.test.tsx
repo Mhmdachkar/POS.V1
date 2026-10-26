@@ -387,7 +387,7 @@ describe('AppRail icons and accessibility', () => {
       expect(link.querySelector('svg')).not.toBeNull()
       expect(link.querySelector('svg')).toHaveClass('text-current')
     }
-    expect(getByBilingualRole('link', NAV.overview)).toHaveClass('text-primary')
+    expect(getByBilingualRole('link', NAV.overview)).toHaveClass('text-text-primary', 'bg-primary-subtle')
     expect(getByBilingualRole('link', NAV.sales)).toHaveClass('text-text-secondary')
     expect(getByBilingualRole('link', NAV.pos)).toHaveClass('text-text-secondary')
     expect(nav.querySelector('a[href="/pos"]')).not.toBeNull()
@@ -401,10 +401,10 @@ describe('AppRail icons and accessibility', () => {
 
   it('shows labels when expanded and keeps the active Overview class', () => {
     renderRail(true)
-    expect(getByBilingualRole('link', NAV.overview)).toHaveClass('text-primary')
+    expect(getByBilingualRole('link', NAV.overview)).toHaveClass('text-text-primary', 'bg-primary-subtle')
     expect(getByBilingualRole('link', NAV.sales)).toHaveClass('text-text-secondary')
     expect(getByBilingualRole('link', NAV.pos)).not.toHaveClass('text-primary')
-    expect(screen.getByText('VHM POS')).toBeInTheDocument()
+    expect(screen.getByText('Aquilux POS')).toBeInTheDocument()
     expect(getByBilingualRole('button', AUTH_NAV.collapseRail)).toBeInTheDocument()
   })
 

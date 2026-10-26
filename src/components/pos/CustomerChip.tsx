@@ -92,7 +92,7 @@ export function CustomerChip() {
             type="button"
             onClick={handleSelectWalkIn}
             aria-label={bilingualAriaLabel(POS.clearCustomer)}
-            className="h-9 w-9 flex items-center justify-center rounded-md text-text-muted hover:text-danger hover:bg-danger-bg transition-colors flex-shrink-0"
+            className="h-9 w-9 flex items-center justify-center rounded-md text-text-muted hover:text-danger-foreground hover:bg-danger-bg transition-colors flex-shrink-0"
           >
             <X className="h-4 w-4" />
           </button>

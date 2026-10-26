@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+import { AUTH_STORAGE_KEY, authSessionStorage } from '@/lib/authSessionStorage'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -15,8 +16,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
  * Supabase client — single instance for the entire application.
  *
  * Auth configuration:
- * - persistSession: true  → tokens stored in localStorage so page refresh
- *   doesn't force re-login.
+ * - persistSession + sessionStorage → tokens survive in-tab refresh only;
+ *   closing the tab/browser ends the session and requires login again.
  * - autoRefreshToken: true → client refreshes the JWT before it expires.
  * - detectSessionInUrl: true → handles magic-link / OAuth callbacks via URL
  *   hash (not used by this app but harmless to keep on).
@@ -30,6 +31,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    storageKey: 'vhm-pos-auth',
+    storage: authSessionStorage,
+    storageKey: AUTH_STORAGE_KEY,
   },
 })

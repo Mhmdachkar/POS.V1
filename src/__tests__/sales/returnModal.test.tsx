@@ -369,8 +369,8 @@ describe('ReturnModal', () => {
     expect(params.p_reason).toBe('Damaged')
     expect(params.p_cash_refund_cfa).toBe(19050)
     expect(params.p_items).toEqual([
-      { sale_item_id: 'item-cola', quantity_in_unit: 1 },
-      { sale_item_id: 'item-rice', quantity_in_unit: 1 },
+      { sale_item_id: 'item-cola', quantity_in_unit: 1, refund_amount_cfa: 1600 },
+      { sale_item_id: 'item-rice', quantity_in_unit: 1, refund_amount_cfa: 18000 },
     ])
     expect(params.p_items[0]).not.toHaveProperty('quantity_pieces')
     expect(params.p_items[1]).not.toHaveProperty('quantity_pieces')
@@ -404,7 +404,7 @@ describe('ReturnModal', () => {
     expect(params.p_cash_refund_cfa).toBe(19600)
     expect(params.p_cash_refund_cfa).not.toBe(0)
     expect(params.p_items).toEqual([
-      { sale_item_id: 'item-walkin', quantity_in_unit: 1 },
+      { sale_item_id: 'item-walkin', quantity_in_unit: 1, refund_amount_cfa: 19600 },
     ])
     expect(params.p_items[0]).not.toHaveProperty('quantity_pieces')
     expect(params.p_shift_id).toBe('shift-1')
@@ -426,7 +426,7 @@ describe('ReturnModal', () => {
     expect(params.p_shift_id).toBe('shift-1')
     expect(params.p_reason).toBe('Damaged')
     expect(params.p_items).toEqual([
-      { sale_item_id: 'item-open', quantity_in_unit: 3 },
+      { sale_item_id: 'item-open', quantity_in_unit: 3, refund_amount_cfa: 600 },
     ])
     expect(params.p_items[0]).not.toHaveProperty('quantity_pieces')
     expect(params.p_cash_refund_cfa).toBe(600)
@@ -567,7 +567,9 @@ describe('ReturnModal', () => {
     await user.click(screen.getByRole('button', { name: /traiter un retour|process return/i }))
 
     const params = vi.mocked(rpc.processReturn).mock.calls[0][0]
-    expect(params.p_items).toEqual([{ sale_item_id: 'item-c3', quantity_in_unit: 2 }])
+    expect(params.p_items).toEqual([
+      { sale_item_id: 'item-c3', quantity_in_unit: 2, refund_amount_cfa: residual },
+    ])
     expect(params.p_items[0]).not.toHaveProperty('quantity_pieces')
     expect(params.p_cash_refund_cfa).toBe(residual)
     expect(params.p_cash_refund_cfa).toBe(633.33)
@@ -616,6 +618,40 @@ describe('ReturnModal', () => {
     ).toBeGreaterThan(0)
     await user.click(screen.getByRole('button', { name: /traiter un retour|process return/i }))
     expect(vi.mocked(rpc.processReturn).mock.calls[0][0].p_shift_id).toBeNull()
+  })
+
+  it('lets the cashier refund less than the full value while still returning stock qty', async () => {
+    const user = userEvent.setup()
+    vi.mocked(rpc.processReturn).mockResolvedValue({
+      ...successResult,
+      data: {
+        ...successResult.data,
+        refund_amount_cfa: 150,
+        cash_refunded_cfa: 150,
+      },
+    })
+    renderModal()
+    await user.click(screen.getByRole('button', { name: /tout retourner|return all/i }))
+    const refundInput = screen.getByLabelText(/montant à rembourser|refund amount/i)
+    await user.clear(refundInput)
+    await user.type(refundInput, '150')
+    expectFormattedCFA(150)
+    await user.click(screen.getByRole('button', { name: /traiter un retour|process return/i }))
+    const params = vi.mocked(rpc.processReturn).mock.calls[0][0]
+    expect(params.p_items).toEqual([
+      { sale_item_id: 'item-open', quantity_in_unit: 3, refund_amount_cfa: 150 },
+    ])
+    expect(params.p_cash_refund_cfa).toBe(150)
+  })
+
+  it('clamps a typed refund above the selected-qty maximum', async () => {
+    const user = userEvent.setup()
+    renderModal()
+    await user.click(screen.getByRole('button', { name: /tout retourner|return all/i }))
+    const refundInput = screen.getByLabelText(/montant à rembourser|refund amount/i)
+    await user.clear(refundInput)
+    await user.type(refundInput, '9999')
+    expect(refundInput).toHaveValue('600')
   })
 
   it('ignores a second rapid Process Return click', async () => {

@@ -34,7 +34,7 @@ export function LanguageSwitch({ compact = false }: { compact?: boolean }) {
               'h-7 min-w-[1.75rem] px-2 rounded text-[11px] font-semibold tracking-wide',
               'transition-colors duration-150',
               active
-                ? 'bg-[#111827] text-white'
+                ? 'bg-primary text-primary-foreground'
                 : 'text-text-secondary hover:text-text-primary',
             )}
           >

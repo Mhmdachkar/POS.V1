@@ -5,6 +5,7 @@
  */
 
 import { formatCFA, formatDateTime } from '@/lib/formatters'
+import { APP_BUSINESS_FALLBACK } from '@/lib/formatters'
 import type { DiscountType, SaleStatus } from '@/types/database'
 import type { SaleDetailData } from '@/hooks/useSales'
 
@@ -102,7 +103,7 @@ export function receiptDataFromSaleDetail(
 /** Structured 80mm POS ticket HTML. */
 export function buildReceiptHtml(data: ReceiptData): string {
   const lot = lotFromReceipt(data.receiptNumber)
-  const store = escapeReceiptText(data.businessName.trim() || 'VHM POS')
+  const store = escapeReceiptText(data.businessName.trim() || APP_BUSINESS_FALLBACK)
   const depot = data.depotName ? escapeReceiptText(data.depotName) : ''
   const cashier = data.cashierName ? escapeReceiptText(data.cashierName) : ''
   const customer = escapeReceiptText(data.customerName?.trim() || 'Client de passage')

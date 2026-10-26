@@ -17,8 +17,8 @@
 -- Plaintext passwords are intentionally NOT stored in this file (secret scanners).
 -- auth.users rows below use fixed bcrypt hashes for the standard local trio:
 --   usernames: admin | cashier | depot  (emails: *@vhm-pos.internal)
--- Ask the project owner for the local plaintext passwords, or reset users via
--- Supabase Dashboard after `supabase db reset`.
+--   admin password (local): Admin2026!
+-- Cashier / depot: ask the project owner or reset via Supabase Dashboard after `supabase db reset`.
 -- ================================================================
 
 -- Deterministic UUIDs for dev consistency across resets
@@ -129,7 +129,7 @@ begin
       admin_id, '00000000-0000-0000-0000-000000000000',
       'authenticated', 'authenticated',
       'admin@vhm-pos.internal',
-      '$2b$10$gdFNmpGho.7QyPpCAgWjgeLDpuNA3ZiCgwcSLNdwR9y7.vMX1gHOe',
+      '$2b$10$0X.lp4lV3R05G9S6md9Q3.y9P2L8KjcBISrqQaLJC2Hd3526eZKwS',
       now(),
       '{"provider":"email","providers":["email"],"role":"admin"}'::jsonb,
       '{}'::jsonb,
@@ -207,7 +207,7 @@ begin
   insert into business_settings (
     id, business_name, cfa_to_usd_rate, rate_updated_at, rate_updated_by
   ) values (
-    true, 'VHM Trading', 620.000000, now(), admin_id
+    true, 'Aquilux', 620.000000, now(), admin_id
   ) on conflict (id) do nothing;
 
   -- ─── Categories ──────────────────────────────────────────────────

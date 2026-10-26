@@ -81,7 +81,7 @@ export function DepotDetailDrawer({ depotId, onClose }: { depotId: string | null
             <DetailRow label={<BiTableHeader {...DEPOT.colCode} />} value={depot.code} />
             {actionError && (
               <div className="mt-4 rounded-md bg-danger-bg border border-danger/20 px-3 py-2">
-                <p className="text-sm text-danger">{actionError}</p>
+                <p className="text-sm text-danger-foreground">{actionError}</p>
               </div>
             )}
             <div className="mt-6 pt-4 border-t border-border space-y-2">

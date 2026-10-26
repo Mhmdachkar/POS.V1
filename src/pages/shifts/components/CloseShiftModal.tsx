@@ -53,7 +53,7 @@ function BreakdownRow({
       </span>
       <span className={cn(
         'tabular-nums',
-        danger ? 'text-danger font-semibold' : emphasis ? 'font-semibold text-text-primary' : 'text-text-primary',
+        danger ? 'text-danger-foreground font-semibold' : emphasis ? 'font-semibold text-text-primary' : 'text-text-primary',
       )}>
         {formatCFA(value)}
       </span>
@@ -201,7 +201,7 @@ export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) 
             error={actual === null && actualStr.trim() !== '' ? t(SHIFT_COPY.actualCashError) : undefined}
           />
 
-          <p className="text-sm text-danger">{t(SHIFT_COPY.closeIrreversible)}</p>
+          <p className="text-sm text-danger-foreground">{t(SHIFT_COPY.closeIrreversible)}</p>
 
           <label className="flex items-start gap-2.5 cursor-pointer">
             <input
@@ -216,7 +216,7 @@ export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) 
             </span>
           </label>
 
-          {formError && <p className="text-sm text-danger">{formError}</p>}
+          {formError && <p className="text-sm text-danger-foreground">{formError}</p>}
 
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={handleDismiss} disabled={isPending}>

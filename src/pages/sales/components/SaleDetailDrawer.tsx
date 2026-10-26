@@ -43,6 +43,7 @@ import type { SaleDetailData } from '@/hooks/useSales'
 import { ReturnModal } from './ReturnModal'
 import { VoidModal } from './VoidModal'
 import { t } from '@/lib/bilingual/types'
+import { APP_BUSINESS_FALLBACK } from '@/lib/formatters'
 
 
 // ─────────────────────────────────────────────────────────────────
@@ -241,7 +242,7 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
   const canMutateSale = staffRole === 'cashier' || staffRole === 'admin'
   const depotName = useDepotStore((s) => s.currentDepotName)
   const businessName =
-    queryClient.getQueryData<BusinessSettings>(settingsKeys.current)?.business_name ?? 'VHM POS'
+    queryClient.getQueryData<BusinessSettings>(settingsKeys.current)?.business_name ?? APP_BUSINESS_FALLBACK
 
   const { data: sale, isLoading, isError } = useSaleDetail(saleId)
 
@@ -285,7 +286,7 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
             ))}
           </div>
         ) : isError || !sale ? (
-          <p className="text-sm text-danger">{t(SALES.failedDetail)}</p>
+          <p className="text-sm text-danger-foreground">{t(SALES.failedDetail)}</p>
         ) : (
           <div className="space-y-1">
             <div className="flex items-center gap-2 mb-4">

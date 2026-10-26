@@ -24,6 +24,7 @@ import { cn } from '@/lib/cn'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { AUTH_NAV, NAV, NAV_GROUP } from '@/lib/bilingual/nav'
 import { bilingualAriaLabel, bilingualPlain, type BilingualPair } from '@/lib/bilingual/types'
+import { APP_DISPLAY_NAME } from '@/lib/formatters'
 import { useAuthStore } from '@/stores/authStore'
 import { useLocaleStore } from '@/stores/localeStore'
 import { supabase } from '@/lib/supabase'
@@ -130,7 +131,7 @@ function RailItem({
           ? 'items-center gap-2.5 h-9 px-2.5 rounded-md'
           : 'items-center justify-center h-10 w-full',
         isActive
-          ? 'text-primary'
+          ? 'text-text-primary bg-primary-subtle'
           : 'text-text-secondary hover:text-text-primary',
       )}
     >
@@ -238,7 +239,7 @@ export function AppRail({ expanded, onToggle, drawer = false }: AppRailProps) {
     >
       {showExpanded && (
         <div className="flex items-center h-14 flex-shrink-0 px-4">
-          <p className="text-[13px] font-semibold tracking-tight text-text-primary">VHM POS</p>
+          <p className="text-[13px] font-semibold tracking-tight text-text-primary">{APP_DISPLAY_NAME}</p>
         </div>
       )}
 

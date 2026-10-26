@@ -7,13 +7,14 @@ import { escapeReceiptText } from '@/lib/receiptHtml'
 import type { PrintJobPayload } from '@/lib/printPayload'
 import { DEPOT } from '@/lib/bilingual/depot'
 import { bilingualCompactLabel } from '@/lib/bilingual/types'
+import { APP_BUSINESS_FALLBACK } from '@/lib/formatters'
 
 function kv(label: string, value: string, extraClass = ''): string {
   return `<div class="receipt-kv${extraClass ? ` ${extraClass}` : ''}"><span>${label}</span><span>${value}</span></div>`
 }
 
 export function buildDepotOrderHtml(payload: PrintJobPayload): string {
-  const store = escapeReceiptText(payload.business_name?.trim() || 'VHM POS')
+  const store = escapeReceiptText(payload.business_name?.trim() || APP_BUSINESS_FALLBACK)
   const depot = escapeReceiptText(payload.depot_name ?? '')
   const cashier = payload.cashier_name ? escapeReceiptText(payload.cashier_name) : ''
   const customer = escapeReceiptText(payload.customer_name?.trim() || DEPOT.walkInCustomer.fr)

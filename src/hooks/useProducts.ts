@@ -14,6 +14,7 @@ import { useMemo, useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { CACHE_GC, CACHE_STALE, keepPlaceholderWhen } from '@/lib/cachePolicy'
 import {
+  filterProductsCatalog,
   findProductIdsBySerial,
   nameOrSerialOrFilter,
 } from '@/lib/productSearch'
@@ -117,6 +118,34 @@ export function useProductSearch(
     gcTime: CACHE_GC.catalog,
     placeholderData: keepPlaceholderWhen((prevKey) => prevKey[2] === depotId),
   })
+}
+
+/**
+ * POS register catalog: load the full depot once, filter in memory on each keystroke.
+ */
+export function usePOSProductCatalog(
+  query: string,
+  depotId: string | null,
+  enabled = true,
+  categoryId?: string | null,
+) {
+  const catalogQuery = useQuery({
+    queryKey: productKeys.search('', depotId, null),
+    queryFn: () => fetchProductSearch('', depotId!, null),
+    enabled: enabled && !!depotId,
+    staleTime: CACHE_STALE.catalog,
+    gcTime: CACHE_GC.catalog,
+  })
+
+  const data = useMemo(() => {
+    if (!catalogQuery.data) return undefined
+    return filterProductsCatalog(catalogQuery.data, { query, categoryId })
+  }, [catalogQuery.data, query, categoryId])
+
+  return {
+    ...catalogQuery,
+    data,
+  }
 }
 
 /**

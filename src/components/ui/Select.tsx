@@ -44,7 +44,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           {children}
         </select>
         {(error || hint) && (
-          <p className={cn('text-xs', error ? 'text-danger' : 'text-text-muted')}>
+          <p className={cn('text-xs', error ? 'text-danger-foreground' : 'text-text-muted')}>
             {error ?? hint}
           </p>
         )}

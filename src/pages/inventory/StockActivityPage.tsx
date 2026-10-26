@@ -29,6 +29,7 @@ import {
 } from '@/hooks/useInventory'
 import type { InventoryTransactionType } from '@/types/database'
 import { INVENTORY, STOCK_TXN_TYPE } from '@/lib/bilingual/inventory'
+import { adjustmentTypeLabel } from '@/lib/auditPresentation'
 import { COMMON, commonPageOf } from '@/lib/bilingual/common'
 import {
   BiEmptyDescription,
@@ -95,7 +96,8 @@ export function stockActivityDetail(metadata: Record<string, unknown> | null): s
     typeof metadata.quantity_in_unit === 'number' ? metadata.quantity_in_unit : null
 
   const parts: string[] = []
-  if (type) parts.push(type)
+  // Use friendly bilingual label for adjustment type codes (DAMAGE, LOSS, etc.)
+  if (type) parts.push(adjustmentTypeLabel(type))
   if (unitName) {
     parts.push(qtyInUnit != null ? `${qtyInUnit} ${unitName}` : unitName)
   }
@@ -174,7 +176,7 @@ function ActivityRow({
       <span
         className={cn(
           'text-sm font-semibold tabular-nums text-right',
-          positive ? 'text-success-foreground' : 'text-danger',
+          positive ? 'text-success-foreground' : 'text-danger-foreground',
         )}
       >
         {formatSignedPieces(row.quantity_pieces)}

@@ -115,7 +115,7 @@ export function OpenShiftModal({ open, onClose, onOpened }: OpenShiftModalProps)
           error={floatValue === null && floatStr.trim() !== '' ? bilingualPlain(SHIFT_COPY.floatNonNegative) : undefined}
         />
 
-        {formError && <p className="text-sm text-danger">{formError}</p>}
+        {formError && <p className="text-sm text-danger-foreground">{formError}</p>}
 
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose} disabled={isPending}>

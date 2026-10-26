@@ -119,3 +119,13 @@ export function formatThousandsInput(raw: string): string {
   if (frac == null) return grouped
   return `${grouped || '0'}.${frac}`
 }
+
+/** Client-visible product name (from env, with a stable fallback). */
+export const APP_DISPLAY_NAME =
+  import.meta.env.VITE_APP_NAME?.trim() || 'Aquilux POS'
+
+/** Single-letter mark for the logo tile when no custom logo is set. */
+export const APP_LOGO_LETTER = APP_DISPLAY_NAME.charAt(0).toUpperCase() || 'A'
+
+/** Receipts and settings fall back to this when business_name is empty. */
+export const APP_BUSINESS_FALLBACK = APP_DISPLAY_NAME

@@ -1,5 +1,6 @@
 import { COMMON } from '@/lib/bilingual/common'
 import { ADMIN } from '@/lib/bilingual/admin'
+import { within } from '@testing-library/react'
 /**
  * Phase 12 — Audit log UI: filters, pagination, detail drawer, CSV.
  */
@@ -86,6 +87,10 @@ vi.mock('@/hooks/useInventory', async (importOriginal) => {
   }
 })
 
+vi.mock('@/hooks/useAuditEventUnits', () => ({
+  useAuditEventUnits: () => ({ data: null, isLoading: false }),
+}))
+
 vi.mock('@/lib/csvExport', () => ({
   downloadCsv: vi.fn(),
 }))
@@ -150,20 +155,21 @@ describe('AuditPage', () => {
   it('opens the detail drawer with before/after JSON', async () => {
     const user = userEvent.setup()
     render(<AuditPage />)
-    await user.click(screen.getByRole('button', { name: /complete_sale/ }))
-    expect(screen.getByText("Événement d'audit")).toBeInTheDocument()
-    expect(screen.getByText('Avant')).toBeInTheDocument()
-    expect(screen.getByText('Après')).toBeInTheDocument()
-    expect(screen.getByText(/"status": "cart"/)).toBeInTheDocument()
-    expect(screen.getByText(/"total_cfa": 1500/)).toBeInTheDocument()
-    expect(screen.queryByText('Global / tous les dépôts')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Vente finalisée.*1.*500|Sale completed.*1.*500/i }))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText('Ce qui a changé')).toBeInTheDocument()
+    expect(screen.getAllByText(/CFA 1[\s\u202f]?500|1[\s\u202f]?500/).length).toBeGreaterThan(0)
+    // rowA has depot_id = 'depot-a' (Depot Dakar) — the drawer description should NOT say global
+    expect(within(dialog).queryByText(/Global \/ tous les dépôts/)).not.toBeInTheDocument()
   })
 
   it('shows Global / all depots in the drawer for null depot_id', async () => {
     const user = userEvent.setup()
     render(<AuditPage />)
-    await user.click(screen.getByRole('button', { name: /process_return/ }))
-    expect(screen.getByText('Global / tous les dépôts')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Retour traité|Return processed/i }))
+    // The depot label is in the drawer description header; scope to the dialog
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText(/Global \/ tous les dépôts/)).toBeInTheDocument()
   })
 
   it('exports the current page as CSV', async () => {

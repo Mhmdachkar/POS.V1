@@ -176,7 +176,7 @@ export function CustomerActivityPage() {
                   </div>
                 )}
                 {exportError && (
-                  <p className="text-xs text-danger max-w-xs text-right">{exportError}</p>
+                  <p className="text-xs text-danger-foreground max-w-xs text-right">{exportError}</p>
                 )}
               </div>
             ) : null

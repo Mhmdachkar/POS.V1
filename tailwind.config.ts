@@ -43,7 +43,7 @@ export default {
         // Text palette (accessible via text-text-primary etc.)
         text: {
           primary: '#111827',
-          secondary: '#667085',
+          secondary: '#475467',
           muted: '#667085',
         },
       },

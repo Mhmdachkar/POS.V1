@@ -200,7 +200,7 @@ export function RecordPaymentModal({
             )}
             <div className="flex items-baseline justify-between pt-1 border-t border-border">
               <span className="text-xs text-text-secondary">{t(CUSTOMERS.balanceOwedLabel)}</span>
-              <span className="text-base font-bold text-danger tabular-nums">
+              <span className="text-base font-bold text-danger-foreground tabular-nums">
                 {formatCFA(customer.balance_owed_cfa)}
               </span>
             </div>
@@ -226,7 +226,7 @@ export function RecordPaymentModal({
           {/* Amount */}
           <div>
             <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
-              Amount to pay (CFA) <span className="text-danger">*</span>
+              Amount to pay (CFA) <span className="text-danger-foreground">*</span>
             </label>
             <input
               ref={amountRef}
@@ -238,7 +238,7 @@ export function RecordPaymentModal({
               className={`w-full h-10 px-3 rounded-md border text-sm bg-surface text-text-primary tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary ${amountError ? 'border-danger' : 'border-border'}`}
             />
             {amountError && (
-              <p className="text-xs text-danger mt-1">{amountError}</p>
+              <p className="text-xs text-danger-foreground mt-1">{amountError}</p>
             )}
           </div>
 
@@ -259,7 +259,7 @@ export function RecordPaymentModal({
           {/* General error */}
           {generalError && (
             <div className="rounded-md bg-danger-bg border border-danger/20 px-3 py-2">
-              <p className="text-sm text-danger">{generalError}</p>
+              <p className="text-sm text-danger-foreground">{generalError}</p>
             </div>
           )}
 

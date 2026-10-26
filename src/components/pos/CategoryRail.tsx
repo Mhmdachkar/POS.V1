@@ -58,7 +58,7 @@ export function CategoryRail({
     return cn(
       'relative z-[1] h-9 px-3.5 rounded-full text-xs font-semibold flex-shrink-0 whitespace-nowrap',
       'transition-colors duration-200',
-      isActive ? 'text-primary-foreground' : 'text-text-secondary hover:text-text-primary',
+      isActive ? 'text-primary' : 'text-text-secondary hover:text-text-primary',
     )
   }
 
@@ -76,7 +76,7 @@ export function CategoryRail({
       <span
         aria-hidden="true"
         className={cn(
-          'pointer-events-none absolute top-1 bottom-1 rounded-full bg-primary shadow-sm',
+          'pointer-events-none absolute top-1 bottom-1 rounded-full bg-surface shadow-sm ring-1 ring-border',
           'transition-[transform,width,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
           indicator.ready ? 'opacity-100' : 'opacity-0',
         )}

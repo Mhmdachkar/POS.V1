@@ -137,6 +137,8 @@ export const ADMIN = {
   globalDepots: bi('Global / tous les dépôts', 'Global / all depots'),
   beforeValue: bi('Avant', 'Before'),
   afterValue: bi('Après', 'After'),
+  auditChangesSummary: bi('Ce qui a changé', 'What changed'),
+  auditTechnicalDetails: bi('Détails techniques (JSON)', 'Technical details (JSON)'),
   systemActor: bi('Système', 'System'),
   searchEntityId: bi('ID entité (UUID exact)…', 'Entity id (exact UUID)…'),
   statSales: bi('Ventes', 'Sales'),
@@ -144,6 +146,10 @@ export const ADMIN = {
   statTransactions: bi('Transactions', 'Transactions'),
   statAverageSale: bi('Vente moyenne', 'Average sale'),
   salesToday: bi("Ventes aujourd'hui", 'Sales today'),
+  salesTodayPeak: (hour: string, amount: string) =>
+    bi(`Pic ${hour} · ${amount}`, `Peak ${hour} · ${amount}`),
+  hourLabel: (hour: number) =>
+    bi(`${String(hour).padStart(2, '0')} h`, `${String(hour).padStart(2, '0')}h`),
   topProducts: bi('Meilleurs produits', 'Top products'),
   actionRequired: bi('Action requise', 'Action required'),
   noSalesToday: bi('Aucune vente aujourd\'hui.', 'No sales yet today.'),

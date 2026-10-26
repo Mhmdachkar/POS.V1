@@ -54,7 +54,7 @@ export function CartPanel({ className, onBrowseProducts }: CartPanelProps) {
             variant="ghost"
             size="sm"
             onClick={handleClear}
-            className="text-danger hover:text-danger hover:bg-danger-bg gap-1"
+            className="text-danger-foreground hover:text-danger-foreground hover:bg-danger-bg gap-1"
           >
             <Trash2 className="h-3.5 w-3.5" />
             <BiButtonInline {...POS.clearCart} />

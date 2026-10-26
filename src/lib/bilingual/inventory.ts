@@ -40,6 +40,8 @@ export const INVENTORY = {
   reactivateProduct: bi('Réactiver le produit', 'Reactivate Product'),
   productInactive: bi('Produit inactif', 'Product is inactive'),
   outOfStockFilter: bi('Rupture de stock', 'Out of Stock'),
+  lowStockFilter: bi('Stock faible', 'Low Stock'),
+  healthyFilter: bi('OK', 'Healthy'),
   noProductsMatch: bi(
     'Aucun produit ne correspond aux filtres.',
     'No products match your filters.',
@@ -83,6 +85,9 @@ export const INVENTORY = {
   quantityPieces: bi('Quantité (pièces)', 'Quantity (pieces)'),
   restockTitle: bi('Réapprovisionnement', 'Restock'),
   adjustTitle: bi('Ajustement de stock', 'Stock adjustment'),
+  adjustmentUnitLabel: bi('Unité (pièce, paquet ou carton)', 'Unit (piece, package, or carton)'),
+  adjustmentQuantityInUnit: bi('Quantité (dans l’unité choisie)', 'Quantity (in selected unit)'),
+  adjustmentInPieces: bi('Variation en pièces', 'Change in pieces'),
   stockActivitySearch: bi('Nom ou n° de série…', 'Name or serial…'),
   colWhen: bi('Quand', 'When'),
   colProduct: bi('Produit', 'Product'),

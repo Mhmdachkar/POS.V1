@@ -96,7 +96,7 @@ export function CategoriesPage() {
       <div className="min-h-0 flex-1 min-w-0 overflow-x-auto overflow-y-auto">
         {actionError && (
           <div className="mx-4 mt-3 rounded-md border border-danger/20 bg-danger-bg px-3 py-2">
-            <p className="text-sm text-danger">{actionError}</p>
+            <p className="text-sm text-danger-foreground">{actionError}</p>
           </div>
         )}
         {isLoading ? (

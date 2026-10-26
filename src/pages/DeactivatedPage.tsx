@@ -55,7 +55,7 @@ export function DeactivatedPage() {
 
         {/* Icon */}
         <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-danger/10 mb-6 mx-auto">
-          <ShieldOff className="h-8 w-8 text-danger" />
+          <ShieldOff className="h-8 w-8 text-danger-foreground" />
         </div>
 
         {/* Heading */}

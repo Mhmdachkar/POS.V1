@@ -248,7 +248,7 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
 
             {actionError && (
               <div className="mt-4 rounded-md bg-danger-bg border border-danger/20 px-3 py-2">
-                <p className="text-sm text-danger">{actionError}</p>
+                <p className="text-sm text-danger-foreground">{actionError}</p>
               </div>
             )}
 

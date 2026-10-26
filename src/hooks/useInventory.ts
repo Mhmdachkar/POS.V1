@@ -176,13 +176,15 @@ export function toRestockRpcParams(
 export function toAdjustRpcParams(
   productId: string,
   type: InventoryAdjustmentType,
-  uiQuantity: number,
+  quantityInUnit: number,
+  conversionToBase: number,
   reason?: string | null,
 ): AdjustInventoryParams {
+  const quantityPieces = quantityInUnit * conversionToBase
   return {
     p_product_id: productId,
     p_adjustment_type: type,
-    p_quantity_pieces: toAdjustmentRpcQuantity(type, uiQuantity),
+    p_quantity_pieces: toAdjustmentRpcQuantity(type, quantityPieces),
     p_reason: reason?.trim() || null,
   }
 }
@@ -196,7 +198,8 @@ export const restockFormSchema = z.object({
 export const adjustmentFormSchema = z
   .object({
     adjustment_type: z.enum(['DAMAGE', 'LOSS', 'COUNT_CORRECTION', 'EXPIRY', 'OTHER']),
-    quantity: z.coerce.number().refine(
+    unit_level: z.coerce.number().int().min(0).max(2),
+    quantity_in_unit: z.coerce.number().refine(
       (n) => !Number.isNaN(n) && n !== 0,
       'Quantity cannot be zero',
     ),
@@ -207,11 +210,11 @@ export const adjustmentFormSchema = z
       (data.adjustment_type === 'DAMAGE' ||
         data.adjustment_type === 'LOSS' ||
         data.adjustment_type === 'EXPIRY') &&
-      data.quantity <= 0
+      data.quantity_in_unit <= 0
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['quantity'],
+        path: ['quantity_in_unit'],
         message: 'Enter a quantity greater than zero.',
       })
     }

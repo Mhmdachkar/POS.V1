@@ -173,7 +173,7 @@ function UserMenu() {
           <DropdownMenu.Item
             className={cn(
               'flex items-center gap-2.5 px-3 py-2 text-sm rounded-md cursor-pointer',
-              'text-danger hover:bg-danger-bg focus:outline-none focus:bg-danger-bg',
+              'text-danger-foreground hover:bg-danger-bg focus:outline-none focus:bg-danger-bg',
             )}
             onSelect={handleSignOut}
           >

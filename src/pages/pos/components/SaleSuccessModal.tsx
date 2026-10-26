@@ -30,6 +30,7 @@ import { usePOSStore } from '@/stores/posStore'
 import type { CompleteSaleResult } from '@/types/rpc'
 import type { Customer } from '@/types/database'
 import { t } from '@/lib/bilingual/types'
+import { APP_BUSINESS_FALLBACK } from '@/lib/formatters'
 
 
 interface SaleSuccessModalProps {
@@ -43,7 +44,7 @@ export function SaleSuccessModal({
   result,
   customer,
   cartItemCount,
-  businessName = 'VHM POS',
+  businessName = APP_BUSINESS_FALLBACK,
 }: SaleSuccessModalProps) {
   const startNewSale = usePOSStore((s) => s.startNewSale)
   const depotName = useDepotStore((s) => s.currentDepotName)
@@ -79,7 +80,7 @@ export function SaleSuccessModal({
       <div className="space-y-5">
         <div className="flex flex-col items-center text-center gap-3 pt-2">
           <div className="w-14 h-14 rounded-full bg-success-bg flex items-center justify-center">
-            <CheckCircle className="h-7 w-7 text-success" />
+            <CheckCircle className="h-7 w-7 text-success-foreground" />
           </div>
           <div>
             <h2 className="text-lg font-bold text-text-primary">{t(POS.saleCompletedSuccess)}</h2>
@@ -87,7 +88,7 @@ export function SaleSuccessModal({
               {result.receipt_number}
             </p>
             {wasIdempotent && (
-              <p className="text-xs text-info-foreground mt-1 bg-info-bg px-2 py-0.5 rounded-full inline-block">
+              <p className="text-xs text-text-secondary mt-1 bg-surface-muted px-2 py-0.5 rounded-full inline-block">
                 Duplicate submission — existing sale returned
               </p>
             )}

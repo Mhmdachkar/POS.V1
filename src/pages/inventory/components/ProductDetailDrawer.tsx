@@ -8,6 +8,7 @@
 
 import { useState, type ReactNode } from 'react'
 import { INVENTORY } from '@/lib/bilingual/inventory'
+import { COMMON } from '@/lib/bilingual/common'
 import { BiModalTitle as BiSectionTitle, BiModalTitle } from '@/lib/bilingual/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { PackagePlus, Pencil, SlidersHorizontal, UserCheck, UserX } from 'lucide-react'
@@ -30,6 +31,8 @@ import { ProductPhotoFrame } from '@/components/pos/ProductPhotoFrame'
 import { useDeactivateProduct, useReactivateProduct } from '@/hooks/useAdminProducts'
 import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
+import { STOCK_TXN_TYPE } from '@/lib/bilingual/inventory'
+import { adjustmentTypeLabel } from '@/lib/auditPresentation'
 import { RestockModal } from './RestockModal'
 import { AdjustmentModal } from './AdjustmentModal'
 import { ProductFormModal } from './ProductFormModal'
@@ -92,7 +95,7 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
       <Drawer
         open={!!productId}
         onClose={onClose}
-        title={isLoading ? 'Product Details' : (product?.name ?? 'Product Details')}
+        title={isLoading ? t(INVENTORY.productDetails) : (product?.name ?? t(INVENTORY.productDetails))}
         description={inactive ? INACTIVE_PRODUCT_MESSAGE : undefined}
         width="lg"
       >
@@ -103,7 +106,7 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
             ))}
           </div>
         ) : !product ? (
-          <p className="text-sm text-text-muted">Product not found.</p>
+          <p className="text-sm text-text-muted">{t(INVENTORY.noProducts)}</p>
         ) : (
           <div>
             {hasDisplayableProductPhoto(product.photo_url, product.name) && (
@@ -269,10 +272,10 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
                         <td className="px-3 py-2 font-medium text-text-primary">{unit.unit_name}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-text-secondary">{formatCFA(unit.cost_price_cfa)}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{formatCFA(unit.selling_price_cfa)}</td>
-                        <td className={`px-3 py-2 text-right tabular-nums font-medium ${profit >= 0 ? 'text-success-foreground' : 'text-danger'}`}>
+                        <td className={`px-3 py-2 text-right tabular-nums font-medium ${profit >= 0 ? 'text-success-foreground' : 'text-danger-foreground'}`}>
                           {profit >= 0 ? '+' : ''}{formatCFA(profit)}
                         </td>
-                        <td className={`px-3 py-2 text-right tabular-nums ${margin != null && margin >= 0 ? 'text-success-foreground' : 'text-danger'}`}>
+                        <td className={`px-3 py-2 text-right tabular-nums ${margin != null && margin >= 0 ? 'text-success-foreground' : 'text-danger-foreground'}`}>
                           {margin != null ? `${margin}%` : '—'}
                         </td>
                       </tr>
@@ -286,7 +289,7 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
             <div className="space-y-0">
               <DetailRow
                 label={t(INVENTORY.trackLowStock)}
-                value={product.track_low_stock ? 'On' : 'Off'}
+                value={product.track_low_stock ? t(COMMON.yes) : t(COMMON.no)}
               />
               {product.track_low_stock && (
                 <DetailRow
@@ -311,13 +314,14 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
                 ))}
               </div>
             ) : !activity || activity.length === 0 ? (
-              <p className="text-sm text-text-muted">No activity yet.</p>
+              <p className="text-sm text-text-muted">{t(INVENTORY.noMovements)}</p>
             ) : (
               <div className="space-y-px rounded-lg overflow-hidden border border-border">
                 {activity.map((row) => {
                   const metaType = typeof row.metadata?.type === 'string' ? row.metadata.type : null
                   const metaReason = typeof row.metadata?.reason === 'string' ? row.metadata.reason : null
                   const positive = row.quantity_pieces > 0
+                  const txnLabel = STOCK_TXN_TYPE[row.transaction_type as keyof typeof STOCK_TXN_TYPE]
                   return (
                     <div
                       key={row.id}
@@ -325,8 +329,8 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
                     >
                       <div className="min-w-0">
                         <p className="font-medium text-text-primary">
-                          {row.transaction_type}
-                          {metaType ? ` · ${metaType}` : ''}
+                          {txnLabel ? t(txnLabel) : row.transaction_type}
+                          {metaType ? ` · ${adjustmentTypeLabel(metaType)}` : ''}
                         </p>
                         <p className="text-xs text-text-muted">
                           {formatDateTime(row.created_at)} · {row.staff_name ?? '—'}
@@ -337,7 +341,7 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
                       </div>
                       <span
                         className={`font-semibold tabular-nums flex-shrink-0 ${
-                          positive ? 'text-success-foreground' : 'text-danger'
+                          positive ? 'text-success-foreground' : 'text-danger-foreground'
                         }`}
                       >
                         {positive ? '+' : ''}
@@ -355,13 +359,13 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
               )}
               {adminError && (
                 <div className="rounded-md bg-danger-bg border border-danger/20 px-3 py-2">
-                  <p className="text-sm text-danger">{adminError}</p>
+                  <p className="text-sm text-danger-foreground">{adminError}</p>
                 </div>
               )}
               {canMutateProduct && (
                 <Button variant="secondary" className="w-full gap-2" onClick={() => setShowEdit(true)}>
                   <Pencil className="h-4 w-4" />
-                  Edit Product
+                  {t(INVENTORY.editProduct)}
                 </Button>
               )}
               <Button
@@ -371,7 +375,7 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
                 title={inactive ? INACTIVE_PRODUCT_MESSAGE : undefined}
               >
                 <PackagePlus className="h-4 w-4" />
-                Restock
+                {t(INVENTORY.restock)}
               </Button>
               <Button
                 variant="secondary"
@@ -381,7 +385,7 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
                 title={inactive ? INACTIVE_PRODUCT_MESSAGE : undefined}
               >
                 <SlidersHorizontal className="h-4 w-4" />
-                Adjust Inventory
+                {t(INVENTORY.adjustTitle)}
               </Button>
               {canMutateProduct && product.is_active && (
                 <LoadingButton
@@ -391,7 +395,7 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
                   loading={deactivating}
                 >
                   <UserX className="h-4 w-4" />
-                  Deactivate Product
+                  <BilingualText fr="Désactiver le produit" en="Deactivate Product" variant="body" layout="inline" />
                 </LoadingButton>
               )}
               {canMutateProduct && !product.is_active && (

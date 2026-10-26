@@ -73,7 +73,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           <p
             className={cn(
               'text-xs',
-              error ? 'text-danger' : 'text-text-muted',
+              error ? 'text-danger-foreground' : 'text-text-muted',
             )}
           >
             {error ?? hint}
@@ -124,7 +124,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           {...props}
         />
         {(error || hint) && (
-          <p className={cn('text-xs', error ? 'text-danger' : 'text-text-muted')}>
+          <p className={cn('text-xs', error ? 'text-danger-foreground' : 'text-text-muted')}>
             {error ?? hint}
           </p>
         )}

@@ -2,80 +2,115 @@ import { Drawer } from '@/components/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { formatDateTime } from '@/lib/formatters'
 import type { AuditLogRow } from '@/hooks/useAuditLog'
+import { useAuditEventUnits } from '@/hooks/useAuditEventUnits'
+import { useDepotOptions } from '@/hooks/useInventory'
+import {
+  auditActionLabel,
+  auditActorLine,
+  auditDepotLine,
+  auditDetailChanges,
+  auditHeroMetric,
+} from '@/lib/auditPresentation'
 import { ADMIN } from '@/lib/bilingual/admin'
-import { COMMON } from '@/lib/bilingual/common'
 import { BiTableHeader } from '@/lib/bilingual/ui'
+import { cn } from '@/lib/cn'
+import { t } from '@/lib/bilingual/types'
 
 interface AuditDetailDrawerProps {
   row: AuditLogRow | null
   onClose: () => void
 }
 
-function JsonBlock({ label, value }: { label: React.ReactNode; value: unknown }) {
-  return (
-    <div>
-      <p className="text-xs font-semibold text-text-secondary uppercase mb-1">{label}</p>
-      <pre className="text-xs bg-surface-muted rounded-md p-3 overflow-auto max-h-64 border border-border">
-        {value == null ? '—' : JSON.stringify(value, null, 2)}
-      </pre>
-    </div>
-  )
-}
-
 export function AuditDetailDrawer({ row, onClose }: AuditDetailDrawerProps) {
+  const { data: depots } = useDepotOptions()
+  const { data: units } = useAuditEventUnits(row)
+  const depotName = row?.depot_id
+    ? depots?.find((d) => d.id === row.depot_id)?.name ?? null
+    : null
+
+  const hero = row ? auditHeroMetric(row, units ?? null) : null
+  const changes = row ? auditDetailChanges(row, units ?? null) : []
+
   return (
     <Drawer
       open={row != null}
       onClose={onClose}
-      title={<BiTableHeader {...ADMIN.auditEvent} />}
-      description={row ? `${row.action} · ${formatDateTime(row.occurred_at)}` : undefined}
+      title={row ? <BilingualText {...auditActionLabel(row.action)} variant="body" /> : undefined}
+      description={
+        row ? (
+          <span className="text-text-secondary">
+            {formatDateTime(row.occurred_at)}
+            {' · '}
+            {t(auditActorLine(row))}
+            {' · '}
+            {t(auditDepotLine(row.depot_id, depotName))}
+          </span>
+        ) : undefined
+      }
     >
       {row && (
-        <div className="space-y-4 p-5 pt-0">
-          <dl className="grid grid-cols-1 gap-2 text-sm">
-            <div>
-              <dt className="text-text-muted">
-                <BiTableHeader {...ADMIN.actor} />
-              </dt>
-              <dd className="text-text-primary">
-                {row.actor_name ? (
-                  <>
-                    {row.actor_name}
-                    {row.actor_username ? ` (@${row.actor_username})` : ''}
-                  </>
-                ) : (
-                  <BilingualText {...ADMIN.systemActor} variant="caption" />
+        <div className="space-y-5 p-5 pt-0">
+          {/* Hero metric card — big number at a glance */}
+          {hero && (
+            <div
+              className={cn(
+                'rounded-xl border px-4 py-3',
+                hero.isPositive === true
+                  ? 'border-success/30 bg-success-bg'
+                  : hero.isPositive === false
+                  ? 'border-danger/30 bg-danger-bg'
+                  : 'border-border bg-surface-muted',
+              )}
+            >
+              <p
+                className={cn(
+                  'text-2xl font-bold tabular-nums leading-tight',
+                  hero.isPositive === true
+                    ? 'text-success-foreground'
+                    : hero.isPositive === false
+                    ? 'text-danger-foreground'
+                    : 'text-text-primary',
                 )}
-              </dd>
+              >
+                <BilingualText {...hero.value} variant="body" layout="inline" />
+              </p>
+              {hero.sub && (
+                <p className="mt-1 text-sm text-text-secondary">
+                  <BilingualText {...hero.sub} variant="caption" layout="inline" />
+                </p>
+              )}
             </div>
+          )}
+
+          {/* What changed — stacked label + value rows */}
+          {changes.length > 0 && (
             <div>
-              <dt className="text-text-muted">
-                <BiTableHeader {...ADMIN.action} />
-              </dt>
-              <dd className="font-mono text-text-primary">{row.action}</dd>
+              <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-3">
+                <BiTableHeader {...ADMIN.auditChangesSummary} />
+              </p>
+              <ul className="space-y-3">
+                {changes.map((line) => (
+                  <li key={line.label.fr} className="space-y-0.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                      <BilingualText {...line.label} variant="caption" layout="inline" />
+                    </p>
+                    <p
+                      className={cn(
+                        'text-sm font-medium tabular-nums',
+                        line.isPositive === true
+                          ? 'text-success-foreground'
+                          : line.isPositive === false
+                          ? 'text-danger-foreground'
+                          : 'text-text-primary',
+                      )}
+                    >
+                      <BilingualText {...line.value} variant="body" layout="inline" />
+                    </p>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div>
-              <dt className="text-text-muted">
-                <BiTableHeader {...ADMIN.entity} />
-              </dt>
-              <dd className="text-text-primary">
-                {row.entity_type}
-                {row.entity_id ? ` · ${row.entity_id}` : ''}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-text-muted">
-                <BiTableHeader {...COMMON.depot} />
-              </dt>
-              <dd className="text-text-primary">
-                {row.depot_id ?? (
-                  <BilingualText {...ADMIN.globalDepots} variant="caption" />
-                )}
-              </dd>
-            </div>
-          </dl>
-          <JsonBlock label={<BiTableHeader {...ADMIN.beforeValue} />} value={row.before_value} />
-          <JsonBlock label={<BiTableHeader {...ADMIN.afterValue} />} value={row.after_value} />
+          )}
         </div>
       )}
     </Drawer>

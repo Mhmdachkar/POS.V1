@@ -15,7 +15,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Modal } from '@/components/ui/Modal'
-import { Button, LoadingButton } from '@/components/ui'
+import { FORM_GUIDANCE } from '@/lib/bilingual/formGuidance'
+import { Button, FormActionGuide, LoadingButton } from '@/components/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { cn } from '@/lib/cn'
 import { parseError } from '@/lib/errors'
@@ -24,7 +25,7 @@ import type { Customer } from '@/types/database'
 import { COMMON } from '@/lib/bilingual/common'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
 import { BiButtonStack, BiModalTitle, BiTableHeader } from '@/lib/bilingual/ui'
-import { t, bilingualPlain } from '@/lib/bilingual/types'
+import { t, bilingualPlain, type BilingualPair } from '@/lib/bilingual/types'
 
 interface CustomerFormModalProps {
   open: boolean
@@ -50,6 +51,7 @@ export function CustomerFormModal({ open, onClose, customer, onSuccess }: Custom
 
   const [form, setForm] = useState<FormState>({ name: '', phone: '', address: '' })
   const [errors, setErrors] = useState<FormErrors>({})
+  const [guideSteps, setGuideSteps] = useState<BilingualPair[]>([])
   const nameRef = useRef<HTMLInputElement>(null)
 
   const { mutateAsync: createCustomer, isPending: isCreating } = useCreateCustomer()
@@ -69,6 +71,7 @@ export function CustomerFormModal({ open, onClose, customer, onSuccess }: Custom
         setForm({ name: '', phone: '', address: '' })
       }
       setErrors({})
+      setGuideSteps([])
     }
   }, [open, customer])
 
@@ -87,12 +90,18 @@ export function CustomerFormModal({ open, onClose, customer, onSuccess }: Custom
       e.name = bilingualPlain(CUSTOMERS.nameMaxError)
     }
     setErrors(e)
+    if (e.name) {
+      setGuideSteps([FORM_GUIDANCE.customerName])
+    } else {
+      setGuideSteps([])
+    }
     return Object.keys(e).length === 0
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!validate()) return
+    setGuideSteps([])
 
     try {
       if (isEdit && customer) {
@@ -135,6 +144,7 @@ export function CustomerFormModal({ open, onClose, customer, onSuccess }: Custom
       size="sm"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        <FormActionGuide steps={guideSteps} />
         <div>
           <label className="block mb-1.5 uppercase tracking-wide">
             <BiTableHeader {...CUSTOMERS.fullNameRequired} />
@@ -153,7 +163,7 @@ export function CustomerFormModal({ open, onClose, customer, onSuccess }: Custom
             )}
           />
           {errors.name && (
-            <p className="text-xs text-danger mt-1">{errors.name}</p>
+            <p className="text-xs text-danger-foreground mt-1">{errors.name}</p>
           )}
         </div>
 
@@ -185,7 +195,7 @@ export function CustomerFormModal({ open, onClose, customer, onSuccess }: Custom
 
         {errors.general && (
           <div className="rounded-md bg-danger-bg border border-danger/20 px-3 py-2">
-            <p className="text-sm text-danger">{errors.general}</p>
+            <p className="text-sm text-danger-foreground">{errors.general}</p>
           </div>
         )}
 

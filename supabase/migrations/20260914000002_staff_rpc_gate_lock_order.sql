@@ -10,13 +10,15 @@
 -- Direct PostgREST calls from the browser cannot supply the token.
 -- ================================================================
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+
 CREATE TABLE IF NOT EXISTS private.staff_rpc_gate (
   id    boolean PRIMARY KEY DEFAULT true CHECK (id),
   token text NOT NULL
 );
 
 INSERT INTO private.staff_rpc_gate (id, token)
-VALUES (true, encode(gen_random_bytes(32), 'hex'))
+VALUES (true, encode(extensions.gen_random_bytes(32), 'hex'))
 ON CONFLICT (id) DO NOTHING;
 
 REVOKE ALL ON TABLE private.staff_rpc_gate FROM PUBLIC;

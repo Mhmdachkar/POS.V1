@@ -1,22 +1,22 @@
 /**
  * AdjustmentModal — consumer of adjust_inventory RPC.
  *
- * Sends: p_product_id, p_adjustment_type, p_quantity_pieces (signed), p_reason.
- * DAMAGE / LOSS / EXPIRY: positive UI magnitude → negative RPC quantity.
- * COUNT_CORRECTION / OTHER: signed value as entered. OTHER requires reason.
- * Frontend estimate is informational. ADJUSTMENT_NEGATIVE_RESULT is server-authoritative.
- * Depot is resolved inside the RPC from the product row.
+ * Quantity is entered in the selected unit (piece / package / carton);
+ * converted to signed pieces for the server.
  */
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { toastSuccessBi } from '@/lib/bilingual/toast'
+import { FORM_GUIDANCE } from '@/lib/bilingual/formGuidance'
 import { INVENTORY } from '@/lib/bilingual/inventory'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Modal } from '@/components/ui/Modal'
-import { Button, LoadingButton } from '@/components/ui'
+import { Button, FormActionGuide, LoadingButton } from '@/components/ui'
+import { BilingualText } from '@/components/ui/BilingualText'
 import { formatPieces } from '@/lib/formatters'
 import { parseError } from '@/lib/errors'
+import { guidanceStepsFromFieldErrors } from '@/lib/formSubmitGuidance'
 import {
   adjustmentFormSchema,
   toAdjustRpcParams,
@@ -26,7 +26,7 @@ import {
 import type { ProductWithUnits } from '@/types'
 import type { InventoryAdjustmentType } from '@/types/rpc'
 import type { z } from 'zod'
-import { t } from '@/lib/bilingual/types'
+import { t, type BilingualPair } from '@/lib/bilingual/types'
 
 
 type AdjustmentForm = z.infer<typeof adjustmentFormSchema>
@@ -43,6 +43,12 @@ function adjustmentTypes(): Array<{ value: InventoryAdjustmentType; label: strin
 
 const REDUCTION_TYPES: InventoryAdjustmentType[] = ['DAMAGE', 'LOSS', 'EXPIRY']
 
+const ADJUSTMENT_FIELD_GUIDANCE = {
+  unit_level: FORM_GUIDANCE.adjustmentUnit,
+  quantity_in_unit: FORM_GUIDANCE.adjustmentUnit,
+  reason: FORM_GUIDANCE.adjustmentReasonOther,
+} as const
+
 interface AdjustmentModalProps {
   open: boolean
   onClose: () => void
@@ -51,6 +57,7 @@ interface AdjustmentModalProps {
 
 export function AdjustmentModal({ open, onClose, product }: AdjustmentModalProps) {
   const { mutateAsync: adjust, isPending } = useAdjustInventory()
+  const [guideSteps, setGuideSteps] = useState<BilingualPair[]>([])
 
   const {
     register,
@@ -63,36 +70,46 @@ export function AdjustmentModal({ open, onClose, product }: AdjustmentModalProps
     resolver: zodResolver(adjustmentFormSchema),
     defaultValues: {
       adjustment_type: 'DAMAGE',
-      quantity: undefined,
+      unit_level: product.units[0]?.unit_level ?? 0,
+      quantity_in_unit: undefined,
       reason: '',
     },
   })
 
   useEffect(() => {
     if (open) {
+      setGuideSteps([])
       reset({
         adjustment_type: 'DAMAGE',
-        quantity: undefined,
+        unit_level: product.units[0]?.unit_level ?? 0,
+        quantity_in_unit: undefined,
         reason: '',
       })
     }
-  }, [open, reset])
+  }, [open, product, reset])
 
   const type = watch('adjustment_type')
-  const qty = Number(watch('quantity'))
+  const unitLevel = Number(watch('unit_level'))
+  const qty = Number(watch('quantity_in_unit'))
+  const selectedUnit = product.units.find((u) => u.unit_level === unitLevel)
+  const conversion = selectedUnit?.conversion_to_base ?? 1
   const isReduction = REDUCTION_TYPES.includes(type)
-  const signedQty = Number.isNaN(qty) || qty === 0
-    ? null
-    : toAdjustmentRpcQuantity(type, qty)
+  const signedPieces =
+    selectedUnit && !Number.isNaN(qty) && qty !== 0
+      ? toAdjustmentRpcQuantity(type, qty * conversion)
+      : null
   const estimate =
-    signedQty == null ? null : product.current_stock_pieces + signedQty
+    signedPieces == null ? null : product.current_stock_pieces + signedPieces
 
   const onSubmit = async (data: AdjustmentForm) => {
+    setGuideSteps([])
     try {
+      const unit = product.units.find((u) => u.unit_level === data.unit_level)
       const params = toAdjustRpcParams(
         product.id,
         data.adjustment_type,
-        data.quantity,
+        data.quantity_in_unit,
+        unit?.conversion_to_base ?? 1,
         data.reason,
       )
       await adjust(params)
@@ -103,12 +120,25 @@ export function AdjustmentModal({ open, onClose, product }: AdjustmentModalProps
     }
   }
 
+  const onInvalid = (fieldErrors: typeof errors) => {
+    const steps = guidanceStepsFromFieldErrors(fieldErrors, ADJUSTMENT_FIELD_GUIDANCE)
+    const adjType = watch('adjustment_type')
+    if (REDUCTION_TYPES.includes(adjType)) {
+      steps.unshift(FORM_GUIDANCE.adjustmentQtyReduction)
+    } else if (adjType === 'COUNT_CORRECTION') {
+      steps.unshift(FORM_GUIDANCE.adjustmentQtySigned)
+    }
+    setGuideSteps(steps)
+  }
+
   return (
     <Modal open={open} onClose={onClose} title={`Adjust — ${product.name}`} size="md">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4">
+        <FormActionGuide steps={guideSteps} />
+
         <div>
           <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
-            Adjustment type <span className="text-danger">*</span>
+            Adjustment type <span className="text-danger-foreground">*</span>
           </label>
           <select
             {...register('adjustment_type')}
@@ -124,21 +154,47 @@ export function AdjustmentModal({ open, onClose, product }: AdjustmentModalProps
 
         <div>
           <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
-            Quantity (pieces) <span className="text-danger">*</span>
+            <BilingualText {...INVENTORY.adjustmentUnitLabel} variant="caption" layout="inline" />
+            <span className="text-danger-foreground ml-0.5">*</span>
+          </label>
+          <select
+            {...register('unit_level')}
+            className="w-full h-9 px-3 rounded-md border border-border bg-surface text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+          >
+            {product.units.map((unit) => (
+              <option key={unit.id} value={unit.unit_level}>
+                {unit.unit_name} (×{unit.conversion_to_base}{' '}
+                {product.units[0]?.unit_name ?? 'pieces'})
+              </option>
+            ))}
+          </select>
+          {errors.unit_level && (
+            <p className="text-xs text-danger-foreground mt-1">{errors.unit_level.message}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
+            <BilingualText {...INVENTORY.adjustmentQuantityInUnit} variant="caption" layout="inline" />
+            <span className="text-danger-foreground ml-0.5">*</span>
           </label>
           <input
             type="number"
             step="any"
-            {...register('quantity')}
+            {...register('quantity_in_unit')}
             className="w-full h-9 px-3 rounded-md border border-border bg-surface text-sm text-text-primary tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
           />
           <p className="text-xs text-text-muted mt-1">
-            {isReduction
-              ? 'Enter a positive amount to remove. Sent to the server as a negative quantity.'
-              : t(INVENTORY.signedAdjustmentHint)}
+            {isReduction ? (
+              <BilingualText {...FORM_GUIDANCE.adjustmentQtyReduction} variant="caption" layout="inline" />
+            ) : type === 'COUNT_CORRECTION' ? (
+              <BilingualText {...FORM_GUIDANCE.adjustmentQtySigned} variant="caption" layout="inline" />
+            ) : (
+              <BilingualText {...INVENTORY.signedAdjustmentHint} variant="caption" layout="inline" />
+            )}
           </p>
-          {errors.quantity && (
-            <p className="text-xs text-danger mt-1">{errors.quantity.message}</p>
+          {errors.quantity_in_unit && (
+            <p className="text-xs text-danger-foreground mt-1">{errors.quantity_in_unit.message}</p>
           )}
         </div>
 
@@ -146,7 +202,7 @@ export function AdjustmentModal({ open, onClose, product }: AdjustmentModalProps
           <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
             Reason{' '}
             {type === 'OTHER' ? (
-              <span className="text-danger">*</span>
+              <span className="text-danger-foreground">*</span>
             ) : (
               <span className="text-text-muted font-normal">(optional)</span>
             )}
@@ -157,7 +213,7 @@ export function AdjustmentModal({ open, onClose, product }: AdjustmentModalProps
             className="w-full rounded-md border border-border bg-surface text-sm text-text-primary px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
           />
           {errors.reason && (
-            <p className="text-xs text-danger mt-1">{errors.reason.message}</p>
+            <p className="text-xs text-danger-foreground mt-1">{errors.reason.message}</p>
           )}
         </div>
 
@@ -166,6 +222,12 @@ export function AdjustmentModal({ open, onClose, product }: AdjustmentModalProps
             <span className="text-text-secondary">{t(INVENTORY.currentStock)}</span>
             <span className="font-medium tabular-nums">{formatPieces(product.current_stock_pieces)}</span>
           </div>
+          {signedPieces != null && (
+            <div className="flex justify-between">
+              <span className="text-text-secondary">{t(INVENTORY.adjustmentInPieces)}</span>
+              <span className="font-medium tabular-nums">{formatPieces(signedPieces)}</span>
+            </div>
+          )}
           {estimate != null && (
             <div className="flex justify-between">
               <span className="text-text-secondary">{t(INVENTORY.estimatedResult)}</span>
@@ -182,7 +244,7 @@ export function AdjustmentModal({ open, onClose, product }: AdjustmentModalProps
 
         {errors.root?.message && (
           <div className="rounded-md bg-danger-bg border border-danger/20 px-3 py-2">
-            <p className="text-sm text-danger">{errors.root.message}</p>
+            <p className="text-sm text-danger-foreground">{errors.root.message}</p>
           </div>
         )}
 

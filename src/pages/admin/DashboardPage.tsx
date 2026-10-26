@@ -9,15 +9,16 @@ import { formatCFA, formatDateTime, formatPieces } from '@/lib/formatters'
 import { useDashboardSummary } from '@/hooks/useDashboard'
 import { useStockAlerts, type StockAlertItem } from '@/hooks/useStockAlerts'
 import { useDepotStore } from '@/stores/depotStore'
-import { bilingualPlain } from '@/lib/bilingual/types'
+import { bilingualPlain, t } from '@/lib/bilingual/types'
+import { SalesTodayChart } from './components/SalesTodayChart'
 
 function formatAlertLine(item: StockAlertItem) {
-  const remaining = `${formatPieces(item.currentStockPieces)} remaining`
+  const remaining = `${formatPieces(item.currentStockPieces)} ${t(ADMIN.pcsRemaining)}`
   if (item.kind === 'out_of_stock') {
     return `${item.productName} — ${item.depotName} — ${remaining}`
   }
   const threshold =
-    item.threshold == null ? '' : ` — threshold ${formatPieces(item.threshold)}`
+    item.threshold == null ? '' : ` — ${t(ADMIN.thresholdLabel)} ${formatPieces(item.threshold)}`
   return `${item.productName} — ${item.depotName} — ${remaining}${threshold}`
 }
 
@@ -95,8 +96,6 @@ export function DashboardPage() {
     )
   }
 
-  const maxHourly = Math.max(1, ...data.hourly_sales.map((h) => Number(h.sales_cfa)))
-
   return (
     <div className="p-3 sm:p-6 space-y-6 overflow-auto">
       <div>
@@ -121,27 +120,7 @@ export function DashboardPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <Card>
-          <h2 className="text-sm font-semibold text-text-primary mb-3">
-            <BiTableHeader {...ADMIN.salesToday} />
-          </h2>
-          {data.hourly_sales.length === 0 ? (
-            <p className="text-sm text-text-muted">
-              <BilingualText {...ADMIN.noSalesToday} variant="caption" />
-            </p>
-          ) : (
-            <div className="flex items-end gap-1 h-32">
-              {Array.from({ length: 24 }, (_, hour) => {
-                const row = data.hourly_sales.find((h) => Number(h.hour) === hour)
-                const value = Number(row?.sales_cfa ?? 0)
-                const height = Math.max(value > 0 ? 8 : 2, (value / maxHourly) * 100)
-                return (
-                  <div key={hour} className="flex-1 flex flex-col items-center justify-end h-full" title={`${hour}:00 · ${formatCFA(value)}`}>
-                    <div className="w-full bg-primary/70 rounded-sm" style={{ height: `${height}%` }} />
-                  </div>
-                )
-              })}
-            </div>
-          )}
+          <SalesTodayChart hourlySales={data.hourly_sales} />
         </Card>
 
         <Card>
@@ -201,11 +180,28 @@ export function DashboardPage() {
             )}
           </div>
           <div className="space-y-3">
-            <p className="text-sm text-text-primary flex items-center gap-2">
-              <Users className="h-4 w-4 text-text-secondary" />
+            <p
+              className={`text-sm flex items-center gap-2 ${
+                data.action_required.outstanding_balances_count > 0
+                  ? 'text-warning-foreground'
+                  : 'text-text-primary'
+              }`}
+            >
+              <Users
+                className={`h-4 w-4 ${
+                  data.action_required.outstanding_balances_count > 0
+                    ? 'text-warning-foreground'
+                    : 'text-text-secondary'
+                }`}
+              />
               <BilingualText
                 {...ADMIN.customersWithBalance(data.action_required.outstanding_balances_count)}
                 variant="body"
+                frClassName={
+                  data.action_required.outstanding_balances_count > 0
+                    ? 'text-warning-foreground'
+                    : undefined
+                }
               />
             </p>
             <p className="text-sm text-text-primary flex items-center gap-2">
@@ -231,7 +227,7 @@ export function DashboardPage() {
               ) : (
                 <ul className="space-y-1">
                   {data.action_required.shift_discrepancies.map((s) => (
-                    <li key={s.shift_id} className="text-sm tabular-nums text-danger">
+                    <li key={s.shift_id} className="text-sm tabular-nums text-danger-foreground">
                       {formatCFA(Number(s.discrepancy_cfa))}
                     </li>
                   ))}

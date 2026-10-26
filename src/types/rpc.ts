@@ -87,6 +87,8 @@ export interface RecordPaymentResult {
 export interface ProcessReturnItem {
   sale_item_id: string   // uuid
   quantity_in_unit: number
+  /** Optional. Capped server-side at the computed value for this qty. */
+  refund_amount_cfa?: number
   // NOTE: NO quantity_pieces — server derives it from frozen sale data
 }
 

@@ -42,7 +42,7 @@ export const AUTH = {
     "The page you're looking for doesn't exist or you don't have access to it.",
   ),
   goHome: bi('Accueil', 'Go to Home'),
-  systemTagline: bi('VHM POS multi-dépôts et inventaire', 'VHM Multi-Depot POS & Inventory System'),
+  systemTagline: bi('Aquilux POS — multi-dépôts et inventaire', 'Aquilux POS — multi-depot inventory system'),
   usernameRequired: bi("Nom d'utilisateur requis", 'Username is required'),
   usernameTooLong: bi("Nom d'utilisateur trop long", 'Username too long'),
   usernameInvalid: bi(

@@ -16,10 +16,11 @@ import { INVENTORY } from '@/lib/bilingual/inventory'
 import { SALES } from '@/lib/bilingual/sales'
 import { SHIFT_COPY } from '@/lib/bilingual/shift'
 import { TRANSFERS } from '@/lib/bilingual/transfers'
-import { t, bilingualPlain } from '@/lib/bilingual/types'
+import { t, bilingualPlain, type BilingualPair } from '@/lib/bilingual/types'
 import { toastSuccessBi } from '@/lib/bilingual/toast'
 import { Plus, Trash2 } from 'lucide-react'
-import { Button, LoadingButton, Modal } from '@/components/ui'
+import { FORM_GUIDANCE } from '@/lib/bilingual/formGuidance'
+import { Button, FormActionGuide, LoadingButton, Modal } from '@/components/ui'
 import { formatPieces } from '@/lib/formatters'
 import { parseError } from '@/lib/errors'
 import { useDepotOptions } from '@/hooks/useInventory'
@@ -72,6 +73,7 @@ export function CreateTransferModal({
   const [lines, setLines] = useState<LineDraft[]>([emptyLine()])
   const [note, setNote] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
+  const [guideSteps, setGuideSteps] = useState<BilingualPair[]>([])
 
   const activeDepots = (depots ?? []).filter((d) => {
     const full = d as { id: string; name: string; code: string; is_active?: boolean }
@@ -85,6 +87,7 @@ export function CreateTransferModal({
     setLines([emptyLine()])
     setNote('')
     setFormError(null)
+    setGuideSteps([])
   }, [open, lockedSourceDepotId])
 
   const { data: sourceProducts } = useProductSearch('', fromDepotId || null, open && !!fromDepotId)
@@ -117,6 +120,7 @@ export function CreateTransferModal({
       }),
     )
     setFormError(null)
+    setGuideSteps([])
   }
 
   const addLine = () => {
@@ -141,12 +145,15 @@ export function CreateTransferModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setFormError(null)
+    setGuideSteps([])
 
     if (!fromDepotId || !toDepotId) {
+      setGuideSteps([FORM_GUIDANCE.transferDepots])
       setFormError(t(TRANSFERS.chooseDepotsError))
       return
     }
     if (fromDepotId === toDepotId) {
+      setGuideSteps([FORM_GUIDANCE.transferDepots])
       setFormError(t(TRANSFERS.sameDepotError))
       return
     }
@@ -159,14 +166,17 @@ export function CreateTransferModal({
     }))
 
     if (parsed.some((item) => !item.from_product_id || !item.to_product_id)) {
+      setGuideSteps([FORM_GUIDANCE.transferLines])
       setFormError(t(TRANSFERS.lineProductsError))
       return
     }
     if (parsed.some((item) => !(item.quantity_in_unit > 0))) {
+      setGuideSteps([FORM_GUIDANCE.transferLines])
       setFormError(t(TRANSFERS.qtyPositiveError))
       return
     }
     if (hasDuplicateSourceProducts(parsed)) {
+      setGuideSteps([FORM_GUIDANCE.transferDuplicate])
       setFormError(t(TRANSFERS.duplicateSourceError))
       return
     }
@@ -369,8 +379,9 @@ export function CreateTransferModal({
           />
         </div>
 
+        <FormActionGuide steps={guideSteps} />
         {formError && (
-          <p className="text-sm text-danger">{formError}</p>
+          <p className="text-sm text-danger-foreground">{formError}</p>
         )}
 
         <div className="flex gap-3 justify-end">

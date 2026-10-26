@@ -6,13 +6,15 @@
  * Depot is resolved inside the RPC from the product row.
  */
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { toastSuccessBi } from '@/lib/bilingual/toast'
 import { INVENTORY } from '@/lib/bilingual/inventory'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { FORM_GUIDANCE } from '@/lib/bilingual/formGuidance'
 import { Modal } from '@/components/ui/Modal'
-import { Button, LoadingButton } from '@/components/ui'
+import { Button, FormActionGuide, LoadingButton } from '@/components/ui'
+import { guidanceStepsFromFieldErrors } from '@/lib/formSubmitGuidance'
 import { formatPieces } from '@/lib/formatters'
 import { parseError } from '@/lib/errors'
 import {
@@ -22,7 +24,12 @@ import {
 } from '@/hooks/useInventory'
 import type { ProductWithUnits } from '@/types'
 import type { z } from 'zod'
-import { t } from '@/lib/bilingual/types'
+import { t, type BilingualPair } from '@/lib/bilingual/types'
+
+const RESTOCK_FIELD_GUIDANCE = {
+  unit_level: FORM_GUIDANCE.restockUnitQty,
+  quantity_in_unit: FORM_GUIDANCE.restockUnitQty,
+} as const
 
 
 type RestockForm = z.infer<typeof restockFormSchema>
@@ -35,6 +42,7 @@ interface RestockModalProps {
 
 export function RestockModal({ open, onClose, product }: RestockModalProps) {
   const { mutateAsync: restock, isPending } = useRestockProduct()
+  const [guideSteps, setGuideSteps] = useState<BilingualPair[]>([])
 
   const {
     register,
@@ -54,6 +62,7 @@ export function RestockModal({ open, onClose, product }: RestockModalProps) {
 
   useEffect(() => {
     if (open) {
+      setGuideSteps([])
       reset({
         unit_level: product.units[0]?.unit_level ?? 0,
         quantity_in_unit: undefined,
@@ -69,6 +78,7 @@ export function RestockModal({ open, onClose, product }: RestockModalProps) {
     selectedUnit && qty > 0 ? qty * selectedUnit.conversion_to_base : null
 
   const onSubmit = async (data: RestockForm) => {
+    setGuideSteps([])
     try {
       const params = toRestockRpcParams(product.id, {
         unit_level: data.unit_level,
@@ -85,10 +95,16 @@ export function RestockModal({ open, onClose, product }: RestockModalProps) {
 
   return (
     <Modal open={open} onClose={onClose} title={`Restock — ${product.name}`} size="md">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form
+        onSubmit={handleSubmit(onSubmit, (fieldErrors) => {
+          setGuideSteps(guidanceStepsFromFieldErrors(fieldErrors, RESTOCK_FIELD_GUIDANCE))
+        })}
+        className="space-y-4"
+      >
+        <FormActionGuide steps={guideSteps} />
         <div>
           <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
-            Unit <span className="text-danger">*</span>
+            Unit <span className="text-danger-foreground">*</span>
           </label>
           <select
             {...register('unit_level')}
@@ -101,13 +117,13 @@ export function RestockModal({ open, onClose, product }: RestockModalProps) {
             ))}
           </select>
           {errors.unit_level && (
-            <p className="text-xs text-danger mt-1">{errors.unit_level.message}</p>
+            <p className="text-xs text-danger-foreground mt-1">{errors.unit_level.message}</p>
           )}
         </div>
 
         <div>
           <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
-            Quantity <span className="text-danger">*</span>
+            Quantity <span className="text-danger-foreground">*</span>
           </label>
           <input
             type="number"
@@ -117,7 +133,7 @@ export function RestockModal({ open, onClose, product }: RestockModalProps) {
             className="w-full h-9 px-3 rounded-md border border-border bg-surface text-sm text-text-primary tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
           />
           {errors.quantity_in_unit && (
-            <p className="text-xs text-danger mt-1">{errors.quantity_in_unit.message}</p>
+            <p className="text-xs text-danger-foreground mt-1">{errors.quantity_in_unit.message}</p>
           )}
         </div>
 
@@ -140,7 +156,7 @@ export function RestockModal({ open, onClose, product }: RestockModalProps) {
 
         {errors.root?.message && (
           <div className="rounded-md bg-danger-bg border border-danger/20 px-3 py-2">
-            <p className="text-sm text-danger">{errors.root.message}</p>
+            <p className="text-sm text-danger-foreground">{errors.root.message}</p>
           </div>
         )}
 

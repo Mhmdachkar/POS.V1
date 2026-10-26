@@ -13,10 +13,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { toastSuccessBi } from '@/lib/bilingual/toast'
+import { FORM_GUIDANCE } from '@/lib/bilingual/formGuidance'
 import { INVENTORY } from '@/lib/bilingual/inventory'
 import { ImagePlus, Package2 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
-import { Button, LoadingButton } from '@/components/ui'
+import { Button, FormActionGuide, LoadingButton } from '@/components/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { parseError } from '@/lib/errors'
 import { formatThousandsInput, parseCFAInput } from '@/lib/formatters'
@@ -38,7 +39,7 @@ import { useCreateProduct, useUpdateProduct } from '@/hooks/useAdminProducts'
 import { CategoryPathPicker } from './CategoryPathPicker'
 import type { ProductWithUnits } from '@/types'
 import type { ProductUnitInput } from '@/types/rpc'
-import { t } from '@/lib/bilingual/types'
+import { t, type BilingualPair } from '@/lib/bilingual/types'
 
 
 interface ProductFormModalProps {
@@ -101,6 +102,7 @@ export function ProductFormModal({ open, onClose, depotId, product }: ProductFor
   const [trackLowStock, setTrackLowStock] = useState(false)
   const [lowStockThreshold, setLowStockThreshold] = useState('')
   const [general, setGeneral] = useState('')
+  const [guideSteps, setGuideSteps] = useState<BilingualPair[]>([])
   const photoInputRef = useRef<HTMLInputElement>(null)
 
   const { data: categories } = useCategories()
@@ -119,6 +121,7 @@ export function ProductFormModal({ open, onClose, depotId, product }: ProductFor
   useEffect(() => {
     if (!open) return
     setGeneral('')
+    setGuideSteps([])
     setPhotoFile(null)
     setUploading(false)
     if (photoInputRef.current) photoInputRef.current.value = ''
@@ -222,24 +225,32 @@ export function ProductFormModal({ open, onClose, depotId, product }: ProductFor
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setGeneral('')
+    setGuideSteps([])
     const existingPhoto = photoUrl.trim()
     const needsUpload = !!photoFile
     if (!needsUpload && (!existingPhoto || isPlaceholderPhotoUrl(existingPhoto))) {
-      setGeneral('Choisissez une photo du produit / Choose a product photo.')
+      setGuideSteps([FORM_GUIDANCE.productPhoto])
+      setGeneral(t(FORM_GUIDANCE.productPhoto))
       return
     }
     const unitPayload = collectUnits()
     if (!categoryId) {
-      setGeneral('Choisissez une catégorie / Choose a category.')
+      setGuideSteps([FORM_GUIDANCE.productCategory])
+      setGeneral(t(FORM_GUIDANCE.productCategory))
       return
     }
     if (!unitPayload) {
-      setGeneral('Activez au moins une unité et remplissez tous les champs requis.')
+      setGuideSteps([FORM_GUIDANCE.productUnits])
+      setGeneral(t(FORM_GUIDANCE.productUnits))
       return
     }
     const thresholdValue = parseLowStockThreshold(lowStockThreshold)
     const trackingError = validateLowStockSettings(trackLowStock, thresholdValue)
-    if (trackingError) { setGeneral(trackingError); return }
+    if (trackingError) {
+      setGuideSteps([FORM_GUIDANCE.lowStockThreshold])
+      setGeneral(trackingError)
+      return
+    }
 
     const trackingPayload = {
       p_track_low_stock: trackLowStock,
@@ -253,7 +264,8 @@ export function ProductFormModal({ open, onClose, depotId, product }: ProductFor
       productPerfMark('product_form:upload:end')
       productPerfMeasure('product_form:upload', 'product_form:upload:start', 'product_form:upload:end')
       if (isPlaceholderPhotoUrl(storedPhotoUrl)) {
-        setGeneral('Image non valide. Utilisez une vraie photo.')
+        setGuideSteps([FORM_GUIDANCE.productPhoto])
+        setGeneral(t(FORM_GUIDANCE.productPhoto))
         return
       }
       if (isEdit && product) {
@@ -268,7 +280,8 @@ export function ProductFormModal({ open, onClose, depotId, product }: ProductFor
         toastSuccessBi(INVENTORY.productSaved)
       } else {
         if (!depotId) {
-          setGeneral('Sélectionnez un dépôt avant de créer un produit.')
+          setGuideSteps([FORM_GUIDANCE.productDepot])
+          setGeneral(t(FORM_GUIDANCE.productDepot))
           return
         }
         productPerfMark('product_form:rpc:await')
@@ -455,7 +468,7 @@ export function ProductFormModal({ open, onClose, depotId, product }: ProductFor
                       <div>
                         <label htmlFor={`unit-${level}-serial`} className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1">
                           <BilingualText {...INVENTORY.serialNumber} variant="caption" layout="inline" />
-                          <span className="text-danger ml-0.5">*</span>
+                          <span className="text-danger-foreground ml-0.5">*</span>
                         </label>
                         <input
                           id={`unit-${level}-serial`}
@@ -473,7 +486,7 @@ export function ProductFormModal({ open, onClose, depotId, product }: ProductFor
                         <div>
                           <label htmlFor={`unit-1-rel`} className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1">
                             <BilingualText {...INVENTORY.piecesPerPackage} variant="caption" layout="inline" />
-                            <span className="text-danger ml-0.5">*</span>
+                            <span className="text-danger-foreground ml-0.5">*</span>
                           </label>
                           <input
                             id="unit-1-rel"
@@ -489,7 +502,7 @@ export function ProductFormModal({ open, onClose, depotId, product }: ProductFor
                         <div>
                           <label htmlFor={`unit-2-rel`} className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1">
                             <BilingualText {...INVENTORY.packagesPerCarton} variant="caption" layout="inline" />
-                            <span className="text-danger ml-0.5">*</span>
+                            <span className="text-danger-foreground ml-0.5">*</span>
                           </label>
                           <input
                             id="unit-2-rel"
@@ -613,9 +626,10 @@ export function ProductFormModal({ open, onClose, depotId, product }: ProductFor
           )}
         </section>
 
+        <FormActionGuide steps={guideSteps} />
         {general && (
           <div className="rounded-md bg-danger-bg border border-danger/20 px-3 py-2">
-            <p className="text-sm text-danger">{general}</p>
+            <p className="text-sm text-danger-foreground">{general}</p>
           </div>
         )}
       </form>

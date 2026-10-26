@@ -18,6 +18,16 @@ import {
   AUDIT_ENTITY_TYPES,
   useAuditLog,
 } from '@/hooks/useAuditLog'
+import {
+  auditActionCategory,
+  auditActionLabel,
+  auditActionOptionLabel,
+  auditActorLine,
+  auditDepotLine,
+  auditEntityOptionLabel,
+  auditEventSummary,
+} from '@/lib/auditPresentation'
+import { BilingualText } from '@/components/ui/BilingualText'
 import { useStaffList } from '@/hooks/useStaff'
 import {
   REPORT_PRESET_LABELS,
@@ -143,7 +153,7 @@ export function AuditPage() {
             >
               <option value="">{t(ADMIN.allActions)}</option>
               {AUDIT_ACTIONS.map((a) => (
-                <option key={a} value={a}>{a}</option>
+                <option key={a} value={a}>{auditActionOptionLabel(a)}</option>
               ))}
             </select>
             <select
@@ -152,8 +162,8 @@ export function AuditPage() {
               className="h-9 px-2 rounded-md border border-border bg-surface text-sm"
             >
               <option value="">{t(ADMIN.allEntityTypes)}</option>
-              {AUDIT_ENTITY_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
+              {AUDIT_ENTITY_TYPES.map((et) => (
+                <option key={et} value={et}>{auditEntityOptionLabel(et)}</option>
               ))}
             </select>
             <select
@@ -201,33 +211,45 @@ export function AuditPage() {
         )}
         {!isLoading && rows.length > 0 && (
           <ul className="divide-y divide-border">
-            {rows.map((row) => (
-              <li key={row.id}>
-                <button
-                  type="button"
-                  onClick={() => setSelected(row)}
-                  className="w-full text-left px-6 py-3 hover:bg-surface-muted transition-colors"
-                >
-                  <p className="text-sm font-medium text-text-primary">
-                    {row.action}
-                    <span className="text-text-muted font-normal">
+            {rows.map((row) => {
+              const category = auditActionCategory(row.action)
+              const borderClass =
+                category === 'sale'
+                  ? 'border-l-4 border-l-success'
+                  : category === 'stock'
+                  ? 'border-l-4 border-l-warning'
+                  : category === 'destructive'
+                  ? 'border-l-4 border-l-danger'
+                  : 'border-l-4 border-l-border'
+              return (
+                <li key={row.id}>
+                  <button
+                    type="button"
+                    onClick={() => setSelected(row)}
+                    className={cn(
+                      'w-full text-left px-5 py-3 hover:bg-surface-muted transition-colors',
+                      borderClass,
+                    )}
+                  >
+                    <p className="text-sm font-medium text-text-primary leading-snug">
+                      <BilingualText {...auditEventSummary(row)} variant="body" layout="inline" />
+                    </p>
+                    <p className="text-xs text-text-secondary mt-1">
+                      {formatDateTime(row.occurred_at)}
                       {' · '}
-                      {row.entity_type}
-                      {row.entity_id ? ` ${row.entity_id.slice(0, 8)}…` : ''}
-                    </span>
-                  </p>
-                  <p className="text-xs text-text-secondary mt-0.5">
-                    {formatDateTime(row.occurred_at)}
-                    {' · '}
-                    {row.actor_name ?? 'System'}
-                    {' · '}
-                    {row.depot_id
-                      ? depots?.find((d) => d.id === row.depot_id)?.name ?? row.depot_id
-                      : 'Global'}
-                  </p>
-                </button>
-              </li>
-            ))}
+                      {t(auditActorLine(row))}
+                      {' · '}
+                      {t(
+                        auditDepotLine(
+                          row.depot_id,
+                          row.depot_id ? depots?.find((d) => d.id === row.depot_id)?.name ?? null : null,
+                        ),
+                      )}
+                    </p>
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         )}
       </div>

@@ -3,6 +3,7 @@
  */
 
 import { supabase } from '@/lib/supabase'
+import type { ProductWithUnits } from '@/types'
 import type { Product, ProductUnit } from '@/types/database'
 
 const DEFAULT_LIMIT = 500
@@ -75,6 +76,28 @@ export async function findProductIdsMatchingNameOrSerial(
       ...scopedSerialIds,
     ]),
   ]
+}
+
+/** In-memory POS filter — instant per keystroke on a loaded depot catalog. */
+export function filterProductsCatalog(
+  products: ProductWithUnits[],
+  options: { query: string; categoryId?: string | null },
+): ProductWithUnits[] {
+  let list = products
+  const categoryId = options.categoryId
+  if (categoryId) {
+    list = list.filter((p) => p.category_id === categoryId)
+  }
+
+  const needle = options.query.trim().toLowerCase()
+  if (!needle) return list
+
+  return list.filter((product) => {
+    if (product.name.toLowerCase().includes(needle)) return true
+    return product.units.some(
+      (unit) => unit.serial_number && unit.serial_number.toLowerCase().includes(needle),
+    )
+  })
 }
 
 /** PostgREST `.or()` filter: name ilike and/or id in serial matches. */
