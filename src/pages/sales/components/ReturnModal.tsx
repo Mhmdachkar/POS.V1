@@ -31,7 +31,11 @@ import { rpc } from '@/lib/rpc'
 import {
   computeReturnLineRefund,
   computeReturnRefundPreview,
+  lineRefundBasisCfa,
+  remainingSaleRefundPool,
   resolveLineRefund,
+  saleRefundPoolCfa,
+  roundCfa2,
 } from '@/lib/returnRefundPreview'
 import { authorizedOpenShifts, clearStalePosShift, useOpenShifts } from '@/hooks/useShifts'
 import { processingShiftId, resolveLoadedPosShiftContext } from '@/lib/posShiftContext'
@@ -74,18 +78,46 @@ function priorReturnTotals(
   return { alreadyReturned, alreadyRefunded }
 }
 
-function lineRefundInput(ri: ReturnableItem) {
+function saleRefundContext(sale: SaleDetailData) {
+  const pool = saleRefundPoolCfa({
+    total_cfa: sale.total_cfa,
+    admin_override_total_cfa: sale.admin_override_total_cfa,
+    amount_applied_cfa: sale.amount_applied_cfa,
+    balance_added_cfa: sale.balance_added_cfa,
+    subtotal_cfa: sale.subtotal_cfa,
+  })
+  const alreadyRefundedSale = sale.returns.reduce(
+    (sum, ret) =>
+      sum + ret.sale_return_items.reduce((s, item) => s + item.refund_amount_cfa, 0),
+    0,
+  )
+  return {
+    pool,
+    alreadyRefundedSale,
+    remaining: remainingSaleRefundPool(pool, alreadyRefundedSale),
+  }
+}
+
+function lineRefundInput(ri: ReturnableItem, sale: SaleDetailData) {
+  const { pool } = saleRefundContext(sale)
   return {
     originalQty: ri.item.quantity_in_unit,
     selectedQty: ri.selected,
     netLineTotalCfa: ri.item.net_line_total_cfa,
     alreadyReturnedQty: ri.alreadyReturned,
     alreadyRefundedCfa: ri.alreadyRefunded,
+    refundBasisCfa: lineRefundBasisCfa(
+      ri.item.net_line_total_cfa,
+      sale.total_cfa,
+      pool,
+      ri.item.line_total_cfa,
+      sale.subtotal_cfa,
+    ),
   }
 }
 
-function computedLineRefund(ri: ReturnableItem): number {
-  return computeReturnLineRefund(lineRefundInput(ri))
+function computedLineRefund(ri: ReturnableItem, sale: SaleDetailData): number {
+  return computeReturnLineRefund(lineRefundInput(ri, sale))
 }
 
 function customRefundFromDraft(draft: string | null): number | null {
@@ -95,11 +127,33 @@ function customRefundFromDraft(draft: string | null): number | null {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-function resolvedRefund(ri: ReturnableItem): number {
-  return resolveLineRefund({
-    ...lineRefundInput(ri),
-    customRefundCfa: customRefundFromDraft(ri.refundDraft),
-  })
+function resolvedRefund(
+  ri: ReturnableItem,
+  sale: SaleDetailData,
+  remainingSalePoolCfa?: number,
+): number {
+  return resolveLineRefund(
+    {
+      ...lineRefundInput(ri, sale),
+      customRefundCfa: customRefundFromDraft(ri.refundDraft),
+    },
+    remainingSalePoolCfa,
+  )
+}
+
+function resolveSelectedRefunds(
+  items: ReturnableItem[],
+  sale: SaleDetailData,
+): Map<string, number> {
+  const { remaining } = saleRefundContext(sale)
+  let used = 0
+  const amounts = new Map<string, number>()
+  for (const ri of items) {
+    const amount = resolvedRefund(ri, sale, Math.max(roundCfa2(remaining - used), 0))
+    amounts.set(ri.item.id, amount)
+    used += amount
+  }
+  return amounts
 }
 
 function buildReturnableItems(
@@ -126,14 +180,15 @@ function buildReturnableItems(
 
 interface ReturnItemRowProps {
   ri: ReturnableItem
+  sale: SaleDetailData
   onChangeQty: (qty: number) => void
   onChangeRefund: (draft: string | null) => void
 }
 
-function ReturnItemRow({ ri, onChangeQty, onChangeRefund }: ReturnItemRowProps) {
+function ReturnItemRow({ ri, sale, onChangeQty, onChangeRefund }: ReturnItemRowProps) {
   const { item, returnable, selected, alreadyReturned, refundDraft } = ri
-  const fullValue = selected > 0 ? computedLineRefund(ri) : 0
-  const refund = selected > 0 ? resolvedRefund(ri) : 0
+  const fullValue = selected > 0 ? computedLineRefund(ri, sale) : 0
+  const refund = selected > 0 ? resolvedRefund(ri, sale) : 0
   const isCustom = refundDraft != null && refund !== fullValue
   const unitLabel = resolvedSaleUnitName(item.unit_name, item.unit_level)
 
@@ -356,9 +411,18 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
     [returnableItems],
   )
 
+  const selectedRefunds = useMemo(
+    () => resolveSelectedRefunds(selectedItems, sale),
+    [selectedItems, sale],
+  )
+
   const estimatedRefundTotal = useMemo(
-    () => selectedItems.reduce((sum, ri) => sum + resolvedRefund(ri), 0),
-    [selectedItems],
+    () =>
+      selectedItems.reduce(
+        (sum, ri) => sum + (selectedRefunds.get(ri.item.id) ?? 0),
+        0,
+      ),
+    [selectedItems, selectedRefunds],
   )
 
   const preview = useMemo(
@@ -394,7 +458,7 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
         p_items: selectedItems.map((ri) => ({
           sale_item_id:    ri.item.id,
           quantity_in_unit: ri.selected,
-          refund_amount_cfa: resolvedRefund(ri),
+          refund_amount_cfa: selectedRefunds.get(ri.item.id) ?? 0,
           // NOTE: no quantity_pieces — server derives it from frozen sale data
         })),
         p_reason:       reason.trim() || null,
@@ -432,7 +496,7 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
         return {
           ...next,
           refundDraft: formatThousandsInput(String(resolveLineRefund({
-            ...lineRefundInput(next),
+            ...lineRefundInput(next, sale),
             customRefundCfa: parsed,
           }))),
         }
@@ -445,10 +509,10 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
       prev.map((ri, i) => {
         if (i !== idx) return ri
         if (draft == null) return { ...ri, refundDraft: null }
-        const max = computedLineRefund({ ...ri, refundDraft: draft })
+        const max = computedLineRefund({ ...ri, refundDraft: draft }, sale)
         const parsed = customRefundFromDraft(draft) ?? 0
         const clamped = resolveLineRefund({
-          ...lineRefundInput(ri),
+          ...lineRefundInput(ri, sale),
           customRefundCfa: parsed,
         })
         // Keep typing mid-edit unless the value exceeds the max.
@@ -477,6 +541,7 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
             <ReturnItemRow
               key={ri.item.id}
               ri={ri}
+              sale={sale}
               onChangeQty={(qty) => updateQty(idx, qty)}
               onChangeRefund={(draft) => updateRefund(idx, draft)}
             />
