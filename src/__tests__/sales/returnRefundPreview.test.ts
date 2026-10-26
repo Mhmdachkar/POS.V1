@@ -240,6 +240,12 @@ describe('roundCfa2 / computeReturnLineRefund / computeReturnRefundTotal', () =>
     expect(lineRefundBasisCfa(600, 900, 900)).toBe(600)
   })
 
+  it('B6: report payable share is net_line * COALESCE(override, total) / total', () => {
+    expect(lineRefundBasisCfa(3500, 3500, 1750)).toBe(1750)
+    expect(lineRefundBasisCfa(600, 900, 450)).toBe(300)
+    expect(lineRefundBasisCfa(3500, 3500, 3500)).toBe(3500)
+  })
+
   it('B1: refund pool is min(payable, cash + credit collected)', () => {
     expect(
       saleRefundPoolCfa({
