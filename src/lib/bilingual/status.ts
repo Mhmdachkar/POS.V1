@@ -4,7 +4,7 @@ import type { SaleStatus, StockStatus, TransferStatus, ShiftStatus } from '@/typ
 
 export const SALE_STATUS: Record<SaleStatus, BilingualPair> = {
   completed: bi('Terminée', 'Completed'),
-  voided: bi('Annulée', 'Voided'),
+  voided: bi('Annulée', 'Cancelled'),
   partially_returned: bi('Partiellement retournée', 'Partially Returned'),
   returned: bi('Retournée', 'Returned'),
 }
@@ -27,11 +27,11 @@ export const SHIFT_STATUS: Record<ShiftStatus, BilingualPair> = {
 }
 
 export const FULFILLMENT = {
-  pendingRelease: bi('À libérer', 'Pending Release'),
-  released: bi('Libérée', 'Released'),
-  releaseOrder: bi('Libérer la commande', 'Release Order'),
-  releasedBy: bi('Libérée par', 'Released by'),
-  releasedAt: bi('Libérée le', 'Released at'),
+  pendingRelease: bi('À préparer', 'Waiting to pick'),
+  released: bi('Préparée', 'Picked'),
+  releaseOrder: bi('Marquer comme préparée', 'Mark order picked'),
+  releasedBy: bi('Préparée par', 'Picked by'),
+  releasedAt: bi('Préparée le', 'Picked at'),
   pendingOrders: bi('Commandes en attente', 'Pending Orders'),
   salesOrders: bi('Ventes / Commandes', 'Sales / Orders'),
 } as const satisfies Record<string, BilingualPair>

@@ -97,7 +97,7 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="p-3 sm:p-6 space-y-6 overflow-auto">
+    <div className="p-3 sm:p-6 space-y-6">
       <div>
         <h1 className="text-title text-text-primary">
           <BiPageTitle {...ADMIN.dashboardToday} />

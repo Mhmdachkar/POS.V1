@@ -92,7 +92,7 @@ describe('VoidModal', () => {
   it('disables Void Sale until the confirmation checkbox is checked', async () => {
     const user = userEvent.setup()
     render(<VoidModal open sale={makeSale()} onClose={vi.fn()} onSuccess={vi.fn()} />)
-    const submit = screen.getByRole('button', { name: /Void sale|Annuler la vente/i })
+    const submit = screen.getByRole('button', { name: /Cancel sale|Annuler la vente/i })
     expect(submit).toBeDisabled()
     await user.click(screen.getByRole('checkbox'))
     expect(submit).toBeEnabled()
@@ -123,7 +123,7 @@ describe('VoidModal', () => {
 
     await user.type(screen.getByLabelText(/Reason \(optional\)|Motif \(facultatif\)/i), '  Wrong sale  ')
     await user.click(screen.getByRole('checkbox'))
-    await user.click(screen.getByRole('button', { name: /Void sale|Annuler la vente/i }))
+    await user.click(screen.getByRole('button', { name: /Cancel sale|Annuler la vente/i }))
 
     expect(rpc.voidSale).toHaveBeenCalledWith({
       p_sale_id: 'sale-void-1',
@@ -145,13 +145,13 @@ describe('VoidModal', () => {
     render(<VoidModal open sale={makeSale()} onClose={onClose} onSuccess={onSuccess} />)
 
     await user.click(screen.getByRole('checkbox'))
-    await user.click(screen.getByRole('button', { name: /Void sale|Annuler la vente/i }))
+    await user.click(screen.getByRole('button', { name: /Cancel sale|Annuler la vente/i }))
 
     expectToastErrorFr(toast.error, messageForCodePlain('SALE_VOIDED'))
     expect(onSuccess).not.toHaveBeenCalled()
     expect(onClose).not.toHaveBeenCalled()
-    expect(screen.getByRole('heading', { name: /Void sale|Annuler la vente/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Void sale|Annuler la vente/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Cancel sale|Annuler la vente/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Cancel sale|Annuler la vente/i })).toBeInTheDocument()
   })
 
   it('resets reason and confirmation on cancel', async () => {
@@ -174,7 +174,7 @@ describe('VoidModal', () => {
     vi.mocked(rpc.voidSale).mockImplementation(() => new Promise(() => {}))
     render(<VoidModal open sale={makeSale()} onClose={vi.fn()} onSuccess={vi.fn()} />)
     fireEvent.click(screen.getByRole('checkbox'))
-    const submit = screen.getByRole('button', { name: /Void sale|Annuler la vente/i })
+    const submit = screen.getByRole('button', { name: /Cancel sale|Annuler la vente/i })
     fireEvent.click(submit)
     fireEvent.click(submit)
     expect(rpc.voidSale).toHaveBeenCalledTimes(1)

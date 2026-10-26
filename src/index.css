@@ -95,6 +95,8 @@
 
   #root {
     height: 100%;
+    min-height: 0;
+    overflow: hidden;
   }
 
   /* One focus ring: 2px #1570EF, 2px offset. No browser default outline. */

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
+import { cn } from '@/lib/cn'
 import { useDepotContextSync } from '@/hooks/useDepotContextSync'
 import { COMMON } from '@/lib/bilingual/common'
 import { t } from '@/lib/bilingual/types'
@@ -29,11 +30,23 @@ export function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const location = useLocation()
   const isPos = location.pathname === '/pos'
+  const mainRef = useRef<HTMLElement>(null)
 
   useDepotContextSync()
 
   useEffect(() => {
     setMobileNavOpen(false)
+  }, [location.pathname])
+
+  // Prevent a tall POS workspace from leaving the next page (e.g. dashboard) with a huge scroll range.
+  useLayoutEffect(() => {
+    const main = mainRef.current
+    if (!main) return
+    if (typeof main.scrollTo === 'function') {
+      main.scrollTo({ top: 0, left: 0 })
+    } else {
+      main.scrollTop = 0
+    }
   }, [location.pathname])
 
   useEffect(() => {
@@ -76,12 +89,14 @@ export function AppShell() {
         <TopBar onOpenMobileNav={() => setMobileNavOpen(true)} />
 
         <main
-          key={isPos ? location.pathname : 'ops'}
-          className={
+          ref={mainRef}
+          key={location.pathname}
+          className={cn(
+            'flex-1 min-h-0 min-w-0 bg-background flex flex-col',
             isPos
-              ? 'flex-1 overflow-hidden min-h-0 min-w-0 pos-workspace-enter bg-background'
-              : 'flex-1 overflow-auto bg-background min-w-0'
-          }
+              ? 'overflow-hidden pos-workspace-enter'
+              : 'overflow-y-auto overflow-x-hidden',
+          )}
           role="main"
           id="main-content"
         >

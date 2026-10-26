@@ -96,7 +96,7 @@ export function saleActivityDescription(sale: {
   balance_added_cfa?: number | null
   status?: string | null
 }): string {
-  if (sale.status === 'voided') return 'Voided'
+  if (sale.status === 'voided') return 'Cancelled'
   return (sale.balance_added_cfa ?? 0) > 0 ? 'Credit added' : 'Cash sale'
 }
 

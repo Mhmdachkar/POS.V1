@@ -91,7 +91,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="h-full min-h-0 overflow-y-auto bg-background flex items-center justify-center p-4">
       <div className="fixed top-4 right-4">
         <LanguageSwitch />
       </div>

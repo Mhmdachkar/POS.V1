@@ -276,7 +276,7 @@ describe('ReturnModal', () => {
 
   it('starts selected qty at 0 and shows already-returned / fully returned', () => {
     renderModal()
-    expect(screen.getByText(/Original: 3/)).toBeInTheDocument()
+    expect(screen.getByText(/Vendu\s*:\s*3|Sold:\s*3/i)).toBeInTheDocument()
     expect(screen.getByText(/Returnable: 3|Retournable: 3/i)).toBeInTheDocument()
     expect(screen.getByText(/déjà retourné: 1|already returned: 1/i)).toBeInTheDocument()
     expect(screen.getByText(/entièrement retourné|fully returned/i)).toBeInTheDocument()

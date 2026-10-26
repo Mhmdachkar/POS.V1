@@ -41,6 +41,7 @@ import { SaleDetailDrawer } from './components/SaleDetailDrawer'
 import type { SaleStatus } from '@/types/database'
 import type { FulfillmentStatus } from '@/lib/printPayload'
 import { t } from '@/lib/bilingual/types'
+import { SALE_STATUS } from '@/lib/bilingual/status'
 
 
 /** Receipt-number search debounce. Do not query on every keystroke. */
@@ -50,18 +51,19 @@ export const SALES_SEARCH_DEBOUNCE_MS = 300
 // Status filter (UI chips use string "all"; hook still receives null)
 // ─────────────────────────────────────────────────────────────────
 
-const STATUS_OPTIONS: Array<{ value: SaleStatus | null; label: string }> = [
-  { value: null,                 label: 'All' },
-  { value: 'completed',          label: 'Completed' },
-  { value: 'partially_returned', label: 'Partially Returned' },
-  { value: 'returned',           label: 'Returned' },
-  { value: 'voided',             label: 'Voided' },
-]
-
-const STATUS_CHIPS = STATUS_OPTIONS.map((opt) => ({
-  value: opt.value ?? 'all',
-  label: opt.label,
-}))
+function statusFilterChips(): Array<{ value: string; label: string }> {
+  const options: Array<{ value: SaleStatus | null; label: string }> = [
+    { value: null, label: t(COMMON.all) },
+    { value: 'completed', label: t(SALE_STATUS.completed) },
+    { value: 'partially_returned', label: t(SALE_STATUS.partially_returned) },
+    { value: 'returned', label: t(SALE_STATUS.returned) },
+    { value: 'voided', label: t(SALE_STATUS.voided) },
+  ]
+  return options.map((opt) => ({
+    value: opt.value ?? 'all',
+    label: opt.label,
+  }))
+}
 
 /** Shared tracks so header + each row grid align (avoid per-row `auto` sizing). */
 const SALES_GRID_WITH_DEPOT =
@@ -191,7 +193,7 @@ export function SalesPage() {
             search={search}
             onSearchChange={handleSearchChange}
             searchPlaceholder={t(SALES.searchReceiptPlaceholder)}
-            chips={STATUS_CHIPS}
+            chips={statusFilterChips()}
             activeChip={statusFilter ?? 'all'}
             onChipChange={handleChipChange}
             count={totalCount}

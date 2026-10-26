@@ -22,7 +22,7 @@ import { COMMON } from '@/lib/bilingual/common'
 import { POS } from '@/lib/bilingual/pos'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
 import { BilingualText } from '@/components/ui/BilingualText'
-import { BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
+import { BiModalTitle as BiSectionTitle, BiTableHeader } from '@/lib/bilingual/ui'
 import { PackageCheck, Printer, RotateCcw, XCircle } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { Drawer, Button, MoneyDisplay, Skeleton, SaleStatusBadge } from '@/components/ui'
@@ -44,6 +44,8 @@ import { ReturnModal } from './ReturnModal'
 import { VoidModal } from './VoidModal'
 import { t } from '@/lib/bilingual/types'
 import { APP_BUSINESS_FALLBACK } from '@/lib/formatters'
+import { formatSoldQuantityDetail } from '@/lib/saleQuantityDisplay'
+import { SaleUnitBadge } from '@/components/sales/SaleUnitBadge'
 
 
 // ─────────────────────────────────────────────────────────────────
@@ -175,15 +177,18 @@ function SaleFulfillmentPanel({ sale }: { sale: SaleDetailData }) {
       )}
 
       {canRelease && fulfillment?.status === 'pending' && (
-        <Button
-          variant="primary"
-          className="w-full gap-2 mt-2"
-          disabled={releasing}
-          onClick={() => void handleRelease()}
-        >
-          <PackageCheck className="h-4 w-4" />
-          {t(SALES.releaseOrder)}
-        </Button>
+        <div className="mt-2 space-y-2">
+          <p className="text-xs text-text-muted leading-snug">{t(SALES.releaseOrderHint)}</p>
+          <Button
+            variant="primary"
+            className="w-full gap-2"
+            disabled={releasing}
+            onClick={() => void handleRelease()}
+          >
+            <PackageCheck className="h-4 w-4" />
+            {t(SALES.releaseOrder)}
+          </Button>
+        </div>
       )}
 
       <SectionHeader title={<BiSectionTitle {...SALES.printStatus} />} />
@@ -341,10 +346,21 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
               <table className="w-full text-sm">
                 <thead className="bg-surface-muted">
                   <tr>
-                    <th className="text-left px-3 py-2 text-xs font-semibold text-text-secondary">Product</th>
-                    <th className="text-right px-3 py-2 text-xs font-semibold text-text-secondary">Qty</th>
-                    <th className="text-right px-3 py-2 text-xs font-semibold text-text-secondary">Unit Price</th>
-                    <th className="text-right px-3 py-2 text-xs font-semibold text-text-secondary">Total</th>
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-text-secondary">
+                      <BiTableHeader {...SALES.colProduct} />
+                    </th>
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-text-secondary">
+                      <BiTableHeader {...SALES.soldAs} />
+                    </th>
+                    <th className="text-right px-3 py-2 text-xs font-semibold text-text-secondary">
+                      <BiTableHeader {...SALES.qtySold} />
+                    </th>
+                    <th className="text-right px-3 py-2 text-xs font-semibold text-text-secondary">
+                      <BiTableHeader {...SALES.unitPrice} />
+                    </th>
+                    <th className="text-right px-3 py-2 text-xs font-semibold text-text-secondary">
+                      <BiTableHeader {...SALES.lineTotal} />
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -352,10 +368,19 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
                     <tr key={item.id} className="border-t border-border">
                       <td className="px-3 py-2">
                         <p className="font-medium text-text-primary">{item.product_name}</p>
-                        <p className="text-xs text-text-muted">{item.unit_name}</p>
                       </td>
-                      <td className="px-3 py-2 text-right text-text-primary tabular-nums">
-                        {item.quantity_in_unit}
+                      <td className="px-3 py-2">
+                        <SaleUnitBadge unitLevel={item.unit_level} unitName={item.unit_name} />
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <p className="text-sm font-semibold text-text-primary tabular-nums">
+                          {formatSoldQuantityDetail(
+                            item.quantity_in_unit,
+                            item.unit_name,
+                            item.unit_level,
+                            item.quantity_pieces,
+                          )}
+                        </p>
                       </td>
                       <td className="px-3 py-2 text-right">
                         <MoneyDisplay
@@ -475,6 +500,37 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
                       </div>
                       {ret.reason && (
                         <p className="text-xs text-text-secondary italic">{ret.reason}</p>
+                      )}
+                      {ret.sale_return_items.length > 0 && (
+                        <ul className="mt-2 space-y-1 border-t border-border pt-2">
+                          {ret.sale_return_items.map((ri) => {
+                            const line = sale.items.find((i) => i.id === ri.sale_item_id)
+                            if (!line) return null
+                            return (
+                              <li
+                                key={ri.id}
+                                className="flex items-center justify-between gap-2 text-xs text-text-primary"
+                              >
+                                <span className="min-w-0 truncate">{line.product_name}</span>
+                                <span className="flex items-center gap-1.5 flex-shrink-0">
+                                  <SaleUnitBadge
+                                    unitLevel={line.unit_level}
+                                    unitName={line.unit_name}
+                                    className="text-[10px] px-1.5 py-0"
+                                  />
+                                  <span className="tabular-nums font-medium">
+                                    {formatSoldQuantityDetail(
+                                      ri.quantity_in_unit,
+                                      line.unit_name,
+                                      line.unit_level,
+                                      ri.quantity_pieces,
+                                    )}
+                                  </span>
+                                </span>
+                              </li>
+                            )
+                          })}
+                        </ul>
                       )}
                     </div>
                   ))}

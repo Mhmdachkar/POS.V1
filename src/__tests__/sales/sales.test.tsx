@@ -22,6 +22,7 @@ import { useDepotStore } from '@/stores/depotStore'
 import { usePOSStore } from '@/stores/posStore'
 import type { Staff } from '@/types/database'
 import { SALES } from '@/lib/bilingual/sales'
+import { SALE_STATUS } from '@/lib/bilingual/status'
 
 vi.mock('@/hooks/useSales', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useSales')>()
@@ -393,7 +394,7 @@ describe('SalesPage', () => {
     vi.mocked(supabase.from).mockReturnValue(builder as never)
     renderSales()
     await screen.findByText('DKR-00000000')
-    await user.click(screen.getByRole('button', { name: 'Voided' }))
+    await user.click(screen.getByRole('button', { name: SALE_STATUS.voided.fr }))
     await waitFor(() => {
       expect(calls).toContain('eq:status:voided')
       expect(calls.filter((c) => c === 'range:0-29').length).toBeGreaterThan(0)

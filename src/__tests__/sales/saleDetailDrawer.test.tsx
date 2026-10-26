@@ -222,7 +222,7 @@ describe('SaleDetailDrawer', () => {
     const user = userEvent.setup()
     renderDrawer(baseSale())
     await user.click(screen.getByRole('button', { name: SALES.voidSale.fr }))
-    expect(screen.getByRole('heading', { name: /Void Sale|Annuler la vente/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Cancel sale|Annuler la vente/i })).toBeInTheDocument()
     expect(screen.getByText('Cette action est définitive.')).toBeInTheDocument()
   })
 
@@ -268,7 +268,7 @@ describe('SaleDetailDrawer', () => {
     const { invalidateSpy } = renderDrawer(baseSale())
     await user.click(screen.getByRole('button', { name: SALES.voidSale.fr }))
     await user.click(screen.getByRole('checkbox'))
-    await user.click(screen.getByRole('button', { name: /Void sale|Annuler la vente/i }))
+    await user.click(screen.getByRole('button', { name: /Cancel sale|Annuler la vente/i }))
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: saleKeys.detail('sale-1') })
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: saleKeys.lists() })

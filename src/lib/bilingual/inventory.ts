@@ -152,7 +152,7 @@ export const INVENTORY = {
 export const STOCK_TXN_TYPE: Record<InventoryTransactionType, BilingualPair> = {
   SALE: bi('Vente', 'Sale'),
   RETURN: bi('Retour', 'Return'),
-  VOID: bi('Annulation', 'Void'),
+  VOID: bi('Annulation vente', 'Sale cancelled'),
   RESTOCK: bi('Réappro.', 'Restock'),
   ADJUSTMENT: bi('Ajustement', 'Adjustment'),
   TRANSFER_IN: bi('Entrée transfert', 'Transfer in'),

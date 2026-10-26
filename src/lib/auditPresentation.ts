@@ -42,11 +42,11 @@ const ADJUSTMENT_TYPE: Record<string, BilingualPair> = {
 
 export const AUDIT_ACTION_LABELS: Record<string, BilingualPair> = {
   complete_sale: bi('Vente finalisée', 'Sale completed'),
-  release_sale_fulfillment: bi('Libération vente', 'Sale fulfillment released'),
+  release_sale_fulfillment: bi('Commande préparée', 'Order marked picked'),
   record_payment: bi('Paiement enregistré', 'Payment recorded'),
   process_return: bi('Retour traité', 'Return processed'),
-  void_sale: bi('Vente annulée', 'Sale voided'),
-  void_sale_cash_reversal: bi('Annulation vente (caisse)', 'Sale void (cash reversal)'),
+  void_sale: bi('Vente annulée', 'Sale cancelled'),
+  void_sale_cash_reversal: bi('Annulation vente (caisse)', 'Sale cancel (cash reversal)'),
   adjust_inventory: bi('Ajustement de stock', 'Stock adjustment'),
   restock_product: bi('Réapprovisionnement', 'Restock'),
   create_transfer_draft: bi('Brouillon de transfert', 'Transfer draft created'),

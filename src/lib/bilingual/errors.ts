@@ -54,7 +54,7 @@ export const ERROR_MESSAGES_BI: Record<VhmErrorCode, BilingualPair> = {
   ),
   SALE_VOIDED: bi(
     'Cette vente est annulée et ne peut plus être traitée.',
-    'This sale has been voided and cannot be processed further.',
+    'This sale was cancelled and cannot be processed further.',
   ),
   SALE_NOT_FOUND: bi('Vente introuvable.', 'Sale not found.'),
   PAYMENT_EXCEEDS_BALANCE: bi(

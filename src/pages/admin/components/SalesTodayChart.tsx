@@ -59,8 +59,8 @@ export function SalesTodayChart({ hourlySales }: SalesTodayChartProps) {
           <BilingualText {...ADMIN.noSalesToday} variant="caption" />
         </p>
       ) : (
-        <div className="h-44 w-full">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-44 w-full min-h-0 max-h-44 shrink-0 overflow-hidden">
+          <ResponsiveContainer width="100%" height="100%" debounce={50} minHeight={176}>
             <BarChart data={points} margin={{ top: 8, right: 4, left: 0, bottom: 0 }} barCategoryGap="18%">
               <defs>
                 <linearGradient id="salesTodayBar" x1="0" y1="0" x2="0" y2="1">

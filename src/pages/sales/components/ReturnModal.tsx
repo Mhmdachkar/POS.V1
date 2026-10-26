@@ -37,6 +37,12 @@ import { authorizedOpenShifts, clearStalePosShift, useOpenShifts } from '@/hooks
 import { processingShiftId, resolveLoadedPosShiftContext } from '@/lib/posShiftContext'
 import { useAuthStore } from '@/stores/authStore'
 import type { SaleDetailData, SaleItemDetail } from '@/hooks/useSales'
+import {
+  formatSoldQuantity,
+  formatSoldQuantityDetail,
+  resolvedSaleUnitName,
+} from '@/lib/saleQuantityDisplay'
+import { SaleUnitBadge } from '@/components/sales/SaleUnitBadge'
 
 // ─────────────────────────────────────────────────────────────────
 // Returnability helpers
@@ -129,6 +135,7 @@ function ReturnItemRow({ ri, onChangeQty, onChangeRefund }: ReturnItemRowProps) 
   const fullValue = selected > 0 ? computedLineRefund(ri) : 0
   const refund = selected > 0 ? resolvedRefund(ri) : 0
   const isCustom = refundDraft != null && refund !== fullValue
+  const unitLabel = resolvedSaleUnitName(item.unit_name, item.unit_level)
 
   return (
     <div
@@ -141,17 +148,34 @@ function ReturnItemRow({ ri, onChangeQty, onChangeRefund }: ReturnItemRowProps) 
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-text-primary">{item.product_name}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-semibold text-text-primary">{item.product_name}</p>
+            <SaleUnitBadge unitLevel={item.unit_level} unitName={item.unit_name} />
+          </div>
+          <p className="text-sm font-medium text-text-primary mt-1.5">
+            {t(SALES.soldOnReceipt(item.quantity_in_unit, unitLabel))}
+          </p>
           <p className="text-xs text-text-secondary mt-0.5">
-            {item.unit_name} · {formatCFA(item.unit_price_cfa)}{' '}
-            <BilingualText {...SALES.eachPrice} variant="caption" layout="inline" />
+            {formatCFA(item.unit_price_cfa)}{' '}
+            <BilingualText {...SALES.eachPrice} variant="caption" layout="inline" /> ·{' '}
+            {formatSoldQuantityDetail(
+              item.quantity_in_unit,
+              item.unit_name,
+              item.unit_level,
+              item.quantity_pieces,
+            )}
           </p>
           <p className="text-xs text-text-muted mt-1">
-            {t(SALES.originalQty)}: {item.quantity_in_unit}
-            {alreadyReturned > 0 && ` · ${t(SALES.alreadyReturned)}: ${alreadyReturned}`}
+            {alreadyReturned > 0 && (
+              <>
+                {t(SALES.alreadyReturned)}:{' '}
+                {formatSoldQuantity(alreadyReturned, item.unit_name, item.unit_level)}
+                {' · '}
+              </>
+            )}
             {returnable > 0
-              ? ` · ${t(SALES.returnable)}: ${returnable}`
-              : ` · ${t(SALES.fullyReturned)}`}
+              ? `${t(SALES.returnable)}: ${formatSoldQuantity(returnable, item.unit_name, item.unit_level)}`
+              : t(SALES.fullyReturned)}
           </p>
         </div>
         {selected > 0 && (
@@ -175,10 +199,16 @@ function ReturnItemRow({ ri, onChangeQty, onChangeRefund }: ReturnItemRowProps) 
 
       {returnable > 0 && (
         <div className="flex flex-col sm:flex-row sm:items-end gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-text-secondary">
-              <BilingualText {...SALES.returnQty} variant="caption" layout="inline" />
+              {t(SALES.returnQtyInUnit(unitLabel))}
             </span>
+            {selected > 0 && (
+              <p className="text-xs font-semibold text-primary">
+                {t(SALES.returningQty(selected, unitLabel))}
+              </p>
+            )}
+            <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => onChangeQty(Math.max(0, selected - 1))}
@@ -221,6 +251,12 @@ function ReturnItemRow({ ri, onChangeQty, onChangeRefund }: ReturnItemRowProps) 
             >
               <BilingualText {...SALES.returnAll} variant="caption" layout="inline" />
             </button>
+            </div>
+            {selected > 0 && (
+              <p className="text-[11px] text-text-muted">
+                {t(SALES.returnLineRestored(selected, unitLabel))}
+              </p>
+            )}
           </div>
 
           {selected > 0 && (

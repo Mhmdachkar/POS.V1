@@ -107,7 +107,7 @@ export function POSPage() {
 
   return (
     <PosStockProvider products={catalogQuery.data}>
-      <div className="flex h-full overflow-hidden bg-background no-print flex-col">
+      <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-background no-print">
         {/* Mobile workspace tabs — full-height panes instead of 50/50 stack */}
         <div
           role="tablist"
