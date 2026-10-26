@@ -24,6 +24,7 @@ import {
 } from '@/hooks/useInventory'
 import type { ProductWithUnits } from '@/types'
 import type { z } from 'zod'
+import { COMMON } from '@/lib/bilingual/common'
 import { t, type BilingualPair } from '@/lib/bilingual/types'
 
 const RESTOCK_FIELD_GUIDANCE = {
@@ -94,7 +95,12 @@ export function RestockModal({ open, onClose, product }: RestockModalProps) {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={`Restock — ${product.name}`} size="md">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={t(INVENTORY.restockProductTitle(product.name))}
+      size="md"
+    >
       <form
         onSubmit={handleSubmit(onSubmit, (fieldErrors) => {
           setGuideSteps(guidanceStepsFromFieldErrors(fieldErrors, RESTOCK_FIELD_GUIDANCE))
@@ -104,7 +110,7 @@ export function RestockModal({ open, onClose, product }: RestockModalProps) {
         <FormActionGuide steps={guideSteps} />
         <div>
           <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
-            Unit <span className="text-danger-foreground">*</span>
+            {t(INVENTORY.restockUnitLabel)} <span className="text-danger-foreground">*</span>
           </label>
           <select
             {...register('unit_level')}
@@ -123,7 +129,7 @@ export function RestockModal({ open, onClose, product }: RestockModalProps) {
 
         <div>
           <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
-            Quantity <span className="text-danger-foreground">*</span>
+            {t(INVENTORY.restockQtyLabel)} <span className="text-danger-foreground">*</span>
           </label>
           <input
             type="number"
@@ -139,7 +145,8 @@ export function RestockModal({ open, onClose, product }: RestockModalProps) {
 
         <div>
           <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
-            Note <span className="text-text-muted font-normal">(optional)</span>
+            {t(INVENTORY.restockNoteLabel)}{' '}
+            <span className="text-text-muted font-normal">{t(INVENTORY.restockNoteOptional)}</span>
           </label>
           <textarea
             rows={2}
@@ -150,7 +157,7 @@ export function RestockModal({ open, onClose, product }: RestockModalProps) {
 
         {previewPieces != null && (
           <p className="text-xs text-text-secondary">
-            Will add approx. {formatPieces(previewPieces)}. Exact value computed server-side.
+            {t(INVENTORY.restockPreview(formatPieces(previewPieces)))}
           </p>
         )}
 
@@ -162,10 +169,10 @@ export function RestockModal({ open, onClose, product }: RestockModalProps) {
 
         <div className="flex gap-3 justify-end pt-1">
           <Button type="button" variant="secondary" onClick={onClose} disabled={isPending}>
-            Cancel
+            {t(COMMON.cancel)}
           </Button>
           <LoadingButton type="submit" loading={isPending}>
-            Restock
+            {t(INVENTORY.restock)}
           </LoadingButton>
         </div>
       </form>

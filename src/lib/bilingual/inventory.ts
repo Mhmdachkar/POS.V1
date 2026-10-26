@@ -51,6 +51,28 @@ export const INVENTORY = {
     'No products in this inventory view.',
   ),
   countCorrection: bi('Correction d\'inventaire', 'Count correction'),
+  adjustmentTypeDamage: bi('Dommage', 'Damage'),
+  adjustmentTypeLoss: bi('Perte', 'Loss'),
+  adjustmentTypeExpiry: bi('Péremption', 'Expiry'),
+  adjustmentTypeOther: bi('Autre', 'Other'),
+  adjustmentTypeLabel: bi('Type d\'ajustement', 'Adjustment type'),
+  applyAdjustment: bi('Appliquer l\'ajustement', 'Apply Adjustment'),
+  estimateDisclaimer: bi(
+    'Estimation indicative. Le stock serveur fait foi.',
+    'Estimate is informational. Server stock is authoritative.',
+  ),
+  stockWillEmpty: bi('Cela videra le stock.', 'This will empty the stock.'),
+  restockProductTitle: (name: string) => bi(`Réappro — ${name}`, `Restock — ${name}`),
+  adjustProductTitle: (name: string) => bi(`Ajustement — ${name}`, `Adjust — ${name}`),
+  restockUnitLabel: bi('Unité', 'Unit'),
+  restockQtyLabel: bi('Quantité', 'Quantity'),
+  restockNoteLabel: bi('Note', 'Note'),
+  restockNoteOptional: bi('(facultatif)', '(optional)'),
+  restockPreview: (pieces: string) =>
+    bi(
+      `Ajout d'environ ${pieces}. Valeur exacte calculée côté serveur.`,
+      `Will add approx. ${pieces}. Exact value computed server-side.`,
+    ),
   signedAdjustmentHint: bi(
     'Valeur signée : négatif retire du stock, positif en ajoute.',
     'Signed value: negative removes stock, positive adds stock.',

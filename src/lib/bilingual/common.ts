@@ -68,6 +68,7 @@ export const COMMON = {
   open: bi('Ouvrir', 'Open'),
   back: bi('Retour', 'Back'),
   processing: bi('Traitement…', 'Processing…'),
+  processingPleaseWait: bi('Traitement en cours, veuillez patienter', 'Processing, please wait'),
   previous: bi('← Précédent', '← Previous'),
   next: bi('Suivant →', 'Next →'),
   unknown: bi('Inconnu', 'Unknown'),

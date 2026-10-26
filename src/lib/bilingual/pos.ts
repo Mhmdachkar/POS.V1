@@ -92,6 +92,7 @@ export const POS = {
     'Enter a reason for a total of CFA 0.',
   ),
   priceExceptionReason: bi('Motif du total à 0', 'Reason for CFA 0 total'),
+  adjustmentReason: bi('Motif de l\'ajustement', 'Reason for total adjustment'),
   amountCfaPlaceholder: bi('Montant CFA', 'Amount CFA'),
   onAccount: bi('À crédit', 'On account'),
   completeSaleAria: bi('Terminer la vente', 'Complete sale'),

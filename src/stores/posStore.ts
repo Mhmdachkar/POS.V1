@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { isOverrideOutOfRange } from '@/lib/zeroTotalSale'
+import { isDiscountOutOfRange, isOverrideOutOfRange } from '@/lib/zeroTotalSale'
 import type { CartItem, CheckoutTotals } from '@/types'
 import type { Customer } from '@/types/database'
 import type { CompleteSaleResult } from '@/types/rpc'
@@ -46,20 +46,25 @@ export function computeTotals(
   overrideTotalCfa: number | null = null,
 ): CheckoutTotals {
   const subtotal_cfa = items.reduce((sum, item) => sum + item.line_total_cfa, 0)
+  const discountInvalid = isDiscountOutOfRange(discountType, discountValue, subtotal_cfa)
 
   let discount_amount_cfa = 0
-  if (discountType === 'flat') {
-    const flat = Math.min(Math.max(0, discountValue), subtotal_cfa)
-    discount_amount_cfa = Number.isFinite(flat) ? flat : 0
-  } else if (discountType === 'percent') {
-    const pct = Math.min(100, Math.max(0, discountValue))
-    discount_amount_cfa = Number.isFinite(pct)
-      ? Math.round((pct / 100) * subtotal_cfa)
-      : 0
+  if (!discountInvalid) {
+    if (discountType === 'flat') {
+      const flat = Math.min(Math.max(0, discountValue), subtotal_cfa)
+      discount_amount_cfa = Number.isFinite(flat) ? flat : 0
+    } else if (discountType === 'percent') {
+      const pct = Math.min(100, Math.max(0, discountValue))
+      discount_amount_cfa = Number.isFinite(pct)
+        ? Math.round((pct / 100) * subtotal_cfa)
+        : 0
+    }
   }
 
   // Calculated commercial total (pre-override). Matches server sales.total_cfa.
-  const total_cfa = Math.max(0, subtotal_cfa - discount_amount_cfa)
+  const total_cfa = discountInvalid
+    ? subtotal_cfa
+    : Math.max(0, subtotal_cfa - discount_amount_cfa)
   const payable = effectiveFinalTotal(total_cfa, overrideTotalCfa)
   const amount_applied_cfa = Math.min(cashTendered, payable)
   const change_given_cfa = Math.max(0, cashTendered - amount_applied_cfa)

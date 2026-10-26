@@ -31,7 +31,10 @@ export function invalidateAfterSaleSettled(
   queryClient.invalidateQueries({ queryKey: ['print_jobs'] })
   queryClient.invalidateQueries({ queryKey: ['depot', 'overview'] })
   if (opts?.saleId) {
-    queryClient.invalidateQueries({ queryKey: ['sales', 'detail', opts.saleId] })
+    queryClient.invalidateQueries({
+      queryKey: ['sales', 'detail', opts.saleId],
+      refetchType: 'active',
+    })
     queryClient.invalidateQueries({ queryKey: ['print_jobs', 'sale', opts.saleId] })
   }
   queryClient.invalidateQueries({ queryKey: ['customers'] })

@@ -125,12 +125,11 @@ describe('computeTotals', () => {
     expect(totals.change_given_cfa).toBe(0)
   })
 
-  it('flat discount capped at subtotal', () => {
+  it('B2: flat discount above subtotal keeps preview at subtotal', () => {
     const items: CartItem[] = [{ ...item1, quantity_in_unit: 1, line_total_cfa: 350 }]
     const totals = computeTotals(items, 'flat', 9999, 0)
-    // discount capped to subtotal
-    expect(totals.discount_amount_cfa).toBe(350) // min(9999, 350)
-    expect(totals.total_cfa).toBe(0)
+    expect(totals.discount_amount_cfa).toBe(0)
+    expect(totals.total_cfa).toBe(350)
   })
 
   // ── Percent discount ──────────────────────────────────────────
@@ -145,10 +144,11 @@ describe('computeTotals', () => {
     expect(totals.change_given_cfa).toBe(350)
   })
 
-  it('B2: percent preview clamps to 0–100 so a negative % cannot raise the total', () => {
+  it('B2: invalid percent keeps preview at subtotal (no discount applied)', () => {
     const items: CartItem[] = [{ ...item1, quantity_in_unit: 10, line_total_cfa: 10000 }]
     expect(computeTotals(items, 'percent', -10, 0).total_cfa).toBe(10000)
-    expect(computeTotals(items, 'percent', 150, 0).total_cfa).toBe(0)
+    expect(computeTotals(items, 'percent', 150, 0).total_cfa).toBe(10000)
+    expect(computeTotals(items, 'percent', 150, 0).discount_amount_cfa).toBe(0)
     expect(computeTotals(items, 'percent', 100, 0).total_cfa).toBe(0)
   })
 

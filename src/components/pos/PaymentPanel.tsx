@@ -264,8 +264,12 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
         isAdmin ? (
           <Textarea
             id="pos-zero-total-warning"
-            aria-label={bilingualAriaLabel(POS.priceExceptionReason)}
-            label={bilingualPlain(POS.priceExceptionReason)}
+            aria-label={bilingualAriaLabel(
+              isZeroPayable ? POS.priceExceptionReason : POS.adjustmentReason,
+            )}
+            label={bilingualPlain(
+              isZeroPayable ? POS.priceExceptionReason : POS.adjustmentReason,
+            )}
             value={priceExceptionReason}
             onChange={(e) => setPriceExceptionReason(e.target.value)}
             error={

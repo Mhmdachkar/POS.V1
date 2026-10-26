@@ -253,11 +253,13 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
 
   const handleMutationSuccess = () => {
     if (!saleId) return
+    const customerId = sale?.customer_id
     invalidateAfterSaleSettled(queryClient, {
       saleId,
-      customerId: sale?.customer_id,
+      customerId,
       shiftId: sale?.shift_id ?? shiftId,
     })
+    void queryClient.refetchQueries({ queryKey: ['sales', 'detail', saleId] })
   }
 
   // ── Action eligibility ─────────────────────────────────────────
