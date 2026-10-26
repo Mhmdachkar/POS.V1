@@ -29,6 +29,7 @@ function result(overrides: Partial<CompleteSaleResult> = {}): CompleteSaleResult
     subtotal_cfa: 24500,
     discount_amount_cfa: 0,
     total_cfa: 24500,
+    admin_override_total_cfa: null,
     amount_tendered_cfa: 25000,
     amount_applied_cfa: 24500,
     change_given_cfa: 500,
@@ -69,6 +70,7 @@ function saleDetail(overrides: Partial<SaleDetailData> = {}): SaleDetailData {
     discount_value: null,
     discount_amount_cfa: 0,
     total_cfa: 24500,
+    admin_override_total_cfa: null,
     amount_tendered_cfa: 25000,
     amount_applied_cfa: 24500,
     change_given_cfa: 500,
@@ -131,6 +133,35 @@ describe('SaleSuccessModal', () => {
       node.textContent === label,
     )
     expect(total).toHaveClass('text-financial-lg', 'financial-value')
+  })
+
+  it('B4: shows the payable override total, not the calculated catalog total', () => {
+    render(
+      <SaleSuccessModal
+        result={result({
+          total_cfa: 24500,
+          admin_override_total_cfa: 7000,
+          amount_applied_cfa: 7000,
+          amount_tendered_cfa: 7000,
+          change_given_cfa: 0,
+        })}
+        customer={null}
+        cartItemCount={2}
+      />,
+    )
+    const payable = screen.getByText((_, node) =>
+      node?.tagName === 'SPAN' &&
+      node.classList.contains('text-financial-lg') &&
+      node.textContent === formatCFA(7000),
+    )
+    expect(payable).toBeInTheDocument()
+    expect(
+      screen.queryByText((_, node) =>
+        node?.tagName === 'SPAN' &&
+        node.classList.contains('text-financial-lg') &&
+        node.textContent === formatCFA(24500),
+      ),
+    ).toBeNull()
   })
 
   it('renders change with MoneyDisplay large size', () => {

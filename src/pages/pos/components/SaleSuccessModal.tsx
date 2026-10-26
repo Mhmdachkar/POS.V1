@@ -31,6 +31,7 @@ import type { CompleteSaleResult } from '@/types/rpc'
 import type { Customer } from '@/types/database'
 import { t } from '@/lib/bilingual/types'
 import { APP_BUSINESS_FALLBACK } from '@/lib/formatters'
+import { authoritativeFinalSaleTotal } from '@/lib/saleTotals'
 
 
 interface SaleSuccessModalProps {
@@ -122,7 +123,10 @@ export function SaleSuccessModal({
             )}
             <div className="flex justify-between items-center font-semibold border-t border-border pt-2 mt-2">
               <span className="text-text-primary text-sm">Total</span>
-              <MoneyDisplay amount={result.total_cfa} size="display" />
+              <MoneyDisplay
+                amount={authoritativeFinalSaleTotal(result)}
+                size="display"
+              />
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-text-secondary">{t(SALES.amountApplied)}</span>
