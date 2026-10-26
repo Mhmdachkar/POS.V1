@@ -232,7 +232,7 @@ export function POSPage() {
           <div
             className={cn(
               'w-full lg:w-[480px] xl:w-[520px] flex-shrink-0 flex-col min-h-0 overflow-hidden bg-background',
-              'lg:flex lg:h-full',
+              'lg:flex lg:min-h-0',
               mobilePane === 'cart' ? 'flex flex-1' : 'hidden lg:flex',
             )}
           >

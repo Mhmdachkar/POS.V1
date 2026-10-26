@@ -50,6 +50,7 @@ import { useCustomerList, type CustomerListFilter } from '@/hooks/useCustomers'
 import { useAuthStore } from '@/stores/authStore'
 import { CustomerDetailDrawer } from './components/CustomerDetailDrawer'
 import { CustomerFormModal } from './components/CustomerFormModal'
+import { CustomerAvatar, customerAccountTone } from '@/components/customers/CustomerAvatar'
 
 /** Name/phone search debounce. Do not query on every keystroke. */
 export const CUSTOMERS_SEARCH_DEBOUNCE_MS = 300
@@ -224,7 +225,12 @@ export function CustomersPage() {
             </div>
 
             {/* Rows */}
-            {customers.map((customer) => (
+            {customers.map((customer) => {
+              const tone = customerAccountTone({
+                balanceOwedCfa: customer.balance_owed_cfa,
+                isActive: customer.is_active,
+              })
+              return (
               <button
                 key={customer.id}
                 type="button"
@@ -233,12 +239,22 @@ export function CustomersPage() {
                   'w-full text-left grid gap-4 px-4 py-3 items-center',
                   CUSTOMERS_GRID,
                   'border-b border-border hover:bg-surface-muted transition-colors',
-                  'focus:outline-none focus:bg-primary-subtle',
+                  'focus:outline-none focus:bg-primary-subtle border-l-4',
+                  tone === 'owing' && 'border-l-danger',
+                  tone === 'settled' && 'border-l-success',
+                  tone === 'inactive' && 'border-l-border-strong',
                   selectedCustomerId === customer.id && 'bg-primary-subtle',
                 )}
               >
-                <span className="text-sm font-medium text-text-primary truncate min-w-0">
-                  {customer.name}
+                <span className="flex items-center gap-3 min-w-0">
+                  <CustomerAvatar
+                    name={customer.name}
+                    balanceOwedCfa={customer.balance_owed_cfa}
+                    isActive={customer.is_active}
+                  />
+                  <span className="text-sm font-medium text-text-primary truncate min-w-0">
+                    {customer.name}
+                  </span>
                 </span>
                 <span className="text-sm text-text-secondary truncate min-w-0">
                   {customer.phone ?? <span className="text-text-muted italic">—</span>}
@@ -268,7 +284,8 @@ export function CustomersPage() {
                   {formatDate(customer.created_at)}
                 </span>
               </button>
-            ))}
+              )
+            })}
 
             {/* Pagination */}
             {totalPages > 1 && (

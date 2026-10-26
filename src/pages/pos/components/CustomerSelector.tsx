@@ -20,6 +20,7 @@ import { NAV } from '@/lib/bilingual/nav'
 import { BiButtonInline, BiButtonStack } from '@/lib/bilingual/ui'
 import { t, bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
 import type { Customer } from '@/types/database'
+import { CustomerAvatar } from '@/components/customers/CustomerAvatar'
 
 // ─────────────────────────────────────────────────────────────────
 // CreateCustomerForm — inline inside the dropdown
@@ -297,20 +298,30 @@ export function CustomerDropdown({
                     onMouseEnter={() => setActiveIndex(index)}
                     onClick={() => onSelect(c)}
                     className={cn(
-                      'w-full text-left px-3 py-1.5 flex items-center justify-between gap-2 transition-colors',
+                      'w-full text-left px-3 py-2 flex items-center gap-2.5 transition-colors',
                       activeIndex === index ? 'bg-surface-muted' : 'hover:bg-surface-muted',
+                      c.balance_owed_cfa > 0 && 'border-l-2 border-l-danger',
+                      c.balance_owed_cfa <= 0 && 'border-l-2 border-l-success',
                     )}
                   >
-                    <div className="min-w-0">
+                    <CustomerAvatar
+                      name={c.name}
+                      balanceOwedCfa={c.balance_owed_cfa}
+                      isActive={c.is_active}
+                      size="sm"
+                    />
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-text-primary truncate">{c.name}</p>
                       {c.phone && (
                         <p className="text-xs text-text-muted truncate">{c.phone}</p>
                       )}
                     </div>
-                    {c.balance_owed_cfa > 0 && (
-                      <span className="text-xs text-text-secondary financial-value flex-shrink-0">
+                    {c.balance_owed_cfa > 0 ? (
+                      <span className="text-xs font-semibold text-danger-foreground financial-value flex-shrink-0">
                         {formatCFA(c.balance_owed_cfa)}
                       </span>
+                    ) : (
+                      <span className="text-[11px] font-medium text-success-foreground flex-shrink-0">OK</span>
                     )}
                   </button>
                 )

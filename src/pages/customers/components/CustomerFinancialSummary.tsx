@@ -3,6 +3,7 @@ import { BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
 import type { CustomerActivitySummary } from '@/hooks/useCustomerActivity'
 import { t } from '@/lib/bilingual/types'
+import { cn } from '@/lib/cn'
 
 
 function SummaryCell({
@@ -61,8 +62,18 @@ export function CustomerFinancialSummary({
           <SummaryCell label={t(CUSTOMERS.activityFilterSales)} count={summary.sales.count} totalCfa={summary.sales.totalCfa} />
           <SummaryCell label={t(CUSTOMERS.activityFilterReturns)} count={summary.returns.count} totalCfa={summary.returns.totalCfa} />
           <SummaryCell label={t(CUSTOMERS.activityFilterPayments)} count={summary.payments.count} totalCfa={summary.payments.totalCfa} />
-          <div className="px-3 py-2.5 text-center bg-surface">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">
+          <div
+            className={cn(
+              'px-3 py-2.5 text-center',
+              outstandingBalanceCfa > 0 ? 'bg-danger-bg' : 'bg-success-bg',
+            )}
+          >
+            <p
+              className={cn(
+                'text-[11px] font-semibold uppercase tracking-wide',
+                outstandingBalanceCfa > 0 ? 'text-danger-foreground' : 'text-success-foreground',
+              )}
+            >
               {t(CUSTOMERS.balanceOwed)}
             </p>
             <p className="mt-1 text-base font-semibold tabular-nums text-text-primary">&nbsp;</p>
@@ -70,7 +81,7 @@ export function CustomerFinancialSummary({
               amount={outstandingBalanceCfa}
               size="small"
               danger={outstandingBalanceCfa > 0}
-              className="mt-0.5"
+              className={cn('mt-0.5', outstandingBalanceCfa <= 0 && 'text-success-foreground')}
             />
           </div>
         </>

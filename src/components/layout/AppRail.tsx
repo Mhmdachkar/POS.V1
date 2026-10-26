@@ -209,17 +209,18 @@ export interface AppRailProps {
   onToggle: () => void
   /** Off-canvas mobile panel: fixed expanded width, no collapse control. */
   drawer?: boolean
+  /** POS: stay icon-only; hide the expand control. */
+  lockCollapsed?: boolean
 }
 
-export function AppRail({ expanded, onToggle, drawer = false }: AppRailProps) {
+export function AppRail({ expanded, onToggle, drawer = false, lockCollapsed = false }: AppRailProps) {
   useLocaleStore((s) => s.locale)
   const staff = useAuthStore((s) => s.staff)
   const clear = useAuthStore((s) => s.clear)
-  const { pathname } = useLocation()
   const role: StaffRole = staff?.role ?? 'cashier'
   const isAdmin = role === 'admin'
-  const posIconOnly = pathname === '/pos' && !drawer
-  const showExpanded = drawer || (!posIconOnly && expanded)
+  const showExpanded = drawer || (!lockCollapsed && expanded)
+  const iconOnly = !showExpanded
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -231,9 +232,11 @@ export function AppRail({ expanded, onToggle, drawer = false }: AppRailProps) {
   return (
     <nav
       className={cn(
-        'flex flex-col h-full flex-shrink-0 border-r border-border bg-surface',
-        'transition-[width] duration-200 ease-in-out',
-        showExpanded ? 'w-[220px]' : 'w-14',
+        'flex flex-col h-full flex-shrink-0 border-r border-border bg-surface overflow-hidden',
+        'transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none',
+        showExpanded
+          ? 'w-[var(--rail-width-expanded)] min-w-[var(--rail-width-expanded)] max-w-[var(--rail-width-expanded)]'
+          : 'w-[var(--rail-width-collapsed)] min-w-[var(--rail-width-collapsed)] max-w-[var(--rail-width-collapsed)]',
       )}
       aria-label={bilingualAriaLabel({ fr: 'Navigation principale', en: 'Main navigation' })}
     >
@@ -245,9 +248,9 @@ export function AppRail({ expanded, onToggle, drawer = false }: AppRailProps) {
 
       <div className={cn('flex-1 overflow-y-auto scrollbar-thin', showExpanded ? 'pt-1 pb-3' : 'py-3')}>
         {isAdmin ? (
-          <RailNavGroups groups={ADMIN_GROUPS} expanded={showExpanded} iconOnly={posIconOnly} />
+          <RailNavGroups groups={ADMIN_GROUPS} expanded={showExpanded} iconOnly={iconOnly} />
         ) : (
-          <RailNavFlat items={NAV_ITEMS[role]} expanded={showExpanded} iconOnly={posIconOnly} />
+          <RailNavFlat items={NAV_ITEMS[role]} expanded={showExpanded} iconOnly={iconOnly} />
         )}
       </div>
 
@@ -269,7 +272,7 @@ export function AppRail({ expanded, onToggle, drawer = false }: AppRailProps) {
           )}
         </button>
 
-        {!drawer && !posIconOnly && (
+        {!drawer && !lockCollapsed && (
           <button
             type="button"
             onClick={onToggle}

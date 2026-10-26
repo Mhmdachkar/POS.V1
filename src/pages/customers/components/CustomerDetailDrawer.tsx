@@ -39,6 +39,9 @@ import { SaleDetailDrawer } from '@/pages/sales/components/SaleDetailDrawer'
 import { RecordPaymentModal } from './RecordPaymentModal'
 import { CustomerFormModal } from './CustomerFormModal'
 import { CustomerFinancialSummary } from './CustomerFinancialSummary'
+import { CustomerAvatar, customerAccountTone } from '@/components/customers/CustomerAvatar'
+import { cn } from '@/lib/cn'
+import { BilingualText } from '@/components/ui/BilingualText'
 import { t } from '@/lib/bilingual/types'
 import {
   ActivityEventRow,
@@ -143,18 +146,54 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
   }
 
   const events = activity?.data ?? []
-  const hasOutstanding = (customer?.balance_owed_cfa ?? 0) > 0
+  const tone = customer
+    ? customerAccountTone({
+        balanceOwedCfa: customer.balance_owed_cfa,
+        isActive: customer.is_active,
+      })
+    : 'inactive'
+  const hasOutstanding = tone === 'owing'
 
   return (
     <>
       <Drawer
         open={!!customerId}
         onClose={onClose}
-        title={loadingCustomer ? 'Customer Details' : (customer?.name ?? 'Customer Details')}
+        title={
+          customer ? (
+            <span className="inline-flex items-center gap-3">
+              <CustomerAvatar
+                name={customer.name}
+                balanceOwedCfa={customer.balance_owed_cfa}
+                isActive={customer.is_active}
+              />
+              <span>{customer.name}</span>
+            </span>
+          ) : (
+            loadingCustomer ? t(CUSTOMERS.customerDetails) : t(CUSTOMERS.customerDetails)
+          )
+        }
         description={
-          customer
-            ? (customer.is_active ? t(CUSTOMERS.activeCustomer) : t(CUSTOMERS.inactiveCustomer))
-            : undefined
+          customer ? (
+            <span className="inline-flex flex-wrap items-center gap-2">
+              <span>{customer.is_active ? t(CUSTOMERS.activeCustomer) : t(CUSTOMERS.inactiveCustomer)}</span>
+              {tone !== 'inactive' && (
+                <span
+                  className={cn(
+                    'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                    tone === 'owing' && 'bg-danger-bg text-danger-foreground',
+                    tone === 'settled' && 'bg-success-bg text-success-foreground',
+                  )}
+                >
+                  <BilingualText
+                    {...(tone === 'owing' ? CUSTOMERS.accountOwing : CUSTOMERS.accountSettled)}
+                    variant="caption"
+                    layout="inline"
+                  />
+                </span>
+              )}
+            </span>
+          ) : undefined
         }
         width="lg"
       >
@@ -169,12 +208,29 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
         ) : (
           <div className="space-y-1">
             <SectionHeader title={<BiSectionTitle {...CUSTOMERS.balanceSection} />} />
-            <div className="rounded-md border border-border bg-surface-muted p-3">
-              <p className="text-xs text-text-secondary mb-1">{t(CUSTOMERS.outstandingBalance)}</p>
+            <div
+              className={cn(
+                'rounded-xl border p-4',
+                tone === 'owing' && 'border-danger/30 bg-danger-bg',
+                tone === 'settled' && 'border-success/30 bg-success-bg',
+                tone === 'inactive' && 'border-border bg-surface-muted',
+              )}
+            >
+              <p
+                className={cn(
+                  'text-xs font-semibold uppercase tracking-wide mb-1',
+                  tone === 'owing' && 'text-danger-foreground',
+                  tone === 'settled' && 'text-success-foreground',
+                  tone === 'inactive' && 'text-text-secondary',
+                )}
+              >
+                {t(CUSTOMERS.outstandingBalance)}
+              </p>
               <MoneyDisplay
                 amount={customer.balance_owed_cfa}
                 size="medium"
-                danger={customer.balance_owed_cfa > 0}
+                danger={hasOutstanding}
+                className={tone === 'settled' ? 'text-success-foreground' : undefined}
               />
               <p className="text-xs text-text-muted mt-1">
                 {t(CUSTOMERS.balanceHelp)}

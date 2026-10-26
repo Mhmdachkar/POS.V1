@@ -202,6 +202,7 @@ export function TopBar({ onOpenMobileNav }: TopBarProps) {
       {onOpenMobileNav && (
         <button
           type="button"
+          data-testid="app-nav-menu"
           className={cn(
             'md:hidden flex items-center justify-center h-9 w-9 rounded-md flex-shrink-0',
             'text-text-primary hover:bg-surface-muted transition-colors duration-150',

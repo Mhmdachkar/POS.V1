@@ -68,7 +68,11 @@ vi.mock('@/pages/shifts/ShiftsPage', () => ({
   ShiftsPage: () => <div>shifts-page</div>,
 }))
 vi.mock('@/pages/admin/DashboardPage', () => ({
-  DashboardPage: () => <div>dashboard-page</div>,
+  DashboardPage: () => (
+    <div data-testid="dashboard-page" className="h-[480px] shrink-0">
+      dashboard-page
+    </div>
+  ),
 }))
 
 function cashierStaff(): Staff {
@@ -298,6 +302,56 @@ describe('AppShell navigation', () => {
     expect(nav.querySelector('a[href="/payments"]')).not.toBeNull()
     expect(nav.querySelector('a[href="/shifts"]')).not.toBeNull()
     expect(getByBilingualRole('link', NAV.overview)).toHaveAttribute('href', '/dashboard')
+  })
+
+  it('keeps an icon-only desktop rail on POS', async () => {
+    authorize(adminStaff())
+    useDepotStore.setState({
+      currentDepotId: 'depot-a',
+      currentDepotName: 'Depot Dakar',
+      availableDepots: [
+        { id: 'depot-a', name: 'Depot Dakar', code: 'DKR', is_active: true },
+      ],
+    })
+    const user = userEvent.setup()
+    renderApp('/dashboard')
+
+    const railHost = screen.getByTestId('desktop-app-rail')
+    expect(railHost).toHaveClass('md:flex')
+    expect(getByLabelBi(LAYOUT_ARIA.mainNav).className).toContain('--rail-width-expanded')
+
+    await user.click(getByBilingualRole('link', NAV.pos))
+    expect(screen.getByText('product-search')).toBeInTheDocument()
+    expect(railHost).toHaveClass('md:flex')
+    expect(getByLabelBi(LAYOUT_ARIA.mainNav).className).toContain('--rail-width-collapsed')
+    expect(getByBilingualRole('link', NAV.overview)).toBeInTheDocument()
+  })
+
+  it('keeps dashboard scroll height bounded after Overview → POS → Overview', async () => {
+    authorize(adminStaff())
+    useDepotStore.setState({
+      currentDepotId: 'depot-a',
+      currentDepotName: 'Depot Dakar',
+      availableDepots: [
+        { id: 'depot-a', name: 'Depot Dakar', code: 'DKR', is_active: true },
+      ],
+    })
+    const user = userEvent.setup()
+    renderApp('/dashboard')
+
+    await screen.findByTestId('dashboard-page')
+    const pane = document.getElementById('main-content')?.firstElementChild as HTMLElement
+    expect(pane).toBeTruthy()
+    const dashboardScroll = pane.scrollHeight
+
+    await user.click(getByBilingualRole('link', NAV.pos))
+    expect(screen.getByText('product-search')).toBeInTheDocument()
+    expect(pane.scrollHeight).toBeLessThanOrEqual(pane.clientHeight + 8)
+
+    await user.click(getByBilingualRole('link', NAV.overview))
+    await screen.findByTestId('dashboard-page')
+    expect(pane.scrollHeight).toBeLessThanOrEqual(dashboardScroll + 80)
+    expect(pane.scrollHeight).toBeLessThan(2000)
   })
 
   it('has a single main navigation landmark', () => {

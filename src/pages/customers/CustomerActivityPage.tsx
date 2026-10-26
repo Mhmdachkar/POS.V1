@@ -45,6 +45,7 @@ import {
 import { useAuthStore } from '@/stores/authStore'
 import { SaleDetailDrawer } from '@/pages/sales/components/SaleDetailDrawer'
 import { CustomerFinancialSummary } from './components/CustomerFinancialSummary'
+import { CustomerAvatar } from '@/components/customers/CustomerAvatar'
 import { t } from '@/lib/bilingual/types'
 import {
   ActivityFilterTabs,
@@ -136,7 +137,20 @@ export function CustomerActivityPage() {
           </Link>
         </div>
         <PageHeader
-          title={loadingCustomer ? t(CUSTOMERS.customerActivity) : (customer?.name ?? t(CUSTOMERS.customerActivity))}
+          title={
+            loadingCustomer || !customer ? (
+              t(CUSTOMERS.customerActivity)
+            ) : (
+              <span className="inline-flex items-center gap-3">
+                <CustomerAvatar
+                  name={customer.name}
+                  balanceOwedCfa={customer.balance_owed_cfa}
+                  isActive={customer.is_active}
+                />
+                <span>{customer.name}</span>
+              </span>
+            )
+          }
           className="border-b-0 pt-2"
           actions={
             customer ? (
@@ -147,6 +161,7 @@ export function CustomerActivityPage() {
                     amount={customer.balance_owed_cfa}
                     size="medium"
                     danger={customer.balance_owed_cfa > 0}
+                    className={customer.balance_owed_cfa <= 0 ? 'text-success-foreground' : undefined}
                   />
                 </div>
                 {isAdmin && (

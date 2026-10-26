@@ -17,6 +17,8 @@ export const CUSTOMERS = {
   reactivateCustomer: bi('Réactiver le client', 'Reactivate Customer'),
   activeCustomer: bi('Client actif', 'Active customer'),
   inactiveCustomer: bi('Client inactif', 'Inactive customer'),
+  accountSettled: bi('Compte à jour', 'Account settled'),
+  accountOwing: bi('Solde encore dû', 'Balance still owed'),
   loadingActivity: bi('Chargement de l\'activité', 'Loading account activity'),
   customerActivity: bi('Activité client', 'Customer activity'),
   paymentAmountError: bi(

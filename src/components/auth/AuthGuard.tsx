@@ -73,7 +73,9 @@ export function AuthGuard() {
   return (
     <>
       <PosShiftPersistence />
-      <Outlet />
+      <div className="h-full min-h-0 overflow-hidden">
+        <Outlet />
+      </div>
     </>
   )
 }

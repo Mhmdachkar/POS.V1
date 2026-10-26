@@ -22,7 +22,7 @@ import { TopBar } from './TopBar'
  * Below md: AppRail leaves the layout flow; TopBar hamburger opens it
  * as an off-canvas drawer so /pos at 390px is not covered by the rail.
  *
- * On /pos the rail is icon-only; main is overflow-hidden (POS workspace).
+ * On /pos the desktop rail stays visible as icons only so staff can jump pages without opening a menu.
  */
 export function AppShell() {
   const locale = useLocaleStore((s) => s.locale)
@@ -30,7 +30,7 @@ export function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const location = useLocation()
   const isPos = location.pathname === '/pos'
-  const mainRef = useRef<HTMLElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   useDepotContextSync()
 
@@ -38,15 +38,17 @@ export function AppShell() {
     setMobileNavOpen(false)
   }, [location.pathname])
 
-  // Prevent a tall POS workspace from leaving the next page (e.g. dashboard) with a huge scroll range.
+  // Reset scroll when leaving POS (tall inner panes) so the next page does not inherit a huge range.
   useLayoutEffect(() => {
-    const main = mainRef.current
-    if (!main) return
-    if (typeof main.scrollTo === 'function') {
-      main.scrollTo({ top: 0, left: 0 })
+    const pane = scrollRef.current
+    if (!pane) return
+    if (typeof pane.scrollTo === 'function') {
+      pane.scrollTo({ top: 0, left: 0 })
     } else {
-      main.scrollTop = 0
+      pane.scrollTop = 0
     }
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
   }, [location.pathname])
 
   useEffect(() => {
@@ -59,10 +61,14 @@ export function AppShell() {
   }, [mobileNavOpen])
 
   return (
-    <div className="flex h-full bg-background overflow-hidden">
-      <div className="hidden md:flex h-full flex-shrink-0">
+    <div className="flex h-dvh max-h-dvh w-full bg-background overflow-hidden">
+      <div
+        data-testid="desktop-app-rail"
+        className="hidden md:flex h-full flex-shrink-0 overflow-hidden"
+      >
         <AppRail
-          expanded={railExpanded}
+          expanded={isPos ? false : railExpanded}
+          lockCollapsed={isPos}
           onToggle={() => setRailExpanded((prev) => !prev)}
         />
       </div>
@@ -85,22 +91,26 @@ export function AppShell() {
         </div>
       )}
 
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <TopBar onOpenMobileNav={() => setMobileNavOpen(true)} />
 
         <main
-          ref={mainRef}
-          key={location.pathname}
-          className={cn(
-            'flex-1 min-h-0 min-w-0 bg-background flex flex-col',
-            isPos
-              ? 'overflow-hidden pos-workspace-enter'
-              : 'overflow-y-auto overflow-x-hidden',
-          )}
+          className="flex flex-1 min-h-0 min-w-0 flex-col overflow-hidden bg-background"
           role="main"
           id="main-content"
         >
-          <Outlet key={locale} />
+          <div
+            ref={scrollRef}
+            key={location.pathname}
+            className={cn(
+              'app-route-pane flex min-h-0 min-w-0 flex-1 flex-col scroll-gutter-stable',
+              isPos ? 'overflow-hidden' : 'overflow-y-auto overflow-x-hidden',
+            )}
+          >
+            <div className="app-route-enter flex min-h-0 min-w-0 flex-1 flex-col">
+              <Outlet key={locale} />
+            </div>
+          </div>
         </main>
       </div>
     </div>
