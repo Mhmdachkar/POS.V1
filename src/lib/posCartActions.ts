@@ -6,6 +6,7 @@
 import {
   canAddUnitQuantity,
   isWithinAvailable,
+  maxQuantityInUnit,
   onlyAvailableMessage,
   proposedPiecesAfterAdd,
   proposedPiecesAfterSetLine,
@@ -78,7 +79,20 @@ export function tryUpdateCartQuantity(
   }
   const proposed = proposedPiecesAfterSetLine(items, productId, unitLevel, qty)
   if (!isWithinAvailable(proposed, availablePieces)) {
-    return fail(availablePieces, items, productId)
+    const failResult = fail(availablePieces, items, productId)
+    const line = items.find((i) => i.product_id === productId && i.unit_level === unitLevel)
+    const conversion = line?.conversion_to_base ?? 1
+    const maxQty = maxQuantityInUnit(
+      availablePieces,
+      items,
+      productId,
+      unitLevel,
+      conversion,
+    )
+    if (maxQty > 0) {
+      usePOSStore.getState().updateQuantity(productId, unitLevel, maxQty)
+    }
+    return failResult
   }
   usePOSStore.getState().updateQuantity(productId, unitLevel, qty)
   return { ok: true }

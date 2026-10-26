@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CartPanel } from '@/components/pos/CartPanel'
 import { CartItem } from '@/components/pos/CartItem'
@@ -13,6 +13,11 @@ import type { CartItem as CartItemType, ProductWithUnits } from '@/types'
 import type { ProductUnit } from '@/types/database'
 import { POS } from '@/lib/bilingual/pos'
 import { bilingualAriaLabel, getByBilingualRole } from '../helpers/bilingualQueries'
+import { toast } from 'sonner'
+
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn() },
+}))
 
 function removeButtons(product = 'Water') {
   return screen.getAllByRole('button', { name: bilingualAriaLabel(POS.removeFromCartAria(product)) })
@@ -318,8 +323,8 @@ describe('CartPanel', () => {
     expect(usePOSStore.getState().items).toHaveLength(0)
   })
 
-  it('clamps manual quantity input to available stock', async () => {
-    const user = userEvent.setup()
+  it('clamps manual quantity input to available stock and toasts remaining', () => {
+    vi.mocked(toast.error).mockClear()
     vi.mocked(useProductDetail).mockReturnValue({
       data: { ...waterProduct(), current_stock_pieces: 10 },
       isLoading: false,
@@ -328,8 +333,8 @@ describe('CartPanel', () => {
     render(<CartItem item={usePOSStore.getState().items[0]} />)
 
     const input = screen.getByLabelText(bilingualAriaLabel(POS.qtyAria('Water')))
-    await user.clear(input)
-    await user.type(input, '15')
-    expect(usePOSStore.getState().items[0].quantity_in_unit).toBeLessThanOrEqual(10)
+    fireEvent.change(input, { target: { value: '15' } })
+    expect(usePOSStore.getState().items[0].quantity_in_unit).toBe(10)
+    expect(toast.error).toHaveBeenCalled()
   })
 })

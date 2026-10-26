@@ -56,9 +56,6 @@ export function CartItem({ item }: CartItemProps) {
     )
     if (!result.ok) {
       toastErrorBi(POS.remainingStock(result.remainingPieces))
-      if (maxQty != null && maxQty > 0) {
-        tryUpdateCartQuantity(item.product_id, item.unit_level, maxQty, available)
-      }
     }
   }
 
@@ -123,7 +120,6 @@ export function CartItem({ item }: CartItemProps) {
         <input
           type="number"
           min={1}
-          max={maxQty ?? undefined}
           value={item.quantity_in_unit}
           aria-label={bilingualAriaLabel(POS.qtyAria(item.product_name))}
           onChange={(e) => {
