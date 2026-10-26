@@ -87,6 +87,9 @@ interface POSState {
   // Admin-only total override (null = no override, use calculated total)
   overrideTotalCfa: number | null
 
+  // Admin reason when payable total is 0 (100% / full flat / override 0)
+  priceExceptionReason: string
+
   // ─── Submission lifecycle ────────────────────────────────────
   /**
    * Idempotency key for the current sale attempt.
@@ -145,6 +148,7 @@ interface POSState {
   setDiscountValue: (value: number) => void
   setCashTendered: (amount: number) => void
   setOverrideTotalCfa: (amount: number | null) => void
+  setPriceExceptionReason: (reason: string) => void
   clearCart: () => void
 
   /**
@@ -194,6 +198,7 @@ export const usePOSStore = create<POSState>()((set, get) => ({
   discountValue: 0,
   cashTendered: 0,
   overrideTotalCfa: null,
+  priceExceptionReason: '',
   idempotencyKey: null,
   isSubmitting: false,
   saleResult: null,
@@ -371,6 +376,8 @@ export const usePOSStore = create<POSState>()((set, get) => ({
     })
   },
 
+  setPriceExceptionReason: (reason) => set({ priceExceptionReason: reason }),
+
   clearCart: () => {
     const { discountType, discountValue, cashTendered, overrideTotalCfa } = get()
     set({
@@ -400,6 +407,7 @@ export const usePOSStore = create<POSState>()((set, get) => ({
       discountValue: 0,
       cashTendered: 0,
       overrideTotalCfa: null,
+      priceExceptionReason: '',
       idempotencyKey: null,
       isSubmitting: false,
       saleResult: null,

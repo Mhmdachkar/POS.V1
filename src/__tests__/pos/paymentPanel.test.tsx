@@ -229,6 +229,59 @@ describe('PaymentPanel', () => {
     expect(screen.getByText(POS.discountPercentError.fr, { exact: false })).toBeInTheDocument()
   })
 
+  it('B2: typing 150% in the discount field keeps Complete disabled at CFA 0', () => {
+    addLine()
+    usePOSStore.getState().setCashTendered(1000)
+    usePOSStore.getState().setDiscountType('percent')
+    renderPanel()
+    const input = screen.getByLabelText(bilingualAriaLabel(POS.discountValue))
+    fireEvent.change(input, { target: { value: '150' } })
+    expect(input).toHaveValue(150)
+    expect(screen.getByText(POS.discountPercentError.fr, { exact: false })).toBeInTheDocument()
+    expect(screen.getByTestId('checkout-total')).toHaveTextContent(/0/)
+    expect(screen.getByRole('button', { name: bilingualAriaLabel(POS.completeSaleAria) })).toBeDisabled()
+  })
+
+  it('B2: cashier cannot complete a 100% discount (total CFA 0)', () => {
+    addLine()
+    usePOSStore.getState().setDiscountType('percent')
+    usePOSStore.getState().setDiscountValue(100)
+    usePOSStore.getState().setCashTendered(0)
+    renderPanel()
+    expect(screen.getByTestId('checkout-total')).toHaveTextContent(/0/)
+    expect(screen.getByText(POS.zeroTotalNeedsAdmin.fr)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: bilingualAriaLabel(POS.completeSaleAria) })).toBeDisabled()
+  })
+
+  it('B2: admin completes a 0-total sale only after entering a reason', async () => {
+    const user = userEvent.setup()
+    useAuthStore.setState({
+      staff: adminStaff(),
+      session: null,
+      isLoading: false,
+      authLoadState: 'authorized',
+    })
+    addLine()
+    usePOSStore.getState().setDiscountType('percent')
+    usePOSStore.getState().setDiscountValue(100)
+    usePOSStore.getState().setCashTendered(0)
+    renderPanel()
+    const complete = screen.getByRole('button', { name: bilingualAriaLabel(POS.completeSaleAria) })
+    expect(complete).toBeDisabled()
+    await user.type(
+      screen.getByLabelText(bilingualAriaLabel(POS.priceExceptionReason)),
+      'Courtesy waiver',
+    )
+    expect(complete).toBeEnabled()
+    await user.click(complete)
+    await waitFor(() => expect(rpc.completeSale).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(rpc.completeSale).mock.calls[0][0]).toMatchObject({
+      p_discount_type: 'percent',
+      p_discount_value: 100,
+      p_price_exception_reason: 'Courtesy waiver',
+    })
+  })
+
   it('keeps commit disabled when cash is negative', () => {
     addLine()
     usePOSStore.getState().setCashTendered(-1)

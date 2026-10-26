@@ -240,6 +240,8 @@ export interface Sale {
   total_cfa: number
   /** Admin-only. When set, this is the authoritative revenue total. Null = use total_cfa. */
   admin_override_total_cfa: number | null
+  /** Required when payable total is 0 (admin-only). Null on historical rows. */
+  price_exception_reason?: string | null
   amount_tendered_cfa: number
   amount_applied_cfa: number
   change_given_cfa: number

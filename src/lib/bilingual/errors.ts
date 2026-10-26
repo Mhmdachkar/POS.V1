@@ -253,6 +253,18 @@ export function messageForCodeBilingual(
       'Enter a valid refund amount.',
     )
   }
+  if (code === 'UNAUTHORIZED' && details?.reason === 'zero_total_requires_admin') {
+    return bi(
+      'Un total de 0 CFA doit être validé par un administrateur.',
+      'A total of CFA 0 must be approved by an administrator.',
+    )
+  }
+  if (code === 'INVALID_INPUT' && details?.reason === 'zero_total_requires_reason') {
+    return bi(
+      'Indiquez un motif pour un total de 0 CFA.',
+      'Enter a reason for a total of CFA 0.',
+    )
+  }
   if (code === 'INVALID_INPUT' && details?.reason === 'low_stock_threshold_required') {
     return bi(
       'Entrez un seuil de stock faible lorsque le suivi est activé.',

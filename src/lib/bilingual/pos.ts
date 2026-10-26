@@ -82,6 +82,15 @@ export const POS = {
     'Flat discount must be between 0 and subtotal',
   ),
   discountPercentError: bi('Pourcentage entre 0 et 100', 'Percentage must be between 0 and 100'),
+  zeroTotalNeedsAdmin: bi(
+    'Un total de 0 CFA doit être validé par un administrateur.',
+    'A total of CFA 0 must be approved by an administrator.',
+  ),
+  zeroTotalNeedsReason: bi(
+    'Indiquez un motif pour un total de 0 CFA.',
+    'Enter a reason for a total of CFA 0.',
+  ),
+  priceExceptionReason: bi('Motif du total à 0', 'Reason for CFA 0 total'),
   amountCfaPlaceholder: bi('Montant CFA', 'Amount CFA'),
   onAccount: bi('À crédit', 'On account'),
   completeSaleAria: bi('Terminer la vente', 'Complete sale'),

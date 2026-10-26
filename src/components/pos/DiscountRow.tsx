@@ -3,7 +3,8 @@ import { Input, Select } from '@/components/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { parseCFAInput } from '@/lib/formatters'
 import { POS } from '@/lib/bilingual/pos'
-import { t, bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
+import { bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
+import { isDiscountOutOfRange } from '@/lib/zeroTotalSale'
 import { useShallow } from 'zustand/react/shallow'
 import { usePOSStore } from '@/stores/posStore'
 
@@ -33,12 +34,7 @@ export function DiscountRow() {
     setDiscountValue(num)
   }
 
-  const isDiscountInvalid =
-    discountType === 'flat'
-      ? discountValue < 0 || discountValue > totals.subtotal_cfa
-      : discountType === 'percent'
-        ? discountValue < 0 || discountValue > 100
-        : false
+  const isDiscountInvalid = isDiscountOutOfRange(discountType, discountValue, totals.subtotal_cfa)
 
   const showExpanded = expanded || discountType !== null
 
@@ -76,7 +72,6 @@ export function DiscountRow() {
         <Input
           type="number"
           min={0}
-          max={discountType === 'percent' ? 100 : undefined}
           step={discountType === 'percent' ? 0.1 : 1}
           value={discountValue || ''}
           onChange={(e) => validateAndSet(e.target.value)}
