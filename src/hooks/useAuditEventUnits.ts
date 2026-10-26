@@ -45,7 +45,8 @@ async function resolveAuditEventUnits(row: AuditLogRow): Promise<UnitLike[] | nu
       .select('product_id')
       .eq('id', row.entity_id)
       .maybeSingle()
-    if (data?.product_id) return fetchProductUnits(data.product_id)
+    const productId = (data as { product_id: string } | null)?.product_id
+    if (productId) return fetchProductUnits(productId)
   }
 
   if (row.action === 'restock_product' && row.entity_id) {
@@ -54,7 +55,8 @@ async function resolveAuditEventUnits(row: AuditLogRow): Promise<UnitLike[] | nu
       .select('product_id')
       .eq('id', row.entity_id)
       .maybeSingle()
-    if (data?.product_id) return fetchProductUnits(data.product_id)
+    const productId = (data as { product_id: string } | null)?.product_id
+    if (productId) return fetchProductUnits(productId)
   }
 
   if (row.entity_type === 'product' && row.entity_id) {
