@@ -94,7 +94,7 @@ export function Modal({
           {!description && (
             <VisuallyHidden.Root>
               <Dialog.Description id="modal-desc">
-                {title} dialog
+                {title}
               </Dialog.Description>
             </VisuallyHidden.Root>
           )}
@@ -222,7 +222,7 @@ export function Drawer({
               )}
               {!description && (
                 <VisuallyHidden.Root>
-                  <Dialog.Description>{title} panel</Dialog.Description>
+                  <Dialog.Description>{title}</Dialog.Description>
                 </VisuallyHidden.Root>
               )}
             </div>
