@@ -560,7 +560,10 @@ export function ProductFormModal({ open, onClose, depotId, product }: ProductFor
                           && Number.isFinite(parseCFAInput(u.selling_price_cfa))
                           && Number.isFinite(parseCFAInput(u.cost_price_cfa))
                           && parseCFAInput(u.selling_price_cfa) < parseCFAInput(u.cost_price_cfa) && (
-                          <p className="text-xs text-warning-foreground mt-1">
+                          <p
+                            role="status"
+                            className="text-xs text-warning-foreground mt-1 rounded-md bg-warning-bg border border-warning/20 px-2 py-1"
+                          >
                             {t(INVENTORY.sellBelowCostWarning)}
                           </p>
                         )}

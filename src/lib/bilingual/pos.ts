@@ -20,6 +20,7 @@ export const POS = {
   insufficientStock: bi('Stock insuffisant', 'Insufficient Stock'),
   remainingStock: (n: number) =>
     bi(`Stock restant : ${n}`, `${n} remaining`),
+  qtyInvalid: bi('Quantité invalide', 'Invalid quantity'),
   addProductsBeforeSale: bi(
     'Ajoutez des produits au panier avant de terminer la vente.',
     'Add products to the cart before completing the sale.',

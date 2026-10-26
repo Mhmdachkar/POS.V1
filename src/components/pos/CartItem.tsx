@@ -26,6 +26,7 @@ export function CartItem({ item }: CartItemProps) {
   const { getAvailablePieces } = usePosCatalogStock()
   const { data: productDetail } = useProductDetail(item.product_id)
   const [photoFailed, setPhotoFailed] = useState(false)
+  const [qtyInvalid, setQtyInvalid] = useState(false)
   const photoSrc = resolveProductPhotoUrl(item.product_photo_url, item.product_name)
   const hasPhoto = Boolean(photoSrc) && !photoFailed
 
@@ -48,6 +49,11 @@ export function CartItem({ item }: CartItemProps) {
     available == null ? null : remainingPieces(available, cartItems, item.product_id)
 
   function applyQuantity(next: number) {
+    if (next < 0) {
+      setQtyInvalid(true)
+      return
+    }
+    setQtyInvalid(false)
     const result = tryUpdateCartQuantity(
       item.product_id,
       item.unit_level,
@@ -55,6 +61,10 @@ export function CartItem({ item }: CartItemProps) {
       available,
     )
     if (!result.ok) {
+      if (result.reason === 'invalid_quantity') {
+        setQtyInvalid(true)
+        return
+      }
       toastErrorBi(POS.remainingStock(result.remainingPieces))
     }
   }
@@ -105,7 +115,8 @@ export function CartItem({ item }: CartItemProps) {
         </div>
       </div>
 
-      <div className="flex items-center gap-1 flex-shrink-0 pl-11 sm:pl-0">
+      <div className="flex flex-col items-stretch gap-1 flex-shrink-0 pl-11 sm:pl-0">
+      <div className="flex items-center gap-1">
         <Button
           type="button"
           variant="secondary"
@@ -122,16 +133,17 @@ export function CartItem({ item }: CartItemProps) {
           min={1}
           value={item.quantity_in_unit}
           aria-label={bilingualAriaLabel(POS.qtyAria(item.product_name))}
+          aria-invalid={qtyInvalid || undefined}
           onChange={(e) => {
             const val = parseInt(e.target.value, 10)
-            if (!Number.isNaN(val) && val > 0) {
-              applyQuantity(val)
-            }
+            if (Number.isNaN(val)) return
+            applyQuantity(val)
           }}
           className={cn(
-            'w-12 h-10 sm:w-11 sm:h-9 text-center text-sm rounded-md border border-border bg-surface',
+            'w-12 h-10 sm:w-11 sm:h-9 text-center text-sm rounded-md border bg-surface',
             'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary',
             'text-text-primary',
+            qtyInvalid ? 'border-danger' : 'border-border',
           )}
         />
 
@@ -167,6 +179,12 @@ export function CartItem({ item }: CartItemProps) {
         >
           <Trash2 className="h-4 w-4" />
         </Button>
+      </div>
+        {qtyInvalid && (
+          <p role="status" className="text-[10px] text-danger-foreground">
+            {t(POS.qtyInvalid)}
+          </p>
+        )}
       </div>
     </div>
   )

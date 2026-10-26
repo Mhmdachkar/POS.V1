@@ -154,7 +154,9 @@ export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) 
             </p>
           </div>
           <div className="flex justify-end">
-            <Button onClick={handleDismiss}>Terminé</Button>
+            <Button onClick={handleDismiss}>
+              {t(COMMON.done)}
+            </Button>
           </div>
         </div>
       ) : (

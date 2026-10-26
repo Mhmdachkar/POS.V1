@@ -25,6 +25,7 @@ import {
 import { formatCFA, formatDate } from '@/lib/formatters'
 import type { Customer, Staff } from '@/types/database'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
+import { SHIFT_COPY } from '@/lib/bilingual/shift'
 import { bilingualAriaLabel, getByBilingualRole } from '../helpers/bilingualQueries'
 
 vi.mock('@/hooks/useCustomers', async (importOriginal) => {
@@ -433,8 +434,9 @@ describe('CustomerDetailDrawer (15E)', () => {
     expect(node).toHaveClass('text-financial-sm', 'financial-value', 'text-danger-foreground')
 
     const record = screen.getByRole('button', { name: CUSTOMERS.recordPayment.fr })
-    expect(record).toBeEnabled()
+    expect(record).toBeDisabled()
     expect(record).not.toHaveTextContent(/CFA/)
+    expect(screen.getByText(SHIFT_COPY.openShiftRequired.fr)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: CUSTOMERS.editCustomerBtn.fr })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: CUSTOMERS.deactivateCustomer.fr })).toBeInTheDocument()
   })

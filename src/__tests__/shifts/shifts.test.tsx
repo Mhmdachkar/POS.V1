@@ -251,10 +251,10 @@ describe('ShiftsPage', () => {
     vi.mocked(supabase.from).mockReturnValue(builder as never)
   })
 
-  it('renders historical list and status pills without Open Shift or Select for POS', async () => {
+  it('renders historical list, Open Shift, and status pills without Select for POS', async () => {
     renderShifts()
     expect(await screen.findByRole('heading', { name: /Shifts|Services/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Open Shift|Ouvrir un service/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Open Shift|Ouvrir un service/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Select for POS|Sélectionner pour la caisse/i })).not.toBeInTheDocument()
     expect(screen.queryByText('Current')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Tout \/ All|All/i })).toBeInTheDocument()

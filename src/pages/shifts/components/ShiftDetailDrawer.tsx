@@ -11,7 +11,7 @@
 import { useState, type ReactNode } from 'react'
 import { SHIFT_COPY } from '@/lib/bilingual/shift'
 import { COMMON } from '@/lib/bilingual/common'
-import { BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
+import { BiButtonStack, BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
 import { DoorClosed } from 'lucide-react'
 import { Button, Drawer, MoneyDisplay, ShiftStatusBadge, Skeleton } from '@/components/ui'
 import { formatCFA, formatDateTime } from '@/lib/formatters'
@@ -259,7 +259,7 @@ export function ShiftDetailDrawer({ shiftId, onClose }: ShiftDetailDrawerProps) 
                     onClick={() => setShowClose(true)}
                   >
                     <DoorClosed className="h-4 w-4" />
-                    Close Shift
+                    <BiButtonStack {...SHIFT_COPY.closeShift} />
                   </Button>
                 </div>
               </>

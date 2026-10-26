@@ -18,7 +18,7 @@ import type { CartItem } from '@/types'
 
 export type PosCartGuardFail = {
   ok: false
-  reason: 'insufficient_stock'
+  reason: 'insufficient_stock' | 'invalid_quantity'
   availablePieces: number
   remainingPieces: number
   message: string
@@ -68,7 +68,16 @@ export function tryUpdateCartQuantity(
   qty: number,
   availablePieces: number | null | undefined,
 ): PosCartGuardResult {
-  if (qty <= 0) {
+  if (qty < 0 || !Number.isFinite(qty)) {
+    return {
+      ok: false,
+      reason: 'invalid_quantity',
+      availablePieces: availablePieces ?? 0,
+      remainingPieces: 0,
+      message: 'invalid_quantity',
+    }
+  }
+  if (qty === 0) {
     usePOSStore.getState().removeItem(productId, unitLevel)
     return { ok: true }
   }
@@ -79,7 +88,6 @@ export function tryUpdateCartQuantity(
   }
   const proposed = proposedPiecesAfterSetLine(items, productId, unitLevel, qty)
   if (!isWithinAvailable(proposed, availablePieces)) {
-    const failResult = fail(availablePieces, items, productId)
     const line = items.find((i) => i.product_id === productId && i.unit_level === unitLevel)
     const conversion = line?.conversion_to_base ?? 1
     const maxQty = maxQuantityInUnit(
@@ -92,7 +100,13 @@ export function tryUpdateCartQuantity(
     if (maxQty > 0) {
       usePOSStore.getState().updateQuantity(productId, unitLevel, maxQty)
     }
-    return failResult
+    return {
+      ok: false,
+      reason: 'insufficient_stock',
+      availablePieces,
+      remainingPieces: maxQty,
+      message: onlyAvailableMessage(availablePieces),
+    }
   }
   usePOSStore.getState().updateQuantity(productId, unitLevel, qty)
   return { ok: true }

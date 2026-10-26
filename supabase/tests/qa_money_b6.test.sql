@@ -99,3 +99,39 @@ begin
   raise notice 'B6-2 PASS: depot-scoped payment KPI includes unattributed cash';
 end;
 $B6_2$;
+
+do $B6_3$
+declare
+  depot_a   constant uuid := '00000000-0000-0000-0001-000000000001';
+  admin_id  constant uuid := '00000000-0000-0000-0000-000000000001';
+  cust_id   constant uuid := '00000000-0000-0000-0005-000000000099';
+  today     date;
+  before    numeric;
+  after     numeric;
+  result    jsonb;
+begin
+  today := (now() AT TIME ZONE 'Africa/Abidjan')::date;
+
+  insert into customers (id, name, phone, balance_owed_cfa, created_by)
+  values (cust_id, 'B6 Admin Pay Customer', '0000000099', 50, admin_id)
+  on conflict (id) do update set balance_owed_cfa = greatest(customers.balance_owed_cfa, 50);
+
+  result := public.admin_report_customers(depot_a, today, today);
+  before := (result->>'payment_activity_cfa')::numeric;
+
+  insert into payments (
+    customer_id, sale_id, shift_id, payment_type, amount_cfa, recorded_by, note
+  ) values (
+    cust_id, null, null, 'customer_payment', 50, admin_id, 'B6 admin unattributed'
+  );
+
+  result := public.admin_report_customers(depot_a, today, today);
+  after := (result->>'payment_activity_cfa')::numeric;
+
+  if after - before != 50 then
+    raise exception 'B6-3 FAIL: depot report should include admin unattributed 50, delta=%', after - before;
+  end if;
+
+  raise notice 'B6-3 PASS: admin-recorded unattributed payment is in depot KPI';
+end;
+$B6_3$;

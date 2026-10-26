@@ -100,7 +100,7 @@ export function formatRelativeTime(iso: string | null | undefined): string {
 
 /** Parse a raw CFA string input (strips commas/spaces) → number or NaN */
 export function parseCFAInput(raw: string): number {
-  const cleaned = raw.replace(/[\s,]/g, '')
+  const cleaned = raw.replace(/[\s,\u00A0\u202F]/g, '')
   return parseFloat(cleaned)
 }
 

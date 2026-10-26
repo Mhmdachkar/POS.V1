@@ -24,8 +24,8 @@ export function CheckoutSummary() {
   const effectiveTotal = effectiveFinalTotal(totals.total_cfa, overrideTotalCfa)
   const isChangeGiven = totals.change_given_cfa > 0
   const isBalanceAdded = totals.balance_added_cfa > 0
-  const hasOverride = isAdmin && overrideTotalCfa != null
   const overrideInvalid = isOverrideOutOfRange(overrideTotalCfa, totals.total_cfa)
+  const hasOverride = isAdmin && overrideTotalCfa != null && !overrideInvalid
 
   const discountLabel =
     discountType === 'percent'

@@ -75,7 +75,6 @@ export function DiscountRow() {
       {discountType && (
         <Input
           type="number"
-          min={0}
           step={discountType === 'percent' ? 0.1 : 1}
           value={discountValue || ''}
           onChange={(e) => validateAndSet(e.target.value)}

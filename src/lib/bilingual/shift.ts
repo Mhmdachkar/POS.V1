@@ -29,7 +29,8 @@ export const SHIFT_COPY = {
     'Open a shift to complete a sale, process a refund, or record a payment.',
   ),
   openShift: bi('Ouvrir un service', 'Open Shift'),
-  closeShift: bi('Fermer le service', 'Close Shift'),
+  closeShift: bi('Clôturer le service', 'Close shift'),
+  viewShifts: bi('Voir les services', 'View shifts'),
   shiftClosed: bi('Service fermé', 'Shift Closed'),
   pageTitle: bi('Services', 'Shifts'),
   failedToLoad: bi('Impossible de charger les services', 'Failed to load shifts'),
@@ -76,7 +77,7 @@ export const SHIFT_COPY = {
   estimatedExpected: bi('Attendu estimé', 'Estimated Expected'),
   estimatedDiscrepancy: bi('Écart estimé', 'Estimated Discrepancy'),
   actualCashInDrawer: bi('Espèces réelles en caisse (CFA)', 'Actual Cash in Drawer (CFA)'),
-  closeShiftTitle: bi('Fermer le service', 'Close Shift'),
+  closeShiftTitle: bi('Clôturer le service', 'Close shift'),
   closeConfirmCheck: bi(
     'Je comprends que ce service sera fermé et ne pourra pas être rouvert.',
     'I understand this shift will be closed and cannot be reopened.',

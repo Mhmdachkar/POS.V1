@@ -1,19 +1,17 @@
 /**
- * ShiftsPage — Read-only historical view of shifts.
- *
- * CEO Notes: Active shift workflow removed.
- * New operations do not use shifts (shift_id = NULL for new sales).
- * This page is now purely a historical record viewer.
- * Historical shift data is preserved and viewable.
+ * ShiftsPage — open, close, and review cashier shifts.
  */
 
 import { useEffect, useState } from 'react'
-import { BiEmptyTitle, BiPageTitle } from '@/lib/bilingual/ui'
+import { BiButtonStack, BiEmptyTitle, BiPageTitle } from '@/lib/bilingual/ui'
 import { SHIFT_COPY } from '@/lib/bilingual/shift'
 import { COMMON } from '@/lib/bilingual/common'
 import { Clock } from 'lucide-react'
+import { OpenShiftModal } from './components/OpenShiftModal'
+import { persistPosShiftSelection } from '@/lib/posShiftPersistence'
 import { cn } from '@/lib/cn'
 import {
+  Button,
   Badge,
   EmptyState,
   FilterBar,
@@ -27,6 +25,7 @@ import { BilingualText } from '@/components/ui/BilingualText'
 import { formatDate, formatTime } from '@/lib/formatters'
 import {
   SHIFT_PAGE_SIZE,
+  canAccessShifts,
   clampShiftPage,
   useShiftsList,
   type ShiftListItem,
@@ -63,6 +62,7 @@ export function ShiftsPage() {
   const [statusFilter, setStatusFilter] = useState<ShiftStatus | null>(null)
   const [page, setPage] = useState(0)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [showOpen, setShowOpen] = useState(false)
 
   const staff = useAuthStore((s) => s.staff)
   const currentDepotId = useDepotStore((s) => s.currentDepotId)
@@ -70,6 +70,7 @@ export function ShiftsPage() {
   const isAdmin = staff?.role === 'admin'
   const showDepot = isAdmin && !currentDepotId
   const depotId = staff?.role === 'cashier' ? staff.depot_id : currentDepotId
+  const canOpen = canAccessShifts(staff?.role)
 
   useEffect(() => {
     setPage(0)
@@ -108,6 +109,13 @@ export function ShiftsPage() {
         <PageHeader
           title={<BiPageTitle {...SHIFT_COPY.pageTitle} />}
           className="border-b-0"
+          actions={
+            canOpen ? (
+              <Button onClick={() => setShowOpen(true)}>
+                <BiButtonStack {...SHIFT_COPY.openShift} />
+              </Button>
+            ) : undefined
+          }
         />
         <div className="px-3 sm:px-6 pb-3 sm:pb-4">
           <FilterBar
@@ -137,10 +145,17 @@ export function ShiftsPage() {
               title={<BiEmptyTitle {...SHIFT_COPY.noShifts} />}
               description={
                 statusFilter
-                  ? 'Aucun service ne correspond aux filtres.'
-                  : 'Aucun service historique.'
+                  ? t(SHIFT_COPY.noShiftsMatch)
+                  : t(SHIFT_COPY.noShiftsHint)
               }
             />
+            {canOpen && !statusFilter && (
+              <div className="mt-4 flex justify-center">
+                <Button onClick={() => setShowOpen(true)}>
+                  <BiButtonStack {...SHIFT_COPY.openShift} />
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
           <>
@@ -273,6 +288,11 @@ export function ShiftsPage() {
       <ShiftDetailDrawer
         shiftId={selectedId}
         onClose={() => setSelectedId(null)}
+      />
+      <OpenShiftModal
+        open={showOpen}
+        onClose={() => setShowOpen(false)}
+        onOpened={(shiftId) => persistPosShiftSelection(shiftId)}
       />
     </div>
   )

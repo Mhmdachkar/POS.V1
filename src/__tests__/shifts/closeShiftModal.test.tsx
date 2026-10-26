@@ -106,7 +106,7 @@ describe('CloseShiftModal', () => {
     const { mutateAsync } = renderModal()
 
     expect(screen.getByText('Estimé')).toBeInTheDocument()
-    const submit = screen.getByRole('button', { name: /Close Shift|Fermer le service/i })
+    const submit = screen.getByRole('button', { name: /Close [Ss]hift|Fermer le service|Clôturer le service/i })
     expect(submit).toBeDisabled()
 
     await user.type(screen.getByLabelText(SHIFT_COPY.actualCashInDrawer.fr), '8500')
@@ -135,7 +135,7 @@ describe('CloseShiftModal', () => {
 
     await user.type(screen.getByLabelText(SHIFT_COPY.actualCashInDrawer.fr), '8500')
     await user.click(screen.getByRole('checkbox'))
-    await user.click(screen.getByRole('button', { name: /Close Shift|Fermer le service/i }))
+    await user.click(screen.getByRole('button', { name: /Close [Ss]hift|Fermer le service|Clôturer le service/i }))
 
     expect(mutateAsync).toHaveBeenCalledWith({
       p_shift_id: 'sh-1',
@@ -155,7 +155,7 @@ describe('CloseShiftModal', () => {
 
     await user.type(screen.getByLabelText(SHIFT_COPY.actualCashInDrawer.fr), '0')
     await user.click(screen.getByRole('checkbox'))
-    await user.click(screen.getByRole('button', { name: /Close Shift|Fermer le service/i }))
+    await user.click(screen.getByRole('button', { name: /Close [Ss]hift|Fermer le service|Clôturer le service/i }))
 
     expect(await screen.findByText(SHIFT_COPY.alreadyClosed.fr)).toBeInTheDocument()
     expect(mutateAsync).toHaveBeenCalledTimes(1)
@@ -191,7 +191,7 @@ describe('CloseShiftModal', () => {
 
     await user.type(screen.getByLabelText(SHIFT_COPY.actualCashInDrawer.fr), '8500')
     await user.click(screen.getByRole('checkbox'))
-    await user.click(screen.getByRole('button', { name: /Close Shift|Fermer le service/i }))
+    await user.click(screen.getByRole('button', { name: /Close [Ss]hift|Fermer le service|Clôturer le service/i }))
 
     expect(await screen.findByText(SHIFT_COPY.shiftClosed.fr)).toBeInTheDocument()
     expect(screen.getByText(SHIFT_COPY.expectedCash.fr)).toBeInTheDocument()

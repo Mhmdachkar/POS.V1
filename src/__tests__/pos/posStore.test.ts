@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest'
-import { usePOSStore, computeTotals } from '@/stores/posStore'
+import { usePOSStore, computeTotals, effectiveFinalTotal } from '@/stores/posStore'
 import type { CartItem } from '@/types'
 
 // ─── Fixtures ─────────────────────────────────────────────────────
@@ -143,6 +143,20 @@ describe('computeTotals', () => {
     expect(totals.total_cfa).toBe(3150)
     expect(totals.amount_applied_cfa).toBe(3150)
     expect(totals.change_given_cfa).toBe(350)
+  })
+
+  it('B2: percent preview clamps to 0–100 so a negative % cannot raise the total', () => {
+    const items: CartItem[] = [{ ...item1, quantity_in_unit: 10, line_total_cfa: 10000 }]
+    expect(computeTotals(items, 'percent', -10, 0).total_cfa).toBe(10000)
+    expect(computeTotals(items, 'percent', 150, 0).total_cfa).toBe(0)
+    expect(computeTotals(items, 'percent', 100, 0).total_cfa).toBe(0)
+  })
+
+  it('B3: out-of-range override is ignored by effectiveFinalTotal', () => {
+    expect(effectiveFinalTotal(10000, 99999)).toBe(10000)
+    expect(effectiveFinalTotal(10000, 0)).toBe(10000)
+    expect(effectiveFinalTotal(10000, -100)).toBe(10000)
+    expect(effectiveFinalTotal(10000, 9000)).toBe(9000)
   })
 })
 

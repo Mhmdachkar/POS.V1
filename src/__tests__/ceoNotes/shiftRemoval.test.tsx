@@ -16,6 +16,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
 import { supabase } from '@/lib/supabase'
 import { POS } from '@/lib/bilingual/pos'
+import { SHIFT_COPY } from '@/lib/bilingual/shift'
 import type { Staff } from '@/types/database'
 
 vi.mock('@/hooks/useInventory', async (importOriginal) => {
@@ -55,6 +56,8 @@ vi.mock('@/hooks/useShifts', async (importOriginal) => {
   return {
     ...actual,
     useShiftDetail: vi.fn(() => ({ data: null, isLoading: false, isError: false })),
+    useOpenShifts: vi.fn(() => ({ data: [], isLoading: false })),
+    useOpenShift: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
   }
 })
 
@@ -174,20 +177,32 @@ describe('CEO Notes — POS has no shift gate', () => {
     expect(screen.getByTestId('cart-panel')).toBeInTheDocument()
     expect(screen.getByTestId('payment-panel')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Select for POS|Sélectionner pour la caisse/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Open Shift|Ouvrir un service/i })).not.toBeInTheDocument()
-    expect(screen.queryByText(/open a shift|ouvrir un service|select a shift/i)).not.toBeInTheDocument()
   })
 })
 
-describe('CEO Notes — ShiftChip static', () => {
-  it('shows bilingual no-shift label and never opens a picker', async () => {
+describe('CEO Notes — ShiftChip opens a shift', () => {
+  it('shows bilingual no-shift label and opens Ouvrir un service', async () => {
     const user = userEvent.setup()
-    render(<ShiftChip />)
+    useAuthStore.setState({
+      staff: cashierStaff(),
+      session: null,
+      isLoading: false,
+      authLoadState: 'authorized',
+    })
+    useDepotStore.setState({ currentDepotId: 'depot-a', currentDepotName: 'Depot Dakar' })
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <MemoryRouter>
+        <QueryClientProvider client={client}>
+          <ShiftChip />
+        </QueryClientProvider>
+      </MemoryRouter>,
+    )
     const chip = screen.getByTestId('shift-chip')
     expect(chip).toHaveTextContent(POS.noOpenShift.fr)
     await user.click(chip)
+    expect(screen.getAllByText(SHIFT_COPY.openShiftTitle.fr).length).toBeGreaterThan(0)
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
-    expect(screen.queryByRole('option')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Select for POS|Sélectionner pour la caisse/i })).not.toBeInTheDocument()
   })
 })
@@ -229,6 +244,6 @@ describe('CEO Notes — ShiftsPage historical only', () => {
     )
     expect((await screen.findAllByRole('button', { name: /View|Voir/i })).length).toBeGreaterThan(0)
     expect(screen.queryByRole('button', { name: /Select for POS|Sélectionner pour la caisse/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Open Shift|Ouvrir un service/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Open Shift|Ouvrir un service/i })).toBeInTheDocument()
   })
 })

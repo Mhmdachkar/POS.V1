@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { isOverrideOutOfRange } from '@/lib/zeroTotalSale'
 import type { CartItem, CheckoutTotals } from '@/types'
 import type { Customer } from '@/types/database'
 import type { CompleteSaleResult } from '@/types/rpc'
@@ -16,7 +17,13 @@ export function effectiveFinalTotal(
   calculatedTotalCfa: number,
   overrideTotalCfa: number | null,
 ): number {
-  return overrideTotalCfa != null ? Math.max(0, overrideTotalCfa) : calculatedTotalCfa
+  if (overrideTotalCfa == null || !Number.isFinite(overrideTotalCfa)) {
+    return calculatedTotalCfa
+  }
+  if (isOverrideOutOfRange(overrideTotalCfa, calculatedTotalCfa)) {
+    return calculatedTotalCfa
+  }
+  return overrideTotalCfa
 }
 
 /**
@@ -42,9 +49,13 @@ export function computeTotals(
 
   let discount_amount_cfa = 0
   if (discountType === 'flat') {
-    discount_amount_cfa = Math.min(discountValue, subtotal_cfa)
+    const flat = Math.min(Math.max(0, discountValue), subtotal_cfa)
+    discount_amount_cfa = Number.isFinite(flat) ? flat : 0
   } else if (discountType === 'percent') {
-    discount_amount_cfa = Math.round((discountValue / 100) * subtotal_cfa)
+    const pct = Math.min(100, Math.max(0, discountValue))
+    discount_amount_cfa = Number.isFinite(pct)
+      ? Math.round((pct / 100) * subtotal_cfa)
+      : 0
   }
 
   // Calculated commercial total (pre-override). Matches server sales.total_cfa.

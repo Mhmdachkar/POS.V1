@@ -475,6 +475,26 @@ describe('CEO Notes — PaymentPanel override payload', () => {
     expect(screen.getByText(POS.overrideOutOfRange.fr)).toBeInTheDocument()
   })
 
+  it('B3: 99999, 0, and -100 do not replace the displayed payable', () => {
+    useAuthStore.setState({
+      staff: adminStaff(),
+      session: null,
+      isLoading: false,
+      authLoadState: 'authorized',
+    })
+    addLine()
+    const calculated = usePOSStore.getState().totals.total_cfa
+    expect(calculated).toBeGreaterThan(0)
+    for (const bad of [99999, 0, -100]) {
+      usePOSStore.getState().setOverrideTotalCfa(bad)
+      expect(effectiveFinalTotal(usePOSStore.getState().totals.total_cfa, bad)).toBe(calculated)
+    }
+    renderPayment()
+    expect(screen.getByText(POS.overrideOutOfRange.fr)).toBeInTheDocument()
+    expect(screen.getByTestId('checkout-total')).toHaveTextContent(/1[\s\u00a0\u202f]?000/)
+    expect(screen.queryByText(POS.adjustedTotal.fr)).not.toBeInTheDocument()
+  })
+
   it('B3: Complete stays disabled when override is set without a reason', () => {
     useAuthStore.setState({
       staff: adminStaff(),

@@ -35,6 +35,7 @@ import { parseError } from '@/lib/errors'
 import { authorizedOpenShifts, clearStalePosShift, useOpenShifts } from '@/hooks/useShifts'
 import { resolveRequiredShiftId } from '@/lib/posShiftContext'
 import { useAuthStore } from '@/stores/authStore'
+import { useDepotStore } from '@/stores/depotStore'
 import { useRecordPayment } from '@/hooks/useCustomers'
 import type { Customer } from '@/types/database'
 import { t } from '@/lib/bilingual/types'
@@ -69,8 +70,9 @@ export function RecordPaymentModal({
 
   const { mutateAsync: recordPayment, isPending } = useRecordPayment()
   const staff = useAuthStore((s) => s.staff)
+  const currentDepotId = useDepotStore((s) => s.currentDepotId)
   const { data: openShifts, isLoading: openShiftsLoading } = useOpenShifts()
-  const cashierDepotId = staff?.role === 'cashier' ? staff.depot_id : null
+  const cashierDepotId = staff?.role === 'cashier' ? staff.depot_id : currentDepotId
   const effectiveShiftId = resolveRequiredShiftId(
     shiftId,
     cashierDepotId,
@@ -226,7 +228,7 @@ export function RecordPaymentModal({
             </div>
           )}
 
-          {shiftGateReady && !hasOpenShift && (
+          {!hasOpenShift && (
             <div className="rounded-md bg-warning-bg border border-warning/20 px-3 py-2">
               <p className="text-xs text-warning-foreground">
                 {t(SHIFT_COPY.openShiftRequired)}
