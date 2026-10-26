@@ -11,6 +11,7 @@ import { useRecordPayment } from '@/hooks/useCustomers'
 import { useOpenShifts, type ShiftListItem } from '@/hooks/useShifts'
 import { useAuthStore } from '@/stores/authStore'
 import type { Customer, Staff } from '@/types/database'
+import { CUSTOMERS } from '@/lib/bilingual/customers'
 
 vi.mock('@/hooks/useCustomers', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useCustomers')>()
@@ -164,5 +165,20 @@ describe('RecordPaymentModal', () => {
     expect(mutateAsync).toHaveBeenCalledWith(expect.objectContaining({
       p_shift_id: 'shift-1',
     }))
+  })
+
+  it('B5: a negative payment amount shows an error instead of being stripped', async () => {
+    const user = userEvent.setup()
+    const mutateAsync = vi.fn()
+    vi.mocked(useRecordPayment).mockReturnValue({
+      mutateAsync,
+      isPending: false,
+    } as never)
+    renderModal('shift-1')
+    await user.type(screen.getByPlaceholderText('0'), '-25')
+    expect(screen.getByPlaceholderText('0')).toHaveValue('-25')
+    expect(screen.getByText(CUSTOMERS.paymentNegative.fr)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Record Payment' }))
+    expect(mutateAsync).not.toHaveBeenCalled()
   })
 })

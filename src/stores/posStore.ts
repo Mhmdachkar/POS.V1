@@ -369,7 +369,7 @@ export const usePOSStore = create<POSState>()((set, get) => ({
   setOverrideTotalCfa: (amount) => {
     const { items, discountType, discountValue, cashTendered } = get()
     const override =
-      amount == null || !Number.isFinite(amount) ? null : Math.max(0, amount)
+      amount == null || !Number.isFinite(amount) ? null : amount
     set({
       overrideTotalCfa: override,
       totals: computeTotals(items, discountType, discountValue, cashTendered, override),

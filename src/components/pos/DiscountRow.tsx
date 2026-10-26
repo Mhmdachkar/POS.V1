@@ -30,7 +30,11 @@ export function DiscountRow() {
 
   const validateAndSet = (raw: string) => {
     const num = parseCFAInput(raw)
-    if (isNaN(num) || num < 0) return
+    if (raw.trim() === '') {
+      setDiscountValue(0)
+      return
+    }
+    if (isNaN(num)) return
     setDiscountValue(num)
   }
 

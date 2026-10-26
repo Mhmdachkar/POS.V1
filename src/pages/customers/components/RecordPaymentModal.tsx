@@ -93,9 +93,16 @@ export function RecordPaymentModal({
   }, [open])
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Allow only digits and a single decimal point
-    const val = e.target.value.replace(/[^0-9.]/g, '')
+    const val = e.target.value
+    if (val !== '' && val !== '-' && !/^-?\d*\.?\d*$/.test(val.replace(/\s/g, ''))) {
+      return
+    }
     setAmountStr(val)
+    const amount = parseFloat(val)
+    if (val === '-' || (!isNaN(amount) && amount < 0)) {
+      setAmountError(t(CUSTOMERS.paymentNegative))
+      return
+    }
     setAmountError('')
   }
 

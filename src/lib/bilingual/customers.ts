@@ -25,6 +25,10 @@ export const CUSTOMERS = {
     'Saisissez un montant valide supérieur à zéro.',
     'Enter a valid amount greater than zero.',
   ),
+  paymentNegative: bi(
+    'Le montant ne peut pas être négatif.',
+    'Amount cannot be negative.',
+  ),
   paymentAmount: bi('Montant du paiement', 'Payment amount'),
   activity: bi('Activité du compte', 'Customer activity'),
   notFound: bi('Client introuvable', 'Customer not found'),

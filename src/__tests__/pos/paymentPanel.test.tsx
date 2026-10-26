@@ -290,6 +290,17 @@ describe('PaymentPanel', () => {
     expect(screen.getByText(POS.cashNegative.fr, { exact: false })).toBeInTheDocument()
   })
 
+  it('B5: typing a negative cash amount shows an error instead of stripping it', () => {
+    addLine()
+    usePOSStore.getState().setCashTendered(1000)
+    renderPanel()
+    const cash = screen.getByLabelText(bilingualAriaLabel(POS.cashReceived))
+    fireEvent.change(cash, { target: { value: '-1' } })
+    expect(cash).toHaveValue(-1)
+    expect(screen.getByText(POS.cashNegative.fr, { exact: false })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: bilingualAriaLabel(POS.completeSaleAria) })).toBeDisabled()
+  })
+
   it('invokes completeSale with the existing payload on commit', async () => {
     const user = userEvent.setup()
     addLine(3, 350)
