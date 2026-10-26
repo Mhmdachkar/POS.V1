@@ -3,22 +3,27 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SaleSuccessModal } from '@/pages/pos/components/SaleSuccessModal'
 import { formatCFA, formatDateTime } from '@/lib/formatters'
 import { usePOSStore } from '@/stores/posStore'
-import { useSaleDetail } from '@/hooks/useSales'
+import { fetchSaleDetail } from '@/hooks/useSales'
 import type { CompleteSaleResult } from '@/types/rpc'
 import type { Customer } from '@/types/database'
 import type { SaleDetailData } from '@/hooks/useSales'
 import { POS } from '@/lib/bilingual/pos'
+import { toast } from 'sonner'
+
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() },
+}))
 
 vi.mock('@/hooks/useSales', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useSales')>()
   return {
     ...actual,
-    useSaleDetail: vi.fn(),
+    fetchSaleDetail: vi.fn(),
   }
 })
 
@@ -107,11 +112,15 @@ function mockDetail(state: {
   isLoading?: boolean
   isError?: boolean
 } = {}) {
-  vi.mocked(useSaleDetail).mockReturnValue({
-    data: state.data ?? saleDetail(),
-    isLoading: state.isLoading ?? false,
-    isError: state.isError ?? false,
-  } as never)
+  if (state.isError) {
+    vi.mocked(fetchSaleDetail).mockRejectedValue(new Error('sale detail failed'))
+    return
+  }
+  if (state.isLoading) {
+    vi.mocked(fetchSaleDetail).mockReturnValue(new Promise(() => {}) as Promise<SaleDetailData>)
+    return
+  }
+  vi.mocked(fetchSaleDetail).mockResolvedValue(state.data ?? saleDetail())
 }
 
 describe('SaleSuccessModal', () => {
@@ -212,16 +221,24 @@ describe('SaleSuccessModal', () => {
     expect(usePOSStore.getState().idempotencyKey).toBeNull()
   })
 
-  it('disables Print while sale detail is loading', () => {
+  it('B10: Print is enabled immediately while sale detail is still loading', () => {
     mockDetail({ isLoading: true, data: undefined })
     render(<SaleSuccessModal result={result()} customer={null} cartItemCount={1} />)
-    expect(screen.getByRole('button', { name: POS.browserPrintFallback.fr })).toBeDisabled()
+    expect(screen.getByRole('button', { name: POS.browserPrintFallback.fr })).toBeEnabled()
   })
 
-  it('disables Print when sale detail fails', () => {
+  it('B10: Print stays enabled when the prefetch fails; click retries and toasts', async () => {
+    const user = userEvent.setup()
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {})
     mockDetail({ isError: true, data: undefined })
     render(<SaleSuccessModal result={result()} customer={null} cartItemCount={1} />)
-    expect(screen.getByRole('button', { name: POS.browserPrintFallback.fr })).toBeDisabled()
+    const printBtn = screen.getByRole('button', { name: POS.browserPrintFallback.fr })
+    expect(printBtn).toBeEnabled()
+    await user.click(printBtn)
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalled()
+    })
+    expect(print).not.toHaveBeenCalled()
   })
 
   it('prints from authoritative sale detail, not the live cart or browser time', async () => {
@@ -268,7 +285,9 @@ describe('SaleSuccessModal', () => {
     )
 
     await user.click(screen.getByRole('button', { name: POS.browserPrintFallback.fr }))
-    expect(print).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(print).toHaveBeenCalledTimes(1)
+    })
 
     const receipt = document.getElementById('vhm-receipt')
     expect(receipt).toBeTruthy()

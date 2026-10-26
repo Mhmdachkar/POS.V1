@@ -4,13 +4,16 @@
  * Shows after a successful complete_sale() RPC call.
  * Displays server-authoritative values (not client-side preview).
  *
- * Print uses fetchSaleDetail(sale_id) via useSaleDetail — never the live cart.
+ * Print fetches sale detail on demand (and prefetches in the background).
+ * The button is enabled immediately — it does not wait on useSaleDetail.
+ * Receipt lines come from the fetched sale, never the live cart.
  *
  * Actions:
  *   - Browser print (fallback) — automatic printing uses the local print agent
  *   - New Sale (clears POS state, closes modal)
  */
 
+import { useEffect, useRef, useState } from 'react'
 import { CheckCircle, Printer, ShoppingCart } from 'lucide-react'
 import { BiEmptyTitle, BiModalTitle, BiPageTitle, BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
 import { COMMON } from '@/lib/bilingual/common'
@@ -24,7 +27,8 @@ import { TRANSFERS } from '@/lib/bilingual/transfers'
 import { Modal, Button, MoneyDisplay } from '@/components/ui'
 import { formatCFA } from '@/lib/formatters'
 import { buildReceiptHtml, printReceiptHtml, receiptDataFromSaleDetail } from '@/lib/receiptHtml'
-import { useSaleDetail } from '@/hooks/useSales'
+import { fetchSaleDetail, type SaleDetailData } from '@/hooks/useSales'
+import { toastErrorBi } from '@/lib/bilingual/toast'
 import { useDepotStore } from '@/stores/depotStore'
 import { usePOSStore } from '@/stores/posStore'
 import type { CompleteSaleResult } from '@/types/rpc'
@@ -49,20 +53,45 @@ export function SaleSuccessModal({
 }: SaleSuccessModalProps) {
   const startNewSale = usePOSStore((s) => s.startNewSale)
   const depotName = useDepotStore((s) => s.currentDepotName)
-  const {
-    data: sale,
-    isLoading: saleLoading,
-    isError: saleError,
-  } = useSaleDetail(result.sale_id)
+  const [printing, setPrinting] = useState(false)
+  const cachedSale = useRef<SaleDetailData | null>(null)
+  const inFlight = useRef<Promise<SaleDetailData> | null>(null)
 
-  const canPrint = !!sale && !saleLoading && !saleError
+  function loadSale() {
+    if (cachedSale.current) return Promise.resolve(cachedSale.current)
+    if (!inFlight.current) {
+      inFlight.current = fetchSaleDetail(result.sale_id)
+        .then((sale) => {
+          cachedSale.current = sale
+          return sale
+        })
+        .finally(() => {
+          inFlight.current = null
+        })
+    }
+    return inFlight.current
+  }
 
-  const handlePrint = () => {
-    if (!sale) return
-    printReceiptHtml(
-      buildReceiptHtml(receiptDataFromSaleDetail(sale, businessName, depotName)),
-      'vhm-receipt',
-    )
+  useEffect(() => {
+    void loadSale().catch(() => {
+      /* print click retries */
+    })
+  }, [result.sale_id])
+
+  const handlePrint = async () => {
+    if (printing) return
+    setPrinting(true)
+    try {
+      const sale = await loadSale()
+      printReceiptHtml(
+        buildReceiptHtml(receiptDataFromSaleDetail(sale, businessName, depotName)),
+        'vhm-receipt',
+      )
+    } catch {
+      toastErrorBi(POS.receiptLoadFailed)
+    } finally {
+      setPrinting(false)
+    }
   }
 
   const isChange = result.change_given_cfa > 0
@@ -156,15 +185,9 @@ export function SaleSuccessModal({
             variant="secondary"
             size="md"
             className="flex-1 gap-2"
-            onClick={handlePrint}
-            disabled={!canPrint}
-            title={
-              saleError
-                ? t(POS.receiptLoadFailed)
-                : saleLoading
-                  ? t(POS.loadingReceipt)
-                  : undefined
-            }
+            onClick={() => void handlePrint()}
+            disabled={printing}
+            title={printing ? t(POS.loadingReceipt) : undefined}
           >
             <Printer className="h-4 w-4" />
             {t(POS.browserPrintFallback)}
