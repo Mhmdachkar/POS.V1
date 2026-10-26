@@ -20,7 +20,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Button, FormActionGuide, LoadingButton } from '@/components/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { parseError } from '@/lib/errors'
-import { formatThousandsInput, parseCFAInput } from '@/lib/formatters'
+import { formatThousandsInput, isNegativeMoneyDraft, parseCFAInput } from '@/lib/formatters'
 import { isPlaceholderPhotoUrl, resolveProductPhotoUrl } from '@/lib/productPhotos'
 import {
   PRODUCT_PHOTO_ACCEPT,
@@ -232,6 +232,14 @@ export function ProductFormModal({ open, onClose, depotId, product }: ProductFor
       setGuideSteps([FORM_GUIDANCE.productPhoto])
       setGeneral(t(FORM_GUIDANCE.productPhoto))
       return
+    }
+    for (const level of [0, 1, 2] as const) {
+      const u = units[level]
+      if (!u.enabled) continue
+      if (isNegativeMoneyDraft(u.cost_price_cfa) || isNegativeMoneyDraft(u.selling_price_cfa)) {
+        setGeneral(t(INVENTORY.negativePriceError))
+        return
+      }
     }
     const unitPayload = collectUnits()
     if (!categoryId) {
@@ -523,8 +531,13 @@ export function ProductFormModal({ open, onClose, depotId, product }: ProductFor
                           inputMode="numeric"
                           value={u.cost_price_cfa}
                           onChange={(e) => setUnit(level, { cost_price_cfa: formatThousandsInput(e.target.value) })}
-                          className={`${fieldCls} tabular-nums`}
+                          className={`${fieldCls} tabular-nums ${isNegativeMoneyDraft(u.cost_price_cfa) ? 'border-danger' : ''}`}
                         />
+                        {isNegativeMoneyDraft(u.cost_price_cfa) && (
+                          <p className="text-xs text-danger-foreground mt-1">
+                            {t(INVENTORY.negativePriceError)}
+                          </p>
+                        )}
                       </div>
                       <div>
                         <label htmlFor={`unit-${level}-price`} className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1">
@@ -535,8 +548,22 @@ export function ProductFormModal({ open, onClose, depotId, product }: ProductFor
                           inputMode="numeric"
                           value={u.selling_price_cfa}
                           onChange={(e) => setUnit(level, { selling_price_cfa: formatThousandsInput(e.target.value) })}
-                          className={`${fieldCls} tabular-nums`}
+                          className={`${fieldCls} tabular-nums ${isNegativeMoneyDraft(u.selling_price_cfa) ? 'border-danger' : ''}`}
                         />
+                        {isNegativeMoneyDraft(u.selling_price_cfa) && (
+                          <p className="text-xs text-danger-foreground mt-1">
+                            {t(INVENTORY.negativePriceError)}
+                          </p>
+                        )}
+                        {!isNegativeMoneyDraft(u.selling_price_cfa)
+                          && !isNegativeMoneyDraft(u.cost_price_cfa)
+                          && Number.isFinite(parseCFAInput(u.selling_price_cfa))
+                          && Number.isFinite(parseCFAInput(u.cost_price_cfa))
+                          && parseCFAInput(u.selling_price_cfa) < parseCFAInput(u.cost_price_cfa) && (
+                          <p className="text-xs text-warning-foreground mt-1">
+                            {t(INVENTORY.sellBelowCostWarning)}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>

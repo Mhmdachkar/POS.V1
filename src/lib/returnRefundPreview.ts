@@ -1,14 +1,28 @@
 /**
  * Frontend mirror of process_return SQL refund math.
  *
- * Source of truth: supabase/migrations/20260912200005_rpc_return.sql
+ * Source of truth: supabase/migrations/20261026120001_process_return_payable_share.sql
  *
- * Per-line refund (C3 / residual):
+ * Payable / collected (B1):
+ *   payable     = COALESCE(admin_override_total_cfa, total_cfa)
+ *   taken       = amount_applied_cfa + balance_added_cfa
+ *   refund_pool = min(payable, taken)
+ *
+ * Per-line refund basis:
+ *   if total_cfa > 0:
+ *     line_basis = round((net_line / total_cfa) * refund_pool, 2)
+ *   elsif subtotal_cfa > 0:
+ *     line_basis = round((line_total / subtotal_cfa) * refund_pool, 2)
+ *   else:
+ *     line_basis = 0
+ *
+ * Per-line refund (C3 / residual) against line_basis:
  *   returnable = original_qty - already_returned_qty
  *   if selected >= returnable (final chunk of this sale_item):
- *     item_refund = net_line_total_cfa - already_refunded_cfa
+ *     item_refund = line_basis - already_refunded_cfa
  *   else:
- *     item_refund = round((selected / original_qty) * net_line_total_cfa, 2)
+ *     item_refund = round((selected / original_qty) * line_basis, 2)
+ *   Then cap so SUM(refunds on the sale) <= refund_pool.
  *
  * C1 pooled-balance split (unchanged):
  *   remaining_credit = greatest(sale.balance_added_cfa - sum(prior return
@@ -42,12 +56,22 @@ export interface ReturnRefundPreview {
   cashRefundCfa: number
 }
 
+export interface SaleRefundPoolInput {
+  total_cfa: number
+  admin_override_total_cfa?: number | null
+  amount_applied_cfa: number
+  balance_added_cfa: number
+  subtotal_cfa?: number
+}
+
 export interface ReturnLineRefundInput {
   originalQty: number
   selectedQty: number
   netLineTotalCfa: number
   alreadyReturnedQty: number
   alreadyRefundedCfa: number
+  /** Line share of the sale refund pool. Defaults to netLineTotalCfa. */
+  refundBasisCfa?: number
 }
 
 /**
@@ -59,9 +83,66 @@ export function roundCfa2(amount: number): number {
   return Math.round(amount * 100) / 100
 }
 
+export function payableSaleTotalCfa(sale: {
+  total_cfa: number
+  admin_override_total_cfa?: number | null
+}): number {
+  if (sale.admin_override_total_cfa != null) {
+    return roundCfa2(Number(sale.admin_override_total_cfa))
+  }
+  return roundCfa2(Number(sale.total_cfa) || 0)
+}
+
+export function collectedTakenCfa(
+  amountAppliedCfa: number,
+  balanceAddedCfa: number,
+): number {
+  return roundCfa2(Math.max(amountAppliedCfa, 0) + Math.max(balanceAddedCfa, 0))
+}
+
+/** Cash kept plus credit — never more than the payable total. */
+export function saleRefundPoolCfa(sale: SaleRefundPoolInput): number {
+  const payable = payableSaleTotalCfa(sale)
+  const taken = collectedTakenCfa(sale.amount_applied_cfa, sale.balance_added_cfa)
+  return Math.min(payable, taken)
+}
+
+export function remainingSaleRefundPool(
+  refundPoolCfa: number,
+  alreadyRefundedCfa: number,
+): number {
+  return Math.max(roundCfa2(refundPoolCfa - Math.max(alreadyRefundedCfa, 0)), 0)
+}
+
+/**
+ * Per-line refund basis: share of COALESCE(override, total), capped at cash+credit.
+ * When calculated total is 0, fall back to catalog line_total / subtotal.
+ */
+export function lineRefundBasisCfa(
+  netLineTotalCfa: number,
+  saleTotalCfa: number,
+  refundPoolCfa: number,
+  lineTotalCfa = 0,
+  subtotalCfa = 0,
+): number {
+  const pool = Math.max(roundCfa2(refundPoolCfa), 0)
+  if (pool <= 0) return 0
+  if (saleTotalCfa > 0) {
+    return roundCfa2((netLineTotalCfa / saleTotalCfa) * pool)
+  }
+  if (subtotalCfa > 0) {
+    return roundCfa2((lineTotalCfa / subtotalCfa) * pool)
+  }
+  return 0
+}
+
+function lineBasis(input: ReturnLineRefundInput): number {
+  return input.refundBasisCfa ?? input.netLineTotalCfa
+}
+
 /**
  * Per-sale-item refund matching process_return.
- * Final return of a line uses residual so SUM(refunds) = net_line_total_cfa.
+ * Final return of a line uses residual so SUM(refunds) = line_basis.
  */
 export function computeReturnLineRefund(input: ReturnLineRefundInput): number {
   const originalQty = input.originalQty
@@ -73,22 +154,32 @@ export function computeReturnLineRefund(input: ReturnLineRefundInput): number {
   const returnableQty = originalQty - alreadyReturnedQty
   if (returnableQty <= 0) return 0
 
-  const remainingRefundable = Math.max(
-    roundCfa2(input.netLineTotalCfa - alreadyRefundedCfa),
-    0,
-  )
+  const basis = lineBasis(input)
+  const remainingRefundable = Math.max(roundCfa2(basis - alreadyRefundedCfa), 0)
   const cappedSelected = Math.min(selectedQty, returnableQty)
   const isFinalReturn = cappedSelected >= returnableQty
 
   const itemRefund = isFinalReturn
     ? remainingRefundable
-    : roundCfa2((cappedSelected / originalQty) * input.netLineTotalCfa)
+    : roundCfa2((cappedSelected / originalQty) * basis)
 
   return Math.min(itemRefund, remainingRefundable)
 }
 
-export function computeReturnRefundTotal(lines: ReturnLineRefundInput[]): number {
-  return lines.reduce((sum, line) => sum + computeReturnLineRefund(line), 0)
+export function computeReturnRefundTotal(
+  lines: ReturnLineRefundInput[],
+  remainingSalePoolCfa?: number,
+): number {
+  let sum = 0
+  const pool = remainingSalePoolCfa ?? Number.POSITIVE_INFINITY
+  for (const line of lines) {
+    const refund = Math.min(
+      computeReturnLineRefund(line),
+      Math.max(roundCfa2(pool - sum), 0),
+    )
+    sum += refund
+  }
+  return roundCfa2(sum)
 }
 
 /** Remaining CFA that can still be refunded on this sale line. */
@@ -118,10 +209,17 @@ export interface ResolveLineRefundInput extends ReturnLineRefundInput {
  * Refund used for preview and submit.
  * Stock restore is driven by selectedQty; money can be lower than the full line value.
  */
-export function resolveLineRefund(input: ResolveLineRefundInput): number {
+export function resolveLineRefund(
+  input: ResolveLineRefundInput,
+  remainingSalePoolCfa?: number,
+): number {
   const computed = computeReturnLineRefund(input)
-  if (input.customRefundCfa == null) return computed
-  return clampCustomRefund(input.customRefundCfa, computed)
+  const uncapped =
+    input.customRefundCfa == null
+      ? computed
+      : clampCustomRefund(input.customRefundCfa, computed)
+  if (remainingSalePoolCfa == null) return uncapped
+  return Math.min(uncapped, Math.max(roundCfa2(remainingSalePoolCfa), 0))
 }
 
 export function computeReturnRefundPreview(

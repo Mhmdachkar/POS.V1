@@ -21,9 +21,10 @@ export interface CompleteSaleParams {
   p_display_currency?: 'CFA' | 'USD'
   p_discount_type?: 'flat' | 'percent' | null
   p_discount_value?: number | null
-  p_shift_id?: string | null       // uuid — CEO Notes: always null for new ops
+  p_shift_id?: string | null       // uuid — required open shift (B8)
   p_idempotency_key?: string | null // uuid — optional dedup key
   p_override_total_cfa?: number | null // admin-only total override
+  p_price_exception_reason?: string | null // required when payable total is 0
 }
 
 // ─── Phase 18C fulfillment + print jobs ─────────────────────────

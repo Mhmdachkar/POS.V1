@@ -482,4 +482,35 @@ describe('ProductFormModal low-stock settings', () => {
       }),
     )
   })
+
+  it('B5: negative selling price shows an error instead of being stripped', async () => {
+    const user = userEvent.setup()
+    wrap(<ProductFormModal open onClose={() => undefined} depotId="depot-a" />)
+    await fillBaseCreateFields(user, 'Onion')
+    fireEvent.change(unitPriceInput(0), { target: { value: '-50' } })
+    expect(unitPriceInput(0)).toHaveValue('-50')
+    expect(screen.getByText(INVENTORY.negativePriceError.fr)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Create Product|Créer le produit/i }))
+    expect(createProduct).not.toHaveBeenCalled()
+  })
+
+  it('B5: sell below cost warns but still creates the product', async () => {
+    const user = userEvent.setup()
+    createProduct.mockResolvedValue({})
+    wrap(<ProductFormModal open onClose={() => undefined} depotId="depot-a" />)
+    await fillBaseCreateFields(user, 'Onion')
+    fireEvent.change(unitPriceInput(0), { target: { value: '50' } })
+    expect(screen.getByText(INVENTORY.sellBelowCostWarning.fr)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Create Product|Créer le produit/i }))
+    expect(createProduct).toHaveBeenCalledWith(
+      expect.objectContaining({
+        p_units: [
+          expect.objectContaining({
+            cost_price_cfa: 100,
+            selling_price_cfa: 50,
+          }),
+        ],
+      }),
+    )
+  })
 })

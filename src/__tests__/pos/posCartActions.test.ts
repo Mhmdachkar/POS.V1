@@ -40,7 +40,10 @@ describe('posCartActions', () => {
   it('rejects add above stock', () => {
     const r = tryAddCartItem(baseItem({ quantity_in_unit: 11 }), 10)
     expect(r.ok).toBe(false)
-    if (!r.ok) expect(r.message).toBe('Only 10 available')
+    if (!r.ok) {
+      expect(r.message).toBe('Only 10 available')
+      expect(r.remainingPieces).toBe(10)
+    }
     expect(usePOSStore.getState().items).toHaveLength(0)
   })
 
@@ -51,12 +54,14 @@ describe('posCartActions', () => {
     expect(usePOSStore.getState().items[0].quantity_in_unit).toBe(7)
   })
 
-  it('allows updateQuantity down at max; rejects increase past max', () => {
+  it('allows updateQuantity down at max; clamps increase past max and reports remaining', () => {
     tryAddCartItem(baseItem({ quantity_in_unit: 10 }), 10)
     expect(tryUpdateCartQuantity('onion', 0, 9, 10).ok).toBe(true)
     expect(usePOSStore.getState().items[0].quantity_in_unit).toBe(9)
-    expect(tryUpdateCartQuantity('onion', 0, 11, 10).ok).toBe(false)
-    expect(usePOSStore.getState().items[0].quantity_in_unit).toBe(9)
+    const over = tryUpdateCartQuantity('onion', 0, 11, 10)
+    expect(over.ok).toBe(false)
+    if (!over.ok) expect(over.remainingPieces).toBe(1)
+    expect(usePOSStore.getState().items[0].quantity_in_unit).toBe(10)
   })
 
   it('remove via qty 0 works at max', () => {

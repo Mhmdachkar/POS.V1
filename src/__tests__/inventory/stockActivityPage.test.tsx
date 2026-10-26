@@ -18,7 +18,7 @@ import {
   stockActivityCreatedAtBounds,
 } from '@/hooks/useInventory'
 import { formatPieces } from '@/lib/formatters'
-import { INVENTORY } from '@/lib/bilingual/inventory'
+import { INVENTORY, STOCK_TXN_TYPE } from '@/lib/bilingual/inventory'
 import type { InventoryTransactionType } from '@/types/database'
 import type { Staff } from '@/types/database'
 
@@ -292,7 +292,7 @@ describe('StockActivityPage', () => {
     renderPage()
     await screen.findByRole('heading', { name: /activité du stock|stock activity/i })
 
-    await user.click(screen.getByRole('button', { name: /vente|sale/i }))
+    await user.click(screen.getByRole('button', { name: STOCK_TXN_TYPE.SALE.fr }))
 
     await waitFor(() => {
       expect(queryCalls()).toContain('eq:transaction_type:SALE')

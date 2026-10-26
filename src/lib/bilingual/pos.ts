@@ -82,6 +82,15 @@ export const POS = {
     'Flat discount must be between 0 and subtotal',
   ),
   discountPercentError: bi('Pourcentage entre 0 et 100', 'Percentage must be between 0 and 100'),
+  zeroTotalNeedsAdmin: bi(
+    'Un total de 0 CFA doit être validé par un administrateur.',
+    'A total of CFA 0 must be approved by an administrator.',
+  ),
+  zeroTotalNeedsReason: bi(
+    'Indiquez un motif pour un total de 0 CFA.',
+    'Enter a reason for a total of CFA 0.',
+  ),
+  priceExceptionReason: bi('Motif du total à 0', 'Reason for CFA 0 total'),
   amountCfaPlaceholder: bi('Montant CFA', 'Amount CFA'),
   onAccount: bi('À crédit', 'On account'),
   completeSaleAria: bi('Terminer la vente', 'Complete sale'),
@@ -178,5 +187,27 @@ export const POS = {
   overrideAdminOnly: bi(
     'Réservé administrateur',
     'Admin only',
+  ),
+  overrideOutOfRange: bi(
+    'Le total modifié doit être entre 1 et le total calculé.',
+    'Adjusted total must be between 1 and the calculated total.',
+  ),
+  overrideNeedsReason: bi(
+    'Indiquez un motif pour modifier le total.',
+    'Enter a reason to adjust the total.',
+  ),
+  overrideTotalAria: bi(
+    'Modification du total (admin)',
+    'Adjust total (admin)',
+  ),
+  duplicateSaleReturned: bi(
+    'Soumission en double — vente existante renvoyée',
+    'Duplicate submission — existing sale returned',
+  ),
+  saleSummary: bi('Récapitulatif', 'Sale Summary'),
+  items: bi('Articles', 'Items'),
+  autoPrintHint: bi(
+    'Le ticket client s\'imprime automatiquement lorsque l\'agent d\'impression est actif.',
+    'Customer receipt prints automatically when the cashier print agent is running.',
   ),
 } as const

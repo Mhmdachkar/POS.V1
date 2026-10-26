@@ -35,6 +35,32 @@ vi.mock('@/hooks/useCustomers', async (importOriginal) => {
   }
 })
 
+vi.mock('@/hooks/useShifts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/useShifts')>()
+  return {
+    ...actual,
+    useOpenShifts: vi.fn(() => ({
+      data: [{
+        id: 'shift-1',
+        depot_id: 'depot-a',
+        cashier_id: 'cashier-1',
+        opening_float_cfa: 1000,
+        opened_at: '2026-09-13T08:00:00Z',
+        closed_at: null,
+        closed_by: null,
+        expected_cash_cfa: null,
+        actual_cash_cfa: null,
+        discrepancy_cfa: null,
+        status: 'open',
+        depot_name: 'Depot Dakar',
+        cashier_name: 'Cashier Dakar',
+        closed_by_name: null,
+      }],
+      isLoading: false,
+    })),
+  }
+})
+
 function cashierStaff(): Staff {
   return {
     id: 'cashier-1',
@@ -273,7 +299,7 @@ describe('CEO Notes — CheckoutSummary override visibility', () => {
       authLoadState: 'authorized',
     })
     render(<CheckoutSummary />)
-    expect(screen.getByLabelText('Modification du total (admin)')).toBeInTheDocument()
+    expect(screen.getByLabelText(POS.overrideTotalAria.fr)).toBeInTheDocument()
     expect(screen.getByText(POS.modifyTotal.fr)).toBeInTheDocument()
   })
 
@@ -285,7 +311,7 @@ describe('CEO Notes — CheckoutSummary override visibility', () => {
       authLoadState: 'authorized',
     })
     render(<CheckoutSummary />)
-    expect(screen.queryByLabelText('Modification du total (admin)')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(POS.overrideTotalAria.fr)).not.toBeInTheDocument()
     expect(screen.queryByText(POS.modifyTotal.fr)).not.toBeInTheDocument()
   })
 
@@ -300,7 +326,7 @@ describe('CEO Notes — CheckoutSummary override visibility', () => {
     const calculated = usePOSStore.getState().totals.total_cfa
     render(<CheckoutSummary />)
 
-    const input = screen.getByLabelText('Modification du total (admin)')
+    const input = screen.getByLabelText(POS.overrideTotalAria.fr)
     await user.clear(input)
     await user.type(input, '750')
     expect(usePOSStore.getState().overrideTotalCfa).toBe(750)
@@ -352,13 +378,15 @@ describe('CEO Notes — PaymentPanel override payload', () => {
     // override still goes on the RPC payload.
     usePOSStore.getState().setCashTendered(1000)
     usePOSStore.getState().setOverrideTotalCfa(800)
+    usePOSStore.getState().setPriceExceptionReason('Price match')
     renderPayment()
 
     await user.click(screen.getByRole('button', { name: bilingualAriaLabel(POS.completeSaleAria) }))
     await waitFor(() => expect(rpc.completeSale).toHaveBeenCalledTimes(1))
     expect(vi.mocked(rpc.completeSale).mock.calls[0][0]).toMatchObject({
       p_override_total_cfa: 800,
-      p_shift_id: null,
+      p_price_exception_reason: 'Price match',
+      p_shift_id: 'shift-1',
     })
   })
 
@@ -410,6 +438,7 @@ describe('CEO Notes — PaymentPanel override payload', () => {
     })
     addNineThousandOneHundredCart()
     usePOSStore.getState().setOverrideTotalCfa(7000)
+    usePOSStore.getState().setPriceExceptionReason('Manager adjustment')
     // Covers adjusted total but not calculated 9100 — must still submit
     usePOSStore.getState().setCashTendered(7000)
     expect(usePOSStore.getState().totals.balance_added_cfa).toBe(0)
@@ -420,6 +449,44 @@ describe('CEO Notes — PaymentPanel override payload', () => {
     expect(vi.mocked(rpc.completeSale).mock.calls[0][0]).toMatchObject({
       p_override_total_cfa: 7000,
       p_amount_tendered_cfa: 7000,
+      p_price_exception_reason: 'Manager adjustment',
     })
+  })
+
+  it('B3: Complete stays disabled when override is 0 or above calculated total', () => {
+    useAuthStore.setState({
+      staff: adminStaff(),
+      session: null,
+      isLoading: false,
+      authLoadState: 'authorized',
+    })
+    addLine()
+    usePOSStore.getState().setCashTendered(1000)
+    usePOSStore.getState().setOverrideTotalCfa(0)
+    usePOSStore.getState().setPriceExceptionReason('too low')
+    const { unmount } = renderPayment()
+    expect(screen.getByRole('button', { name: bilingualAriaLabel(POS.completeSaleAria) })).toBeDisabled()
+    expect(screen.getByText(POS.overrideOutOfRange.fr)).toBeInTheDocument()
+    unmount()
+
+    usePOSStore.getState().setOverrideTotalCfa(1001)
+    renderPayment()
+    expect(screen.getByRole('button', { name: bilingualAriaLabel(POS.completeSaleAria) })).toBeDisabled()
+    expect(screen.getByText(POS.overrideOutOfRange.fr)).toBeInTheDocument()
+  })
+
+  it('B3: Complete stays disabled when override is set without a reason', () => {
+    useAuthStore.setState({
+      staff: adminStaff(),
+      session: null,
+      isLoading: false,
+      authLoadState: 'authorized',
+    })
+    addLine()
+    usePOSStore.getState().setCashTendered(1000)
+    usePOSStore.getState().setOverrideTotalCfa(800)
+    renderPayment()
+    expect(screen.getByRole('button', { name: bilingualAriaLabel(POS.completeSaleAria) })).toBeDisabled()
+    expect(screen.getByText(POS.overrideNeedsReason.fr)).toBeInTheDocument()
   })
 })

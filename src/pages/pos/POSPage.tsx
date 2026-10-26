@@ -96,7 +96,7 @@ export function POSPage() {
         product.current_stock_pieces,
       )
       if (!result.ok) {
-        toastErrorBi(POS.remainingStock(result.availablePieces))
+        toastErrorBi(POS.remainingStock(result.remainingPieces))
       }
     },
     [],

@@ -84,8 +84,8 @@ export const ERROR_MESSAGES_BI: Record<VhmErrorCode, BilingualPair> = {
   ),
   SHIFT_NOT_FOUND: bi('Service introuvable.', 'Shift not found.'),
   SHIFT_NOT_OPEN: bi(
-    'Aucun service ouvert. Ouvrez un service avant de continuer.',
-    'No open shift found. Please open a shift before proceeding.',
+    'Ouvrez un service pour encaisser, rembourser ou enregistrer un paiement.',
+    'Open a shift to complete a sale, process a refund, or record a payment.',
   ),
   CONCURRENT_UPDATE: bi(
     'Enregistrement modifié par une autre opération. Réessayez.',
@@ -251,6 +251,30 @@ export function messageForCodeBilingual(
     return bi(
       'Entrez un montant de retour valide.',
       'Enter a valid refund amount.',
+    )
+  }
+  if (code === 'UNAUTHORIZED' && details?.reason === 'zero_total_requires_admin') {
+    return bi(
+      'Un total de 0 CFA doit être validé par un administrateur.',
+      'A total of CFA 0 must be approved by an administrator.',
+    )
+  }
+  if (code === 'INVALID_AMOUNT' && details?.reason === 'override_total_out_of_range') {
+    return bi(
+      'Le total modifié doit être entre 1 et le total calculé.',
+      'Adjusted total must be between 1 and the calculated total.',
+    )
+  }
+  if (code === 'INVALID_INPUT' && details?.reason === 'override_requires_reason') {
+    return bi(
+      'Indiquez un motif pour modifier le total.',
+      'Enter a reason to adjust the total.',
+    )
+  }
+  if (code === 'INVALID_INPUT' && details?.reason === 'zero_total_requires_reason') {
+    return bi(
+      'Indiquez un motif pour un total de 0 CFA.',
+      'Enter a reason for a total of CFA 0.',
     )
   }
   if (code === 'INVALID_INPUT' && details?.reason === 'low_stock_threshold_required') {

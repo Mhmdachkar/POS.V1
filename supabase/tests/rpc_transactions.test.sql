@@ -30,6 +30,20 @@ select set_config('request.jwt.claims',
   '{"sub":"00000000-0000-0000-0000-000000000001","role":"authenticated"}', false);
 select set_config('request.jwt.sub', '00000000-0000-0000-0000-000000000001', false);
 
+-- B8: session open shift so sale/return/payment RPCs have a valid p_shift_id.
+do $qa_shift$
+declare
+  sid uuid;
+begin
+  sid := (public.open_shift(
+    p_depot_id := '00000000-0000-0000-0001-000000000001',
+    p_opening_float_cfa := 0
+  )->>'shift_id')::uuid;
+  perform set_config('qa.shift_id', sid::text, false);
+end;
+$qa_shift$;
+
+
 -- ──────────────────────────────────────────────────────────────
 -- SECTION A: Clean seed baseline + inventory drift invariant
 -- ──────────────────────────────────────────────────────────────
@@ -134,7 +148,8 @@ begin
     p_amount_tendered_cfa := 1200,
     p_display_currency    := 'CFA',
     p_discount_type       := null,
-    p_discount_value      := null
+    p_discount_value      := null,
+    p_shift_id := current_setting('qa.shift_id')::uuid
   );
 
   sale_id := (result->>'sale_id')::uuid;
@@ -223,7 +238,8 @@ begin
     p_customer_id         := '00000000-0000-0000-0005-000000000001',
     p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000002","unit_level":0,"quantity_in_unit":2}]'::jsonb,
     p_amount_tendered_cfa := 0,   -- full credit
-    p_display_currency    := 'CFA'
+    p_display_currency    := 'CFA',
+    p_shift_id := current_setting('qa.shift_id')::uuid
   );
 
   sale_id := (result->>'sale_id')::uuid;
@@ -250,8 +266,9 @@ begin
     result := public.complete_sale(
       p_depot_id            := '00000000-0000-0000-0001-000000000001',
       p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000003","unit_level":0,"quantity_in_unit":9999}]'::jsonb,
-      p_amount_tendered_cfa := 0
-    );
+      p_amount_tendered_cfa := 0,
+    p_shift_id := current_setting('qa.shift_id')::uuid
+  );
     raise exception 'B3 FAIL: should have raised INSUFFICIENT_STOCK';
   exception
     when sqlstate 'P0001' then
@@ -273,8 +290,9 @@ begin
       p_depot_id            := '00000000-0000-0000-0001-000000000001',
       p_customer_id         := null,
       p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000001","unit_level":0,"quantity_in_unit":1}]'::jsonb,
-      p_amount_tendered_cfa := 0   -- no cash = credit, but no customer
-    );
+      p_amount_tendered_cfa := 0   -- no cash = credit, but no customer,
+    p_shift_id := current_setting('qa.shift_id')::uuid
+  );
     raise exception 'B4 FAIL: should have raised CUSTOMER_REQUIRED';
   exception
     when sqlstate 'P0001' then
@@ -297,13 +315,15 @@ begin
     p_depot_id            := '00000000-0000-0000-0001-000000000001',
     p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000001","unit_level":0,"quantity_in_unit":1}]'::jsonb,
     p_amount_tendered_cfa := 350,
-    p_idempotency_key     := key
+    p_idempotency_key     := key,
+    p_shift_id := current_setting('qa.shift_id')::uuid
   );
   result2 := public.complete_sale(
     p_depot_id            := '00000000-0000-0000-0001-000000000001',
     p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000001","unit_level":0,"quantity_in_unit":1}]'::jsonb,
     p_amount_tendered_cfa := 350,
-    p_idempotency_key     := key
+    p_idempotency_key     := key,
+    p_shift_id := current_setting('qa.shift_id')::uuid
   );
 
   if (result1->>'sale_id') != (result2->>'sale_id') then
@@ -334,7 +354,8 @@ begin
     p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000001","unit_level":0,"quantity_in_unit":10}]'::jsonb,
     p_amount_tendered_cfa := 3000,
     p_discount_type       := 'flat',
-    p_discount_value      := 500
+    p_discount_value      := 500,
+    p_shift_id := current_setting('qa.shift_id')::uuid
   );
   -- 10×350 = 3500 subtotal, discount=500, total=3000
   if (result->>'total_cfa')::numeric != 3000 then
@@ -394,8 +415,9 @@ begin
         jsonb_build_object('product_id', prod_id, 'unit_level', 0, 'quantity_in_unit', 7),
         jsonb_build_object('product_id', prod_id, 'unit_level', 0, 'quantity_in_unit', 7)
       ),
-      p_amount_tendered_cfa := 9999
-    );
+      p_amount_tendered_cfa := 9999,
+    p_shift_id := current_setting('qa.shift_id')::uuid
+  );
     raise exception 'B7 FAIL: duplicate lines with aggregate > stock should have raised INSUFFICIENT_STOCK';
   exception
     when sqlstate 'P0001' then
@@ -458,7 +480,8 @@ begin
       jsonb_build_object('product_id', prod_hi, 'unit_level', 0, 'quantity_in_unit', 1),
       jsonb_build_object('product_id', prod_lo, 'unit_level', 0, 'quantity_in_unit', 1)
     ),
-    p_amount_tendered_cfa := 200
+    p_amount_tendered_cfa := 200,
+    p_shift_id := current_setting('qa.shift_id')::uuid
   );
   sale_desc := (result_desc->>'sale_id')::uuid;
   if sale_desc is null then
@@ -478,7 +501,8 @@ begin
       jsonb_build_object('product_id', prod_lo, 'unit_level', 0, 'quantity_in_unit', 1),
       jsonb_build_object('product_id', prod_hi, 'unit_level', 0, 'quantity_in_unit', 1)
     ),
-    p_amount_tendered_cfa := 200
+    p_amount_tendered_cfa := 200,
+    p_shift_id := current_setting('qa.shift_id')::uuid
   );
   sale_asc := (result_asc->>'sale_id')::uuid;
   if sale_asc is null then
@@ -540,7 +564,8 @@ begin
   sale_result := public.complete_sale(
     p_depot_id            := '00000000-0000-0000-0001-000000000001',
     p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000001","unit_level":0,"quantity_in_unit":5}]'::jsonb,
-    p_amount_tendered_cfa := 1750
+    p_amount_tendered_cfa := 1750,
+    p_shift_id := current_setting('qa.shift_id')::uuid
   );
   v_sale_id := (sale_result->>'sale_id')::uuid;
 
@@ -551,7 +576,8 @@ begin
     p_sale_id         := v_sale_id,
     p_items           := jsonb_build_array(jsonb_build_object('sale_item_id', sale_item_id, 'quantity_in_unit', 2)),
     p_reason          := 'Test partial return',
-    p_cash_refund_cfa := 700
+    p_cash_refund_cfa := 700,
+    p_shift_id := current_setting('qa.shift_id')::uuid
   );
 
   if (return_result->>'new_sale_status') != 'partially_returned' then
@@ -588,7 +614,8 @@ begin
   sale_result := public.complete_sale(
     p_depot_id            := '00000000-0000-0000-0001-000000000001',
     p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000001","unit_level":0,"quantity_in_unit":1}]'::jsonb,
-    p_amount_tendered_cfa := 350
+    p_amount_tendered_cfa := 350,
+    p_shift_id := current_setting('qa.shift_id')::uuid
   );
   v_sale_id := (sale_result->>'sale_id')::uuid;
   perform public.void_sale(p_sale_id := v_sale_id);
@@ -599,8 +626,9 @@ begin
     perform public.process_return(
       p_sale_id         := v_sale_id,
       p_items           := jsonb_build_array(jsonb_build_object('sale_item_id', sale_item_id, 'quantity_in_unit', 1)),
-      p_cash_refund_cfa := 350
-    );
+      p_cash_refund_cfa := 350,
+    p_shift_id := current_setting('qa.shift_id')::uuid
+  );
     raise exception 'C2 FAIL: should have raised SALE_VOIDED';
   exception
     when sqlstate 'P0001' then
@@ -630,7 +658,8 @@ begin
     p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000001","unit_level":0,"quantity_in_unit":3}]'::jsonb,
     p_amount_tendered_cfa := 950,
     p_discount_type       := 'flat',
-    p_discount_value      := 100
+    p_discount_value      := 100,
+    p_shift_id := current_setting('qa.shift_id')::uuid
   );
   v_sale_id := (sale_result->>'sale_id')::uuid;
   select id into sale_item_id from sale_items where sale_items.sale_id = v_sale_id limit 1;
@@ -642,17 +671,20 @@ begin
   r1 := public.process_return(
     p_sale_id := v_sale_id,
     p_items   := jsonb_build_array(jsonb_build_object('sale_item_id', sale_item_id, 'quantity_in_unit', 1)),
-    p_cash_refund_cfa := round(net_total / 3, 2)
+    p_cash_refund_cfa := round(net_total / 3, 2),
+    p_shift_id := current_setting('qa.shift_id')::uuid
   );
   r2 := public.process_return(
     p_sale_id := v_sale_id,
     p_items   := jsonb_build_array(jsonb_build_object('sale_item_id', sale_item_id, 'quantity_in_unit', 1)),
-    p_cash_refund_cfa := round(net_total / 3, 2)
+    p_cash_refund_cfa := round(net_total / 3, 2),
+    p_shift_id := current_setting('qa.shift_id')::uuid
   );
   r3 := public.process_return(
     p_sale_id := v_sale_id,
     p_items   := jsonb_build_array(jsonb_build_object('sale_item_id', sale_item_id, 'quantity_in_unit', 1)),
-    p_cash_refund_cfa := net_total - round(net_total / 3, 2) * 2
+    p_cash_refund_cfa := net_total - round(net_total / 3, 2) * 2,
+    p_shift_id := current_setting('qa.shift_id')::uuid
   );
 
   -- Sum all three refunds
@@ -686,7 +718,8 @@ begin
   sale_result := public.complete_sale(
     p_depot_id            := '00000000-0000-0000-0001-000000000001',
     p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000001","unit_level":0,"quantity_in_unit":2}]'::jsonb,
-    p_amount_tendered_cfa := 700
+    p_amount_tendered_cfa := 700,
+    p_shift_id := current_setting('qa.shift_id')::uuid
   );
   sale_id := (sale_result->>'sale_id')::uuid;
   select id into sale_item_id from sale_items where sale_id = sale_id;
@@ -700,8 +733,9 @@ begin
         jsonb_build_object('sale_item_id', sale_item_id, 'quantity_in_unit', 2),
         jsonb_build_object('sale_item_id', sale_item_id, 'quantity_in_unit', 2)
       ),
-      p_cash_refund_cfa := 700
-    );
+      p_cash_refund_cfa := 700,
+    p_shift_id := current_setting('qa.shift_id')::uuid
+  );
     raise exception 'C4 FAIL: duplicate sale_item_id payload was accepted';
   exception
     when sqlstate 'P0001' then
@@ -743,7 +777,8 @@ begin
   sale_result := public.complete_sale(
     p_depot_id            := '00000000-0000-0000-0001-000000000001',
     p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000003","unit_level":0,"quantity_in_unit":5}]'::jsonb,
-    p_amount_tendered_cfa := 90000
+    p_amount_tendered_cfa := 90000,
+    p_shift_id := current_setting('qa.shift_id')::uuid
   );
   sale_id := (sale_result->>'sale_id')::uuid;
 
@@ -785,7 +820,8 @@ begin
   sale_id := (public.complete_sale(
     p_depot_id := '00000000-0000-0000-0001-000000000001',
     p_cart_items := '[{"product_id":"00000000-0000-0000-0003-000000000001","unit_level":0,"quantity_in_unit":1}]'::jsonb,
-    p_amount_tendered_cfa := 350
+    p_amount_tendered_cfa := 350,
+    p_shift_id := current_setting('qa.shift_id')::uuid
   )->>'sale_id')::uuid;
 
   perform public.void_sale(p_sale_id := sale_id);
@@ -1114,7 +1150,8 @@ begin
   v_sale_id := (public.complete_sale(
     p_depot_id            := '00000000-0000-0000-0001-000000000001',
     p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000001","unit_level":0,"quantity_in_unit":1}]'::jsonb,
-    p_amount_tendered_cfa := 350
+    p_amount_tendered_cfa := 350,
+    p_shift_id := current_setting('qa.shift_id')::uuid
   )->>'sale_id')::uuid;
 
   select id into sale_item_id from sale_items where sale_items.sale_id = v_sale_id limit 1;
@@ -1140,7 +1177,8 @@ begin
   sale_id := (public.complete_sale(
     p_depot_id            := '00000000-0000-0000-0001-000000000001',
     p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000001","unit_level":0,"quantity_in_unit":1}]'::jsonb,
-    p_amount_tendered_cfa := 350
+    p_amount_tendered_cfa := 350,
+    p_shift_id := current_setting('qa.shift_id')::uuid
   )->>'sale_id')::uuid;
 
   begin
@@ -1163,7 +1201,8 @@ begin
   sale_id := (public.complete_sale(
     p_depot_id            := '00000000-0000-0000-0001-000000000001',
     p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000001","unit_level":0,"quantity_in_unit":1}]'::jsonb,
-    p_amount_tendered_cfa := 350
+    p_amount_tendered_cfa := 350,
+    p_shift_id := current_setting('qa.shift_id')::uuid
   )->>'sale_id')::uuid;
 
   -- Void should change status without triggering immutability error
@@ -1436,7 +1475,8 @@ begin
     p_depot_id            := '00000000-0000-0000-0001-000000000001',
     p_customer_id         := cust_id,
     p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000001","unit_level":0,"quantity_in_unit":2}]'::jsonb,
-    p_amount_tendered_cfa := 0   -- full credit
+    p_amount_tendered_cfa := 0   -- full credit,
+    p_shift_id := current_setting('qa.shift_id')::uuid
   );
   sale_id := (result->>'sale_id')::uuid;
 
@@ -1508,8 +1548,9 @@ begin
       p_depot_id            := '00000000-0000-0000-0001-000000000001',
       p_customer_id         := cust_id,
       p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000001","unit_level":0,"quantity_in_unit":1}]'::jsonb,
-      p_amount_tendered_cfa := 0   -- credit sale
-    );
+      p_amount_tendered_cfa := 0   -- credit sale,
+    p_shift_id := current_setting('qa.shift_id')::uuid
+  );
     raise exception 'J9 FAIL: inactive customer should be rejected for new sale';
   exception
     when sqlstate 'P0001' then
@@ -1542,7 +1583,8 @@ begin
     p_depot_id            := '00000000-0000-0000-0001-000000000001',
     p_customer_id         := cust_id,
     p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000001","unit_level":0,"quantity_in_unit":2}]'::jsonb,
-    p_amount_tendered_cfa := 0   -- full credit
+    p_amount_tendered_cfa := 0   -- full credit,
+    p_shift_id := current_setting('qa.shift_id')::uuid
   );
 
   select balance_owed_cfa into bal_before from customers where id = cust_id;
@@ -1561,7 +1603,8 @@ begin
   -- Record payment against inactive customer — must succeed without error
   result := public.record_payment(
     p_customer_id := cust_id,
-    p_amount_cfa  := bal_before   -- pay full balance
+    p_amount_cfa  := bal_before   -- pay full balance,
+    p_shift_id := current_setting('qa.shift_id')::uuid
   );
 
   bal_after := (result->>'new_balance_owed_cfa')::numeric;
@@ -1595,10 +1638,13 @@ begin
     p_depot_id            := '00000000-0000-0000-0001-000000000001',
     p_customer_id         := cust_id,
     p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000001","unit_level":0,"quantity_in_unit":3}]'::jsonb,
-    p_amount_tendered_cfa := 0
+    p_amount_tendered_cfa := 0,
+    p_shift_id := current_setting('qa.shift_id')::uuid
   );
 
-  result     := public.record_payment(p_customer_id := cust_id, p_amount_cfa := 100);
+  result     := public.record_payment(p_customer_id := cust_id, p_amount_cfa := 100,
+    p_shift_id := current_setting('qa.shift_id')::uuid
+  );
   payment_id := (result->>'payment_id')::uuid;
 
   -- Verify payment row
@@ -1631,7 +1677,9 @@ begin
   cust_id := ((public.create_customer(p_name := 'Zero Payment J12'))->>'id')::uuid;
 
   begin
-    perform public.record_payment(p_customer_id := cust_id, p_amount_cfa := 0);
+    perform public.record_payment(p_customer_id := cust_id, p_amount_cfa := 0,
+    p_shift_id := current_setting('qa.shift_id')::uuid
+  );
     raise exception 'J12 FAIL: zero amount should be rejected';
   exception
     when sqlstate 'P0001' then
@@ -1653,7 +1701,9 @@ begin
   -- Customer has zero balance
 
   begin
-    perform public.record_payment(p_customer_id := cust_id, p_amount_cfa := 5000);
+    perform public.record_payment(p_customer_id := cust_id, p_amount_cfa := 5000,
+    p_shift_id := current_setting('qa.shift_id')::uuid
+  );
     raise exception 'J13 FAIL: payment exceeding balance should be rejected';
   exception
     when sqlstate 'P0001' then
@@ -1682,12 +1732,15 @@ begin
     p_depot_id            := '00000000-0000-0000-0001-000000000001',
     p_customer_id         := cust_id,
     p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000001","unit_level":0,"quantity_in_unit":3}]'::jsonb,
-    p_amount_tendered_cfa := 0
+    p_amount_tendered_cfa := 0,
+    p_shift_id := current_setting('qa.shift_id')::uuid
   );
   balance_1 := (result->>'balance_added_cfa')::numeric;
 
   -- Partial payment
-  result    := public.record_payment(p_customer_id := cust_id, p_amount_cfa := 500);
+  result    := public.record_payment(p_customer_id := cust_id, p_amount_cfa := 500,
+    p_shift_id := current_setting('qa.shift_id')::uuid
+  );
   balance_2 := (result->>'new_balance_owed_cfa')::numeric;
 
   expected_net := balance_1 - 500;
@@ -1774,7 +1827,8 @@ begin
     p_depot_id            := '00000000-0000-0000-0001-000000000001',
     p_customer_id         := cust_id,
     p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000001","unit_level":0,"quantity_in_unit":1}]'::jsonb,
-    p_amount_tendered_cfa := 0
+    p_amount_tendered_cfa := 0,
+    p_shift_id := current_setting('qa.shift_id')::uuid
   );
 
   select balance_owed_cfa into balance_before from customers where id = cust_id;
@@ -1811,7 +1865,8 @@ begin
     p_depot_id            := '00000000-0000-0000-0001-000000000001',
     p_customer_id         := cust_id,
     p_cart_items          := '[{"product_id":"00000000-0000-0000-0003-000000000001","unit_level":0,"quantity_in_unit":1}]'::jsonb,
-    p_amount_tendered_cfa := 0
+    p_amount_tendered_cfa := 0,
+    p_shift_id := current_setting('qa.shift_id')::uuid
   );
 
   if (result->>'sale_id') is null then

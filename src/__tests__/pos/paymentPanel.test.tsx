@@ -18,6 +18,8 @@ import type { CompleteSaleResult } from '@/types/rpc'
 import type { ProductWithUnits } from '@/types'
 import { NAV } from '@/lib/bilingual/nav'
 import { POS } from '@/lib/bilingual/pos'
+import { SHIFT_COPY } from '@/lib/bilingual/shift'
+import { useOpenShifts, type ShiftListItem } from '@/hooks/useShifts'
 import {
   bilingualAriaLabel,
   expectToastErrorFr,
@@ -40,6 +42,33 @@ vi.mock('@/hooks/useCustomers', async (importOriginal) => {
     useCustomerSearch: vi.fn(() => ({ data: [], isLoading: false })),
   }
 })
+
+vi.mock('@/hooks/useShifts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/useShifts')>()
+  return {
+    ...actual,
+    useOpenShifts: vi.fn(),
+  }
+})
+
+function openShift(): ShiftListItem {
+  return {
+    id: 'shift-1',
+    depot_id: 'depot-a',
+    cashier_id: 'cashier-1',
+    opening_float_cfa: 1000,
+    opened_at: '2026-09-13T08:00:00Z',
+    closed_at: null,
+    closed_by: null,
+    expected_cash_cfa: null,
+    actual_cash_cfa: null,
+    discrepancy_cfa: null,
+    status: 'open',
+    depot_name: 'Depot Dakar',
+    cashier_name: 'Cashier Dakar',
+    closed_by_name: null,
+  }
+}
 
 const saleResult: CompleteSaleResult = {
   sale_id: 'sale-abc',
@@ -156,6 +185,10 @@ describe('PaymentPanel', () => {
     })
     vi.mocked(rpc.completeSale).mockReset()
     vi.mocked(rpc.completeSale).mockResolvedValue({ data: saleResult, error: null })
+    vi.mocked(useOpenShifts).mockReturnValue({
+      data: [openShift()],
+      isLoading: false,
+    } as never)
   })
 
   it('disables commit when the cart is empty', () => {
@@ -196,12 +229,76 @@ describe('PaymentPanel', () => {
     expect(screen.getByText(POS.discountPercentError.fr, { exact: false })).toBeInTheDocument()
   })
 
+  it('B2: typing 150% in the discount field keeps Complete disabled at CFA 0', () => {
+    addLine()
+    usePOSStore.getState().setCashTendered(1000)
+    usePOSStore.getState().setDiscountType('percent')
+    renderPanel()
+    const input = screen.getByLabelText(bilingualAriaLabel(POS.discountValue))
+    fireEvent.change(input, { target: { value: '150' } })
+    expect(input).toHaveValue(150)
+    expect(screen.getByText(POS.discountPercentError.fr, { exact: false })).toBeInTheDocument()
+    expect(screen.getByTestId('checkout-total')).toHaveTextContent(/0/)
+    expect(screen.getByRole('button', { name: bilingualAriaLabel(POS.completeSaleAria) })).toBeDisabled()
+  })
+
+  it('B2: cashier cannot complete a 100% discount (total CFA 0)', () => {
+    addLine()
+    usePOSStore.getState().setDiscountType('percent')
+    usePOSStore.getState().setDiscountValue(100)
+    usePOSStore.getState().setCashTendered(0)
+    renderPanel()
+    expect(screen.getByTestId('checkout-total')).toHaveTextContent(/0/)
+    expect(screen.getByText(POS.zeroTotalNeedsAdmin.fr)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: bilingualAriaLabel(POS.completeSaleAria) })).toBeDisabled()
+  })
+
+  it('B2: admin completes a 0-total sale only after entering a reason', async () => {
+    const user = userEvent.setup()
+    useAuthStore.setState({
+      staff: adminStaff(),
+      session: null,
+      isLoading: false,
+      authLoadState: 'authorized',
+    })
+    addLine()
+    usePOSStore.getState().setDiscountType('percent')
+    usePOSStore.getState().setDiscountValue(100)
+    usePOSStore.getState().setCashTendered(0)
+    renderPanel()
+    const complete = screen.getByRole('button', { name: bilingualAriaLabel(POS.completeSaleAria) })
+    expect(complete).toBeDisabled()
+    await user.type(
+      screen.getByLabelText(bilingualAriaLabel(POS.priceExceptionReason)),
+      'Courtesy waiver',
+    )
+    expect(complete).toBeEnabled()
+    await user.click(complete)
+    await waitFor(() => expect(rpc.completeSale).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(rpc.completeSale).mock.calls[0][0]).toMatchObject({
+      p_discount_type: 'percent',
+      p_discount_value: 100,
+      p_price_exception_reason: 'Courtesy waiver',
+    })
+  })
+
   it('keeps commit disabled when cash is negative', () => {
     addLine()
     usePOSStore.getState().setCashTendered(-1)
     renderPanel()
     expect(screen.getByRole('button', { name: bilingualAriaLabel(POS.completeSaleAria) })).toBeDisabled()
     expect(screen.getByText(POS.cashNegative.fr, { exact: false })).toBeInTheDocument()
+  })
+
+  it('B5: typing a negative cash amount shows an error instead of stripping it', () => {
+    addLine()
+    usePOSStore.getState().setCashTendered(1000)
+    renderPanel()
+    const cash = screen.getByLabelText(bilingualAriaLabel(POS.cashReceived))
+    fireEvent.change(cash, { target: { value: '-1' } })
+    expect(cash).toHaveValue(-1)
+    expect(screen.getByText(POS.cashNegative.fr, { exact: false })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: bilingualAriaLabel(POS.completeSaleAria) })).toBeDisabled()
   })
 
   it('invokes completeSale with the existing payload on commit', async () => {
@@ -221,7 +318,7 @@ describe('PaymentPanel', () => {
       p_display_currency: 'CFA',
       p_discount_type: null,
       p_discount_value: null,
-      p_shift_id: null,
+      p_shift_id: 'shift-1',
       p_cart_items: [
         { product_id: 'prod-001', unit_level: 0, quantity_in_unit: 3 },
       ],
@@ -268,19 +365,28 @@ describe('PaymentPanel', () => {
     expect(screen.getByTestId('payment-panel')).not.toHaveClass('overflow-y-auto')
   })
 
-  it('always submits p_shift_id null (no active shift workflow)', async () => {
+  it('B8: submits the open shift id with the sale', async () => {
     const user = userEvent.setup()
     addLine()
     usePOSStore.getState().setCashTendered(1000)
     renderPanel()
-    expect(screen.queryByText(/will not count on a shift close/)).not.toBeInTheDocument()
+    expect(screen.queryByText(SHIFT_COPY.openShiftRequired.fr)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: bilingualAriaLabel(POS.completeSaleAria) })).toBeEnabled()
     await user.click(screen.getByRole('button', { name: bilingualAriaLabel(POS.completeSaleAria) }))
     await waitFor(() => expect(rpc.completeSale).toHaveBeenCalledTimes(1))
-    expect(vi.mocked(rpc.completeSale).mock.calls[0][0].p_shift_id).toBeNull()
+    expect(vi.mocked(rpc.completeSale).mock.calls[0][0].p_shift_id).toBe('shift-1')
   })
 
-  it('allows admin completion with p_shift_id null', async () => {
+  it('B8: disables Complete and shows a French message when no open shift exists', () => {
+    vi.mocked(useOpenShifts).mockReturnValue({ data: [], isLoading: false } as never)
+    addLine()
+    usePOSStore.getState().setCashTendered(1000)
+    renderPanel()
+    expect(screen.getByText(SHIFT_COPY.openShiftRequired.fr)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: bilingualAriaLabel(POS.completeSaleAria) })).toBeDisabled()
+  })
+
+  it('B8: admin completion still sends the depot open shift', async () => {
     const user = userEvent.setup()
     useAuthStore.setState({
       staff: adminStaff(),
@@ -293,7 +399,7 @@ describe('PaymentPanel', () => {
     renderPanel('depot-a')
     await user.click(screen.getByRole('button', { name: bilingualAriaLabel(POS.completeSaleAria) }))
     await waitFor(() => expect(rpc.completeSale).toHaveBeenCalledTimes(1))
-    expect(vi.mocked(rpc.completeSale).mock.calls[0][0].p_shift_id).toBeNull()
+    expect(vi.mocked(rpc.completeSale).mock.calls[0][0].p_shift_id).toBe('shift-1')
   })
 
   it('ignores a second rapid Complete and reuses the same idempotency key', async () => {
@@ -421,6 +527,10 @@ describe('PaymentPanel Enter-to-complete wiring', () => {
     })
     vi.mocked(rpc.completeSale).mockReset()
     vi.mocked(rpc.completeSale).mockResolvedValue({ data: saleResult, error: null })
+    vi.mocked(useOpenShifts).mockReturnValue({
+      data: [openShift()],
+      isLoading: false,
+    } as never)
   })
 
   async function readyExactSale() {

@@ -135,6 +135,14 @@ export const INVENTORY = {
   profitMargin: bi('Marge bénéficiaire', 'Profit Margin'),
   costPrice: bi('Prix de revient', 'Cost Price'),
   sellingPrice: bi('Prix de vente', 'Selling Price'),
+  negativePriceError: bi(
+    'Le montant ne peut pas être négatif.',
+    'Amount cannot be negative.',
+  ),
+  sellBelowCostWarning: bi(
+    'Le prix de vente est inférieur au coût.',
+    'Selling price is below cost.',
+  ),
   unavailableMargin: bi('N/A', 'N/A'),
 
   // ── Cost report ──────────────────────────────────────────────

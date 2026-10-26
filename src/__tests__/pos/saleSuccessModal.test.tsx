@@ -3,22 +3,27 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SaleSuccessModal } from '@/pages/pos/components/SaleSuccessModal'
 import { formatCFA, formatDateTime } from '@/lib/formatters'
 import { usePOSStore } from '@/stores/posStore'
-import { useSaleDetail } from '@/hooks/useSales'
+import { fetchSaleDetail } from '@/hooks/useSales'
 import type { CompleteSaleResult } from '@/types/rpc'
 import type { Customer } from '@/types/database'
 import type { SaleDetailData } from '@/hooks/useSales'
 import { POS } from '@/lib/bilingual/pos'
+import { toast } from 'sonner'
+
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() },
+}))
 
 vi.mock('@/hooks/useSales', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useSales')>()
   return {
     ...actual,
-    useSaleDetail: vi.fn(),
+    fetchSaleDetail: vi.fn(),
   }
 })
 
@@ -29,6 +34,7 @@ function result(overrides: Partial<CompleteSaleResult> = {}): CompleteSaleResult
     subtotal_cfa: 24500,
     discount_amount_cfa: 0,
     total_cfa: 24500,
+    admin_override_total_cfa: null,
     amount_tendered_cfa: 25000,
     amount_applied_cfa: 24500,
     change_given_cfa: 500,
@@ -69,6 +75,7 @@ function saleDetail(overrides: Partial<SaleDetailData> = {}): SaleDetailData {
     discount_value: null,
     discount_amount_cfa: 0,
     total_cfa: 24500,
+    admin_override_total_cfa: null,
     amount_tendered_cfa: 25000,
     amount_applied_cfa: 24500,
     change_given_cfa: 500,
@@ -105,11 +112,15 @@ function mockDetail(state: {
   isLoading?: boolean
   isError?: boolean
 } = {}) {
-  vi.mocked(useSaleDetail).mockReturnValue({
-    data: state.data ?? saleDetail(),
-    isLoading: state.isLoading ?? false,
-    isError: state.isError ?? false,
-  } as never)
+  if (state.isError) {
+    vi.mocked(fetchSaleDetail).mockRejectedValue(new Error('sale detail failed'))
+    return
+  }
+  if (state.isLoading) {
+    vi.mocked(fetchSaleDetail).mockReturnValue(new Promise(() => {}) as Promise<SaleDetailData>)
+    return
+  }
+  vi.mocked(fetchSaleDetail).mockResolvedValue(state.data ?? saleDetail())
 }
 
 describe('SaleSuccessModal', () => {
@@ -131,6 +142,35 @@ describe('SaleSuccessModal', () => {
       node.textContent === label,
     )
     expect(total).toHaveClass('text-financial-lg', 'financial-value')
+  })
+
+  it('B4: shows the payable override total, not the calculated catalog total', () => {
+    render(
+      <SaleSuccessModal
+        result={result({
+          total_cfa: 24500,
+          admin_override_total_cfa: 7000,
+          amount_applied_cfa: 7000,
+          amount_tendered_cfa: 7000,
+          change_given_cfa: 0,
+        })}
+        customer={null}
+        cartItemCount={2}
+      />,
+    )
+    const payable = screen.getByText((_, node) =>
+      node?.tagName === 'SPAN' &&
+      node.classList.contains('text-financial-lg') &&
+      node.textContent === formatCFA(7000),
+    )
+    expect(payable).toBeInTheDocument()
+    expect(
+      screen.queryByText((_, node) =>
+        node?.tagName === 'SPAN' &&
+        node.classList.contains('text-financial-lg') &&
+        node.textContent === formatCFA(24500),
+      ),
+    ).toBeNull()
   })
 
   it('renders change with MoneyDisplay large size', () => {
@@ -181,16 +221,24 @@ describe('SaleSuccessModal', () => {
     expect(usePOSStore.getState().idempotencyKey).toBeNull()
   })
 
-  it('disables Print while sale detail is loading', () => {
+  it('B10: Print is enabled immediately while sale detail is still loading', () => {
     mockDetail({ isLoading: true, data: undefined })
     render(<SaleSuccessModal result={result()} customer={null} cartItemCount={1} />)
-    expect(screen.getByRole('button', { name: POS.browserPrintFallback.fr })).toBeDisabled()
+    expect(screen.getByRole('button', { name: POS.browserPrintFallback.fr })).toBeEnabled()
   })
 
-  it('disables Print when sale detail fails', () => {
+  it('B10: Print stays enabled when the prefetch fails; click retries and toasts', async () => {
+    const user = userEvent.setup()
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {})
     mockDetail({ isError: true, data: undefined })
     render(<SaleSuccessModal result={result()} customer={null} cartItemCount={1} />)
-    expect(screen.getByRole('button', { name: POS.browserPrintFallback.fr })).toBeDisabled()
+    const printBtn = screen.getByRole('button', { name: POS.browserPrintFallback.fr })
+    expect(printBtn).toBeEnabled()
+    await user.click(printBtn)
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalled()
+    })
+    expect(print).not.toHaveBeenCalled()
   })
 
   it('prints from authoritative sale detail, not the live cart or browser time', async () => {
@@ -237,7 +285,9 @@ describe('SaleSuccessModal', () => {
     )
 
     await user.click(screen.getByRole('button', { name: POS.browserPrintFallback.fr }))
-    expect(print).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(print).toHaveBeenCalledTimes(1)
+    })
 
     const receipt = document.getElementById('vhm-receipt')
     expect(receipt).toBeTruthy()
@@ -261,5 +311,21 @@ describe('SaleSuccessModal', () => {
     expect(text).not.toMatch(/https?:\/\//)
     expect(text).not.toMatch(/\d{4}-\d{2}-\d{2}T/)
     expect(receipt?.closest('[aria-hidden="true"]')).toBeTruthy()
+  })
+
+  it('B11: success dialog copy is French, not hardcoded English', () => {
+    render(
+      <SaleSuccessModal
+        result={result({ idempotent: true })}
+        customer={customer}
+        cartItemCount={2}
+      />,
+    )
+    expect(screen.getByText(POS.saleSummary.fr)).toBeInTheDocument()
+    expect(screen.getByText(POS.items.fr)).toBeInTheDocument()
+    expect(screen.getByText(POS.duplicateSaleReturned.fr)).toBeInTheDocument()
+    expect(screen.getByText(POS.autoPrintHint.fr)).toBeInTheDocument()
+    expect(screen.queryByText('Sale Summary')).not.toBeInTheDocument()
+    expect(screen.queryByText('Duplicate submission — existing sale returned')).not.toBeInTheDocument()
   })
 })

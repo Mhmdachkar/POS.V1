@@ -11,6 +11,8 @@ import { useRecordPayment } from '@/hooks/useCustomers'
 import { useOpenShifts, type ShiftListItem } from '@/hooks/useShifts'
 import { useAuthStore } from '@/stores/authStore'
 import type { Customer, Staff } from '@/types/database'
+import { CUSTOMERS } from '@/lib/bilingual/customers'
+import { COMMON } from '@/lib/bilingual/common'
 
 vi.mock('@/hooks/useCustomers', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useCustomers')>()
@@ -108,7 +110,7 @@ describe('RecordPaymentModal', () => {
     } as never)
   })
 
-  it('warns and still records when there is no valid shift', async () => {
+  it('B8: blocks recording a payment when there is no open shift', async () => {
     const user = userEvent.setup()
     const mutateAsync = vi.fn().mockResolvedValue({
       amount_cfa: 1000,
@@ -120,14 +122,32 @@ describe('RecordPaymentModal', () => {
       isPending: false,
     } as never)
     renderModal(null)
-    expect(screen.getByText(/can still be recorded and will not be attributed/)).toBeInTheDocument()
+    expect(
+      screen.getByText(/ouvrez un service pour encaisser|open a shift to complete a sale/i),
+    ).toBeInTheDocument()
     await user.type(screen.getByPlaceholderText('0'), '1000')
-    await user.click(screen.getByRole('button', { name: 'Record Payment' }))
+    expect(screen.getByRole('button', { name: CUSTOMERS.recordPayment.fr })).toBeDisabled()
+    expect(mutateAsync).not.toHaveBeenCalled()
+  })
+
+  it('B8: attaches a payment to the cashier depot open shift', async () => {
+    const user = userEvent.setup()
+    const mutateAsync = vi.fn().mockResolvedValue({
+      amount_cfa: 1000,
+      new_balance_owed_cfa: 4000,
+    })
+    vi.mocked(useRecordPayment).mockReturnValue({
+      mutateAsync,
+      isPending: false,
+    } as never)
+    renderModal(null)
+    await user.type(screen.getByPlaceholderText('0'), '1000')
+    await user.click(screen.getByRole('button', { name: CUSTOMERS.recordPayment.fr }))
     await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1))
     expect(mutateAsync).toHaveBeenCalledWith(expect.objectContaining({
       p_customer_id: 'cust-1',
       p_amount_cfa: 1000,
-      p_shift_id: null,
+      p_shift_id: 'shift-1',
     }))
   })
 
@@ -139,12 +159,39 @@ describe('RecordPaymentModal', () => {
     } as never)
     renderModal('shift-1')
     fireEvent.change(screen.getByPlaceholderText('0'), { target: { value: '1000' } })
-    const form = screen.getByRole('button', { name: 'Record Payment' }).closest('form')!
+    const form = screen.getByRole('button', { name: CUSTOMERS.recordPayment.fr }).closest('form')!
     fireEvent.submit(form)
     fireEvent.submit(form)
     expect(mutateAsync).toHaveBeenCalledTimes(1)
     expect(mutateAsync).toHaveBeenCalledWith(expect.objectContaining({
       p_shift_id: 'shift-1',
     }))
+  })
+
+  it('B5: a negative payment amount shows an error instead of being stripped', async () => {
+    const user = userEvent.setup()
+    const mutateAsync = vi.fn()
+    vi.mocked(useRecordPayment).mockReturnValue({
+      mutateAsync,
+      isPending: false,
+    } as never)
+    renderModal('shift-1')
+    await user.type(screen.getByPlaceholderText('0'), '-25')
+    expect(screen.getByPlaceholderText('0')).toHaveValue('-25')
+    expect(screen.getByText(CUSTOMERS.paymentNegative.fr)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: CUSTOMERS.recordPayment.fr }))
+    expect(mutateAsync).not.toHaveBeenCalled()
+  })
+
+  it('B11: success copy is bilingual French, not hardcoded English', async () => {
+    const user = userEvent.setup()
+    renderModal('shift-1')
+    await user.type(screen.getByPlaceholderText('0'), '1000')
+    await user.click(screen.getByRole('button', { name: CUSTOMERS.recordPayment.fr }))
+    expect(await screen.findByText(CUSTOMERS.paymentRecorded.fr)).toBeInTheDocument()
+    expect(screen.getByText(COMMON.customer.fr)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: COMMON.done.fr })).toBeInTheDocument()
+    expect(screen.queryByText('Payment Recorded')).not.toBeInTheDocument()
+    expect(screen.queryByText('Done')).not.toBeInTheDocument()
   })
 })

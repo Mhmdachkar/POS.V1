@@ -25,6 +25,10 @@ export const CUSTOMERS = {
     'Saisissez un montant valide supérieur à zéro.',
     'Enter a valid amount greater than zero.',
   ),
+  paymentNegative: bi(
+    'Le montant ne peut pas être négatif.',
+    'Amount cannot be negative.',
+  ),
   paymentAmount: bi('Montant du paiement', 'Payment amount'),
   activity: bi('Activité du compte', 'Customer activity'),
   notFound: bi('Client introuvable', 'Customer not found'),
@@ -94,4 +98,23 @@ export const CUSTOMERS = {
     'Échec de l\'export du compte client.',
     'Failed to export customer account.',
   ),
+  paymentPooledHint: bi(
+    'Solde confirmé par le serveur. Paiement groupé — non attribué à un ticket.',
+    'Balance confirmed by server. Pooled payment — not allocated to a specific sale.',
+  ),
+  inactivePaymentAllowed: bi(
+    'Ce client est inactif. Les paiements sur le solde existant restent autorisés.',
+    'This customer is inactive. Payments against their existing balance are still allowed.',
+  ),
+  amountToPay: bi('Montant à payer (CFA)', 'Amount to pay (CFA)'),
+  noteOptional: bi('Note (facultatif)', 'Note (optional)'),
+  notePlaceholder: bi(
+    'ex. Paiement partiel, espèces',
+    'e.g. Partial payment, cash',
+  ),
+  paymentExceedsBalance: (amount: string) =>
+    bi(
+      `Le montant dépasse le solde dû (${amount}).`,
+      `Amount exceeds balance owed (${amount}).`,
+    ),
 } as const

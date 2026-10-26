@@ -4,9 +4,11 @@
 
 import { describe, it, expect } from 'vitest'
 import {
+  pickOpenShiftId,
   processingShiftId,
   resolveLoadedPosShiftContext,
   resolvePosShiftContext,
+  resolveRequiredShiftId,
 } from '@/lib/posShiftContext'
 
 const dakar = { id: 'shift-dkr', depot_id: 'depot-a' }
@@ -56,6 +58,43 @@ describe('processingShiftId', () => {
     const invalid = resolvePosShiftContext('gone', 'depot-a', [dakar])
     expect(processingShiftId('shift-dkr', valid)).toBe('shift-dkr')
     expect(processingShiftId('gone', invalid)).toBeNull()
+  })
+})
+
+describe('pickOpenShiftId / resolveRequiredShiftId', () => {
+  const dakarEarly = {
+    id: 'shift-old',
+    depot_id: 'depot-a',
+    cashier_id: 'other',
+    opened_at: '2026-09-13T07:00:00Z',
+    status: 'open',
+  }
+  const dakarOwn = {
+    id: 'shift-own',
+    depot_id: 'depot-a',
+    cashier_id: 'cashier-1',
+    opened_at: '2026-09-13T08:00:00Z',
+    status: 'open',
+  }
+  const abidjan = {
+    id: 'shift-abj',
+    depot_id: 'depot-b',
+    cashier_id: 'cashier-1',
+    opened_at: '2026-09-13T09:00:00Z',
+    status: 'open',
+  }
+
+  it('B8: prefers this cashier\'s open shift at the POS depot', () => {
+    expect(pickOpenShiftId('depot-a', 'cashier-1', [dakarEarly, dakarOwn, abidjan])).toBe('shift-own')
+  })
+
+  it('B8: returns null when the depot has no open shift', () => {
+    expect(pickOpenShiftId('depot-a', 'cashier-1', [abidjan])).toBeNull()
+  })
+
+  it('B8: keeps a still-open preferred shift, otherwise falls back', () => {
+    expect(resolveRequiredShiftId('shift-old', 'depot-a', 'cashier-1', [dakarEarly, dakarOwn])).toBe('shift-old')
+    expect(resolveRequiredShiftId('gone', 'depot-a', 'cashier-1', [dakarEarly, dakarOwn])).toBe('shift-own')
   })
 })
 

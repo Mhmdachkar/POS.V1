@@ -109,15 +109,31 @@ export function parseCFAInput(raw: string): number {
  * Keeps an optional decimal part ungrouped.
  */
 export function formatThousandsInput(raw: string): string {
-  if (raw.trim() === '') return ''
+  const trimmed = raw.trim()
+  if (trimmed === '') return ''
+  if (trimmed === '-') return '-'
+  const negative = trimmed.startsWith('-')
   const cleaned = raw.replace(/[^\d.]/g, '')
-  if (cleaned === '' || cleaned === '.') return cleaned === '.' ? '0.' : ''
+  if (cleaned === '' || cleaned === '.') {
+    if (cleaned === '.') return negative ? '-0.' : '0.'
+    return negative ? '-' : ''
+  }
   const dot = cleaned.indexOf('.')
   const intDigits = (dot === -1 ? cleaned : cleaned.slice(0, dot)).replace(/\D/g, '')
   const frac = dot === -1 ? null : cleaned.slice(dot + 1).replace(/\D/g, '')
   const grouped = intDigits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
-  if (frac == null) return grouped
-  return `${grouped || '0'}.${frac}`
+  const body = frac == null ? grouped : `${grouped || '0'}.${frac}`
+  return negative ? `-${body}` : body
+}
+
+/** True when the draft is a minus sign or a parsed negative amount. */
+export function isNegativeMoneyDraft(raw: string): boolean {
+  const trimmed = raw.trim()
+  if (trimmed === '-' || trimmed.startsWith('-')) {
+    const n = parseCFAInput(raw)
+    return trimmed === '-' || (Number.isFinite(n) && n < 0)
+  }
+  return false
 }
 
 /** Client-visible product name (from env, with a stable fallback). */

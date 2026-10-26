@@ -24,6 +24,10 @@ export const SHIFT_COPY = {
     'Sur la période ouverte en cours — total non final.',
     'In this open period so far — not a final closed total.',
   ),
+  openShiftRequired: bi(
+    'Ouvrez un service pour encaisser, rembourser ou enregistrer un paiement.',
+    'Open a shift to complete a sale, process a refund, or record a payment.',
+  ),
   openShift: bi('Ouvrir un service', 'Open Shift'),
   closeShift: bi('Fermer le service', 'Close Shift'),
   shiftClosed: bi('Service fermé', 'Shift Closed'),

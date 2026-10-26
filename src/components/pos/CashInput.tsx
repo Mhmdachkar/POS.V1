@@ -13,12 +13,17 @@ export function CashInput() {
       <Input
         id="pos-cash-received"
         type="number"
-        min={0}
         step={100}
-        value={cashTendered || ''}
+        value={cashTendered === 0 ? '' : cashTendered}
         onChange={(e) => {
-          const val = parseCFAInput(e.target.value)
-          setCashTendered(isNaN(val) || val < 0 ? 0 : val)
+          const raw = e.target.value
+          if (raw.trim() === '') {
+            setCashTendered(0)
+            return
+          }
+          const val = parseCFAInput(raw)
+          if (isNaN(val)) return
+          setCashTendered(val)
         }}
         placeholder="0"
         prefix="CFA"

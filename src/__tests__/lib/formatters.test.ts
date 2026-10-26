@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatThousandsInput, parseCFAInput } from '@/lib/formatters'
+import { formatThousandsInput, isNegativeMoneyDraft, parseCFAInput } from '@/lib/formatters'
 
 describe('formatThousandsInput', () => {
   it('groups thousands with spaces', () => {
@@ -20,6 +20,15 @@ describe('formatThousandsInput', () => {
   it('allows empty', () => {
     expect(formatThousandsInput('')).toBe('')
     expect(formatThousandsInput('   ')).toBe('')
+  })
+
+  it('B5: keeps a leading minus so the field can show an error', () => {
+    expect(formatThousandsInput('-')).toBe('-')
+    expect(formatThousandsInput('-50')).toBe('-50')
+    expect(formatThousandsInput('-40000')).toBe('-40 000')
+    expect(isNegativeMoneyDraft('-')).toBe(true)
+    expect(isNegativeMoneyDraft('-50')).toBe(true)
+    expect(isNegativeMoneyDraft('50')).toBe(false)
   })
 })
 

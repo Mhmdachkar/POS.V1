@@ -8,9 +8,13 @@ import {
   computeReturnLineRefund,
   computeReturnRefundPreview,
   computeReturnRefundTotal,
+  collectedTakenCfa,
+  lineRefundBasisCfa,
   remainingRefundableCfa,
+  remainingSaleRefundPool,
   resolveLineRefund,
   roundCfa2,
+  saleRefundPoolCfa,
 } from '@/lib/returnRefundPreview'
 
 const NET_950 = 950
@@ -186,8 +190,8 @@ describe('roundCfa2 / computeReturnLineRefund / computeReturnRefundTotal', () =>
         alreadyRefundedCfa: 0,
       },
     ])
-    expect(total).toBe(ROUND_950_OVER_3 + roundCfa2(700 / 2))
-    expect(total).toBe(316.67 + 350)
+    expect(total).toBe(roundCfa2(ROUND_950_OVER_3 + roundCfa2(700 / 2)))
+    expect(total).toBe(666.67)
   })
 
   it('uses previous sale_return_items qty + refund for final residual', () => {
@@ -228,6 +232,87 @@ describe('roundCfa2 / computeReturnLineRefund / computeReturnRefundTotal', () =>
     expect(resolveLineRefund({ ...line, customRefundCfa: 250 })).toBe(250)
     expect(resolveLineRefund({ ...line, customRefundCfa: 0 })).toBe(0)
     expect(resolveLineRefund({ ...line, customRefundCfa: 999 })).toBe(600)
+  })
+
+  it('B1: line basis is the line share of COALESCE(override, total)', () => {
+    expect(lineRefundBasisCfa(600, 900, 450)).toBe(300)
+    expect(lineRefundBasisCfa(300, 900, 450)).toBe(150)
+    expect(lineRefundBasisCfa(600, 900, 900)).toBe(600)
+  })
+
+  it('B6: report payable share is net_line * COALESCE(override, total) / total', () => {
+    expect(lineRefundBasisCfa(3500, 3500, 1750)).toBe(1750)
+    expect(lineRefundBasisCfa(600, 900, 450)).toBe(300)
+    expect(lineRefundBasisCfa(3500, 3500, 3500)).toBe(3500)
+  })
+
+  it('B1: refund pool is min(payable, cash + credit collected)', () => {
+    expect(
+      saleRefundPoolCfa({
+        total_cfa: 900,
+        admin_override_total_cfa: 450,
+        amount_applied_cfa: 450,
+        balance_added_cfa: 0,
+      }),
+    ).toBe(450)
+    expect(
+      saleRefundPoolCfa({
+        total_cfa: 900,
+        admin_override_total_cfa: null,
+        amount_applied_cfa: 400,
+        balance_added_cfa: 500,
+      }),
+    ).toBe(900)
+    expect(collectedTakenCfa(400, 500)).toBe(900)
+    expect(remainingSaleRefundPool(450, 300)).toBe(150)
+    expect(remainingSaleRefundPool(450, 450)).toBe(0)
+  })
+
+  it('B1: residual on an overridden line sums to the payable share, not catalog net', () => {
+    const basis = lineRefundBasisCfa(950, 950, 475)
+    expect(basis).toBe(475)
+    const first = computeReturnLineRefund({
+      originalQty: 3,
+      selectedQty: 1,
+      netLineTotalCfa: 950,
+      refundBasisCfa: basis,
+      alreadyReturnedQty: 0,
+      alreadyRefundedCfa: 0,
+    })
+    expect(first).toBe(roundCfa2(475 / 3))
+    const rest = computeReturnLineRefund({
+      originalQty: 3,
+      selectedQty: 2,
+      netLineTotalCfa: 950,
+      refundBasisCfa: basis,
+      alreadyReturnedQty: 1,
+      alreadyRefundedCfa: first,
+    })
+    expect(first + rest).toBe(475)
+    expect(first + rest).not.toBe(950)
+  })
+
+  it('B1: sale-level cap stops refunds above cash + credit collected', () => {
+    const lines = [
+      {
+        originalQty: 1,
+        selectedQty: 1,
+        netLineTotalCfa: 600,
+        refundBasisCfa: 300,
+        alreadyReturnedQty: 0,
+        alreadyRefundedCfa: 0,
+      },
+      {
+        originalQty: 1,
+        selectedQty: 1,
+        netLineTotalCfa: 300,
+        refundBasisCfa: 150.01,
+        alreadyReturnedQty: 0,
+        alreadyRefundedCfa: 0,
+      },
+    ]
+    expect(computeReturnRefundTotal(lines, 450)).toBe(450)
+    expect(computeReturnRefundTotal(lines)).toBe(450.01)
   })
 
   it('C1 receives the exact rounded/residual total, not the unrounded proportion', () => {

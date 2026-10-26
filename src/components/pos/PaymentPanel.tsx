@@ -4,14 +4,21 @@
  * Financial preview only — all authoritative values come from the server.
  * The server's response replaces the preview after a successful sale.
  *
- * CEO Notes: shift workflow removed. New sales always use p_shift_id = null.
+ * An open shift is required (B8). Sales attach to the depot's open shift.
  * Admin can supply p_override_total_cfa; Cashier cannot (server-enforced).
  */
 
 import { useCallback, useEffect, useRef } from 'react'
 import { cn } from '@/lib/cn'
 import { useShallow } from 'zustand/react/shallow'
-import { usePOSStore } from '@/stores/posStore'
+import { effectiveFinalTotal, usePOSStore } from '@/stores/posStore'
+import {
+  isDiscountOutOfRange,
+  isOverrideOutOfRange,
+  isZeroPayableTotal,
+  needsPriceExceptionReason,
+  zeroTotalReasonOk,
+} from '@/lib/zeroTotalSale'
 import { rpc } from '@/lib/rpc'
 import { parseError } from '@/lib/errors'
 import { usePosCatalogStock } from '@/hooks/usePosCatalogStock'
@@ -21,14 +28,19 @@ import { useQueryClient } from '@tanstack/react-query'
 import { shouldCompleteSaleOnEnter } from '@/lib/posEnterComplete'
 import { invalidateAfterSaleSettled, refreshPosCatalogStock } from '@/lib/cacheInvalidation'
 import { wakeLocalPrintAgent } from '@/lib/printAgentWake'
+import { Textarea } from '@/components/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { POS } from '@/lib/bilingual/pos'
+import { bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
 import { toastErrorBi, toastErrorFromCode } from '@/lib/bilingual/toast'
 import { CustomerChip } from './CustomerChip'
 import { DiscountRow } from './DiscountRow'
 import { CashSection } from './CashSection'
 import { CheckoutSummary } from './CheckoutSummary'
 import { CommitButton } from './CommitButton'
+import { authorizedOpenShifts, useOpenShifts } from '@/hooks/useShifts'
+import { resolveRequiredShiftId } from '@/lib/posShiftContext'
+import { SHIFT_COPY } from '@/lib/bilingual/shift'
 
 interface PaymentPanelProps {
   depotId: string | null
@@ -40,6 +52,15 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
   const inFlight = useRef(false)
   const staff = useAuthStore((s) => s.staff)
   const { getAvailablePieces } = usePosCatalogStock()
+  const { data: openShifts, isLoading: openShiftsLoading } = useOpenShifts()
+  const processingShiftId = resolveRequiredShiftId(
+    null,
+    depotId,
+    staff?.id,
+    authorizedOpenShifts(staff, openShifts),
+  )
+  const hasOpenShift = !!processingShiftId
+  const shiftGateReady = !openShiftsLoading
 
   const {
     items,
@@ -52,9 +73,11 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
     idempotencyKey,
     isSubmitting,
     overrideTotalCfa,
+    priceExceptionReason,
     ensureIdempotencyKey,
     setSubmitting,
     setSaleResult,
+    setPriceExceptionReason,
   } = usePOSStore(useShallow((s) => ({
     items:                s.items,
     customer:             s.customer,
@@ -66,23 +89,30 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
     idempotencyKey:       s.idempotencyKey,
     isSubmitting:         s.isSubmitting,
     overrideTotalCfa:     s.overrideTotalCfa,
+    priceExceptionReason: s.priceExceptionReason,
     ensureIdempotencyKey: s.ensureIdempotencyKey,
     setSubmitting:        s.setSubmitting,
     setSaleResult:        s.setSaleResult,
+    setPriceExceptionReason: s.setPriceExceptionReason,
   })))
   void idempotencyKey
 
   const isCartEmpty = items.length === 0
   const hasDepot = !!depotId
   const showCheckout = !isCartEmpty && hasDepot
+  const isAdmin = staff?.role === 'admin'
   const isCreditSale = totals.balance_added_cfa > 0
   const isCreditWithoutCustomer = isCreditSale && isWalkIn
-  const isDiscountInvalid =
-    discountType === 'flat'
-      ? discountValue < 0 || discountValue > totals.subtotal_cfa
-      : discountType === 'percent'
-        ? discountValue < 0 || discountValue > 100
-        : false
+  const isDiscountInvalid = isDiscountOutOfRange(discountType, discountValue, totals.subtotal_cfa)
+  const payableCfa = effectiveFinalTotal(totals.total_cfa, isAdmin ? overrideTotalCfa : null)
+  const isZeroPayable = showCheckout && isZeroPayableTotal(payableCfa)
+  const overrideInvalid = isAdmin && isOverrideOutOfRange(overrideTotalCfa, totals.total_cfa)
+  const needsReason = showCheckout && !isDiscountInvalid && needsPriceExceptionReason(
+    !!isAdmin,
+    isZeroPayable,
+    isAdmin ? overrideTotalCfa : null,
+  )
+  const reasonBlocked = needsReason && !(isAdmin && zeroTotalReasonOk(priceExceptionReason))
   const isCashNegative = cashTendered < 0
   const exceedsKnownStock = cartExceedsKnownStock(items, getAvailablePieces)
 
@@ -90,9 +120,13 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
     showCheckout &&
     !isCreditWithoutCustomer &&
     !isDiscountInvalid &&
+    !overrideInvalid &&
+    !reasonBlocked &&
     !isCashNegative &&
     !isSubmitting &&
-    !exceedsKnownStock
+    !exceedsKnownStock &&
+    shiftGateReady &&
+    hasOpenShift
 
   const handleCompleteSale = useCallback(async () => {
     if (inFlight.current) return
@@ -100,6 +134,18 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
       if (isCartEmpty) toastErrorBi(POS.addProductsBeforeSale)
       if (isCreditWithoutCustomer) toastErrorBi(POS.creditNeedsCustomer)
       if (exceedsKnownStock) toastErrorBi(POS.cartExceedsStock)
+      if (shiftGateReady && !hasOpenShift) toastErrorBi(SHIFT_COPY.openShiftRequired)
+      if (isDiscountInvalid) {
+        toastErrorBi(discountType === 'flat' ? POS.discountFlatError : POS.discountPercentError)
+      }
+      if (overrideInvalid) toastErrorBi(POS.overrideOutOfRange)
+      if (reasonBlocked) {
+        toastErrorBi(
+          isZeroPayable
+            ? (isAdmin ? POS.zeroTotalNeedsReason : POS.zeroTotalNeedsAdmin)
+            : POS.overrideNeedsReason,
+        )
+      }
       return
     }
 
@@ -109,8 +155,6 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
     setSubmitting(true)
 
     try {
-      // Admin can supply override total; cashier cannot (server enforces)
-      const isAdmin = staff?.role === 'admin'
       const result = await rpc.completeSale({
         p_depot_id:            depotId,
         p_customer_id:         customer?.id ?? null,
@@ -123,10 +167,13 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
         p_display_currency:    'CFA',
         p_discount_type:       discountType,
         p_discount_value:      discountType ? discountValue : null,
-        p_shift_id:            null,    // CEO Notes: no active shift
+        p_shift_id:            processingShiftId,
         p_idempotency_key:     key,
-        // Admin always sends the 10th arg (null = no override). Cashier omits it.
+        // Admin always sends the override arg (null = no override). Cashier omits it.
         ...(isAdmin ? { p_override_total_cfa: overrideTotalCfa } : {}),
+        ...(isAdmin && priceExceptionReason.trim()
+          ? { p_price_exception_reason: priceExceptionReason.trim() }
+          : {}),
       })
 
       if (result.error) {
@@ -143,7 +190,7 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
       invalidateAfterSaleSettled(queryClient, {
         saleId: result.data?.sale_id,
         customerId: customer?.id,
-        shiftId: null,
+        shiftId: processingShiftId,
       })
       wakeLocalPrintAgent()
     } finally {
@@ -154,7 +201,9 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
     canSubmit, isCartEmpty, isCreditWithoutCustomer, exceedsKnownStock,
     ensureIdempotencyKey, setSubmitting, setSaleResult,
     isWalkIn, customer, items, cashTendered, discountType, discountValue,
-    depotId, overrideTotalCfa, staff?.role, queryClient,
+    depotId, overrideTotalCfa, priceExceptionReason, isAdmin,
+    isDiscountInvalid, overrideInvalid, reasonBlocked, isZeroPayable, queryClient,
+    processingShiftId, shiftGateReady, hasOpenShift,
   ])
 
   useEffect(() => {
@@ -169,7 +218,8 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
 
   const creditWarningId = isCreditWithoutCustomer ? 'pos-credit-warning' : undefined
   const stockMessageId = exceedsKnownStock ? 'pos-stock-warning' : undefined
-  const describedBy = [creditWarningId, stockMessageId].filter(Boolean).join(' ') || undefined
+  const zeroTotalId = needsReason ? 'pos-zero-total-warning' : undefined
+  const describedBy = [creditWarningId, stockMessageId, zeroTotalId].filter(Boolean).join(' ') || undefined
 
   return (
     <div
@@ -202,6 +252,34 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
         <p id="pos-stock-warning" role="status" className="text-xs text-warning-foreground">
           <BilingualText {...POS.cartExceedsStock} variant="caption" />
         </p>
+      )}
+
+      {showCheckout && shiftGateReady && !hasOpenShift && (
+        <p id="pos-shift-warning" role="status" className="text-xs text-warning-foreground">
+          <BilingualText {...SHIFT_COPY.openShiftRequired} variant="caption" />
+        </p>
+      )}
+
+      {needsReason && (
+        isAdmin ? (
+          <Textarea
+            id="pos-zero-total-warning"
+            aria-label={bilingualAriaLabel(POS.priceExceptionReason)}
+            label={bilingualPlain(POS.priceExceptionReason)}
+            value={priceExceptionReason}
+            onChange={(e) => setPriceExceptionReason(e.target.value)}
+            error={
+              !priceExceptionReason.trim()
+                ? bilingualPlain(isZeroPayable ? POS.zeroTotalNeedsReason : POS.overrideNeedsReason)
+                : undefined
+            }
+            rows={2}
+          />
+        ) : (
+          <p id="pos-zero-total-warning" role="status" className="text-xs text-danger-foreground">
+            <BilingualText {...POS.zeroTotalNeedsAdmin} variant="caption" />
+          </p>
+        )
       )}
 
       <CommitButton

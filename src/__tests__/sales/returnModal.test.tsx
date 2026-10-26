@@ -73,6 +73,7 @@ function makeSale(overrides: Partial<SaleDetailData> = {}): SaleDetailData {
     discount_value: null,
     discount_amount_cfa: 0,
     total_cfa: 900,
+    admin_override_total_cfa: null,
     amount_tendered_cfa: 900,
     amount_applied_cfa: 900,
     change_given_cfa: 0,
@@ -173,6 +174,8 @@ function walkInSale19600(): SaleDetailData {
     customer_balance_owed_cfa: null,
     total_cfa: 19600,
     subtotal_cfa: 19600,
+    amount_tendered_cfa: 19600,
+    amount_applied_cfa: 19600,
     items: [
       makeItem({
         id: 'item-walkin',
@@ -526,6 +529,8 @@ describe('ReturnModal', () => {
         discount_amount_cfa: 100,
         subtotal_cfa: 1050,
         total_cfa: 950,
+        amount_tendered_cfa: 950,
+        amount_applied_cfa: 950,
         items: [
           makeItem({
             id: 'item-c3',
@@ -590,34 +595,26 @@ describe('ReturnModal', () => {
     expect(vi.mocked(rpc.processReturn).mock.calls[0][0].p_shift_id).not.toBe('sale-original-shift')
   })
 
-  it('still processes a return without a valid shift and shows the unattributed warning', async () => {
+  it('B8: blocks a return without an open shift', async () => {
     const user = userEvent.setup()
     vi.mocked(useOpenShifts).mockReturnValue({ data: [], isLoading: false } as never)
     vi.mocked(rpc.processReturn).mockResolvedValue(successResult)
     renderModal(makeSale(), {}, null)
     await user.click(screen.getByRole('button', { name: /tout retourner|return all/i }))
     expect(
-      screen.getAllByText(
-        /non rattaché|remboursement espèces non rattaché|cash refund will be unattributed/i,
-      ).length,
+      screen.getAllByText(/ouvrez un service pour traiter ce retour|open a shift to process this return/i).length,
     ).toBeGreaterThan(0)
-    await user.click(screen.getByRole('button', { name: /traiter un retour|process return/i }))
-    expect(rpc.processReturn).toHaveBeenCalledTimes(1)
-    expect(vi.mocked(rpc.processReturn).mock.calls[0][0].p_shift_id).toBeNull()
+    expect(screen.getByRole('button', { name: /traiter un retour|process return/i })).toBeDisabled()
+    expect(rpc.processReturn).not.toHaveBeenCalled()
   })
 
-  it('treats a stale processing shift as unattributed', async () => {
+  it('B8: falls back to the depot open shift when the preferred id is stale', async () => {
     const user = userEvent.setup()
     vi.mocked(rpc.processReturn).mockResolvedValue(successResult)
     renderModal(makeSale(), {}, 'stale-shift')
     await user.click(screen.getByRole('button', { name: /tout retourner|return all/i }))
-    expect(
-      screen.getAllByText(
-        /non rattaché|remboursement espèces non rattaché|cash refund will be unattributed/i,
-      ).length,
-    ).toBeGreaterThan(0)
     await user.click(screen.getByRole('button', { name: /traiter un retour|process return/i }))
-    expect(vi.mocked(rpc.processReturn).mock.calls[0][0].p_shift_id).toBeNull()
+    expect(vi.mocked(rpc.processReturn).mock.calls[0][0].p_shift_id).toBe('shift-1')
   })
 
   it('lets the cashier refund less than the full value while still returning stock qty', async () => {
@@ -652,6 +649,58 @@ describe('ReturnModal', () => {
     await user.clear(refundInput)
     await user.type(refundInput, '9999')
     expect(refundInput).toHaveValue('600')
+  })
+
+  it('B1: refunds an overridden sale as a share of the payable total, not catalog nets', async () => {
+    const user = userEvent.setup()
+    vi.mocked(rpc.processReturn).mockResolvedValue({
+      ...successResult,
+      data: {
+        ...successResult.data,
+        refund_amount_cfa: 300,
+        cash_refunded_cfa: 300,
+      },
+    })
+    renderModal(
+      makeSale({
+        total_cfa: 900,
+        admin_override_total_cfa: 450,
+        amount_tendered_cfa: 450,
+        amount_applied_cfa: 450,
+        items: [
+          makeItem({
+            id: 'item-open',
+            quantity_in_unit: 3,
+            quantity_pieces: 3,
+            line_total_cfa: 600,
+            net_line_total_cfa: 600,
+          }),
+          makeItem({
+            id: 'item-cola',
+            product_id: 'prod-2',
+            quantity_in_unit: 1,
+            quantity_pieces: 1,
+            unit_price_cfa: 300,
+            line_total_cfa: 300,
+            net_line_total_cfa: 300,
+            product_name: 'Cola',
+            unit_name: 'Can',
+          }),
+        ],
+        returns: [],
+      }),
+    )
+    const returnAll = screen.getAllByRole('button', { name: /tout retourner|return all/i })
+    await user.click(returnAll[0])
+    await user.click(returnAll[1])
+    await user.click(screen.getByRole('button', { name: /traiter un retour|process return/i }))
+
+    const params = vi.mocked(rpc.processReturn).mock.calls[0][0]
+    const water = params.p_items.find((item) => item.sale_item_id === 'item-open')
+    const cola = params.p_items.find((item) => item.sale_item_id === 'item-cola')
+    expect(water?.refund_amount_cfa).toBe(300)
+    expect(cola?.refund_amount_cfa).toBe(150)
+    expect(params.p_cash_refund_cfa).toBe(450)
   })
 
   it('ignores a second rapid Process Return click', async () => {
