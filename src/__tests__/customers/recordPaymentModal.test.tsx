@@ -12,6 +12,7 @@ import { useOpenShifts, type ShiftListItem } from '@/hooks/useShifts'
 import { useAuthStore } from '@/stores/authStore'
 import type { Customer, Staff } from '@/types/database'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
+import { COMMON } from '@/lib/bilingual/common'
 
 vi.mock('@/hooks/useCustomers', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useCustomers')>()
@@ -125,7 +126,7 @@ describe('RecordPaymentModal', () => {
       screen.getByText(/ouvrez un service pour encaisser|open a shift to complete a sale/i),
     ).toBeInTheDocument()
     await user.type(screen.getByPlaceholderText('0'), '1000')
-    expect(screen.getByRole('button', { name: 'Record Payment' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: CUSTOMERS.recordPayment.fr })).toBeDisabled()
     expect(mutateAsync).not.toHaveBeenCalled()
   })
 
@@ -141,7 +142,7 @@ describe('RecordPaymentModal', () => {
     } as never)
     renderModal(null)
     await user.type(screen.getByPlaceholderText('0'), '1000')
-    await user.click(screen.getByRole('button', { name: 'Record Payment' }))
+    await user.click(screen.getByRole('button', { name: CUSTOMERS.recordPayment.fr }))
     await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1))
     expect(mutateAsync).toHaveBeenCalledWith(expect.objectContaining({
       p_customer_id: 'cust-1',
@@ -158,7 +159,7 @@ describe('RecordPaymentModal', () => {
     } as never)
     renderModal('shift-1')
     fireEvent.change(screen.getByPlaceholderText('0'), { target: { value: '1000' } })
-    const form = screen.getByRole('button', { name: 'Record Payment' }).closest('form')!
+    const form = screen.getByRole('button', { name: CUSTOMERS.recordPayment.fr }).closest('form')!
     fireEvent.submit(form)
     fireEvent.submit(form)
     expect(mutateAsync).toHaveBeenCalledTimes(1)
@@ -178,7 +179,19 @@ describe('RecordPaymentModal', () => {
     await user.type(screen.getByPlaceholderText('0'), '-25')
     expect(screen.getByPlaceholderText('0')).toHaveValue('-25')
     expect(screen.getByText(CUSTOMERS.paymentNegative.fr)).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Record Payment' }))
+    await user.click(screen.getByRole('button', { name: CUSTOMERS.recordPayment.fr }))
     expect(mutateAsync).not.toHaveBeenCalled()
+  })
+
+  it('B11: success copy is bilingual French, not hardcoded English', async () => {
+    const user = userEvent.setup()
+    renderModal('shift-1')
+    await user.type(screen.getByPlaceholderText('0'), '1000')
+    await user.click(screen.getByRole('button', { name: CUSTOMERS.recordPayment.fr }))
+    expect(await screen.findByText(CUSTOMERS.paymentRecorded.fr)).toBeInTheDocument()
+    expect(screen.getByText(COMMON.customer.fr)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: COMMON.done.fr })).toBeInTheDocument()
+    expect(screen.queryByText('Payment Recorded')).not.toBeInTheDocument()
+    expect(screen.queryByText('Done')).not.toBeInTheDocument()
   })
 })

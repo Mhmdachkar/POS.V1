@@ -312,4 +312,20 @@ describe('SaleSuccessModal', () => {
     expect(text).not.toMatch(/\d{4}-\d{2}-\d{2}T/)
     expect(receipt?.closest('[aria-hidden="true"]')).toBeTruthy()
   })
+
+  it('B11: success dialog copy is French, not hardcoded English', () => {
+    render(
+      <SaleSuccessModal
+        result={result({ idempotent: true })}
+        customer={customer}
+        cartItemCount={2}
+      />,
+    )
+    expect(screen.getByText(POS.saleSummary.fr)).toBeInTheDocument()
+    expect(screen.getByText(POS.items.fr)).toBeInTheDocument()
+    expect(screen.getByText(POS.duplicateSaleReturned.fr)).toBeInTheDocument()
+    expect(screen.getByText(POS.autoPrintHint.fr)).toBeInTheDocument()
+    expect(screen.queryByText('Sale Summary')).not.toBeInTheDocument()
+    expect(screen.queryByText('Duplicate submission — existing sale returned')).not.toBeInTheDocument()
+  })
 })

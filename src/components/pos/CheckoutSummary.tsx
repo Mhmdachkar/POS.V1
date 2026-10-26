@@ -1,7 +1,7 @@
 import { MoneyDisplay } from '@/components/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { POS } from '@/lib/bilingual/pos'
-import { bi, bilingualPlain } from '@/lib/bilingual/types'
+import { bi, bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
 import { isOverrideOutOfRange } from '@/lib/zeroTotalSale'
 import { useShallow } from 'zustand/react/shallow'
 import { effectiveFinalTotal, usePOSStore } from '@/stores/posStore'
@@ -90,7 +90,7 @@ export function CheckoutSummary() {
                 ? 'border-danger focus:ring-danger/40'
                 : 'border-warning/30 focus:ring-warning/40'
             }`}
-            aria-label="Modification du total (admin)"
+            aria-label={bilingualAriaLabel(POS.overrideTotalAria)}
             aria-invalid={overrideInvalid || undefined}
           />
         </div>

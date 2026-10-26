@@ -19,7 +19,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react'
-import { BiEmptyTitle, BiModalTitle, BiPageTitle, BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
+import { BiButtonStack, BiEmptyTitle, BiModalTitle, BiPageTitle, BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
 import { COMMON } from '@/lib/bilingual/common'
 import { ADMIN } from '@/lib/bilingual/admin'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
@@ -122,9 +122,7 @@ export function RecordPaymentModal({
       return
     }
     if (amount > customer.balance_owed_cfa) {
-      setAmountError(
-        `Amount exceeds balance owed (${formatCFA(customer.balance_owed_cfa)}).`,
-      )
+      setAmountError(t(CUSTOMERS.paymentExceedsBalance(formatCFA(customer.balance_owed_cfa))))
       return
     }
 
@@ -173,14 +171,14 @@ export function RecordPaymentModal({
         /* ── Success state ── */
         <div className="space-y-5">
           <div className="rounded-xl bg-success-bg border border-success/20 p-4 text-center space-y-1">
-            <p className="text-sm text-success-foreground font-medium">Payment Recorded</p>
+            <p className="text-sm text-success-foreground font-medium">{t(CUSTOMERS.paymentRecorded)}</p>
             <p className="text-2xl font-bold text-success-foreground tabular-nums">
               {formatCFA(successResult.amount_cfa)}
             </p>
           </div>
           <div className="space-y-1.5 text-sm">
             <div className="flex justify-between text-text-secondary">
-              <span>Customer</span>
+              <span>{t(COMMON.customer)}</span>
               <span className="font-medium text-text-primary">{customer.name}</span>
             </div>
             <div className="flex justify-between text-text-secondary">
@@ -191,10 +189,10 @@ export function RecordPaymentModal({
             </div>
           </div>
           <p className="text-xs text-text-muted text-center">
-            Balance confirmed by server. Pooled payment — not allocated to a specific sale.
+            {t(CUSTOMERS.paymentPooledHint)}
           </p>
           <Button className="w-full" onClick={handleDone}>
-            Done
+            <BiButtonStack {...COMMON.done} />
           </Button>
         </div>
       ) : (
@@ -205,7 +203,7 @@ export function RecordPaymentModal({
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-semibold text-text-primary truncate">{customer.name}</p>
               {!customer.is_active && (
-                <Badge variant="neutral">Inactive</Badge>
+                <Badge variant="neutral">{t(COMMON.inactive)}</Badge>
               )}
             </div>
             {customer.phone && (
@@ -223,7 +221,7 @@ export function RecordPaymentModal({
           {!customer.is_active && (
             <div className="rounded-md bg-warning-bg border border-warning/20 px-3 py-2">
               <p className="text-xs text-warning-foreground">
-                This customer is inactive. Payments against their existing balance are still allowed.
+                {t(CUSTOMERS.inactivePaymentAllowed)}
               </p>
             </div>
           )}
@@ -239,7 +237,7 @@ export function RecordPaymentModal({
           {/* Amount */}
           <div>
             <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
-              Amount to pay (CFA) <span className="text-danger-foreground">*</span>
+              {t(CUSTOMERS.amountToPay)} <span className="text-danger-foreground">*</span>
             </label>
             <input
               ref={amountRef}
@@ -258,13 +256,13 @@ export function RecordPaymentModal({
           {/* Note */}
           <div>
             <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
-              Note <span className="text-text-muted font-normal">(optional)</span>
+              {t(CUSTOMERS.noteOptional)}
             </label>
             <input
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="e.g. Partial payment, cash"
+              placeholder={t(CUSTOMERS.notePlaceholder)}
               className="w-full h-9 px-3 rounded-md border border-border text-sm bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
@@ -279,14 +277,14 @@ export function RecordPaymentModal({
           {/* Actions */}
           <div className="flex gap-3 justify-end pt-1">
             <Button type="button" variant="secondary" onClick={onClose} disabled={isPending}>
-              Cancel
+              <BiButtonStack {...COMMON.cancel} />
             </Button>
             <LoadingButton
               type="submit"
               loading={isPending}
               disabled={!shiftGateReady || !hasOpenShift}
             >
-              Record Payment
+              <BiButtonStack {...CUSTOMERS.recordPayment} />
             </LoadingButton>
           </div>
         </form>

@@ -8,6 +8,7 @@ export const COMMON = {
   cancel: bi('Annuler', 'Cancel'),
   save: bi('Enregistrer', 'Save'),
   close: bi('Fermer', 'Close'),
+  done: bi('Terminé', 'Done'),
   confirm: bi('Confirmer', 'Confirm'),
   search: bi('Rechercher', 'Search'),
   loading: bi('Chargement…', 'Loading…'),

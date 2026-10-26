@@ -196,4 +196,18 @@ export const POS = {
     'Indiquez un motif pour modifier le total.',
     'Enter a reason to adjust the total.',
   ),
+  overrideTotalAria: bi(
+    'Modification du total (admin)',
+    'Adjust total (admin)',
+  ),
+  duplicateSaleReturned: bi(
+    'Soumission en double — vente existante renvoyée',
+    'Duplicate submission — existing sale returned',
+  ),
+  saleSummary: bi('Récapitulatif', 'Sale Summary'),
+  items: bi('Articles', 'Items'),
+  autoPrintHint: bi(
+    'Le ticket client s\'imprime automatiquement lorsque l\'agent d\'impression est actif.',
+    'Customer receipt prints automatically when the cashier print agent is running.',
+  ),
 } as const

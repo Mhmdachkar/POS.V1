@@ -15,7 +15,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { CheckCircle, Printer, ShoppingCart } from 'lucide-react'
-import { BiEmptyTitle, BiModalTitle, BiPageTitle, BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
+import { BiButtonStack, BiEmptyTitle, BiModalTitle, BiPageTitle, BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
 import { COMMON } from '@/lib/bilingual/common'
 import { ADMIN } from '@/lib/bilingual/admin'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
@@ -119,7 +119,7 @@ export function SaleSuccessModal({
             </p>
             {wasIdempotent && (
               <p className="text-xs text-text-secondary mt-1 bg-surface-muted px-2 py-0.5 rounded-full inline-block">
-                Duplicate submission — existing sale returned
+                {t(POS.duplicateSaleReturned)}
               </p>
             )}
           </div>
@@ -128,30 +128,30 @@ export function SaleSuccessModal({
         <div className="rounded-lg bg-surface-muted border border-border overflow-hidden">
           <div className="px-4 py-2 border-b border-border bg-surface">
             <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">
-              Sale Summary
+              {t(POS.saleSummary)}
             </p>
           </div>
           <div className="px-4 py-3 space-y-1.5">
             {customer && (
               <div className="flex justify-between text-sm">
-                <span className="text-text-secondary">Customer</span>
+                <span className="text-text-secondary">{t(COMMON.customer)}</span>
                 <span className="font-medium text-text-primary">{customer.name}</span>
               </div>
             )}
             <div className="flex justify-between text-sm">
-              <span className="text-text-secondary">Items</span>
+              <span className="text-text-secondary">{t(POS.items)}</span>
               <span className="font-medium text-text-primary">{cartItemCount}</span>
             </div>
             {result.discount_amount_cfa > 0 && (
               <div className="flex justify-between text-sm">
-                <span className="text-text-secondary">Discount</span>
+                <span className="text-text-secondary">{t(POS.discount)}</span>
                 <span className="font-medium text-success-foreground">
                   − {formatCFA(result.discount_amount_cfa)}
                 </span>
               </div>
             )}
             <div className="flex justify-between items-center font-semibold border-t border-border pt-2 mt-2">
-              <span className="text-text-primary text-sm">Total</span>
+              <span className="text-text-primary text-sm">{t(POS.total)}</span>
               <MoneyDisplay
                 amount={authoritativeFinalSaleTotal(result)}
                 size="display"
@@ -163,7 +163,7 @@ export function SaleSuccessModal({
             </div>
             {isChange && (
               <div className="flex justify-between items-center text-sm">
-                <span className="text-text-secondary">Change</span>
+                <span className="text-text-secondary">{t(POS.change)}</span>
                 <MoneyDisplay amount={result.change_given_cfa} size="large" />
               </div>
             )}
@@ -177,7 +177,7 @@ export function SaleSuccessModal({
         </div>
 
         <p className="text-xs text-text-muted text-center">
-          Customer receipt prints automatically when the cashier print agent is running.
+          {t(POS.autoPrintHint)}
         </p>
 
         <div className="flex gap-3">
@@ -190,7 +190,7 @@ export function SaleSuccessModal({
             title={printing ? t(POS.loadingReceipt) : undefined}
           >
             <Printer className="h-4 w-4" />
-            {t(POS.browserPrintFallback)}
+            <BiButtonStack {...POS.browserPrintFallback} />
           </Button>
           <Button
             variant="primary"
@@ -200,7 +200,7 @@ export function SaleSuccessModal({
             autoFocus
           >
             <ShoppingCart className="h-4 w-4" />
-            {t(POS.newSale)}
+            <BiButtonStack {...POS.newSale} />
           </Button>
         </div>
       </div>

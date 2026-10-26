@@ -299,7 +299,7 @@ describe('CEO Notes — CheckoutSummary override visibility', () => {
       authLoadState: 'authorized',
     })
     render(<CheckoutSummary />)
-    expect(screen.getByLabelText('Modification du total (admin)')).toBeInTheDocument()
+    expect(screen.getByLabelText(POS.overrideTotalAria.fr)).toBeInTheDocument()
     expect(screen.getByText(POS.modifyTotal.fr)).toBeInTheDocument()
   })
 
@@ -311,7 +311,7 @@ describe('CEO Notes — CheckoutSummary override visibility', () => {
       authLoadState: 'authorized',
     })
     render(<CheckoutSummary />)
-    expect(screen.queryByLabelText('Modification du total (admin)')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(POS.overrideTotalAria.fr)).not.toBeInTheDocument()
     expect(screen.queryByText(POS.modifyTotal.fr)).not.toBeInTheDocument()
   })
 
@@ -326,7 +326,7 @@ describe('CEO Notes — CheckoutSummary override visibility', () => {
     const calculated = usePOSStore.getState().totals.total_cfa
     render(<CheckoutSummary />)
 
-    const input = screen.getByLabelText('Modification du total (admin)')
+    const input = screen.getByLabelText(POS.overrideTotalAria.fr)
     await user.clear(input)
     await user.type(input, '750')
     expect(usePOSStore.getState().overrideTotalCfa).toBe(750)
