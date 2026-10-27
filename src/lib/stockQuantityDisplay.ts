@@ -1,7 +1,7 @@
 import { stockHierarchyBreakdown } from '@/hooks/useInventory'
 import { bi, type BilingualPair } from '@/lib/bilingual/types'
-import { formatPieces } from '@/lib/formatters'
-import { localizedUnitLabel } from '@/lib/localizedUnits'
+import { formatPieces, MINUS_SIGN } from '@/lib/formatters'
+import { localizedUnitLabel, localizedUnitLabelForCount } from '@/lib/localizedUnits'
 
 export type UnitLike = {
   unit_level: number
@@ -25,7 +25,7 @@ export function formatStockInUnits(pieces: number | null, units: UnitLike[] | nu
     return bi(formatPieces(pieces), formatPieces(pieces))
   }
   const detail = breakdown
-    .map((r) => `${r.count} ${localizedUnitLabel(r.unit_name, r.unit_level)}`)
+    .map((r) => `${r.count} ${localizedUnitLabelForCount(r.count, r.unit_name, r.unit_level)}`)
     .join(', ')
   const text = `${formatPieces(pieces)} (${detail})`
   return bi(text, text)
@@ -46,7 +46,7 @@ export function formatStockCompact(pieces: number | null, units: UnitLike[] | nu
     .map((r) =>
       r.unit_level === 0
         ? formatPieces(r.count)
-        : `${r.count} ${localizedUnitLabel(r.unit_name, r.unit_level)}`,
+        : `${r.count} ${localizedUnitLabelForCount(r.count, r.unit_name, r.unit_level)}`,
     )
     .join(' · ')
 }
@@ -54,7 +54,7 @@ export function formatStockCompact(pieces: number | null, units: UnitLike[] | nu
 /** Signed delta; prefers cartons/packages when the product has them. */
 export function formatDeltaInUnits(piecesDelta: number | null, units: UnitLike[] | null): BilingualPair {
   if (piecesDelta == null || piecesDelta === 0) return bi('0', '0')
-  const sign = piecesDelta > 0 ? '+' : '-'
+  const sign = piecesDelta > 0 ? '+' : MINUS_SIGN
   const abs = Math.abs(piecesDelta)
   if (!units?.length || units.length <= 1) {
     const text = `${sign}${formatPieces(abs)}`
@@ -66,7 +66,9 @@ export function formatDeltaInUnits(piecesDelta: number | null, units: UnitLike[]
     const text = `${sign}${formatPieces(abs)}`
     return bi(text, text)
   }
-  const detail = breakdown.map((r) => `${sign}${r.count} ${r.unit_name}`).join(', ')
+  const detail = breakdown
+    .map((r) => `${sign}${r.count} ${localizedUnitLabelForCount(r.count, r.unit_name, r.unit_level)}`)
+    .join(', ')
   const text = `${detail} (${sign}${formatPieces(abs)} total)`
   return bi(text, text)
 }
@@ -99,7 +101,8 @@ export function formatRestockAdded(
     : Number(after.quantity_pieces)
   const name = unitName(units ?? [], level)
   if (Number.isFinite(level) && qtyUnit > 0) {
-    const text = `+${qtyUnit} ${name}${Number.isFinite(pieces) ? ` (${formatPieces(pieces)})` : ''}`
+    const unit = localizedUnitLabelForCount(qtyUnit, name, level)
+    const text = `+${qtyUnit} ${unit}${Number.isFinite(pieces) ? ` (${formatPieces(pieces)})` : ''}`
     return bi(text, text)
   }
   if (Number.isFinite(pieces)) {

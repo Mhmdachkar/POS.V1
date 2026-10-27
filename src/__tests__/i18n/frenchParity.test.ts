@@ -26,6 +26,8 @@ const ALLOW = new Set([
   "TOTAL",
   "Note",
   "Carton",
+  "carton",
+  "cartons",
   "N/A",
   "Exact",
   "0–100",

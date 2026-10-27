@@ -350,7 +350,8 @@ export interface AdminCostInventoryRow {
   selling_price_cfa: number
   inventory_value_at_cost: number
   inventory_value_at_selling: number
-  potential_profit: number
+  /** Null when selling price is 0/null or cost price is missing. */
+  potential_profit: number | null
   is_active: boolean
 }
 

@@ -31,7 +31,7 @@ function InventoryValueTable({
       pieces: s.pieces + Number(r.current_stock_pieces),
       cost: s.cost + Number(r.inventory_value_at_cost),
       sell: s.sell + Number(r.inventory_value_at_selling),
-      profit: s.profit + Number(r.potential_profit),
+      profit: s.profit + (r.potential_profit == null ? 0 : Number(r.potential_profit)),
     }),
     { pieces: 0, cost: 0, sell: 0, profit: 0 },
   )
@@ -83,11 +83,15 @@ function InventoryValueTable({
                   <MoneyDisplay amount={Number(r.inventory_value_at_selling)} size="small" />
                 </td>
                 <td className="px-3 py-2 text-right whitespace-nowrap">
-                  <MoneyDisplay
-                    amount={Number(r.potential_profit)}
-                    size="small"
-                    danger={Number(r.potential_profit) < 0}
-                  />
+                  {r.potential_profit == null ? (
+                    <span className="text-text-muted" title={t(REPORTS.missingValue)}>—</span>
+                  ) : (
+                    <MoneyDisplay
+                      amount={Number(r.potential_profit)}
+                      size="small"
+                      danger={Number(r.potential_profit) < 0}
+                    />
+                  )}
                 </td>
               </tr>
             ))}
