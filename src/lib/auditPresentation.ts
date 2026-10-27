@@ -33,7 +33,7 @@ function str(v: unknown): string | null {
 }
 
 const ADJUSTMENT_TYPE: Record<string, BilingualPair> = {
-  DAMAGE: bi('Dommage', 'Damage'),
+  DAMAGE: bi('Casse', 'Damage'),
   LOSS: bi('Perte', 'Loss'),
   EXPIRY: bi('Péremption', 'Expiry'),
   COUNT_CORRECTION: INVENTORY.countCorrection,
@@ -45,11 +45,11 @@ export const AUDIT_ACTION_LABELS: Record<string, BilingualPair> = {
   release_sale_fulfillment: bi('Commande préparée', 'Order marked picked'),
   record_payment: bi('Paiement enregistré', 'Payment recorded'),
   process_return: bi('Retour traité', 'Return processed'),
-  void_sale: bi('Vente annulée', 'Sale cancelled'),
-  void_sale_cash_reversal: bi('Annulation vente (caisse)', 'Sale cancel (cash reversal)'),
+  void_sale: bi('Vente annulée', 'Sale voided'),
+  void_sale_cash_reversal: bi('Annulation vente (espèces)', 'Sale void (cash refund)'),
   adjust_inventory: bi('Ajustement de stock', 'Stock adjustment'),
-  restock_product: bi('Réapprovisionnement', 'Restock'),
-  create_transfer_draft: bi('Brouillon de transfert', 'Transfer draft created'),
+  restock_product: bi('Entrée de stock', 'Stock in'),
+  create_transfer_draft: bi('Transfert créé', 'Transfer created'),
   complete_transfer: bi('Transfert complété', 'Transfer completed'),
   cancel_transfer: bi('Transfert annulé', 'Transfer cancelled'),
   open_shift: bi('Service ouvert', 'Shift opened'),
@@ -58,11 +58,11 @@ export const AUDIT_ACTION_LABELS: Record<string, BilingualPair> = {
   update_customer: bi('Client modifié', 'Customer updated'),
   deactivate_customer: bi('Client désactivé', 'Customer deactivated'),
   reactivate_customer: bi('Client réactivé', 'Customer reactivated'),
-  create_staff: bi('Membre créé', 'Staff member created'),
-  update_staff: bi('Membre modifié', 'Staff member updated'),
-  deactivate_staff: bi('Membre désactivé', 'Staff member deactivated'),
-  reactivate_staff: bi('Membre réactivé', 'Staff member reactivated'),
-  staff_auth_reconcile: bi('Réconciliation auth', 'Auth reconciliation'),
+  create_staff: bi('Employé créé', 'Staff created'),
+  update_staff: bi('Employé modifié', 'Staff updated'),
+  deactivate_staff: bi('Employé désactivé', 'Staff deactivated'),
+  reactivate_staff: bi('Employé réactivé', 'Staff reactivated'),
+  staff_auth_reconcile: bi('Accès synchronisé', 'Login access synced'),
   create_depot: bi('Dépôt créé', 'Depot created'),
   update_depot: bi('Dépôt modifié', 'Depot updated'),
   deactivate_depot: bi('Dépôt désactivé', 'Depot deactivated'),
@@ -83,7 +83,7 @@ export const AUDIT_ENTITY_LABELS: Record<string, BilingualPair> = {
   payment: bi('Paiement', 'Payment'),
   sale_return: bi('Retour', 'Return'),
   inventory_adjustment: bi('Ajustement stock', 'Stock adjustment'),
-  stock_entry: bi('Entrée de stock', 'Stock receipt'),
+  stock_entry: bi('Entrée de stock', 'Stock in'),
   stock_transfer: bi('Transfert', 'Transfer'),
   shift: bi('Service caisse', 'Shift'),
   customer: bi('Client', 'Customer'),
@@ -349,9 +349,7 @@ export function auditDetailChanges(row: AuditLogRow, units?: UnitLike[] | null):
 
 export function auditActorLine(row: AuditLogRow): BilingualPair {
   if (row.actor_name) {
-    const user = row.actor_username ? `@${row.actor_username}` : ''
-    const text = user ? `${row.actor_name} (${user})` : row.actor_name
-    return bi(text, text)
+    return bi(row.actor_name, row.actor_name)
   }
   return ADMIN.systemActor
 }

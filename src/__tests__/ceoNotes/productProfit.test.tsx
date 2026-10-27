@@ -125,13 +125,13 @@ describe('CEO Notes — product profit / margin', () => {
 
   it('shows profit = selling − cost (CFA 25 for 45−20)', () => {
     renderDrawer(productWithUnits([{ unit_name: 'Piece', cost_price_cfa: 20, selling_price_cfa: 45 }]))
-    expect(getByFrench(INVENTORY.profit.fr)).toBeInTheDocument()
+    expect(screen.getAllByText(INVENTORY.profit.fr)[0]).toBeInTheDocument()
     expect(screen.getByText(`+${formatCFA(25)}`)).toBeInTheDocument()
   })
 
   it('shows margin as 55.56% for cost 20 / selling 45', () => {
     renderDrawer(productWithUnits([{ unit_name: 'Piece', cost_price_cfa: 20, selling_price_cfa: 45 }]))
-    expect(getByFrench(INVENTORY.profitMargin.fr)).toBeInTheDocument()
+    expect(screen.getAllByText(INVENTORY.profitMargin.fr)[0]).toBeInTheDocument()
     expect(screen.getByText('55.56%')).toBeInTheDocument()
   })
 
@@ -158,7 +158,7 @@ describe('CEO Notes — product profit / margin', () => {
         return (node.textContent ?? '').replace(/\s+/g, ' ').trim() === expected
       })
     expect(matchRow('2 Cartons')).toBeInTheDocument()
-    expect(matchRow('2 Packages')).toBeInTheDocument()
-    expect(matchRow('10 Pieces')).toBeInTheDocument()
+    expect(matchRow('2 Paquets')).toBeInTheDocument()
+    expect(matchRow('10 Pièces')).toBeInTheDocument()
   })
 })

@@ -1,3 +1,4 @@
+Element.prototype.scrollIntoView = function () {}
 /**
  * Vitest global setup — runs before every test file.
  */

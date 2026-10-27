@@ -1,3 +1,4 @@
+import { localizedUnitLabelForCount } from '@/lib/localizedUnits'
 /**
  * ProductDetailDrawer — product identity, stock, units, activity, and actions.
  *
@@ -163,14 +164,12 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
                     )
                   }
                   return display.map((row) => {
-                    const label = row.unit_name
-                    const plural =
-                      row.count === 1 || /s$/i.test(label) ? label : `${label}s`
+                    const label = localizedUnitLabelForCount(row.count, row.unit_name, row.unit_level)
                     return (
                       <p key={row.unit_level} className="text-xs text-text-secondary tabular-nums">
                         <span className="font-medium text-text-primary">{row.count}</span>
                         {' '}
-                        {plural}
+                        {label}
                       </p>
                     )
                   })
@@ -192,8 +191,8 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
                         <BilingualText
                           {...INVENTORY.packingOnePackage(
                             packing.piecesPerPackage,
-                            packing.pieceName,
-                            packing.packageName,
+                            localizedUnitLabelForCount(packing.piecesPerPackage, packing.pieceName, 0),
+                            localizedUnitLabelForCount(1, packing.packageName, 1),
                           )}
                           variant="body"
                           layout="inline"
@@ -205,9 +204,9 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
                         <BilingualText
                           {...INVENTORY.packingOneCarton(
                             packing.packagesPerCarton,
-                            packing.packageName,
+                            localizedUnitLabelForCount(packing.packagesPerCarton, packing.packageName, 1),
                             packing.piecesPerCarton,
-                            packing.pieceName,
+                            localizedUnitLabelForCount(packing.piecesPerCarton, packing.pieceName, 0),
                           )}
                           variant="body"
                           layout="inline"
@@ -396,7 +395,7 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
                   loading={deactivating}
                 >
                   <UserX className="h-4 w-4" />
-                  <BilingualText fr="Désactiver le produit" en="Deactivate Product" variant="body" layout="inline" />
+                  <BilingualText fr="Désactiver le produit" en="Deactivate product" variant="body" layout="inline" />
                 </LoadingButton>
               )}
               {canMutateProduct && !product.is_active && (

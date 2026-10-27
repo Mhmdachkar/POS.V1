@@ -27,18 +27,18 @@ export function ReportReturnsTab({ sales }: ReportReturnsTabProps) {
 
       <ReportSection title={<BiSectionTitle {...REPORTS.returnDetail} />}>
         {sales.returns.length === 0 ? (
-          <p className="text-sm text-text-muted">Aucun retour sur la période.</p>
+          <p className="text-sm text-text-muted">{t(REPORTS.noReturnsPeriod)}</p>
         ) : (
           <div className="overflow-x-auto rounded-xl bg-surface-muted">
             <table className="w-full text-sm">
               <thead className="text-xs text-text-secondary">
                 <tr>
-                  <th className="text-left px-3 py-2">Quand</th>
+                  <th className="text-left px-3 py-2">{t(REPORTS.colDate)}</th>
                   <th className="text-left px-3 py-2">{t(COMMON.receipt)}</th>
                   <th className="text-left px-3 py-2">{t(COMMON.cashier)}</th>
-                  <th className="text-right px-3 py-2">Remboursement</th>
-                  <th className="text-right px-3 py-2">Espèces</th>
-                  <th className="text-right px-3 py-2">Ajust. solde</th>
+                  <th className="text-right px-3 py-2">{t(REPORTS.colRefunded)}</th>
+                  <th className="text-right px-3 py-2">{t(REPORTS.colCash)}</th>
+                  <th className="text-right px-3 py-2">{t(REPORTS.colOffBalance)}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

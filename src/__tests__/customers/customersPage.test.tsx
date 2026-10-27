@@ -421,7 +421,7 @@ describe('CustomerDetailDrawer (15E)', () => {
 
     expect(screen.getByText('Owed Customer')).toBeInTheDocument()
     expect(screen.getByText(CUSTOMERS.activeCustomer.fr)).toBeInTheDocument()
-    expect(screen.getByText(CUSTOMERS.outstandingBalance.fr)).toBeInTheDocument()
+    expect(screen.getAllByText(CUSTOMERS.outstandingBalance.fr)[0]).toBeInTheDocument()
     expect(screen.getByText(CUSTOMERS.balanceHelp.fr, { exact: false })).toBeInTheDocument()
     expect(screen.getByText(CUSTOMERS.balanceHelp.fr, { exact: false })).toBeInTheDocument()
     expect(screen.queryByText(/Pooled balance/)).not.toBeInTheDocument()
@@ -457,7 +457,7 @@ describe('CustomerDetailDrawer (15E)', () => {
     expect(screen.getByText('100')).toBeInTheDocument()
     expect(screen.getByText('7')).toBeInTheDocument()
     expect(screen.getByText('12')).toBeInTheDocument()
-    expect(screen.getByText(CUSTOMERS.balanceOwed.fr)).toBeInTheDocument()
+    expect(screen.getAllByText(CUSTOMERS.balanceOwed.fr)[0]).toBeInTheDocument()
     const money = (amount: number) => screen.getAllByText((_, el) =>
       el?.tagName === 'SPAN' && el.textContent === formatCFA(amount),
     )
@@ -505,7 +505,7 @@ describe('CustomerDetailDrawer (15E)', () => {
     })
     renderDrawer(customer)
 
-    expect(screen.getByText(CUSTOMERS.outstandingBalance.fr)).toBeInTheDocument()
+    expect(screen.getAllByText(CUSTOMERS.outstandingBalance.fr)[0]).toBeInTheDocument()
     const zero = formatCFA(0)
     const node = screen.getAllByText((_, el) =>
       el?.tagName === 'SPAN' && el.textContent === zero,

@@ -28,13 +28,13 @@ function InventoryValueTable({
       <table className="w-full text-sm">
         <thead className="sticky top-0 bg-surface-alt text-xs">
           <tr>
-            <th className="text-left px-3 py-2">Produit</th>
-            {showDepotColumn && <th className="text-left px-3 py-2">Dépôt</th>}
-            <th className="text-right px-3 py-2">Stock (pcs)</th>
-            <th className="text-right px-3 py-2">Coût unit.</th>
-            <th className="text-right px-3 py-2">Valeur coût</th>
-            <th className="text-right px-3 py-2">Valeur vente</th>
-            <th className="text-right px-3 py-2">Bénéfice</th>
+            <th className="text-left px-3 py-2">{t(REPORTS.colProduct)}</th>
+            {showDepotColumn && <th className="text-left px-3 py-2">{t(REPORTS.colDepot)}</th>}
+            <th className="text-right px-3 py-2">{t(REPORTS.stockPcs)}</th>
+            <th className="text-right px-3 py-2">{t(REPORTS.costPriceCol)}</th>
+            <th className="text-right px-3 py-2">{t(REPORTS.costValueCol)}</th>
+            <th className="text-right px-3 py-2">{t(REPORTS.saleValueCol)}</th>
+            <th className="text-right px-3 py-2">{t(REPORTS.marginCol)}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
@@ -100,15 +100,15 @@ function RestockLogTable({
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-surface-alt text-xs">
             <tr>
-              <th className="text-left px-3 py-2">Date</th>
-              <th className="text-left px-3 py-2">Produit</th>
-              {showDepotColumn && <th className="text-left px-3 py-2">Dépôt</th>}
-              <th className="text-left px-3 py-2">Unité</th>
-              <th className="text-right px-3 py-2">Qté</th>
-              <th className="text-right px-3 py-2">Pièces</th>
-              <th className="text-right px-3 py-2">Coût unit.</th>
-              <th className="text-right px-3 py-2">Total coût</th>
-              <th className="text-left px-3 py-2">Note</th>
+              <th className="text-left px-3 py-2">{t(REPORTS.colDate)}</th>
+              <th className="text-left px-3 py-2">{t(REPORTS.colProduct)}</th>
+              {showDepotColumn && <th className="text-left px-3 py-2">{t(REPORTS.colDepot)}</th>}
+              <th className="text-left px-3 py-2">{t(REPORTS.colUnit)}</th>
+              <th className="text-right px-3 py-2">{t(REPORTS.colQty)}</th>
+              <th className="text-right px-3 py-2">{t(REPORTS.colPieces)}</th>
+              <th className="text-right px-3 py-2">{t(REPORTS.costPriceCol)}</th>
+              <th className="text-right px-3 py-2">{t(REPORTS.totalCostCol)}</th>
+              <th className="text-left px-3 py-2">{t(REPORTS.colNote)}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">

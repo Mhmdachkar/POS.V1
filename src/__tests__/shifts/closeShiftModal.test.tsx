@@ -184,7 +184,7 @@ describe('CloseShiftModal', () => {
     expect(screen.getByText(SHIFT_COPY.salesWithoutShift.fr)).toBeInTheDocument()
     expect(screen.getByText(spanWithText(`2 ventes · ${formatCFA(5000)}`))).toBeInTheDocument()
     expect(
-      screen.getByText(/Non incluses dans le rapprochement de caisse/),
+      screen.getByText(/hors rapprochement de caisse|not in the cash count/i),
     ).toBeInTheDocument()
     expect(screen.getByText(spanWithText(formatCFA(8500)))).toBeInTheDocument()
     expect(screen.queryByText(spanWithText(formatCFA(13500)))).not.toBeInTheDocument()

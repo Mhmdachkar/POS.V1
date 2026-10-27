@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest"
 
 const ALLOW = new Set([
   "Administration",
+  "Admin",
   "Audit",
   "Email",
   "OK",

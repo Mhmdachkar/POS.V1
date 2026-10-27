@@ -306,9 +306,8 @@ describe('ReturnModal', () => {
     await user.click(screen.getByRole('button', { name: /tout retourner|return all/i }))
     expect(screen.getAllByText(/aperçu remboursement|refund preview/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/remboursement total|total refund/i).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/réduction du solde|balance reduction/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/déduit du solde|off balance due/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/remboursement espèces|cash refund/i).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/serveur calcule|server computes authoritative refund amounts/i).length).toBeGreaterThan(0)
     expect(screen.queryByPlaceholderText(/0 –/)).not.toBeInTheDocument()
     // Walk-in-like sale (no credit): cash = full 600, balance = 0
     expectFormattedCFA(600)
@@ -588,7 +587,7 @@ describe('ReturnModal', () => {
     renderModal(makeSale({ shift_id: 'sale-original-shift' }))
     await user.click(screen.getByRole('button', { name: /tout retourner|return all/i }))
     expect(
-      screen.getAllByText(/service de traitement|counts toward the selected processing shift/i).length,
+      screen.getAllByText(/remboursement compte dans le service|refund counts in the current shift/i).length,
     ).toBeGreaterThan(0)
     await user.click(screen.getByRole('button', { name: /traiter un retour|process return/i }))
     expect(vi.mocked(rpc.processReturn).mock.calls[0][0].p_shift_id).toBe('shift-1')

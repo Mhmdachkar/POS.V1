@@ -22,7 +22,7 @@ export function ReportCustomersTab({ customers, depotScoped }: ReportCustomersTa
     <div className="space-y-8">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <ReportMetric
-          label={<span className="inline-flex items-center">{t(REPORTS.receivable)}{depotScoped ? <InfoTip text={t(REPORTS.balancesGlobalNote)} /> : null}</span>}
+          label={<span className="inline-flex items-center">{t(REPORTS.receivable)}</span>}
           amount={Number(customers.outstanding_total_cfa)}
         />
         <ReportMetric label={t(REPORTS.creditPeriod)} amount={Number(customers.credit_activity_cfa)} />

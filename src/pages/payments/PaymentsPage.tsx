@@ -94,7 +94,7 @@ export function PaymentsPage() {
           description={
             isCashier
               ? t(PAYMENTS.cashierScopeHint)
-              : <BiPageDescription {...PAYMENTS.pageDescLong} />
+              : <BiPageDescription {...PAYMENTS.pageDesc} />
           }
           icon={<NavPictogram path="/payments" size="header" />}
           className="border-b-0"

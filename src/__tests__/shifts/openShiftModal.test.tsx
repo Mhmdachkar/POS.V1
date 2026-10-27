@@ -106,7 +106,7 @@ describe('OpenShiftModal', () => {
     const user = userEvent.setup()
     const { mutateAsync } = renderModal()
 
-    const float = screen.getByLabelText(/Cash in Drawer|Espèces en caisse/i)
+    const float = screen.getByLabelText(/Opening float|Fond de caisse/i)
     await user.clear(float)
     await user.type(float, '-1')
     expect(screen.getByText(/Must be zero or greater|Doit être ≥ 0/i)).toBeInTheDocument()

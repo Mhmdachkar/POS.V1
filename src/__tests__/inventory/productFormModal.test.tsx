@@ -116,12 +116,12 @@ describe('ProductFormModal low-stock settings', () => {
 
     expect(screen.getByText('Produit')).toBeInTheDocument()
     expect(getByFrench(INVENTORY.unitsAndPricing.fr)).toBeInTheDocument()
-    expect(getByFrench(INVENTORY.monitoringSection.fr)).toBeInTheDocument()
-    expect(getByFrench(INVENTORY.trackLowStock.fr)).toBeInTheDocument()
-    expect(screen.queryByLabelText(/Low stock threshold|Seuil stock faible/i)).not.toBeInTheDocument()
+    expect(screen.getAllByText(INVENTORY.monitoringSection.fr, { exact: true })[0]).toBeInTheDocument()
+    expect(screen.getAllByText(INVENTORY.trackLowStock.fr)[0]).toBeInTheDocument()
+    expect(screen.queryByLabelText(/Min\. stock|Stock minimum/i)).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('checkbox', { name: /Track low stock|Suivre le stock faible/i }))
-    expect(screen.getByLabelText(/Low stock threshold|Seuil stock faible/i)).toHaveValue(10)
+    await user.click(screen.getByRole('checkbox', { name: /Low-stock alert|Alerte stock faible/i }))
+    expect(screen.getByLabelText(/Min\. stock|Stock minimum/i)).toHaveValue(10)
   })
 
   it('sends tracking fields on create', async () => {
@@ -130,9 +130,9 @@ describe('ProductFormModal low-stock settings', () => {
     wrap(<ProductFormModal open onClose={() => undefined} depotId="depot-a" />)
 
     await fillBaseCreateFields(user, 'Onion')
-    await user.click(screen.getByRole('checkbox', { name: /Track low stock|Suivre le stock faible/i }))
-    await user.clear(screen.getByLabelText(/Low stock threshold|Seuil stock faible/i))
-    await user.type(screen.getByLabelText(/Low stock threshold|Seuil stock faible/i), '10')
+    await user.click(screen.getByRole('checkbox', { name: /Low-stock alert|Alerte stock faible/i }))
+    await user.clear(screen.getByLabelText(/Min\. stock|Stock minimum/i))
+    await user.type(screen.getByLabelText(/Min\. stock|Stock minimum/i), '10')
     await user.click(screen.getByRole('button', { name: /Create Product|Créer le produit/i }))
 
     expect(createProduct).toHaveBeenCalledWith(

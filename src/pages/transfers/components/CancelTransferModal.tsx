@@ -80,12 +80,12 @@ export function CancelTransferModal({
           <AlertTriangle className="h-5 w-5 text-danger-foreground flex-shrink-0 mt-0.5" />
           <div className="space-y-1">
             <p className="text-sm font-semibold text-danger-foreground">
-              Cancel this pending transfer?
+              {t(TRANSFERS.cancelPendingTitle)}
             </p>
             <ul className="text-xs text-danger-foreground space-y-0.5 list-disc list-inside">
-              <li>Status becomes Cancelled</li>
+              <li>{t(TRANSFERS.cancelStatusBecomes)}</li>
               <li>{t(TRANSFERS.cancelEffectStock)}</li>
-              <li>This draft cannot be reused — create a new transfer if needed</li>
+              <li>{t(TRANSFERS.cancelDraftNotReusable)}</li>
             </ul>
           </div>
         </div>

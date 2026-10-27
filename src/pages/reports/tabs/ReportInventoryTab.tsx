@@ -38,7 +38,7 @@ function StockTable({
   onRowClick: (id: string) => void
 }) {
   if (rows.length === 0) {
-    return <p className="text-sm text-text-muted">Aucun</p>
+    return <p className="text-sm text-text-muted">{t(REPORTS.noneShort)}</p>
   }
   return (
     <ul className="divide-y divide-border overflow-hidden rounded-xl bg-surface-muted">
@@ -96,11 +96,11 @@ export function ReportInventoryTab({ inventory, showDepotColumn }: ReportInvento
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-surface-muted text-xs text-text-secondary">
                 <tr>
-                  <th className="text-left px-3 py-2">Produit</th>
-                  {showDepotColumn && <th className="text-left px-3 py-2">Dépôt</th>}
-                  <th className="text-right px-3 py-2">Pièces</th>
-                  <th className="text-right px-3 py-2">Valeur</th>
-                  <th className="text-right px-3 py-2">Statut</th>
+                  <th className="text-left px-3 py-2">{t(REPORTS.colProduct)}</th>
+                  {showDepotColumn && <th className="text-left px-3 py-2">{t(REPORTS.colDepot)}</th>}
+                  <th className="text-right px-3 py-2">{t(REPORTS.colPieces)}</th>
+                  <th className="text-right px-3 py-2">{t(REPORTS.colValue)}</th>
+                  <th className="text-right px-3 py-2">{t(REPORTS.colStatus)}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

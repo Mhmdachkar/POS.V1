@@ -588,8 +588,7 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
               />
             </div>
             <p className="text-xs text-text-muted">
-              <BilingualText {...SALES.serverRefundNote} variant="caption" />
-            </p>
+</p>
             {hasOpenShift ? (
               <p className="text-xs text-text-secondary">
                 <BilingualText {...SALES.cashRefundShiftNote} variant="caption" />
