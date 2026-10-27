@@ -31,10 +31,10 @@ import {
 import { BilingualText } from '@/components/ui/BilingualText'
 import { useStaffList } from '@/hooks/useStaff'
 import {
-  REPORT_PRESET_LABELS,
   resolveReportDateRange,
   type ReportPreset,
 } from '@/lib/reportDates'
+import { REPORTS } from '@/lib/bilingual/reports'
 import { useDepotStore } from '@/stores/depotStore'
 import { useDepotOptions } from '@/hooks/useInventory'
 import { AuditDetailDrawer } from './components/AuditDetailDrawer'
@@ -122,13 +122,13 @@ export function AuditPage() {
                 type="button"
                 onClick={() => { setPreset(p); setPage(0) }}
                 className={cn(
-                  'px-3 py-1.5 rounded-md text-sm font-medium border',
+                  'px-3 min-h-[44px] rounded-md text-sm font-medium border',
                   preset === p
                     ? 'bg-primary text-primary-foreground border-primary'
                     : 'bg-surface border-border text-text-secondary',
                 )}
               >
-                {REPORT_PRESET_LABELS[p]}
+                {t(p === 'today' ? REPORTS.presetToday : p === 'yesterday' ? REPORTS.presetYesterday : p === 'this_week' ? REPORTS.presetThisWeek : p === 'this_month' ? REPORTS.presetThisMonth : REPORTS.presetCustom)}
               </button>
             ))}
           </div>

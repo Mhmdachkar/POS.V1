@@ -142,6 +142,13 @@ export function ReportInventoryTab({ inventory, showDepotColumn }: ReportInvento
         <StockTable rows={inventory.low_stock} showDepotColumn={showDepotColumn} onRowClick={setProductId} />
       </ReportSection>
 
+      {(inventory.uncosted_stock_count ?? 0) > 0 && (
+        <ReportSection title={<BiSectionTitle {...REPORTS.uncostedStock} />}>
+          <p className="text-sm text-text-secondary mb-3">{t(REPORTS.uncostedHint)}</p>
+          <StockTable rows={inventory.uncosted_stock ?? []} showDepotColumn={showDepotColumn} onRowClick={setProductId} />
+        </ReportSection>
+      )}
+
       <ReportSection title={<BiSectionTitle {...REPORTS.outOfStock} />}>
         <StockTable rows={inventory.out_of_stock} showDepotColumn={showDepotColumn} onRowClick={setProductId} />
       </ReportSection>

@@ -9,7 +9,7 @@ export const NAV = {
   customers: bi('Clients', 'Customers'),
   payments: bi('Paiements', 'Payments'),
   transfers: bi('Transferts', 'Transfers'),
-  shifts: bi('Historique services', 'Shift History'),
+  shifts: bi('Services', 'Shifts'),
   reports: bi('Rapports', 'Reports'),
   staff: bi('Équipe', 'Staff'),
   depots: bi('Dépôts', 'Depots'),

@@ -339,7 +339,7 @@ export function InventoryPage() {
                   })()}
                 </span>
                 <span
-                  className="text-sm font-semibold tabular-nums text-right text-text-primary truncate"
+                  className="text-sm font-semibold tabular-nums text-right text-text-primary whitespace-normal"
                   title={formatPieces(product.current_stock_pieces)}
                 >
                   {formatStockCompact(product.current_stock_pieces, product.units ?? null)}

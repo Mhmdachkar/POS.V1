@@ -151,7 +151,7 @@ export function CategoriesPage() {
         onConfirm={handleDeactivate}
         title={<BiModalTitle {...ADMIN.deactivateCategory} />}
         message="Blocked if this category has active children or active products. Products are not cascade-deactivated."
-        confirmLabel="Deactivate"
+        confirmLabel={t(ADMIN.deactivate)}
         isLoading={deactivating}
       />
       <ConfirmDialog
@@ -225,7 +225,7 @@ function CategoryBranch({
             onAddSubcategory(node)
           }}
         >
-          Add subcategory
+          {t(ADMIN.addSubcategory)}
         </Button>
         <Button
           size="sm"
@@ -235,7 +235,7 @@ function CategoryBranch({
             onRename(node)
           }}
         >
-          Rename
+          {t(ADMIN.renameCategory)}
         </Button>
         {node.is_active ? (
           <Button
@@ -247,7 +247,7 @@ function CategoryBranch({
               onDeactivate(node.id)
             }}
           >
-            Deactivate
+            {t(ADMIN.deactivate)}
           </Button>
         ) : (
           <LoadingButton

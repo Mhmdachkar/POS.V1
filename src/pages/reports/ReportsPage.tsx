@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { BiEmptyTitle, BiPageDescription, BiPageTitle, BiTabLabel } from '@/lib/bilingual/ui'
 import { REPORTS } from '@/lib/bilingual/reports'
 import { BarChart2 } from 'lucide-react'
@@ -17,6 +17,7 @@ import { useCategories } from '@/hooks/useInventory'
 import { useStaffList } from '@/hooks/useStaff'
 import { useDepotStore } from '@/stores/depotStore'
 import { ReportToolbar } from './components/ReportToolbar'
+import { ReportModulePanel } from './components/ReportModulePanel'
 import { UpdatingBanner } from './components/UpdatingBanner'
 import { ReportOverviewTab } from './tabs/ReportOverviewTab'
 import { ReportSalesTab } from './tabs/ReportSalesTab'
@@ -53,18 +54,56 @@ const TAB_ITEMS = [
   { value: 'cost' as const, label: <BiTabLabel {...REPORTS.cost} /> },
 ] satisfies Array<{ value: ReportTabId; label: ReactNode }>
 
+const REPORT_TABS: ReportTabId[] = [
+  'overview', 'sales', 'products', 'inventory', 'customers', 'payments',
+  'shifts', 'returns', 'voids', 'transfers', 'audit', 'cost',
+]
+const REPORT_PRESETS: ReportPreset[] = ['today', 'yesterday', 'this_week', 'this_month', 'custom']
+
+function reportSearchState() {
+  const q = new URLSearchParams(window.location.search)
+  const tab = q.get('tab')
+  const preset = q.get('preset')
+  return {
+    tab: (REPORT_TABS.includes(tab as ReportTabId) ? tab : 'overview') as ReportTabId,
+    preset: (REPORT_PRESETS.includes(preset as ReportPreset) ? preset : 'today') as ReportPreset,
+    customStart: q.get('from') ?? '',
+    customEnd: q.get('to') ?? '',
+    cashierId: q.get('cashier') ?? '',
+    categoryId: q.get('category') ?? '',
+    productId: q.get('product') ?? '',
+    shiftId: q.get('shift') ?? '',
+  }
+}
+
 export function ReportsPage() {
-  const [tab, setTab] = useState<ReportTabId>('overview')
-  const [preset, setPreset] = useState<ReportPreset>('today')
-  const [customStart, setCustomStart] = useState('')
-  const [customEnd, setCustomEnd] = useState('')
-  const [cashierId, setCashierId] = useState('')
-  const [categoryId, setCategoryId] = useState('')
-  const [productId, setProductId] = useState('')
-  const [shiftId, setShiftId] = useState('')
+  const initial = reportSearchState()
+  const [tab, setTab] = useState<ReportTabId>(initial.tab)
+  const [preset, setPreset] = useState<ReportPreset>(initial.preset)
+  const [customStart, setCustomStart] = useState(initial.customStart)
+  const [customEnd, setCustomEnd] = useState(initial.customEnd)
+  const [cashierId, setCashierId] = useState(initial.cashierId)
+  const [categoryId, setCategoryId] = useState(initial.categoryId)
+  const [productId, setProductId] = useState(initial.productId)
+  const [shiftId, setShiftId] = useState(initial.shiftId)
 
   const depotId = useDepotStore((s) => s.currentDepotId)
   const showDepotColumn = !depotId
+
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (tab !== 'overview') params.set('tab', tab)
+    if (preset !== 'today') params.set('preset', preset)
+    if (customStart) params.set('from', customStart)
+    if (customEnd) params.set('to', customEnd)
+    if (cashierId) params.set('cashier', cashierId)
+    if (categoryId) params.set('category', categoryId)
+    if (productId) params.set('product', productId)
+    if (shiftId) params.set('shift', shiftId)
+    const next = params.toString()
+    const url = next ? `${window.location.pathname}?${next}` : window.location.pathname
+    window.history.replaceState(null, '', url)
+  }, [tab, preset, customStart, customEnd, cashierId, categoryId, productId, shiftId])
 
   const range = useMemo(
     () => resolveReportDateRange(preset, customStart, customEnd),
@@ -308,13 +347,17 @@ export function ReportsPage() {
         )}
 
         {tab === 'sales' && salesQ.data && (
-          <ReportSalesTab
-            sales={salesQ.data}
-            depotId={depotId}
-            startDate={range.startDate}
-            endDate={range.endDate}
-            cashierId={cashierId || undefined}
-          />
+          <>
+            <ReportModulePanel kind="hours" depotId={depotId} startDate={range.startDate} endDate={range.endDate} cashierId={cashierId || undefined} />
+            <ReportModulePanel kind="discounts" depotId={depotId} startDate={range.startDate} endDate={range.endDate} cashierId={cashierId || undefined} />
+            <ReportSalesTab
+              sales={salesQ.data}
+              depotId={depotId}
+              startDate={range.startDate}
+              endDate={range.endDate}
+              cashierId={cashierId || undefined}
+            />
+          </>
         )}
 
         {tab === 'products' && salesQ.data && (
@@ -322,19 +365,32 @@ export function ReportsPage() {
         )}
 
         {tab === 'inventory' && inventoryQ.data && (
-          <ReportInventoryTab inventory={inventoryQ.data} showDepotColumn={showDepotColumn} />
+          <>
+            <ReportModulePanel kind="low" depotId={depotId} startDate={range.startDate} endDate={range.endDate} />
+            <ReportModulePanel kind="stock" depotId={depotId} startDate={range.startDate} endDate={range.endDate} />
+            <ReportInventoryTab inventory={inventoryQ.data} showDepotColumn={showDepotColumn} />
+          </>
         )}
 
         {tab === 'customers' && customersQ.data && (
-          <ReportCustomersTab customers={customersQ.data} depotScoped={!!depotId} />
+          <>
+            <ReportModulePanel kind="ageing" depotId={depotId} startDate={range.startDate} endDate={range.endDate} />
+            <ReportCustomersTab customers={customersQ.data} depotScoped={!!depotId} />
+          </>
         )}
 
         {tab === 'payments' && customersQ.data && (
-          <ReportPaymentsTab customers={customersQ.data} />
+          <>
+            <ReportModulePanel kind="collections" depotId={depotId} startDate={range.startDate} endDate={range.endDate} cashierId={cashierId || undefined} />
+            <ReportPaymentsTab customers={customersQ.data} />
+          </>
         )}
 
         {tab === 'shifts' && cashQ.data && (
-          <ReportShiftsTab cash={cashQ.data} sales={salesQ.data} />
+          <>
+            <ReportModulePanel kind="shifts" depotId={depotId} startDate={range.startDate} endDate={range.endDate} cashierId={cashierId || undefined} />
+            <ReportShiftsTab cash={cashQ.data} sales={salesQ.data} />
+          </>
         )}
 
         {tab === 'returns' && salesQ.data && (

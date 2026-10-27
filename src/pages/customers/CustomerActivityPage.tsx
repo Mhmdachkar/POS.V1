@@ -5,7 +5,7 @@
  * Current balance is read from the customer record, never from visible rows.
  */
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Download, FileText, ScrollText } from 'lucide-react'
 import { cn } from '@/lib/cn'
@@ -19,7 +19,7 @@ import {
   PaginationBar,
   Skeleton,
 } from '@/components/ui'
-import { formatDate } from '@/lib/formatters'
+import { formatDate, formatMoney } from '@/lib/formatters'
 import { parseError } from '@/lib/errors'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
 import { NAV } from '@/lib/bilingual/nav'
@@ -103,6 +103,17 @@ export function CustomerActivityPage() {
 
   const rows = activity?.data ?? []
   const totalCount = activity?.count ?? 0
+  const runningById = useMemo(() => {
+    const map = new Map<string, number>()
+    if (filter !== 'all' || rows.length === 0 || rows.length !== totalCount) return map
+    const chrono = [...rows].sort((a, b) => a.occurredAt.localeCompare(b.occurredAt) || a.id.localeCompare(b.id))
+    let balance = 0
+    for (const event of chrono) {
+      if (!event.isReversed) balance += event.amountCfa
+      map.set(`${event.type}-${event.id}`, balance)
+    }
+    return map
+  }, [filter, rows, totalCount])
   const totalPages = Math.max(1, Math.ceil(totalCount / CUSTOMER_ACTIVITY_PAGE_SIZE))
   const isLoading = loadingCustomer || loadingActivity
 
@@ -280,6 +291,11 @@ export function CustomerActivityPage() {
                   </span>
                   <span className="text-right min-w-0">
                     <SignedActivityAmount event={event} />
+                    {runningById.has(`${event.type}-${event.id}`) && (
+                      <span className="block text-xs text-text-muted tabular-nums">
+                        {formatMoney(runningById.get(`${event.type}-${event.id}`) ?? 0)}
+                      </span>
+                    )}
                   </span>
                 </>
               )

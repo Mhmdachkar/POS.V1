@@ -70,6 +70,30 @@ export function POSPage() {
   )
 
   useEffect(() => {
+    if (!staff?.id || !effectiveDepotId) return
+    const key = `vhm-pos-cart:${staff.id}:${effectiveDepotId}`
+    const current = usePOSStore.getState()
+    if (current.items.length === 0 && !current.saleResult) {
+      try {
+        const saved = sessionStorage.getItem(key)
+        const parsed = saved ? JSON.parse(saved) as unknown : null
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          usePOSStore.getState().restoreCart(parsed)
+        }
+      } catch {
+        sessionStorage.removeItem(key)
+      }
+    }
+    return usePOSStore.subscribe((state) => {
+      if (state.saleResult) {
+        sessionStorage.removeItem(key)
+        return
+      }
+      sessionStorage.setItem(key, JSON.stringify(state.items))
+    })
+  }, [staff?.id, effectiveDepotId])
+
+  useEffect(() => {
     if (!effectiveDepotId) return
     void queryClient.prefetchQuery({
       queryKey: productKeys.search('', effectiveDepotId, null),

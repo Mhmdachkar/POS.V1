@@ -95,7 +95,7 @@ async function queryTrackedAlerts(
   if (kind === 'low_stock') {
     q = q.eq('is_low_stock', true)
   } else {
-    q = q.eq('current_stock_pieces', 0)
+    q = q.lte('current_stock_pieces', 0)
   }
 
   if (depotId) {

@@ -8,6 +8,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { embedOne } from '@/lib/embed'
+import { fillCashierNames } from '@/lib/staffDisplayNames'
 import { supabase } from '@/lib/supabase'
 import { rpc } from '@/lib/rpc'
 import { CACHE_STALE, keepPlaceholderWhen } from '@/lib/cachePolicy'
@@ -225,7 +226,7 @@ export async function fetchShiftsList(
   if (error) throw error
 
   return {
-    data: ((data ?? []) as Record<string, unknown>[]).map(mapListRow),
+    data: await fillCashierNames(((data ?? []) as Record<string, unknown>[]).map(mapListRow)),
     count: count ?? 0,
   }
 }
@@ -238,7 +239,7 @@ export async function fetchOpenShifts(): Promise<ShiftListItem[]> {
     .order('opened_at', { ascending: false })
 
   if (error) throw error
-  return ((data ?? []) as Record<string, unknown>[]).map(mapListRow)
+  return fillCashierNames(((data ?? []) as Record<string, unknown>[]).map(mapListRow))
 }
 
 export async function fetchShiftDetail(id: string): Promise<ShiftDetailData> {

@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { BiButtonStack, BiEmptyTitle, BiPageTitle } from '@/lib/bilingual/ui'
+import { BiButtonStack, BiEmptyTitle, BiPageTitle, BiTableHeader } from '@/lib/bilingual/ui'
 import { ADMIN } from '@/lib/bilingual/admin'
+import { COMMON } from '@/lib/bilingual/common'
 import { DEPOT } from '@/lib/bilingual/depot'
 import { t, bilingualPlain } from '@/lib/bilingual/types'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
@@ -63,11 +64,11 @@ export function DepotsPage() {
               type="button"
               onClick={() => { setStatus(value); setPage(0) }}
               className={cn(
-                'px-3 h-7 rounded-full text-xs font-medium capitalize',
+                'px-3 min-h-[44px] h-11 rounded-full text-sm font-medium',
                 status === value ? 'bg-primary text-primary-foreground' : 'bg-surface-muted text-text-secondary border border-border',
               )}
             >
-              {value}
+              {t(value === 'all' ? COMMON.all : value === 'active' ? COMMON.active : COMMON.inactive)}
             </button>
           ))}
         </div>
@@ -84,10 +85,10 @@ export function DepotsPage() {
           <>
             <div className="sticky top-0 bg-surface-muted border-b border-border z-[1]">
               <div className={cn('grid gap-4 px-4 py-2 items-center', DEPOTS_GRID)}>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Name</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Location</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Code</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Status</span>
+                <span className="uppercase"><BiTableHeader {...ADMIN.colName} /></span>
+                <span className="uppercase"><BiTableHeader {...ADMIN.colLocation} /></span>
+                <span className="uppercase"><BiTableHeader {...ADMIN.colCode} /></span>
+                <span className="uppercase"><BiTableHeader {...ADMIN.colStatus} /></span>
               </div>
             </div>
             {rows.map((row) => (

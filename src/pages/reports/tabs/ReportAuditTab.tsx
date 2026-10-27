@@ -37,9 +37,9 @@ export function ReportAuditTab({ depotId, startDate, endDate }: ReportAuditTabPr
   return (
     <div className="space-y-6">
       <p className="text-sm text-text-secondary">
-        Recent audit events for the selected dates.{' '}
+        {t(REPORTS.auditRecent)}{' '}
         <Link to="/admin/audit" className="text-primary hover:underline">
-          Open full audit log
+          {t(REPORTS.openFullAudit)}
         </Link>
       </p>
 

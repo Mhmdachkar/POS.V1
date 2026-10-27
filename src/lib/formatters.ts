@@ -93,6 +93,35 @@ export function formatDateTime(iso: string | null | undefined): string {
   return `${date}, ${hour}:${minute}`
 }
 
+/** Calendar day from YYYY-MM-DD, not a UTC instant. "27 oct. 2026". */
+export function formatCalendarDate(ymd: string | null | undefined): string {
+  if (!ymd) return '—'
+  const [y, m, d] = ymd.slice(0, 10).split('-').map(Number)
+  if (!y || !m || !d) return ymd
+  return formatDate(new Date(Date.UTC(y, m - 1, d, 12, 0, 0)).toISOString())
+}
+
+/** "27 oct." */
+export function formatCalendarDayMonth(ymd: string | null | undefined): string {
+  return formatCalendarDate(ymd).replace(/\s+\d{4}$/, '')
+}
+
+/** Chart axis: "30 k CFA" or the full amount under 1000. */
+export function formatCompactMoney(amount: number | null | undefined): string {
+  if (amount == null || !Number.isFinite(amount)) return '—'
+  const rounded = Math.round(amount)
+  const abs = Math.abs(rounded)
+  const sign = rounded < 0 ? MINUS_SIGN : ''
+  if (abs >= 1000) {
+    const k = abs / 1000
+    const body = Number.isInteger(k)
+      ? String(k)
+      : (Math.round(k * 10) / 10).toString().replace('.', ',')
+    return `${sign}${body} k CFA`
+  }
+  return formatMoney(rounded)
+}
+
 /** Format a date only: "26 oct. 2026" */
 export function formatDate(iso: string | null | undefined): string {
   if (!iso) return '—'

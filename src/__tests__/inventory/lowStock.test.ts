@@ -65,6 +65,10 @@ function mockProductQueries(rows: AlertRow[]) {
       filtered = filtered.filter((row) => (row as Record<string, unknown>)[col] === val)
       return builder
     }
+    builder.lte = (col: string, val: unknown) => {
+      filtered = filtered.filter((row) => Number((row as Record<string, unknown>)[col]) <= Number(val))
+      return builder
+    }
     builder.order = () => builder
     builder.limit = () => builder
     builder.then = (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) =>

@@ -15,7 +15,7 @@ import { REPORTS } from '@/lib/bilingual/reports'
 import type { AdminCustomersReport, AdminInventoryReport, AdminSalesReport } from '@/types/rpc'
 import { ReportMetric } from '../components/ReportMetric'
 import { ReportSection } from '../components/ReportSection'
-import { formatCFA, formatPieces } from '@/lib/formatters'
+import { formatCFA, formatCalendarDayMonth, formatCompactMoney, formatPieces } from '@/lib/formatters'
 import { t } from '@/lib/bilingual/types'
 
 
@@ -32,7 +32,7 @@ interface ReportOverviewTabProps {
 
 export function ReportOverviewTab({ sales, inventory, customers }: ReportOverviewTabProps) {
   const daily = sales.daily_series.map((d) => ({
-    date: d.date.slice(5),
+    date: formatCalendarDayMonth(d.date),
     gross: Number(d.sales_activity_cfa),
     returns: Number(d.returns_activity_cfa),
     net: Number(d.net_sales_cfa),
@@ -93,13 +93,13 @@ export function ReportOverviewTab({ sales, inventory, customers }: ReportOvervie
       </div>
 
       {daily.length > 0 && (
-        <ReportSection title={<BiSectionTitle {...REPORTS.dailyTrend} />}>
+        <ReportSection title={<BiSectionTitle {...REPORTS.chartDaily} />}>
           <div className="h-56 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={daily}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border, #e5e7eb)" />
                 <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatCFA(v).replace(/\s/g, '')} />
+                <YAxis width={72} tick={{ fontSize: 11 }} tickFormatter={(v) => formatCompactMoney(Number(v))} />
                 <Tooltip formatter={cfaTooltipValue} />
                 <Legend />
                 <Line type="monotone" dataKey="gross" name={t(REPORTS.chartGross)} stroke="var(--color-primary)" dot={false} strokeWidth={2} />

@@ -25,6 +25,14 @@ import {
   LAYOUT_ARIA,
 } from '../helpers/bilingualQueries'
 
+vi.mock('@/hooks/useShifts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/useShifts')>()
+  return {
+    ...actual,
+    useOpenShifts: () => ({ data: [], isLoading: false, isError: false }),
+  }
+})
+
 vi.mock('@/hooks/useInventory', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useInventory')>()
   return {

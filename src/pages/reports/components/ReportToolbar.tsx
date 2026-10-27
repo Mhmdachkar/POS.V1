@@ -3,6 +3,7 @@ import { ChevronDown, Download } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { Button, Select } from '@/components/ui'
 import { resolveReportDateRange, type ReportPreset } from '@/lib/reportDates'
+import { formatCalendarDate } from '@/lib/formatters'
 import { useDepotStore } from '@/stores/depotStore'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { COMMON } from '@/lib/bilingual/common'
@@ -97,7 +98,7 @@ export function ReportToolbar({
             type="button"
             onClick={() => onPresetChange(p)}
             className={cn(
-              'px-2.5 py-1 rounded-md text-xs font-medium border transition-colors',
+              'px-3 min-h-[44px] rounded-md text-sm font-medium border transition-colors',
               preset === p
                 ? 'bg-primary text-primary-foreground border-primary'
                 : 'bg-surface border-border text-text-secondary hover:text-text-primary',
@@ -113,6 +114,7 @@ export function ReportToolbar({
               size="sm"
               className="gap-1.5 w-full sm:w-auto justify-center"
               disabled={exportDisabled}
+              title={exportDisabled ? t(REPORTS.exportUnavailable) : undefined}
               onClick={() => setExportOpen((o) => !o)}
             >
               <Download className="h-4 w-4" />
@@ -177,6 +179,7 @@ export function ReportToolbar({
             <BilingualText {...REPORTS.dateFrom} variant="caption" layout="inline" />
             <input
               type="date"
+              lang="fr-FR"
               value={customStart}
               onChange={(e) => onCustomStartChange(e.target.value)}
               className="ml-2 h-8 px-2 rounded-md border border-border bg-surface text-sm"
@@ -186,6 +189,7 @@ export function ReportToolbar({
             <BilingualText {...REPORTS.dateTo} variant="caption" layout="inline" />
             <input
               type="date"
+              lang="fr-FR"
               value={customEnd}
               onChange={(e) => onCustomEndChange(e.target.value)}
               className="ml-2 h-8 px-2 rounded-md border border-border bg-surface text-sm"
@@ -252,7 +256,7 @@ export function ReportToolbar({
       )}
 
       <p className="text-xs text-text-muted">
-        {depotId ? (depotName ?? bilingualPlain(REPORTS.selectedDepot)) : bilingualPlain(COMMON.allDepots)} · {range.startDate} → {range.endDate}
+        {depotId ? (depotName ?? bilingualPlain(REPORTS.selectedDepot)) : bilingualPlain(COMMON.allDepots)} · {formatCalendarDate(range.startDate)} → {formatCalendarDate(range.endDate)}
         {' · '}
         {bilingualPlain(REPORTS.balancesGlobalNote)}
       </p>

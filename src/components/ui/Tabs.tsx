@@ -48,7 +48,7 @@ export function Tabs({ tabs, active, onChange, className }: TabsProps) {
             tabIndex={isActive ? 0 : -1}
             onClick={() => onChange(tab.value)}
             className={cn(
-              'px-3 sm:px-4 h-9 text-sm font-medium border-b-2 -mb-px transition-colors flex-shrink-0 whitespace-nowrap',
+              'px-3 sm:px-4 min-h-[44px] h-11 text-sm font-medium border-b-2 -mb-px transition-colors flex-shrink-0 whitespace-nowrap',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
               isActive
                 ? 'border-primary text-primary'

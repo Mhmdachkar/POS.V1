@@ -23,6 +23,9 @@ jobs:
       - name: Type-check
         run: npm run type-check
 
+      - name: French locale parity
+        run: npx vitest run src/__tests__/i18n/frenchParity.test.ts
+
       - name: Test
         run: npm test
 
