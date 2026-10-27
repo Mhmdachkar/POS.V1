@@ -5,6 +5,7 @@ import { COMMON } from "@/lib/bilingual/common"
 import { BiButtonInline, BiModalTitle as BiSectionTitle } from "@/lib/bilingual/ui"
 import { REPORTS } from "@/lib/bilingual/reports"
 import { formatCFA } from "@/lib/formatters"
+import { collectionsReconcileParts } from "@/lib/collectionsReconcile"
 import { t } from "@/lib/bilingual/types"
 import { ReportMetric } from "./ReportMetric"
 import { ReportSection } from "./ReportSection"
@@ -27,6 +28,8 @@ export type CollectionsPayload = {
   balance_adjustments_cfa?: number
   collected_cfa?: number
   shift_cash_cfa?: number
+  open_shift_cash_cfa?: number
+  closed_shift_cash_cfa?: number
   no_shift_cash_cfa?: number
 }
 
@@ -119,7 +122,6 @@ export function ReportModulePanel({
   startDate,
   endDate,
   cashierId,
-  cash,
 }: ReportModulePanelProps) {
   const name = {
     collections: "admin_report_collections",
@@ -151,14 +153,7 @@ export function ReportModulePanel({
   const rows = Array.isArray(query.data) ? query.data : query.data
   if (kind === "collections" && rows && typeof rows === "object") {
     const data = rows as CollectionsPayload
-    const collected = Number(data.collected_cfa ?? 0)
-    const closed = Number(cash?.closed_expected_total_cfa ?? 0)
-    const noShift = Number(data.no_shift_cash_cfa ?? 0)
-    // Real open-shift expected cash (float + activity), not residual collected − closed − noShift.
-    const open = (cash?.open_shifts ?? []).reduce(
-      (sum, s) => sum + Number(s.expected_cash_cfa ?? s.opening_float_cfa ?? 0),
-      0,
-    )
+    const { collected, closed, open, noShift } = collectionsReconcileParts(data)
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

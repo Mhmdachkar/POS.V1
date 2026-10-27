@@ -235,6 +235,29 @@ function hasFormatted(value: string) {
 }
 
 describe('CEO Notes — ReportCostTab', () => {
+  it('shows em dash when potential_profit is null or sell price is 0', () => {
+    const zeroPrice: typeof costFixture = {
+      ...costFixture,
+      inventory_cost: [
+        {
+          ...costFixture.inventory_cost[0],
+          product_name: 'CABLE NUDE',
+          selling_price_cfa: 0,
+          inventory_value_at_selling: 0,
+          potential_profit: -4522000,
+        },
+      ],
+      inventory_totals: {
+        ...costFixture.inventory_totals,
+        total_potential_profit: -4522000,
+      },
+    }
+    render(<ReportCostTab cost={zeroPrice} showDepotColumn />)
+    expect(screen.getByText('CABLE NUDE')).toBeInTheDocument()
+    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1)
+    expect(screen.queryByText(hasFormatted(formatCFA(-4522000)))).toBeNull()
+  })
+
   it('renders inventory totals and restock log from AdminCostReport fixture', () => {
     render(<ReportCostTab cost={costFixture} showDepotColumn />)
 

@@ -4,7 +4,7 @@ import { MoneyDisplay } from '@/components/ui'
 
 export interface ReportMetricProps {
   label: ReactNode
-  amount: number
+  amount: number | null
   secondaryLabel?: string
   secondaryAmount?: number
   secondaryText?: string
