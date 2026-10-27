@@ -24,6 +24,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { rpc } from '@/lib/rpc'
+import { fetchStaffDisplayNameMap } from '@/lib/staffDisplayNames'
 import { parseError } from '@/lib/errors'
 import { CACHE_STALE } from '@/lib/cachePolicy'
 import type { Customer, Payment } from '@/types/database'
@@ -207,10 +208,7 @@ async function fetchPaymentList(
 
   const recorderIds = [...new Set(rows.map((p) => p.recorded_by).filter(Boolean))] as string[]
   if (recorderIds.length > 0) {
-    const { data: names } = await supabase.rpc('staff_display_names', { p_ids: recorderIds })
-    const byId = new Map(
-      (Array.isArray(names) ? names : []).map((row: { id: string; full_name: string | null }) => [row.id, row.full_name]),
-    )
+    const byId = await fetchStaffDisplayNameMap(recorderIds)
     for (const row of rows) {
       row.recorded_by_name = byId.get(row.recorded_by) ?? null
     }

@@ -369,6 +369,14 @@ export interface InventoryTransaction {
 }
 
 // ─────────────────────────────────────────────────────────────────
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
 // Database type (used by Supabase client generic)
 // ─────────────────────────────────────────────────────────────────
 
@@ -397,45 +405,352 @@ export interface Database {
     }
     Views: Record<string, never>
     Functions: {
-      admin_report_sales: {
-        Args: {
-          p_depot_id: string | null
-          p_start_date: string
-          p_end_date: string
-          p_cashier_id?: string | null
-          p_category_id?: string | null
-          p_product_id?: string | null
-          p_shift_id?: string | null
-        }
-        Returns: unknown
+      ack_print_job: {
+        Args: { p_job_id: string | null; p_ok: boolean; p_error?: string | null }
+        Returns: Json
       }
-      admin_report_inventory: {
-        Args: {
-          p_depot_id: string | null
-          p_start_date: string
-          p_end_date: string
-          p_category_id?: string | null
-          p_product_id?: string | null
-        }
-        Returns: unknown
+      adjust_inventory: {
+        Args: { p_product_id: string | null; p_adjustment_type: string; p_quantity_pieces: number; p_reason?: string | null }
+        Returns: Json
       }
-      admin_report_customers: {
-        Args: { p_depot_id: string | null; p_start_date: string; p_end_date: string }
-        Returns: unknown
+      admin_audit_staff_auth_reconcile: {
+        Args: { p_staff_id: string | null; p_details: Json; p_staff_rpc_gate: string }
+        Returns: Json
+      }
+      admin_dashboard_summary: {
+        Args: { p_depot_id?: string | null }
+        Returns: Json
+      }
+      admin_deactivate_staff_row: {
+        Args: { p_staff_id: string | null; p_staff_rpc_gate: string }
+        Returns: Json
+      }
+      admin_get_staff_row: {
+        Args: { p_staff_id: string | null }
+        Returns: Json
+      }
+      admin_insert_staff: {
+        Args: { p_staff_id: string | null; p_username: string; p_full_name: string; p_role: string; p_depot_id: string | null; p_staff_rpc_gate: string }
+        Returns: Json
+      }
+      admin_reactivate_staff_row: {
+        Args: { p_staff_id: string | null; p_staff_rpc_gate: string }
+        Returns: Json
+      }
+      admin_read_staff_rpc_gate: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      admin_refunds_over_payable: {
+        Args: Record<PropertyKey, never>
+        Returns: { sale_id: string | null; receipt_number: string; payable_cfa: number; refunds_cfa: number }[]
       }
       admin_report_cash: {
         Args: { p_depot_id: string | null; p_start_date: string; p_end_date: string }
-        Returns: unknown
+        Returns: Json
       }
-      admin_dashboard_summary: {
+      admin_report_collections: {
+        Args: { p_depot_id: string | null; p_start_date: string; p_end_date: string; p_cashier_id?: string | null }
+        Returns: Json
+      }
+      admin_report_cost_detail: {
+        Args: { p_depot_id?: string | null; p_start_date?: string | null; p_end_date?: string | null; p_category_id?: string | null; p_product_id?: string | null }
+        Returns: Json
+      }
+      admin_report_customer_ageing: {
+        Args: { p_depot_id: string | null; p_as_of: string }
+        Returns: Json
+      }
+      admin_report_customers: {
+        Args: { p_depot_id: string | null; p_start_date: string; p_end_date: string }
+        Returns: Json
+      }
+      admin_report_discounts: {
+        Args: { p_depot_id: string | null; p_start_date: string; p_end_date: string; p_cashier_id?: string | null }
+        Returns: Json
+      }
+      admin_report_inventory: {
+        Args: { p_depot_id: string | null; p_start_date: string; p_end_date: string; p_category_id?: string | null; p_product_id?: string | null }
+        Returns: Json
+      }
+      admin_report_low_stock: {
         Args: { p_depot_id: string | null }
-        Returns: unknown
+        Returns: Json
+      }
+      admin_report_sales: {
+        Args: { p_depot_id: string | null; p_start_date: string; p_end_date: string; p_cashier_id?: string | null; p_category_id?: string | null; p_product_id?: string | null; p_shift_id?: string | null }
+        Returns: Json
+      }
+      admin_report_sales_by_hour: {
+        Args: { p_depot_id: string | null; p_start_date: string; p_end_date: string; p_cashier_id?: string | null }
+        Returns: Json
+      }
+      admin_report_shift_lines: {
+        Args: { p_depot_id: string | null; p_start_date: string; p_end_date: string; p_cashier_id?: string | null }
+        Returns: Json
+      }
+      admin_report_stock_movements: {
+        Args: { p_depot_id: string | null; p_start_date: string; p_end_date: string; p_category_id?: string | null; p_product_id?: string | null }
+        Returns: Json
+      }
+      admin_update_staff_row: {
+        Args: { p_staff_id: string | null; p_full_name: string; p_role: string; p_depot_id: string | null; p_staff_rpc_gate: string }
+        Returns: Json
+      }
+      cancel_transfer: {
+        Args: { p_transfer_id: string | null; p_reason?: string | null }
+        Returns: Json
+      }
+      claim_print_jobs: {
+        Args: { p_destination: string; p_depot_id: string | null; p_agent_id: string; p_limit?: number }
+        Returns: Json[]
+      }
+      close_shift: {
+        Args: { p_shift_id: string | null; p_actual_cash_cfa: number }
+        Returns: Json
+      }
+      complete_sale: {
+        Args: { p_depot_id: string | null; p_customer_id?: string | null; p_cart_items?: Json; p_amount_tendered_cfa?: number; p_display_currency?: string; p_discount_type?: string | null; p_discount_value?: number | null; p_shift_id?: string | null; p_idempotency_key?: string | null; p_override_total_cfa?: number | null; p_price_exception_reason?: string | null }
+        Returns: Json
+      }
+      complete_transfer: {
+        Args: { p_transfer_id: string | null }
+        Returns: Json
+      }
+      create_category: {
+        Args: { p_name: string; p_parent_id?: string | null }
+        Returns: Json
+      }
+      create_customer: {
+        Args: { p_name: string; p_phone?: string | null; p_address?: string | null }
+        Returns: Json
+      }
+      create_depot: {
+        Args: { p_name: string; p_location: string; p_code: string }
+        Returns: Json
+      }
+      create_product: {
+        Args: { p_depot_id: string | null; p_category_id: string | null; p_name: string; p_photo_url: string; p_units: Json; p_track_low_stock?: boolean; p_low_stock_threshold?: number | null }
+        Returns: Json
+      }
+      create_transfer_draft: {
+        Args: { p_from_depot_id: string | null; p_to_depot_id: string | null; p_items: Json; p_note?: string | null }
+        Returns: Json
       }
       customer_ledger: {
-        Args: { p_customer_id: string }
-        Returns: unknown
+        Args: { p_customer_id: string | null }
+        Returns: { id: string; kind: string; occurred_at: string; reference: string; item_summary: string; note: string; amount_cfa: number; running_balance_cfa: number; sale_id: string | null; adds_credit: boolean }[]
+      }
+      deactivate_category: {
+        Args: { p_category_id: string | null }
+        Returns: Json
+      }
+      deactivate_customer: {
+        Args: { p_customer_id: string | null; p_reason?: string | null }
+        Returns: Json
+      }
+      deactivate_depot: {
+        Args: { p_depot_id: string | null }
+        Returns: Json
+      }
+      deactivate_product: {
+        Args: { p_product_id: string | null }
+        Returns: Json
+      }
+      get_current_staff_ctx: {
+        Args: Record<PropertyKey, never>
+        Returns: { staff_id: string | null; role: string; depot_id: string | null; is_active: boolean; full_name: string }[]
+      }
+      get_current_staff_depot_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string | null
+      }
+      get_current_staff_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      is_current_staff_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_current_staff_cashier: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_current_staff_depot_staff: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      open_shift: {
+        Args: { p_depot_id: string | null; p_opening_float_cfa?: number }
+        Returns: Json
+      }
+      process_return: {
+        Args: { p_sale_id: string | null; p_items: Json; p_reason?: string | null; p_cash_refund_cfa?: number; p_shift_id?: string | null }
+        Returns: Json
+      }
+      reactivate_category: {
+        Args: { p_category_id: string | null }
+        Returns: Json
+      }
+      reactivate_customer: {
+        Args: { p_customer_id: string | null }
+        Returns: Json
+      }
+      reactivate_depot: {
+        Args: { p_depot_id: string | null }
+        Returns: Json
+      }
+      reactivate_product: {
+        Args: { p_product_id: string | null }
+        Returns: Json
+      }
+      record_payment: {
+        Args: { p_customer_id: string | null; p_amount_cfa: number; p_shift_id?: string | null; p_note?: string | null }
+        Returns: Json
+      }
+      release_sale_fulfillment: {
+        Args: { p_sale_id: string | null }
+        Returns: Json
+      }
+      requeue_print_job: {
+        Args: { p_job_id: string | null }
+        Returns: Json
+      }
+      restock_product: {
+        Args: { p_product_id: string | null; p_unit_level: number; p_quantity_in_unit: number; p_note?: string | null }
+        Returns: Json
+      }
+      staff_display_names: {
+        Args: { p_ids: string[] }
+        Returns: { id: string | null; full_name: string }[]
+      }
+      update_business_settings: {
+        Args: { p_business_name: string; p_logo_url: string; p_cfa_to_usd_rate: number }
+        Returns: Json
+      }
+      update_category: {
+        Args: { p_category_id: string | null; p_name: string }
+        Returns: Json
+      }
+      update_customer: {
+        Args: { p_customer_id: string | null; p_name: string; p_phone?: string | null; p_address?: string | null }
+        Returns: Json
+      }
+      update_depot: {
+        Args: { p_depot_id: string | null; p_name: string; p_location: string }
+        Returns: Json
+      }
+      update_product: {
+        Args: { p_product_id: string | null; p_category_id: string | null; p_name: string; p_photo_url: string; p_units: Json; p_track_low_stock?: boolean; p_low_stock_threshold?: number | null }
+        Returns: Json
+      }
+      validate_active_session: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      void_sale: {
+        Args: { p_sale_id: string | null; p_reason?: string | null }
+        Returns: Json
       }
     }
     Enums: Record<string, never>
+  }
+
+  private: {
+    Tables: {}
+    Views: {}
+    Functions: {
+      assert_low_stock_settings: {
+        Args: { p_track_low_stock: boolean; p_low_stock_threshold: number }
+        Returns: undefined
+      }
+      assert_not_last_active_admin: {
+        Args: { p_staff_id: string | null }
+        Returns: undefined
+      }
+      assert_report_depot: {
+        Args: { p_depot_id: string | null }
+        Returns: undefined
+      }
+      build_print_payload_for_sale: {
+        Args: { p_sale_id: string | null }
+        Returns: Json
+      }
+      create_print_jobs_for_sale: {
+        Args: { p_sale_id: string | null }
+        Returns: undefined
+      }
+      get_caller_ctx: {
+        Args: { p_required_roles?: string[] }
+        Returns: unknown
+      }
+      lock_active_admins: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      payment_matches_report_depot: {
+        Args: { p_shift_id: string | null; p_recorded_by: string | null; p_depot_id: string | null }
+        Returns: boolean
+      }
+      product_stock_status: {
+        Args: { p_product_id: string | null; p_depot_id: string | null }
+        Returns: string
+      }
+      product_with_units_json: {
+        Args: { p_product: unknown }
+        Returns: Json
+      }
+      raise_admin_unique_violation: {
+        Args: { p_sqlerrm: string }
+        Returns: undefined
+      }
+      raise_vhm_error: {
+        Args: { p_code: string; p_details?: Json }
+        Returns: undefined
+      }
+      require_https_url: {
+        Args: { p_url: string; p_code: string }
+        Returns: undefined
+      }
+      require_staff_rpc_gate: {
+        Args: { p_token: string }
+        Returns: undefined
+      }
+      sale_line_payable_share: {
+        Args: { p_net_line: number; p_sale_total: number; p_override: number }
+        Returns: number
+      }
+      sales_with_over_refund: {
+        Args: Record<PropertyKey, never>
+        Returns: { sale_id: string | null; receipt_number: string; payable_cfa: number; refunded_cfa: number }[]
+      }
+      staff_to_jsonb: {
+        Args: { p_staff: unknown }
+        Returns: Json
+      }
+      upsert_product_units: {
+        Args: { p_product_id: string | null; p_units: Json }
+        Returns: undefined
+      }
+      validate_product_units: {
+        Args: { p_units: Json }
+        Returns: undefined
+      }
+      validate_role_depot: {
+        Args: { p_role: string; p_depot_id: string | null }
+        Returns: undefined
+      }
+      validate_shift: {
+        Args: { p_shift_id: string | null; p_depot_id: string | null }
+        Returns: unknown
+      }
+      write_audit: {
+        Args: { p_actor_id: string | null; p_action: string; p_entity_type: string; p_entity_id: string | null; p_depot_id: string | null; p_before_val?: Json | null; p_after_val?: Json | null }
+        Returns: undefined
+      }
+    }
+    Enums: Record<string, never>
+    CompositeTypes: Record<string, never>
   }
 }
