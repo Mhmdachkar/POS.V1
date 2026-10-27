@@ -49,7 +49,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             disabled={disabled}
             className={cn(
               // Base
-              'w-full h-9 rounded-md border bg-surface text-text-primary text-sm',
+              'w-full h-11 min-h-[44px] rounded-md border bg-surface text-text-primary text-sm',
               'transition-colors duration-150',
               'placeholder:text-text-muted',
               error ? 'border-danger' : 'border-border',
@@ -63,7 +63,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             {...props}
           />
           {suffix && (
-            <span className="absolute right-3 text-text-secondary text-sm select-none pointer-events-none">
+            <span className="absolute right-3 text-text-secondary text-sm select-none flex items-center">
               {suffix}
             </span>
           )}

@@ -1,4 +1,5 @@
 import { CUSTOMERS } from '@/lib/bilingual/customers'
+import { COMMON } from '@/lib/bilingual/common'
 /**
  * Phase 15E — full customer activity page: filters, pagination, count, balance.
  */
@@ -157,7 +158,7 @@ describe('CustomerActivityPage', () => {
       el?.tagName === 'SPAN' && el.textContent === owed,
     ).find((el) => el.className.includes('text-financial-sm'))
     expect(node).toBeTruthy()
-    expect(screen.getByText('Showing 1–25 of 119 activities')).toBeInTheDocument()
+    expect(screen.getByText(CUSTOMERS.activityShowingRange(1, 25, 119).fr)).toBeInTheDocument()
     expect(screen.getByText('DKR-00000119')).toBeInTheDocument()
     expect(screen.queryByText('DKR-00000094')).not.toBeInTheDocument()
     expect(screen.getAllByText(/^Vente$/).length).toBe(CUSTOMER_ACTIVITY_PAGE_SIZE)
@@ -166,27 +167,27 @@ describe('CustomerActivityPage', () => {
   it('moves to the next and previous page', async () => {
     const user = userEvent.setup()
     renderPage()
-    await user.click(screen.getByRole('button', { name: 'Next →' }))
+    await user.click(screen.getByRole('button', { name: COMMON.next.fr }))
     expect(useCustomerActivity).toHaveBeenCalledWith(
       'cust-1',
       expect.objectContaining({ page: 1, pageSize: CUSTOMER_ACTIVITY_PAGE_SIZE }),
     )
-    expect(screen.getByText('Showing 26–50 of 119 activities')).toBeInTheDocument()
+    expect(screen.getByText(CUSTOMERS.activityShowingRange(26, 50, 119).fr)).toBeInTheDocument()
     expect(screen.getByText('DKR-00000094')).toBeInTheDocument()
     expect(screen.queryByText('DKR-00000119')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '← Previous' }))
+    await user.click(screen.getByRole('button', { name: COMMON.previous.fr }))
     expect(useCustomerActivity).toHaveBeenCalledWith(
       'cust-1',
       expect.objectContaining({ page: 0 }),
     )
-    expect(screen.getByText('Showing 1–25 of 119 activities')).toBeInTheDocument()
+    expect(screen.getByText(CUSTOMERS.activityShowingRange(1, 25, 119).fr)).toBeInTheDocument()
   })
 
   it('resets to the first page when the type filter changes', async () => {
     const user = userEvent.setup()
     renderPage()
-    await user.click(screen.getByRole('button', { name: 'Next →' }))
+    await user.click(screen.getByRole('button', { name: COMMON.next.fr }))
     await user.click(screen.getByRole('tab', { name: /Returns|Retours/i }))
     expect(useCustomerActivity).toHaveBeenCalledWith(
       'cust-1',

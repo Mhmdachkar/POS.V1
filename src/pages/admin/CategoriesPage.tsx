@@ -10,6 +10,7 @@ import { TRANSFERS } from '@/lib/bilingual/transfers'
 import { ChevronDown, ChevronRight, Plus, Tag } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { ActiveBadge, Button, ConfirmDialog, EmptyState, LoadingButton, PageHeader, Skeleton } from '@/components/ui'
+import { NavPictogram } from '@/components/layout/NavPictogram'
 import { parseError } from '@/lib/errors'
 import { formatPieces } from '@/lib/formatters'
 import { resolveProductPhotoUrl } from '@/lib/productPhotos'
@@ -80,7 +81,7 @@ export function CategoriesPage() {
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <PageHeader
         title={<BiPageTitle {...ADMIN.categories} />}
-        icon={<Tag className="h-5 w-5" />}
+        icon={<NavPictogram path="/admin/categories" size="header" />}
         description={
           tree?.length
             ? `${tree.length} groupe${tree.length === 1 ? '' : 's'}`

@@ -13,6 +13,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { messageForCodePlain } from '@/lib/bilingual/errors'
 import { ERROR_MESSAGES, parseError } from '@/lib/errors'
 import type { VhmError, VhmErrorCode } from '@/lib/errors'
+import { INVENTORY } from '@/lib/bilingual/inventory'
 import { RestockModal } from '@/pages/inventory/components/RestockModal'
 import { AdjustmentModal } from '@/pages/inventory/components/AdjustmentModal'
 import { clampInventoryPage } from '@/pages/inventory/InventoryPage'
@@ -1046,7 +1047,7 @@ describe('RestockModal mutation error path', () => {
     renderWithQuery(<RestockModal open onClose={() => {}} product={activeProduct} />)
 
     await user.type(screen.getByRole('spinbutton'), '2')
-    await user.click(screen.getByRole('button', { name: /^restock$/i }))
+    await user.click(screen.getByRole('button', { name: INVENTORY.restock.fr }))
 
     expect(await screen.findByText(messageForCodePlain(code), { exact: false })).toBeInTheDocument()
     expect(screen.queryByText(messageForCodePlain('UNKNOWN'), { exact: false })).not.toBeInTheDocument()
@@ -1060,7 +1061,7 @@ describe('RestockModal mutation error path', () => {
     renderWithQuery(<RestockModal open onClose={() => {}} product={activeProduct} />)
 
     await user.type(screen.getByRole('spinbutton'), '2')
-    await user.click(screen.getByRole('button', { name: /^restock$/i }))
+    await user.click(screen.getByRole('button', { name: INVENTORY.restock.fr }))
 
     expect(await screen.findByText(messageForCodePlain('UNKNOWN'), { exact: false })).toBeInTheDocument()
   })
@@ -1083,7 +1084,7 @@ describe('AdjustmentModal mutation error path', () => {
     renderWithQuery(<AdjustmentModal open onClose={() => {}} product={activeProduct} />)
 
     await user.type(screen.getByRole('spinbutton'), '5')
-    await user.click(screen.getByRole('button', { name: /apply adjustment/i }))
+    await user.click(screen.getByRole('button', { name: INVENTORY.applyAdjustment.fr }))
 
     expect(await screen.findByText(messageForCodePlain(code), { exact: false })).toBeInTheDocument()
     expect(screen.queryByText(messageForCodePlain('UNKNOWN'), { exact: false })).not.toBeInTheDocument()

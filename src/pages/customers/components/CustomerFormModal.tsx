@@ -175,7 +175,7 @@ export function CustomerFormModal({ open, onClose, customer, onSuccess }: Custom
             type="tel"
             value={form.phone}
             onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-            placeholder="e.g. +221 77 000 0000"
+            placeholder={bilingualPlain(CUSTOMERS.phonePlaceholder)}
             className="w-full h-9 px-3 rounded-md border border-border text-sm bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
           />
         </div>

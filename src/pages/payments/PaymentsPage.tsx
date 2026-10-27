@@ -4,6 +4,7 @@
 
 import { useState } from 'react'
 import { Banknote } from 'lucide-react'
+import { NavPictogram } from '@/components/layout/NavPictogram'
 import { cn } from '@/lib/cn'
 import {
   Badge,
@@ -11,6 +12,7 @@ import {
   FilterBar,
   MoneyDisplay,
   PageHeader,
+  PaginationBar,
   Skeleton,
   type FilterBarChip,
 } from '@/components/ui'
@@ -26,8 +28,7 @@ import {
   BiTableHeader,
 } from '@/lib/bilingual/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
-import { t, bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
-import { commonPageOf } from '@/lib/bilingual/common'
+import { bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
 import { usePaymentList } from '@/hooks/useCustomers'
 
 const REVERSED_CHIPS: FilterBarChip[] = [
@@ -89,6 +90,7 @@ export function PaymentsPage() {
         <PageHeader
           title={<BiPageTitle {...PAYMENTS.pageTitle} />}
           description={<BiPageDescription {...PAYMENTS.pageDescLong} />}
+          icon={<NavPictogram path="/payments" size="header" />}
           className="border-b-0"
         />
         <div className="px-3 sm:px-6 pb-3 sm:pb-4">
@@ -168,11 +170,7 @@ export function PaymentsPage() {
                   <MoneyDisplay
                     amount={payment.amount_cfa}
                     size="small"
-                    className={
-                      payment.is_reversed
-                        ? 'line-through text-text-muted'
-                        : 'text-success-foreground'
-                    }
+                    className={payment.is_reversed ? 'line-through text-text-muted' : undefined}
                   />
                 </span>
                 <span className="min-w-0">
@@ -192,31 +190,7 @@ export function PaymentsPage() {
               </div>
             ))}
 
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-                <span className="text-sm text-text-secondary">
-                  <BilingualText {...commonPageOf(page + 1, totalPages)} variant="caption" layout="inline" />
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.max(0, p - 1))}
-                    disabled={page === 0}
-                    className="px-3 h-8 text-sm rounded-md border border-border bg-surface hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <BilingualText {...COMMON.previous} variant="caption" layout="inline" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                    disabled={page >= totalPages - 1}
-                    className="px-3 h-8 text-sm rounded-md border border-border bg-surface hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <BilingualText {...COMMON.next} variant="caption" layout="inline" />
-                  </button>
-                </div>
-              </div>
-            )}
+            <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />
           </>
         )}
       </div>

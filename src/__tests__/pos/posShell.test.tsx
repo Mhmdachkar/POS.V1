@@ -255,6 +255,19 @@ describe('AppShell navigation', () => {
     expect(nav.querySelector('a[href="/shifts"]')).not.toBeNull()
   })
 
+  it('shows short labels on the collapsed POS rail', () => {
+    renderApp('/pos')
+    const nav = cashierNav()
+    expect(nav).toHaveTextContent(NAV.pos.fr)
+    expect(nav).toHaveTextContent(NAV.sales.fr)
+    expect(nav).toHaveTextContent(NAV.customers.fr)
+  })
+
+  it('shows the current page title in the top bar', () => {
+    renderApp('/sales')
+    expect(screen.getByTestId('topbar-page-title')).toHaveTextContent(NAV.sales.fr)
+  })
+
   it('marks the active nav item uniquely — Caisse is not active on /sales', () => {
     renderApp('/sales')
     const nav = cashierNav()
@@ -380,7 +393,14 @@ describe('ShiftChip', () => {
   })
 
   function renderChip() {
-    return render(<ShiftChip />)
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    return render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <ShiftChip />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
   }
 
   it('renders a static no-shift chip', () => {

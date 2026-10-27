@@ -23,6 +23,8 @@
     --font-size-body: 14px;
     --font-size-label: 12px;
     --font-size-title: 20px;
+    --font-size-product-name: 15px;
+    --font-size-product-price: 14px;
 
     /* --- Borders --- */
     --color-border: #E5E7EB;
@@ -63,7 +65,7 @@
     --shadow-lg: 0 8px 24px rgba(16, 24, 40, 0.12);
 
     /* --- AppRail widths --- */
-    --rail-width-collapsed: 56px;
+    --rail-width-collapsed: 72px;
     --rail-width-expanded: 220px;
 
     /* --- TopBar height --- */
@@ -160,8 +162,21 @@
 
   /* --- Financial value display --- */
   .financial-value {
-    @apply tabular-nums font-semibold;
+    @apply tabular-nums font-bold;
     font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+
+  .text-product-name {
+    font-size: var(--font-size-product-name);
+    line-height: 1.3;
+    font-weight: 600;
+  }
+
+  .text-product-price {
+    font-size: var(--font-size-product-price);
+    line-height: 1.25;
+    font-weight: 700;
   }
 
   .scroll-gutter-stable {

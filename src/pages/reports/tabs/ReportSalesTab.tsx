@@ -4,7 +4,7 @@ import { REPORTS } from '@/lib/bilingual/reports'
 import { COMMON } from '@/lib/bilingual/common'
 import { POS } from '@/lib/bilingual/pos'
 import { cn } from '@/lib/cn'
-import { EmptyState, MoneyDisplay, SaleStatusBadge, Skeleton } from '@/components/ui'
+import { EmptyState, MoneyDisplay, PaginationBar, SaleStatusBadge, Skeleton } from '@/components/ui'
 import { formatDateTime } from '@/lib/formatters'
 import type { AdminSalesReport } from '@/types/rpc'
 import { useSalesList } from '@/hooks/useSales'
@@ -169,29 +169,7 @@ export function ReportSalesTab({
                 </button>
               ))}
             </div>
-            {totalPages > 1 && (
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  disabled={page <= 0}
-                  className="text-sm px-2 py-1 border rounded disabled:opacity-40"
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  Previous
-                </button>
-                <span className="text-sm text-text-muted self-center">
-                  Page {page + 1} / {totalPages}
-                </span>
-                <button
-                  type="button"
-                  disabled={page >= totalPages - 1}
-                  className="text-sm px-2 py-1 border rounded disabled:opacity-40"
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Next
-                </button>
-              </div>
-            )}
+            <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />
           </>
         )}
       </ReportSection>

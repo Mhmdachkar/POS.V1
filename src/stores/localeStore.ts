@@ -22,6 +22,13 @@ function writeStoredLocale(locale: Locale) {
   }
 }
 
+function applyDocumentLang(locale: Locale) {
+  if (typeof document === 'undefined') return
+  document.documentElement.lang = locale
+}
+
+applyDocumentLang(readStoredLocale())
+
 interface LocaleState {
   locale: Locale
   setLocale: (locale: Locale) => void
@@ -31,6 +38,7 @@ export const useLocaleStore = create<LocaleState>()((set) => ({
   locale: readStoredLocale(),
   setLocale: (locale) => {
     writeStoredLocale(locale)
+    applyDocumentLang(locale)
     set({ locale })
   },
 }))

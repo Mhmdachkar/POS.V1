@@ -238,8 +238,8 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
         </>
       )}
 
-      {!showCheckout && (
-        <BilingualText {...POS.addProductsBegin} variant="caption" as="p" />
+      {!showCheckout && !isCartEmpty && !hasDepot && (
+        <BilingualText {...POS.noDepotSelected} variant="caption" as="p" />
       )}
 
       {showCheckout && isWalkIn && totals.balance_added_cfa > 0 && (

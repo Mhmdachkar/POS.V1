@@ -3,6 +3,7 @@ import { BiEmptyTitle, BiPageDescription, BiPageTitle, BiTabLabel } from '@/lib/
 import { REPORTS } from '@/lib/bilingual/reports'
 import { BarChart2 } from 'lucide-react'
 import { EmptyState, PageHeader, Skeleton, Tabs } from '@/components/ui'
+import { NavPictogram } from '@/components/layout/NavPictogram'
 import { resolveReportDateRange, type ReportPreset } from '@/lib/reportDates'
 import type { ReportFilterParams } from '@/hooks/useReports'
 import {
@@ -247,7 +248,7 @@ export function ReportsPage() {
         <PageHeader
           title={<BiPageTitle {...REPORTS.pageTitle} />}
           description={<BiPageDescription {...REPORTS.pageDescription} />}
-          icon={<BarChart2 className="h-5 w-5" />}
+          icon={<NavPictogram path="/reports" size="header" />}
           className="border-b-0"
         />
         <div className="px-3 sm:px-6 pb-3 sm:pb-4 space-y-3">

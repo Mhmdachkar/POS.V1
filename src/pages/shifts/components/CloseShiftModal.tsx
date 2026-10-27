@@ -10,7 +10,7 @@ import { toastSuccessBi } from '@/lib/bilingual/toast'
 import { SHIFT_COPY } from '@/lib/bilingual/shift'
 import { COMMON } from '@/lib/bilingual/common'
 import { Button, Input, LoadingButton, Modal } from '@/components/ui'
-import { formatCFA } from '@/lib/formatters'
+import { formatMoney } from '@/lib/formatters'
 import { parseError } from '@/lib/errors'
 import {
   estimateExpectedCash,
@@ -19,10 +19,6 @@ import {
   type ShiftDetailData,
 } from '@/hooks/useShifts'
 import { useUnshiftedSalesForShiftWindow } from '@/hooks/useSales'
-import {
-  UNSHIFTED_NOT_IN_RECONCILIATION_NOTE,
-  UNSHIFTED_OPEN_PERIOD_NOTE,
-} from '@/lib/shiftAttribution'
 import { useAuthStore } from '@/stores/authStore'
 import type { CloseShiftResult } from '@/types/rpc'
 import { cn } from '@/lib/cn'
@@ -55,7 +51,7 @@ function BreakdownRow({
         'tabular-nums',
         danger ? 'text-danger-foreground font-semibold' : emphasis ? 'font-semibold text-text-primary' : 'text-text-primary',
       )}>
-        {formatCFA(value)}
+        {formatMoney(value)}
       </span>
     </div>
   )
@@ -146,11 +142,11 @@ export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) 
             <div className="flex items-baseline justify-between gap-3 text-sm">
               <span className="text-warning-foreground">{t(SHIFT_COPY.salesWithoutShift)}</span>
               <span className="tabular-nums font-medium text-warning-foreground">
-                {unshiftedCount} vente{unshiftedCount === 1 ? '' : 's'} · {formatCFA(unshiftedTotal)}
+                {t(SHIFT_COPY.salesCountAmount(unshiftedCount, formatMoney(unshiftedTotal)))}
               </span>
             </div>
             <p className="mt-1 text-xs text-warning-foreground leading-snug">
-              {UNSHIFTED_NOT_IN_RECONCILIATION_NOTE}
+              {t(SHIFT_COPY.unshiftedNotInReconciliation)}
             </p>
           </div>
           <div className="flex justify-end">
@@ -163,12 +159,12 @@ export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) 
         <div className="space-y-4">
           {closingOthers && (
             <p className="text-sm text-warning-foreground bg-warning-bg border border-warning/20 rounded-md px-3 py-2">
-              Vous fermez un service ouvert par {shift.cashier_name ?? 'un autre caissier'}.
+              {t(SHIFT_COPY.closingOthersShift(shift.cashier_name ?? t(SHIFT_COPY.anotherCashier)))}
             </p>
           )}
 
           <div className="rounded-md border border-border bg-surface-muted p-3 space-y-1.5">
-            <p className="text-xs font-semibold text-text-secondary uppercase">Estimé</p>
+            <p className="text-xs font-semibold text-text-secondary uppercase">{t(SHIFT_COPY.estimated)}</p>
             <BreakdownRow label={t(SHIFT_COPY.openingFloat)} value={shift.opening_float_cfa} />
             <BreakdownRow label={`+ ${t(SHIFT_COPY.salesCash)}`} value={shift.running.sales_cash_cfa} />
             <BreakdownRow label={`+ ${t(SHIFT_COPY.customerPayments)}`} value={shift.running.customer_pmts_cfa} />
@@ -187,11 +183,11 @@ export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) 
             <div className="flex items-baseline justify-between gap-3 text-sm">
               <span className="text-warning-foreground">{t(SHIFT_COPY.salesWithoutShift)}</span>
               <span className="tabular-nums font-medium text-warning-foreground">
-                {unshiftedCount} vente{unshiftedCount === 1 ? '' : 's'} · {formatCFA(unshiftedTotal)}
+                {t(SHIFT_COPY.salesCountAmount(unshiftedCount, formatMoney(unshiftedTotal)))}
               </span>
             </div>
             <p className="mt-1 text-xs text-warning-foreground leading-snug">
-              {UNSHIFTED_NOT_IN_RECONCILIATION_NOTE} {UNSHIFTED_OPEN_PERIOD_NOTE}
+              {t(SHIFT_COPY.unshiftedNotInReconciliation)} {t(SHIFT_COPY.unshiftedOpenPeriod)}
             </p>
           </div>
 

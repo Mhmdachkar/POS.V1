@@ -30,11 +30,11 @@ const variantConfig: Record<BilingualVariant, { text: string; layout: BilingualL
     layout: 'stack',
   },
   nav: {
-    text: 'text-[13px] font-medium leading-tight text-inherit',
+    text: 'text-sm font-medium leading-tight text-inherit',
     layout: 'stack',
   },
   navCollapsed: {
-    text: 'text-[10px] font-medium leading-tight text-center text-inherit line-clamp-2',
+    text: 'text-[11px] font-semibold leading-tight text-center text-inherit line-clamp-2',
     layout: 'stack',
   },
   navGroup: {

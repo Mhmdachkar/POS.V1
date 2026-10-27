@@ -7,17 +7,29 @@ export const SHIFT_COPY = {
   expectedCash: bi('Caisse attendue', 'Expected Cash'),
   actualCash: bi('Caisse réelle', 'Actual Cash'),
   discrepancy: bi('Écart', 'Discrepancy'),
-  salesWithoutShift: bi('Ventes sans shift', 'Sales Without Shift'),
+  salesWithoutShift: bi('Ventes sans service', 'Sales Without Shift'),
+  shiftDetailFallback: bi('Détail du service', 'Shift detail'),
+  shiftShortTitle: (id: string) => bi(`Service ${id}`, `Shift ${id}`),
+  salesCountAmount: (count: number, amount: string) =>
+    bi(
+      `${count} vente${count !== 1 ? 's' : ''} · ${amount}`,
+      `${count} sale${count !== 1 ? 's' : ''} · ${amount}`,
+    ),
+  closingOthersShift: (name: string) =>
+    bi(
+      `Vous fermez un service ouvert par ${name}.`,
+      `You are closing a shift opened by ${name}.`,
+    ),
   unshiftedExplanation: bi(
     'Cette vente a été terminée sans service ouvert ou sélectionné.',
     'This sale was completed without an open or selected shift.',
   ),
   unshiftedWindowNote: bi(
-    'Traitée par ce caissier pendant ce service sans shift sélectionné.',
+    'Traitée par ce caissier pendant ce service sans service sélectionné.',
     'Processed by this cashier during this shift period without a selected shift.',
   ),
   unshiftedNotInReconciliation: bi(
-    'Ventes sans shift sélectionné. Non incluses dans le rapprochement de caisse.',
+    'Ventes sans service sélectionné. Non incluses dans le rapprochement de caisse.',
     "Sales made without a selected shift. Not included in this shift's cash reconciliation.",
   ),
   unshiftedOpenPeriod: bi(
@@ -66,6 +78,8 @@ export const SHIFT_COPY = {
   closingNotes: bi('Notes de fermeture', 'Closing notes'),
   countCash: bi('Compter la caisse', 'Count cash'),
   cashSummary: bi('Récapitulatif caisse', 'Cash Summary'),
+  estimated: bi('Estimé', 'Estimated'),
+  anotherCashier: bi('un autre caissier', 'another cashier'),
   shiftDetails: bi('Détails du service', 'Shift Details'),
   openShiftTitle: bi('Ouvrir un service', 'Open Shift'),
   openShiftDesc: bi('Saisir le fond de caisse initial.', 'Record opening cash in the drawer.'),

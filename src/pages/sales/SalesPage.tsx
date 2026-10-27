@@ -17,18 +17,22 @@
  */
 
 import { useEffect, useState } from 'react'
-import { BiEmptyTitle, BiPageTitle } from '@/lib/bilingual/ui'
+import { BiEmptyTitle, BiPageTitle, BiTableHeader } from '@/lib/bilingual/ui'
 import { SALES } from '@/lib/bilingual/sales'
 import { COMMON } from '@/lib/bilingual/common'
 import { POS } from '@/lib/bilingual/pos'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { Receipt } from 'lucide-react'
+import { NavPictogram } from '@/components/layout/NavPictogram'
 import { cn } from '@/lib/cn'
 import {
   EmptyState,
   FilterBar,
   MoneyDisplay,
   PageHeader,
+  PaginationBar,
+  RowChevron,
+  CLICKABLE_ROW,
   SaleStatusBadge,
   Skeleton,
 } from '@/components/ui'
@@ -67,9 +71,13 @@ function statusFilterChips(): Array<{ value: string; label: string }> {
 
 /** Shared tracks so header + each row grid align (avoid per-row `auto` sizing). */
 const SALES_GRID_WITH_DEPOT =
-  'grid-cols-[7.25rem_7.25rem_minmax(4.5rem,0.85fr)_minmax(5.25rem,0.95fr)_minmax(5rem,0.9fr)_5.25rem_minmax(7.5rem,8.75rem)]'
+  'grid-cols-[7.25rem_minmax(9rem,10.5rem)_minmax(4.5rem,0.85fr)_minmax(5.25rem,0.95fr)_minmax(5rem,0.9fr)_5.5rem_minmax(8rem,9.5rem)_1.25rem]'
 const SALES_GRID_NO_DEPOT =
-  'grid-cols-[7.25rem_7.25rem_minmax(5.25rem,1fr)_minmax(5.25rem,1fr)_5.25rem_minmax(7.5rem,9rem)]'
+  'grid-cols-[7.25rem_minmax(9rem,10.5rem)_minmax(5.25rem,1fr)_minmax(5.25rem,1fr)_5.5rem_minmax(8rem,9.5rem)_1.25rem]'
+const SALES_GRID_WITH_DEPOT_NO_SELLER =
+  'grid-cols-[7.25rem_minmax(9rem,10.5rem)_minmax(4.5rem,0.85fr)_minmax(5rem,0.9fr)_5.5rem_minmax(8rem,9.5rem)_1.25rem]'
+const SALES_GRID_NO_DEPOT_NO_SELLER =
+  'grid-cols-[7.25rem_minmax(9rem,10.5rem)_minmax(5.25rem,1fr)_5.5rem_minmax(8rem,9.5rem)_1.25rem]'
 
 
 // ─────────────────────────────────────────────────────────────────
@@ -138,7 +146,6 @@ export function SalesPage() {
       setFulfillmentFilter('pending')
     }
   }, [isDepotStaff, fulfillmentFilter])
-  const gridCols = showDepotColumn ? SALES_GRID_WITH_DEPOT : SALES_GRID_NO_DEPOT
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), SALES_SEARCH_DEBOUNCE_MS)
@@ -165,6 +172,10 @@ export function SalesPage() {
   const totalCount = data?.count ?? 0
   const pageSize = 30
   const totalPages = Math.ceil(totalCount / pageSize)
+  const showSoldBy = isLoading || sales.some((sale) => Boolean(sale.cashier_name))
+  const gridCols = showDepotColumn
+    ? (showSoldBy ? SALES_GRID_WITH_DEPOT : SALES_GRID_WITH_DEPOT_NO_SELLER)
+    : (showSoldBy ? SALES_GRID_NO_DEPOT : SALES_GRID_NO_DEPOT_NO_SELLER)
 
   const handleSearchChange = (value: string) => {
     setSearch(value)
@@ -186,6 +197,7 @@ export function SalesPage() {
       <div className="flex-shrink-0 border-b border-border bg-surface">
         <PageHeader
           title={<BiPageTitle {...(isDepotStaff ? SALES.ordersTitle : SALES.historyTitle)} />}
+          icon={<NavPictogram path="/sales" size="header" />}
           className="border-b-0"
         />
         <div className="px-3 sm:px-6 pb-3 sm:pb-4">
@@ -209,7 +221,7 @@ export function SalesPage() {
                     setPage(0)
                   }}
                   className={cn(
-                    'px-3 h-7 rounded-full text-xs font-medium flex-shrink-0 transition-colors',
+                    'px-3 min-h-[44px] h-11 rounded-full text-sm font-medium flex-shrink-0 transition-colors',
                     (fulfillmentFilter ?? 'all') === opt.value ||
                       (opt.value === 'all' && fulfillmentFilter === null)
                       ? 'bg-primary text-primary-foreground'
@@ -252,38 +264,38 @@ export function SalesPage() {
             {/* Table header */}
             <div className="sticky top-0 bg-surface-muted border-b border-border z-[1]">
               <div className={cn('grid gap-4 px-4 py-2 items-center', gridCols)}>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Receipt</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Status</span>
-                {showDepotColumn && (
-                  <span className="text-xs font-semibold text-text-secondary uppercase">Depot</span>
-                )}
-                <span className="text-xs font-semibold text-text-secondary uppercase">
-                  <BilingualText {...SALES.soldBy} variant="tableHeader" />
+                <BiTableHeader {...COMMON.receipt} />
+                <BiTableHeader {...COMMON.status} />
+                {showDepotColumn && <BiTableHeader {...COMMON.depot} />}
+                {showSoldBy && <BiTableHeader {...SALES.soldBy} />}
+                <BiTableHeader {...COMMON.customer} />
+                <span className="text-right">
+                  <BiTableHeader {...COMMON.total} />
                 </span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Customer</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase text-right">Total</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase text-right">Date</span>
+                <span className="text-right">
+                  <BiTableHeader {...COMMON.date} />
+                </span>
+                <span aria-hidden="true" />
               </div>
             </div>
 
-            {/* Rows */}
             {sales.map((sale) => (
               <button
                 key={sale.id}
                 type="button"
                 onClick={() => setSelectedSaleId(sale.id)}
                 className={cn(
-                  'w-full text-left grid gap-4 px-4 py-3 items-center',
+                  'w-full text-left grid gap-4 px-4 py-3.5 min-h-[52px] items-center',
                   gridCols,
-                  'border-b border-border hover:bg-surface-muted transition-colors',
-                  'focus:outline-none focus:bg-primary-subtle',
+                  'border-b border-border',
+                  CLICKABLE_ROW,
                   selectedSaleId === sale.id && 'bg-primary-subtle',
                 )}
               >
                 <span className="text-sm font-mono font-semibold text-text-primary truncate min-w-0">
                   {sale.receipt_number}
                 </span>
-                <span className="min-w-0">
+                <span className="min-w-0 whitespace-nowrap">
                   <SaleStatusBadge status={sale.status} />
                 </span>
                 {showDepotColumn && (
@@ -291,22 +303,24 @@ export function SalesPage() {
                     {depotName(sale.depot_id)}
                   </span>
                 )}
-                <span className="text-sm text-text-secondary truncate min-w-0 inline-flex items-center gap-1.5">
-                  <span className="truncate">{sale.cashier_name ?? '—'}</span>
-                  {sale.cashier_role === 'admin' ? (
-                    <span className="flex-shrink-0 text-[10px] font-medium text-primary bg-primary/10 px-1 py-0.5 rounded">
-                      <BilingualText {...SALES.sellerAdmin} variant="caption" layout="inline" />
-                    </span>
-                  ) : sale.cashier_role === 'cashier' ? (
-                    <span className="flex-shrink-0 text-[10px] font-medium text-text-secondary bg-surface-muted px-1 py-0.5 rounded">
-                      <BilingualText {...SALES.sellerCashier} variant="caption" layout="inline" />
-                    </span>
-                  ) : null}
-                </span>
+                {showSoldBy && (
+                  <span className="text-sm text-text-secondary truncate min-w-0 inline-flex items-center gap-1.5">
+                    <span className="truncate">{sale.cashier_name ?? '—'}</span>
+                    {sale.cashier_role === 'admin' ? (
+                      <span className="flex-shrink-0 text-[10px] font-medium text-primary bg-primary/10 px-1 py-0.5 rounded">
+                        <BilingualText {...SALES.sellerAdmin} variant="caption" layout="inline" />
+                      </span>
+                    ) : sale.cashier_role === 'cashier' ? (
+                      <span className="flex-shrink-0 text-[10px] font-medium text-text-secondary bg-surface-muted px-1 py-0.5 rounded">
+                        <BilingualText {...SALES.sellerCashier} variant="caption" layout="inline" />
+                      </span>
+                    ) : null}
+                  </span>
+                )}
                 <span className="text-sm text-text-secondary truncate min-w-0">
                   {sale.customer_name ?? <span className="text-text-muted italic">{t(POS.walkIn)}</span>}
                 </span>
-                <span className="text-right">
+                <span className="text-right tabular-nums">
                   <MoneyDisplay
                     amount={sale.admin_override_total_cfa ?? sale.total_cfa}
                     size="small"
@@ -315,35 +329,11 @@ export function SalesPage() {
                 <span className="text-sm text-text-secondary text-right whitespace-nowrap">
                   {formatDateTime(sale.created_at)}
                 </span>
+                <RowChevron />
               </button>
             ))}
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-                <span className="text-sm text-text-secondary">
-                  Page {page + 1} of {totalPages}
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.max(0, p - 1))}
-                    disabled={page === 0}
-                    className="px-3 h-8 text-sm rounded-md border border-border bg-surface hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    ← Previous
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                    disabled={page >= totalPages - 1}
-                    className="px-3 h-8 text-sm rounded-md border border-border bg-surface hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Next →
-                  </button>
-                </div>
-              </div>
-            )}
+            <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />
           </>
         )}
       </div>

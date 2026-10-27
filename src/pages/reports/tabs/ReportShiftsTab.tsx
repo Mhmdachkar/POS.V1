@@ -23,15 +23,15 @@ export function ReportShiftsTab({ cash, sales }: ReportShiftsTabProps) {
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <ReportMetric label="Fermé — total attendu" amount={Number(cash.closed_expected_total_cfa)} />
-        <ReportMetric label="Fermé — total réel" amount={Number(cash.closed_actual_total_cfa)} />
-        <ReportMetric label="Fermé — écart total" amount={Number(cash.closed_discrepancy_total_cfa)} />
+        <ReportMetric label={t(REPORTS.closedExpectedTotal)} amount={Number(cash.closed_expected_total_cfa)} />
+        <ReportMetric label={t(REPORTS.closedActualTotal)} amount={Number(cash.closed_actual_total_cfa)} />
+        <ReportMetric label={t(REPORTS.closedDiscrepancyTotal)} amount={Number(cash.closed_discrepancy_total_cfa)} />
       </div>
 
       {sales && (sales.no_shift_count > 0 || sales.no_shift_amount_cfa > 0) && (
         <ReportSection title={<BiSectionTitle {...REPORTS.salesWithoutShiftPeriod} />}>
           <p className="text-sm text-text-secondary">
-            {sales.no_shift_count} ventes terminées totalisant {formatCFA(Number(sales.no_shift_amount_cfa))} sans service au moment de la vente.
+            {t(REPORTS.noShiftCompletedLine(sales.no_shift_count, formatCFA(Number(sales.no_shift_amount_cfa))))}
           </p>
         </ReportSection>
       )}
@@ -50,7 +50,7 @@ export function ReportShiftsTab({ cash, sales }: ReportShiftsTabProps) {
                 >
                   <span>{s.cashier_name} · {s.depot_name}</span>
                   <span className="text-text-muted">
-                    Ouvert {formatDateTime(s.opened_at)} · fond {formatCFA(Number(s.opening_float_cfa))}
+                    {t(REPORTS.openShiftMeta(formatDateTime(s.opened_at), formatCFA(Number(s.opening_float_cfa))))}
                   </span>
                 </button>
               </li>
@@ -70,9 +70,9 @@ export function ReportShiftsTab({ cash, sales }: ReportShiftsTabProps) {
                   <th className="text-left px-3 py-2">{t(SHIFT_STATUS.closed)}</th>
                   <th className="text-left px-3 py-2">{t(COMMON.cashier)}</th>
                   <th className="text-left px-3 py-2">{t(COMMON.depot)}</th>
-                  <th className="text-right px-3 py-2">Attendu</th>
-                  <th className="text-right px-3 py-2">Réel</th>
-                  <th className="text-right px-3 py-2">Écart</th>
+                  <th className="text-right px-3 py-2">{t(REPORTS.colExpected)}</th>
+                  <th className="text-right px-3 py-2">{t(REPORTS.colActual)}</th>
+                  <th className="text-right px-3 py-2">{t(COMMON.discrepancy)}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

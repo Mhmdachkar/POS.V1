@@ -1,4 +1,5 @@
 import { cn } from '@/lib/cn'
+import { MoneyDisplay } from './MoneyDisplay'
 
 // ─────────────────────────────────────────────────────────────────
 // Card — surface container
@@ -30,7 +31,9 @@ export function Card({ className, noPadding, children, ...props }: CardProps) {
 
 export interface StatCardProps {
   label: React.ReactNode
-  value: string
+  value?: string
+  /** When set, renders MoneyDisplay at medium (22px) instead of a raw string. */
+  amount?: number | null
   /** Optional descriptive text below the value */
   description?: string
   /** Optional icon (lucide component) */
@@ -38,7 +41,7 @@ export interface StatCardProps {
   className?: string
 }
 
-export function StatCard({ label, value, description, icon, className }: StatCardProps) {
+export function StatCard({ label, value, amount, description, icon, className }: StatCardProps) {
   return (
     <Card className={cn('flex flex-col gap-3', className)}>
       <div className="flex items-start justify-between">
@@ -49,7 +52,11 @@ export function StatCard({ label, value, description, icon, className }: StatCar
           </div>
         )}
       </div>
-      <p className="text-financial-sm financial-value text-text-primary">{value}</p>
+      {amount != null ? (
+        <MoneyDisplay amount={amount} size="medium" className="text-left" />
+      ) : (
+        <p className="text-financial-sm financial-value text-text-primary">{value}</p>
+      )}
       {description && (
         <p className="text-xs text-text-muted">{description}</p>
       )}

@@ -8,9 +8,10 @@ import { SHIFT_COPY } from '@/lib/bilingual/shift'
 import { TRANSFERS } from '@/lib/bilingual/transfers'
 import { INVENTORY } from '@/lib/bilingual/inventory'
 import { SALES } from '@/lib/bilingual/sales'
-import { Plus, Search, UserCog } from 'lucide-react'
+import { Plus, UserCog } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import { ActiveBadge, Button, EmptyState, PageHeader, Skeleton } from '@/components/ui'
+import { ActiveBadge, Button, EmptyState, PageHeader, PaginationBar, SearchInput, Skeleton } from '@/components/ui'
+import { NavPictogram } from '@/components/layout/NavPictogram'
 import { roleLabel, useStaffList, type StaffRoleFilter, type StaffStatusFilter } from '@/hooks/useStaff'
 import { useDepotOptions } from '@/hooks/useInventory'
 import { StaffDetailDrawer } from './components/StaffDetailDrawer'
@@ -27,8 +28,8 @@ function statusFilters(): Array<{ value: StaffStatusFilter; label: string }> {
 function roleFilters(): Array<{ value: StaffRoleFilter; label: string }> {
   return [
     { value: 'all', label: t(ADMIN.filterAllRoles) },
-    { value: 'admin', label: 'Admin' },
-    { value: 'cashier', label: 'Cashier' },
+    { value: 'admin', label: t(ADMIN.roleAdmin) },
+    { value: 'cashier', label: t(ADMIN.roleCashier) },
     { value: 'depot_staff', label: t(ADMIN.roleDepotStaff) },
   ]
 }
@@ -81,18 +82,15 @@ export function StaffPage() {
         <PageHeader
           title={<BiPageTitle {...ADMIN.staff} />}
           description={totalCount > 0 ? t(ADMIN.staffCount(totalCount)) : t(ADMIN.manageStaff)}
-          icon={<UserCog className="h-5 w-5" />}
+          icon={<NavPictogram path="/admin/staff" size="header" />}
           className="border-b-0"
           actions={
             <div className="flex items-center gap-2">
-              <div className="relative w-52">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
-                <input
-                  type="search"
+              <div className="w-52">
+                <SearchInput
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setPage(0) }}
                   placeholder={bilingualPlain(ADMIN.searchStaff)}
-                  className="w-full h-9 pl-9 pr-3 rounded-md border border-border bg-surface text-sm"
                 />
               </div>
               <Button className="gap-1.5" onClick={() => setShowCreate(true)}>
@@ -174,15 +172,7 @@ export function StaffPage() {
                 </span>
               </button>
             ))}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-                <span className="text-sm text-text-secondary">Page {page + 1} of {totalPages}</span>
-                <div className="flex gap-2">
-                  <button type="button" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))} className="px-3 h-8 text-sm rounded-md border border-border disabled:opacity-50">Previous</button>
-                  <button type="button" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)} className="px-3 h-8 text-sm rounded-md border border-border disabled:opacity-50">Next</button>
-                </div>
-              </div>
-            )}
+            <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />
           </>
         )}
       </div>

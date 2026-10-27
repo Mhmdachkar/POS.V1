@@ -1,5 +1,5 @@
 import { clsx } from 'clsx'
-import { formatCFA } from '@/lib/formatters'
+import { formatMoney } from '@/lib/formatters'
 
 const sizeClasses = {
   display: 'text-financial-lg financial-value',
@@ -9,35 +9,42 @@ const sizeClasses = {
 } as const
 
 export type MoneyDisplaySize = keyof typeof sizeClasses
+export type MoneyDisplayTone = 'default' | 'debt' | 'refund'
 
 export interface MoneyDisplayProps {
   amount: number | null
   size?: MoneyDisplaySize
+  /** @deprecated Prefer `tone="debt"`. */
   danger?: boolean
+  tone?: MoneyDisplayTone
   className?: string
 }
 
 /**
  * VHM POS — MoneyDisplay
  *
- * Canonical CFA rendering via formatCFA. Size tokens map to existing
- * financial-lg/md/sm utilities (36/28/22px) plus body `text-sm` (14px).
+ * Canonical CFA rendering via formatMoney.
+ * Colour rule: incoming = default, debts/balances due = debt (red), refunds = refund (amber).
  */
 export function MoneyDisplay({
   amount,
   size = 'medium',
   danger = false,
+  tone = 'default',
   className,
 }: MoneyDisplayProps) {
+  const resolved = danger ? 'debt' : tone
   return (
     <span
       className={clsx(
         sizeClasses[size],
-        danger && 'text-danger-foreground',
+        'text-right tabular-nums',
+        resolved === 'debt' && 'text-danger-foreground',
+        resolved === 'refund' && 'text-warning-foreground',
         className,
       )}
     >
-      {formatCFA(amount)}
+      {formatMoney(amount)}
     </span>
   )
 }

@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { formatThousandsInput, isNegativeMoneyDraft, parseCFAInput } from '@/lib/formatters'
+import {
+  formatDateTime,
+  formatMoney,
+  formatThousandsInput,
+  isNegativeMoneyDraft,
+  MINUS_SIGN,
+  parseCFAInput,
+} from '@/lib/formatters'
+import { useLocaleStore } from '@/stores/localeStore'
 
 describe('formatThousandsInput', () => {
   it('groups thousands with spaces', () => {
@@ -36,5 +44,23 @@ describe('parseCFAInput', () => {
   it('reads grouped thousands', () => {
     expect(parseCFAInput('40 000')).toBe(40000)
     expect(parseCFAInput('40,000')).toBe(40000)
+  })
+})
+
+describe('formatMoney', () => {
+  it('puts CFA after the amount with a narrow no-break space', () => {
+    expect(formatMoney(25000)).toBe('25\u202f000 CFA')
+    expect(formatMoney(null)).toBe('—')
+  })
+
+  it('uses a true minus sign for negatives', () => {
+    expect(formatMoney(-2000)).toBe(`${MINUS_SIGN}2\u202f000 CFA`)
+  })
+})
+
+describe('formatDateTime', () => {
+  it('renders French dates in Africa/Abidjan', () => {
+    useLocaleStore.setState({ locale: 'fr' })
+    expect(formatDateTime('2026-10-26T22:31:00.000Z')).toBe('26 oct. 2026, 22:31')
   })
 })

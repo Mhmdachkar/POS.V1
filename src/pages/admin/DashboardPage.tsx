@@ -1,10 +1,11 @@
 import { AlertTriangle, LayoutDashboard, Package, Users, Wallet } from 'lucide-react'
+import { NavPictogram } from '@/components/layout/NavPictogram'
 import { BiEmptyTitle, BiPageTitle, BiTableHeader } from '@/lib/bilingual/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { ADMIN } from '@/lib/bilingual/admin'
 import { COMMON } from '@/lib/bilingual/common'
 import { STOCK_STATUS } from '@/lib/bilingual/status'
-import { Card, EmptyState, Skeleton, StatCard, StockStatusBadge } from '@/components/ui'
+import { Card, EmptyState, PageHeader, Skeleton, StatCard, StockStatusBadge } from '@/components/ui'
 import { formatCFA, formatDateTime, formatPieces } from '@/lib/formatters'
 import { useDashboardSummary } from '@/hooks/useDashboard'
 import { useStockAlerts, type StockAlertItem } from '@/hooks/useStockAlerts'
@@ -98,24 +99,24 @@ export function DashboardPage() {
 
   return (
     <div className="p-3 sm:p-6 space-y-6 min-h-0 w-full">
-      <div>
-        <h1 className="text-title text-text-primary">
-          <BiPageTitle {...ADMIN.dashboardToday} />
-        </h1>
-        <p className="text-sm text-text-secondary mt-0.5">
-          {depotId ? (
+      <PageHeader
+        title={<BiPageTitle {...ADMIN.dashboardToday} />}
+        icon={<NavPictogram path="/dashboard" size="header" />}
+        className="px-0 py-0 border-b-0 bg-transparent"
+        description={
+          depotId ? (
             depotName ?? <BilingualText {...ADMIN.selectedDepot} variant="caption" />
           ) : (
             <BilingualText {...COMMON.allDepots} variant="caption" />
-          )}
-        </p>
-      </div>
+          )
+        }
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard label={<BiTableHeader {...ADMIN.statSales} />} value={formatCFA(Number(data.sales_cfa))} />
-        <StatCard label={<BiTableHeader {...ADMIN.statGrossProfit} />} value={formatCFA(Number(data.gross_profit_cfa))} />
+        <StatCard label={<BiTableHeader {...ADMIN.statSales} />} amount={Number(data.sales_cfa)} />
+        <StatCard label={<BiTableHeader {...ADMIN.statGrossProfit} />} amount={Number(data.gross_profit_cfa)} />
         <StatCard label={<BiTableHeader {...ADMIN.statTransactions} />} value={String(data.txn_count)} />
-        <StatCard label={<BiTableHeader {...ADMIN.statAverageSale} />} value={formatCFA(Number(data.avg_sale_cfa))} />
+        <StatCard label={<BiTableHeader {...ADMIN.statAverageSale} />} amount={Number(data.avg_sale_cfa)} />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">

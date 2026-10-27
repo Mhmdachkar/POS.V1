@@ -1,6 +1,7 @@
 import { ClipboardList, Package, Receipt } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { EmptyState, PageHeader, Skeleton } from '@/components/ui'
+import { NavPictogram } from '@/components/layout/NavPictogram'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { COMMON } from '@/lib/bilingual/common'
 import { DEPOT } from '@/lib/bilingual/depot'
@@ -59,6 +60,7 @@ export function DepotOverviewPage() {
     <div className="flex flex-col h-full min-h-0">
       <PageHeader
         title={<BiPageTitle {...DEPOT.overviewTitle} />}
+        icon={<NavPictogram path="/depot" size="header" />}
         description={
           depotName ? (
             <BiPageDescription {...DEPOT.overviewDesc(depotName)} />

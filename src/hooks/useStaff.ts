@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { edge } from '@/lib/edge'
 import { CACHE_STALE } from '@/lib/cachePolicy'
+import { ADMIN } from '@/lib/bilingual/admin'
+import { t } from '@/lib/bilingual/types'
 import type { Staff } from '@/types/database'
 import type { AdminStaffRole, CreateStaffEdgePayload, UpdateStaffEdgePayload } from '@/types/rpc'
 
@@ -141,7 +143,7 @@ export function useReactivateStaff() {
 }
 
 export function roleLabel(role: string): string {
-  if (role === 'admin') return 'Admin'
-  if (role === 'depot_staff') return 'Depot staff'
-  return 'Cashier'
+  if (role === 'admin') return t(ADMIN.roleAdmin)
+  if (role === 'depot_staff') return t(ADMIN.roleDepotStaff)
+  return t(ADMIN.roleCashier)
 }

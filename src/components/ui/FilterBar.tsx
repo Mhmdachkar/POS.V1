@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import { FILTERS } from '@/lib/bilingual/common'
+import { t } from '@/lib/bilingual/types'
 import { cn } from '@/lib/cn'
 import { SearchInput } from './SearchInput'
 
@@ -33,11 +35,12 @@ export function FilterBar({
   onChipChange,
   search,
   onSearchChange,
-  searchPlaceholder = 'Search…',
+  searchPlaceholder,
   count,
   rightSlot,
   className,
 }: FilterBarProps) {
+  const resolvedPlaceholder = searchPlaceholder ?? t(FILTERS.searchPlaceholder)
   const showSearch = search !== undefined || onSearchChange !== undefined
 
   return (
@@ -47,8 +50,8 @@ export function FilterBar({
           <SearchInput
             value={search ?? ''}
             onChange={(e) => onSearchChange?.(e.target.value)}
-            placeholder={searchPlaceholder}
-            aria-label={searchPlaceholder}
+            placeholder={resolvedPlaceholder}
+            aria-label={resolvedPlaceholder}
           />
         </div>
       )}
@@ -64,7 +67,7 @@ export function FilterBar({
                 aria-label={chip.ariaLabel}
                 onClick={() => onChipChange?.(chip.value)}
                 className={cn(
-                  'px-3 h-8 sm:h-7 rounded-full text-xs font-medium flex-shrink-0 transition-colors',
+                  'px-3 min-h-[44px] h-11 rounded-full text-sm font-medium flex-shrink-0 transition-colors',
                   isActive
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-surface-muted text-text-secondary border border-border hover:bg-surface',

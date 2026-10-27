@@ -8,9 +8,10 @@ import { SHIFT_COPY } from '@/lib/bilingual/shift'
 import { TRANSFERS } from '@/lib/bilingual/transfers'
 import { INVENTORY } from '@/lib/bilingual/inventory'
 import { SALES } from '@/lib/bilingual/sales'
-import { Building2, Plus, Search } from 'lucide-react'
+import { Building2, Plus } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import { ActiveBadge, Button, EmptyState, PageHeader, Skeleton } from '@/components/ui'
+import { ActiveBadge, Button, EmptyState, PageHeader, PaginationBar, SearchInput, Skeleton } from '@/components/ui'
+import { NavPictogram } from '@/components/layout/NavPictogram'
 import { useAdminDepotList } from '@/hooks/useAdminDepots'
 import { DepotDetailDrawer } from './components/DepotDetailDrawer'
 import { DepotFormModal } from './components/DepotFormModal'
@@ -37,18 +38,15 @@ export function DepotsPage() {
         <PageHeader
           title={<BiPageTitle {...ADMIN.depots} />}
           description={totalCount > 0 ? `${totalCount} dépôt${totalCount !== 1 ? 's' : ''}` : t(ADMIN.depotsDesc)}
-          icon={<Building2 className="h-5 w-5" />}
+          icon={<NavPictogram path="/admin/depots" size="header" />}
           className="border-b-0"
           actions={
             <div className="flex items-center gap-2">
-              <div className="relative w-52">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
-                <input
-                  type="search"
+              <div className="w-52">
+                <SearchInput
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setPage(0) }}
                   placeholder={bilingualPlain(DEPOT.searchDepots)}
-                  className="w-full h-9 pl-9 pr-3 rounded-md border border-border bg-surface text-sm"
                 />
               </div>
               <Button className="gap-1.5" onClick={() => setShowCreate(true)}>
@@ -110,15 +108,7 @@ export function DepotsPage() {
                 </span>
               </button>
             ))}
-            {totalPages > 1 && (
-              <div className="flex justify-between px-4 py-3 text-sm">
-                <span>Page {page + 1} of {totalPages}</span>
-                <div className="flex gap-2">
-                  <button type="button" disabled={page === 0} onClick={() => setPage((p) => p - 1)} className="px-3 h-8 rounded-md border disabled:opacity-50">Previous</button>
-                  <button type="button" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)} className="px-3 h-8 rounded-md border disabled:opacity-50">Next</button>
-                </div>
-              </div>
-            )}
+            <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />
           </>
         )}
       </div>

@@ -7,6 +7,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { embedOne } from '@/lib/embed'
 import { supabase } from '@/lib/supabase'
 import { rpc } from '@/lib/rpc'
 import { CACHE_STALE, keepPlaceholderWhen } from '@/lib/cachePolicy'
@@ -141,9 +142,11 @@ export function invalidateAfterCloseShift(
 }
 
 function mapListRow(row: Record<string, unknown>): ShiftListItem {
-  const depot = row.depot as { name?: string } | null
-  const cashier = row.cashier as { full_name?: string } | null
-  const closedStaff = row.closed_staff as { full_name?: string } | null
+  const depot = embedOne(row.depot as { name?: string } | { name?: string }[] | null)
+  const cashier = embedOne(row.cashier as { full_name?: string } | { full_name?: string }[] | null)
+  const closedStaff = embedOne(
+    row.closed_staff as { full_name?: string } | { full_name?: string }[] | null,
+  )
   return {
     id: row.id as string,
     depot_id: row.depot_id as string,

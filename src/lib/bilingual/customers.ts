@@ -69,6 +69,7 @@ export const CUSTOMERS = {
   addressOptional: bi('Adresse (facultatif)', 'Address (optional)'),
   fullNamePlaceholder: bi('Nom complet', 'Full name'),
   addressPlaceholder: bi('Rue, quartier, ville', 'Street, neighborhood, city'),
+  phonePlaceholder: bi('ex. +221 77 000 0000', 'e.g. +221 77 000 0000'),
   nameRequiredError: bi('Le nom du client est requis.', 'Customer name is required.'),
   nameMaxError: bi('255 caractères maximum.', 'Name must be 255 characters or fewer.'),
   activityFilterAll: bi('Tous', 'All'),

@@ -8,15 +8,14 @@ import { supabase } from '@/lib/supabase'
 import { useAuthStore, selectAuthLoadState } from '@/stores/authStore'
 import { useLocaleStore } from '@/stores/localeStore'
 import { resolvePostLoginPath, waitForAuthSettlement } from '@/lib/postLoginRedirect'
-import { LoadingButton } from '@/components/ui'
+import { Input, LoadingButton } from '@/components/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
+import { AppLogo } from '@/components/layout/AppLogo'
 import { LanguageSwitch } from '@/components/layout/LanguageSwitch'
-import { cn } from '@/lib/cn'
 import { AUTH } from '@/lib/bilingual/auth'
 import { BiButtonStack } from '@/lib/bilingual/ui'
 import { toastSuccessBi } from '@/lib/bilingual/toast'
 import { bilingualAriaLabel, bilingualPlain, t } from '@/lib/bilingual/types'
-import { APP_DISPLAY_NAME, APP_LOGO_LETTER } from '@/lib/formatters'
 
 function buildLoginSchema() {
   return z.object({
@@ -98,79 +97,48 @@ export function LoginPage() {
       <div className="w-full max-w-sm">
 
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center h-10 w-10 rounded-md bg-[#111827] mb-4">
-            <span className="text-white text-sm font-semibold">{APP_LOGO_LETTER}</span>
-          </div>
-          <h1 className="text-2xl font-bold text-text-primary">{APP_DISPLAY_NAME}</h1>
-          <BilingualText {...AUTH.signInToContinue} variant="pageDescription" className="mt-1" />
+          <AppLogo size="lg" className="justify-center" />
+          <BilingualText {...AUTH.signInToContinue} variant="pageDescription" className="mt-2 justify-center" />
         </div>
 
         <div className="bg-surface rounded-xl border border-border shadow-md p-6">
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
 
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="username" className="text-sm font-medium text-text-primary">
-                <BilingualText {...AUTH.username} variant="body" layout="inline" />
-              </label>
-              <input
-                id="username"
-                type="text"
-                autoComplete="username"
-                autoFocus
-                placeholder={t(AUTH.enterUsername)}
-                {...register('username')}
-                className={cn(
-                  'h-9 w-full rounded-md border bg-surface text-text-primary text-sm px-3',
-                  'placeholder:text-text-muted transition-colors duration-150',
-                  'focus:outline-none focus:ring-2',
-                  errors.username
-                    ? 'border-danger focus:border-danger focus:ring-danger/20'
-                    : 'border-border focus:border-primary focus:ring-primary/20',
-                  'disabled:opacity-50 disabled:cursor-not-allowed',
-                )}
-                disabled={isSubmitting}
-              />
-              {errors.username && (
-                <p className="text-xs text-danger-foreground">{errors.username.message}</p>
-              )}
-            </div>
+            <Input
+              id="username"
+              type="text"
+              autoComplete="username"
+              autoFocus
+              label={t(AUTH.username)}
+              placeholder={t(AUTH.enterUsername)}
+              error={errors.username?.message}
+              disabled={isSubmitting}
+              className="text-base"
+              {...register('username')}
+            />
 
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="password" className="text-sm font-medium text-text-primary">
-                <BilingualText {...AUTH.password} variant="body" layout="inline" />
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  placeholder={t(AUTH.enterPassword)}
-                  {...register('password')}
-                  className={cn(
-                    'h-9 w-full rounded-md border bg-surface text-text-primary text-sm pl-3 pr-10',
-                    'placeholder:text-text-muted transition-colors duration-150',
-                    'focus:outline-none focus:ring-2',
-                    errors.password
-                      ? 'border-danger focus:border-danger focus:ring-danger/20'
-                      : 'border-border focus:border-primary focus:ring-primary/20',
-                    'disabled:opacity-50 disabled:cursor-not-allowed',
-                  )}
-                  disabled={isSubmitting}
-                />
+            <Input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              label={t(AUTH.password)}
+              placeholder={t(AUTH.enterPassword)}
+              error={errors.password?.message}
+              disabled={isSubmitting}
+              className="text-base pr-10"
+              suffix={
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
+                  className="text-text-muted hover:text-text-secondary transition-colors"
                   tabIndex={-1}
                   aria-label={bilingualAriaLabel(showPassword ? AUTH.hidePassword : AUTH.showPassword)}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
-              </div>
-              {errors.password && (
-                <p className="text-xs text-danger-foreground">{errors.password.message}</p>
-              )}
-            </div>
+              }
+              {...register('password')}
+            />
 
             {errors.root && (
               <div className="rounded-md bg-danger-bg border border-danger/20 px-3 py-2.5">
@@ -181,7 +149,7 @@ export function LoginPage() {
             <LoadingButton
               type="submit"
               variant="primary"
-              size="lg"
+              size="xl"
               loading={isSubmitting}
               loadingLabel={bilingualPlain(AUTH.signingIn)}
               className="w-full mt-2"

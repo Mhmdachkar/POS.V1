@@ -65,7 +65,7 @@ export function CheckoutSummary() {
             frClassName="text-xs font-semibold uppercase tracking-wide text-text-secondary"
           />
           <span data-testid="checkout-total" aria-live="polite">
-            <MoneyDisplay amount={totals.total_cfa} size="large" />
+            <MoneyDisplay amount={totals.total_cfa} size="display" />
           </span>
         </div>
       )}
@@ -110,7 +110,7 @@ export function CheckoutSummary() {
             frClassName="text-xs font-semibold uppercase tracking-wide text-warning-foreground"
           />
           <span data-testid="checkout-total" aria-live="polite">
-            <MoneyDisplay amount={effectiveTotal} size="large" />
+            <MoneyDisplay amount={effectiveTotal} size="display" />
           </span>
         </div>
       )}
@@ -129,7 +129,7 @@ export function CheckoutSummary() {
           />
           <MoneyDisplay
             amount={totals.change_given_cfa}
-            size="medium"
+            size="large"
             className="text-success-foreground"
           />
         </div>
@@ -146,7 +146,7 @@ export function CheckoutSummary() {
             variant="caption"
             frClassName="text-xs font-semibold uppercase tracking-wide text-danger-foreground"
           />
-          <MoneyDisplay amount={totals.balance_added_cfa} size="medium" danger />
+          <MoneyDisplay amount={totals.balance_added_cfa} size="large" danger />
         </div>
       )}
     </div>

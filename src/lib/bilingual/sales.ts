@@ -144,6 +144,9 @@ export const SALES = {
   returnReasonPlaceholder: bi('Motif du retour…', 'Reason for return…'),
 
   // ── Seller attribution ──────────────────────────────────────
+  unknownProduct: bi('Produit inconnu', 'Unknown product'),
+  returnsCash: bi('Espèces :', 'Cash:'),
+  returnsBalance: bi('Solde :', 'Balance:'),
   soldBy: bi('Vendu par', 'Sold by'),
   sellerAdmin: bi('Administrateur', 'Administrator'),
   sellerCashier: bi('Caissier', 'Cashier'),

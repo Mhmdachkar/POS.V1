@@ -20,6 +20,7 @@ import {
   type FilterBarChip,
 } from '@/components/ui'
 import { formatDateTime, formatPieces } from '@/lib/formatters'
+import { NavPictogram } from '@/components/layout/NavPictogram'
 import { useDepotStore } from '@/stores/depotStore'
 import {
   STOCK_ACTIVITY_PAGE_SIZE,
@@ -224,6 +225,7 @@ export function StockActivityPage() {
         <PageHeader
           title={<BiPageTitle {...INVENTORY.stockActivitySection} />}
           description={<BiPageDescription {...INVENTORY.stockActivityDesc} />}
+          icon={<NavPictogram path="/inventory/activity" size="header" />}
           className="border-b-0"
         />
         <div className="px-3 sm:px-6 pb-3 sm:pb-4">

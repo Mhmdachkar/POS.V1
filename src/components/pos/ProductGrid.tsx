@@ -15,7 +15,7 @@ import type { ProductUnit } from '@/types/database'
 import { t } from '@/lib/bilingual/types'
 
 
-const MIN_CARD_WIDTH = 132
+const MIN_CARD_WIDTH = 180
 
 function CatalogRefreshBanner({ onRetry }: { onRetry: () => void }) {
   return (
@@ -169,7 +169,7 @@ export function ProductGrid({
               <BilingualText {...POS.showingCatalogCap(POS_CATALOG_LIMIT)} variant="caption" />
             </p>
           )}
-          <div className="grid gap-2.5" style={gridStyle} data-testid="product-grid">
+          <div className="grid gap-2.5 items-stretch" style={gridStyle} data-testid="product-grid">
             {visibleProducts.map((product) => (
               <ProductCard key={product.id} product={product} onAddItem={onAddItem} />
             ))}

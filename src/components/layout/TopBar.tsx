@@ -13,6 +13,8 @@ import { useLocaleStore } from '@/stores/localeStore'
 import { supabase } from '@/lib/supabase'
 import { AppLogo } from './AppLogo'
 import { LanguageSwitch } from './LanguageSwitch'
+import { pageTitleForPath } from '@/lib/navIcons'
+import { BilingualText } from '@/components/ui/BilingualText'
 
 export interface TopBarProps {
   /** Opens the mobile AppRail drawer (shown only below md). */
@@ -61,7 +63,7 @@ function DepotContext({ posMode }: { posMode: boolean }) {
           aria-label={t(COMMON.chooseDepot)}
           className={cn(
             'flex items-center gap-2 text-sm font-medium text-text-primary rounded-md',
-            'px-2.5 py-1.5 border border-border bg-surface hover:bg-surface-muted',
+            'px-2.5 min-h-[44px] py-1.5 border border-border bg-surface hover:bg-surface-muted',
             'transition-colors duration-150',
           )}
         >
@@ -133,7 +135,7 @@ function UserMenu() {
         <button
           type="button"
           className={cn(
-            'flex items-center gap-2 rounded-md px-2 py-1.5 sm:px-2.5',
+            'flex items-center gap-2 rounded-md px-2 py-1.5 sm:px-2.5 min-h-[44px]',
             'hover:bg-surface-muted transition-colors duration-150',
           )}
           aria-label={t(COMMON.userMenu)}
@@ -142,10 +144,10 @@ function UserMenu() {
             <User className="h-3.5 w-3.5 text-primary" />
           </div>
           <div className="text-left hidden sm:block min-w-0">
-            <p className="text-xs font-semibold text-text-primary leading-none truncate max-w-[9rem]">
+            <p className="text-sm font-semibold text-text-primary leading-tight truncate max-w-[9rem]">
               {staff?.full_name ?? '—'}
             </p>
-            <p className="text-xs text-text-muted leading-none mt-0.5">
+            <p className="text-xs text-text-secondary leading-tight mt-0.5">
               {roleLabel(staff?.role)}
             </p>
           </div>
@@ -204,7 +206,7 @@ export function TopBar({ onOpenMobileNav }: TopBarProps) {
           type="button"
           data-testid="app-nav-menu"
           className={cn(
-            'md:hidden flex items-center justify-center h-9 w-9 rounded-md flex-shrink-0',
+            'md:hidden flex items-center justify-center h-11 w-11 min-h-[44px] min-w-[44px] rounded-md flex-shrink-0',
             'text-text-primary hover:bg-surface-muted transition-colors duration-150',
           )}
           onClick={onOpenMobileNav}
@@ -216,6 +218,22 @@ export function TopBar({ onOpenMobileNav }: TopBarProps) {
 
       <AppLogo compact className="sm:hidden flex-shrink-0" />
       <AppLogo className="hidden sm:flex flex-shrink-0" />
+
+      {(() => {
+        const pageTitle = pageTitleForPath(pathname)
+        return pageTitle ? (
+          <span
+            data-testid="topbar-page-title"
+            className="hidden sm:inline-flex min-w-0 max-w-[10rem] lg:max-w-[14rem]"
+          >
+            <BilingualText
+              {...pageTitle}
+              variant="nav"
+              className="truncate text-sm font-semibold text-text-primary"
+            />
+          </span>
+        ) : null
+      })()}
 
       <DepotContext posMode={posMode} />
 

@@ -1,6 +1,7 @@
 import { stockHierarchyBreakdown } from '@/hooks/useInventory'
 import { bi, type BilingualPair } from '@/lib/bilingual/types'
 import { formatPieces } from '@/lib/formatters'
+import { localizedUnitLabel } from '@/lib/localizedUnits'
 
 export type UnitLike = {
   unit_level: number
@@ -8,10 +9,9 @@ export type UnitLike = {
   conversion_to_base: number
 }
 
-const LEVEL_FALLBACK = ['Piece', 'Package', 'Carton'] as const
-
 function unitName(units: UnitLike[], level: number): string {
-  return units.find((u) => u.unit_level === level)?.unit_name ?? LEVEL_FALLBACK[level] ?? 'Piece'
+  const stored = units.find((u) => u.unit_level === level)?.unit_name
+  return localizedUnitLabel(stored, level)
 }
 
 /** Human-readable stock total with carton/package breakdown when configured. */
@@ -24,7 +24,9 @@ export function formatStockInUnits(pieces: number | null, units: UnitLike[] | nu
   if (breakdown.length <= 1 && breakdown[0]?.unit_level === 0) {
     return bi(formatPieces(pieces), formatPieces(pieces))
   }
-  const detail = breakdown.map((r) => `${r.count} ${r.unit_name}`).join(', ')
+  const detail = breakdown
+    .map((r) => `${r.count} ${localizedUnitLabel(r.unit_name, r.unit_level)}`)
+    .join(', ')
   const text = `${formatPieces(pieces)} (${detail})`
   return bi(text, text)
 }
@@ -41,7 +43,11 @@ export function formatStockCompact(pieces: number | null, units: UnitLike[] | nu
   const hasHigher = breakdown.some((r) => r.unit_level > 0)
   if (!hasHigher) return formatPieces(pieces)
   return breakdown
-    .map((r) => (r.unit_level === 0 ? `${r.count} pcs` : `${r.count} ${r.unit_name}`))
+    .map((r) =>
+      r.unit_level === 0
+        ? formatPieces(r.count)
+        : `${r.count} ${localizedUnitLabel(r.unit_name, r.unit_level)}`,
+    )
     .join(' · ')
 }
 

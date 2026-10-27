@@ -518,7 +518,7 @@ describe('CustomerDetailDrawer (15E)', () => {
     expect(screen.getByText('Dakar')).toBeInTheDocument()
     expect(screen.getByText(formatDate(customer.created_at))).toBeInTheDocument()
     expect(screen.queryByText('Name')).not.toBeInTheDocument()
-    expect(screen.getByText('No account activity yet.')).toBeInTheDocument()
+    expect(screen.getByText(CUSTOMERS.activityEmptyAll.fr)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: CUSTOMERS.recordPayment.fr })).toBeDisabled()
     expect(screen.getByRole('button', { name: CUSTOMERS.editCustomerBtn.fr })).toBeInTheDocument()
   })
@@ -668,14 +668,14 @@ describe('CustomerDetailDrawer (15E)', () => {
   it('shows filter-specific empty copy', async () => {
     const user = userEvent.setup()
     renderDrawer(makeCustomer(1, { name: 'Owed Customer', balance_owed_cfa: 4500 }))
-    expect(screen.getByText('No account activity yet.')).toBeInTheDocument()
+    expect(screen.getByText(CUSTOMERS.activityEmptyAll.fr)).toBeInTheDocument()
 
     await user.click(screen.getByRole('tab', { name: /Sales|Ventes/i }))
-    expect(screen.getByText('No sales recorded.')).toBeInTheDocument()
+    expect(screen.getByText(CUSTOMERS.activityEmptySales.fr)).toBeInTheDocument()
     await user.click(screen.getByRole('tab', { name: /Returns|Retours/i }))
-    expect(screen.getByText('No returns recorded.')).toBeInTheDocument()
+    expect(screen.getByText(CUSTOMERS.activityEmptyReturns.fr)).toBeInTheDocument()
     await user.click(screen.getByRole('tab', { name: /Payments|Paiements/i }))
-    expect(screen.getByText('No payments recorded.')).toBeInTheDocument()
+    expect(screen.getByText(CUSTOMERS.activityEmptyPayments.fr)).toBeInTheDocument()
   })
 
   it('does not overwrite the displayed balance from visible activity amounts', () => {

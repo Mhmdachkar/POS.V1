@@ -77,7 +77,33 @@ export const REPORTS = {
   openShifts: bi('Services ouverts', 'Open shifts'),
   closedShiftsInPeriod: bi('Services fermés sur la période', 'Closed shifts in period'),
   salesWithoutShiftPeriod: bi('Ventes sans service (période)', 'Sales without shift (period)'),
-  attributedPaymentList: bi('Paiements rattachés', 'Attributed payment list'),
+  closedExpectedTotal: bi('Fermé — total attendu', 'Closed — expected total'),
+  closedActualTotal: bi('Fermé — total réel', 'Closed — actual total'),
+  closedDiscrepancyTotal: bi('Fermé — écart total', 'Closed — discrepancy total'),
+  colExpected: bi('Attendu', 'Expected'),
+  colActual: bi('Réel', 'Actual'),
+  noShiftCompletedLine: (count: number, amount: string) =>
+    bi(
+      `${count} ventes terminées totalisant ${amount} sans service au moment de la vente.`,
+      `${count} completed sales totaling ${amount} with no shift at sale time.`,
+    ),
+  openShiftMeta: (opened: string, floatAmt: string) =>
+    bi(`Ouvert ${opened} · fond ${floatAmt}`, `Opened ${opened} · float ${floatAmt}`),
+  attributedPaymentList: bi('Tous les paiements', 'All payments'),
+  attributedPaymentsMetric: bi('Tous les paiements', 'All payments'),
+  unattributedPaymentsMetric: bi('Paiements non rattachés', 'Unattributed payments'),
+  reversedPaymentsMetric: bi('Annulés (période)', 'Reversed (period)'),
+  standaloneUnallocated: bi(
+    'autonomes — non alloués aux tickets',
+    'standalone — not allocated to receipts',
+  ),
+  reversedCount: (n: number) =>
+    bi(`${n} annulé${n !== 1 ? 's' : ''}`, `${n} reversed`),
+  noneInPeriod: bi('Aucun sur la période.', 'None in this period.'),
+  unattributedHint: bi(
+    'Paiements clients autonomes sans service — non alloués aux tickets de vente.',
+    'Standalone customer payments without a shift — not allocated to sale receipts.',
+  ),
   unattributedStandalone: bi('Non rattachés (autonomes)', 'Unattributed (standalone)'),
   customersWithBalance: bi('Clients avec solde', 'Customers with balance'),
   byDepot: bi('Par dépôt', 'By depot'),

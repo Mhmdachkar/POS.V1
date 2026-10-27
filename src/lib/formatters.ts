@@ -9,14 +9,38 @@
  * All authoritative financial calculations happen server-side.
  */
 
-/** Format a CFA amount for display: "CFA 24,500" */
-export function formatCFA(amount: number | null | undefined): string {
-  if (amount == null) return 'CFA —'
-  return `CFA ${new Intl.NumberFormat('fr-FR', {
+import { COMMON } from '@/lib/bilingual/common'
+import { bi, currentLocale, t } from '@/lib/bilingual/types'
+import { localizedUnitLabel } from '@/lib/localizedUnits'
+
+export const DISPLAY_TIME_ZONE = 'Africa/Abidjan'
+export const MINUS_SIGN = '\u2212'
+
+function dateLocale(): string {
+  return currentLocale() === 'en' ? 'en-GB' : 'fr-FR'
+}
+
+function part(
+  parts: Intl.DateTimeFormatPart[],
+  type: Intl.DateTimeFormatPartTypes,
+): string {
+  return parts.find((p) => p.type === type)?.value ?? ''
+}
+
+/** Canonical money display: "25 000 CFA" / "−2 000 CFA". */
+export function formatMoney(amount: number | null | undefined): string {
+  if (amount == null) return '—'
+  const rounded = Math.round(amount)
+  const grouped = new Intl.NumberFormat('fr-FR', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(Math.round(amount))}`
+  }).format(Math.abs(rounded))
+  const sign = rounded < 0 ? MINUS_SIGN : ''
+  return `${sign}${grouped} CFA`
 }
+
+/** @deprecated Use formatMoney — kept as an alias for existing call sites. */
+export const formatCFA = formatMoney
 
 /** Format a USD amount for display: "$12.50" */
 export function formatUSD(amount: number | null | undefined): string {
@@ -37,51 +61,70 @@ export function cfaToUsd(amountCfa: number, cfaPerUsd: number): number {
   return amountCfa / cfaPerUsd
 }
 
-/** Format a quantity with its unit name: "24 Pieces" or "2 Cartons" */
+/** Format a quantity with its localized unit name: "24 Pièces" */
 export function formatQuantity(qty: number, unitName: string): string {
   const rounded = parseFloat(qty.toFixed(3))
-  return `${new Intl.NumberFormat('fr-FR').format(rounded)} ${unitName}${rounded !== 1 ? 's' : ''}`
+  const unit = localizedUnitLabel(unitName)
+  return `${new Intl.NumberFormat('fr-FR').format(rounded)} ${unit}`
 }
 
-/** Format a stock quantity in pieces: "124 pcs" */
+/** Format a stock quantity in pieces: "124 pces" / "124 pcs" */
 export function formatPieces(pieces: number | null | undefined): string {
   if (pieces == null) return '—'
   const rounded = parseFloat(pieces.toFixed(3))
-  return `${new Intl.NumberFormat('fr-FR').format(rounded)} pcs`
+  return `${new Intl.NumberFormat('fr-FR').format(rounded)} ${t(COMMON.pcsAbbrev)}`
 }
 
-/** Format a date as a readable string: "11 Sep 2026, 18:42" */
+/** Format a date+time: French "26 oct. 2026, 22:31" (Africa/Abidjan). */
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—'
-  return new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
+  const parts = new Intl.DateTimeFormat(dateLocale(), {
+    timeZone: DISPLAY_TIME_ZONE,
+    hourCycle: 'h23',
+    day: 'numeric',
     month: 'short',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(new Date(iso))
+  }).formatToParts(new Date(iso))
+  const date = `${part(parts, 'day')} ${part(parts, 'month')} ${part(parts, 'year')}`
+  const hour = part(parts, 'hour').padStart(2, '0')
+  const minute = part(parts, 'minute').padStart(2, '0')
+  return `${date}, ${hour}:${minute}`
 }
 
-/** Format a date only: "11 Sep 2026" */
+/** Format a date only: "26 oct. 2026" */
 export function formatDate(iso: string | null | undefined): string {
   if (!iso) return '—'
-  return new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
+  const parts = new Intl.DateTimeFormat(dateLocale(), {
+    timeZone: DISPLAY_TIME_ZONE,
+    day: 'numeric',
     month: 'short',
     year: 'numeric',
-  }).format(new Date(iso))
+  }).formatToParts(new Date(iso))
+  return `${part(parts, 'day')} ${part(parts, 'month')} ${part(parts, 'year')}`
 }
 
-/** Format a time only: "18:42" */
+/** Format a time only: "22:31" */
 export function formatTime(iso: string | null | undefined): string {
   if (!iso) return '—'
-  return new Intl.DateTimeFormat('en-GB', {
+  const parts = new Intl.DateTimeFormat(dateLocale(), {
+    timeZone: DISPLAY_TIME_ZONE,
+    hourCycle: 'h23',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(new Date(iso))
+  }).formatToParts(new Date(iso))
+  return `${part(parts, 'hour').padStart(2, '0')}:${part(parts, 'minute').padStart(2, '0')}`
 }
 
-/** Format a relative time: "2 minutes ago" */
+const RELATIVE = {
+  justNow: bi("à l'instant", 'just now'),
+  minutesAgo: (n: number) => bi(`il y a ${n} min`, `${n} min ago`),
+  hoursAgo: (n: number) => bi(`il y a ${n} h`, `${n}h ago`),
+  daysAgo: (n: number) => bi(`il y a ${n} j`, `${n}d ago`),
+}
+
+/** Format a relative time in the active locale. */
 export function formatRelativeTime(iso: string | null | undefined): string {
   if (!iso) return '—'
   const now = Date.now()
@@ -91,11 +134,17 @@ export function formatRelativeTime(iso: string | null | undefined): string {
   const diffHr = Math.floor(diffMin / 60)
   const diffDay = Math.floor(diffHr / 24)
 
-  if (diffMin < 1) return 'just now'
-  if (diffMin < 60) return `${diffMin} min ago`
-  if (diffHr < 24) return `${diffHr}h ago`
-  if (diffDay < 7) return `${diffDay}d ago`
+  if (diffMin < 1) return t(RELATIVE.justNow)
+  if (diffMin < 60) return t(RELATIVE.minutesAgo(diffMin))
+  if (diffHr < 24) return t(RELATIVE.hoursAgo(diffHr))
+  if (diffDay < 7) return t(RELATIVE.daysAgo(diffDay))
   return formatDate(iso)
+}
+
+/** First 8 characters of a UUID, for cashier-facing labels. */
+export function formatShortId(id: string | null | undefined): string {
+  if (!id) return '—'
+  return id.slice(0, 8)
 }
 
 /** Parse a raw CFA string input (strips commas/spaces) → number or NaN */

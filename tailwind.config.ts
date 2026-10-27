@@ -68,10 +68,12 @@ export default {
       fontSize: {
         label: ['12px', { lineHeight: '16px', fontWeight: '500' }],
         title: ['20px', { lineHeight: '26px', fontWeight: '700' }],
+        'product-name': ['15px', { lineHeight: '20px', fontWeight: '600' }],
+        'product-price': ['14px', { lineHeight: '18px', fontWeight: '700' }],
         // Financial display sizes
         'financial-sm': ['22px', { lineHeight: '28px', fontWeight: '600' }],
         'financial-md': ['28px', { lineHeight: '34px', fontWeight: '700' }],
-        'financial-lg': ['36px', { lineHeight: '44px', fontWeight: '700' }],
+        'financial-lg': ['36px', { lineHeight: '44px', fontWeight: '800' }],
       },
       spacing: {
         // 8px grid system

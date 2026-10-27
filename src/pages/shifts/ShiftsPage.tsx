@@ -3,25 +3,28 @@
  */
 
 import { useEffect, useState } from 'react'
-import { BiButtonStack, BiEmptyTitle, BiPageTitle } from '@/lib/bilingual/ui'
+import { BiButtonStack, BiEmptyTitle, BiPageTitle, BiTableHeader } from '@/lib/bilingual/ui'
 import { SHIFT_COPY } from '@/lib/bilingual/shift'
 import { COMMON } from '@/lib/bilingual/common'
 import { Clock } from 'lucide-react'
+import { NavPictogram } from '@/components/layout/NavPictogram'
 import { OpenShiftModal } from './components/OpenShiftModal'
 import { persistPosShiftSelection } from '@/lib/posShiftPersistence'
 import { cn } from '@/lib/cn'
 import {
   Button,
-  Badge,
   EmptyState,
   FilterBar,
   MoneyDisplay,
   PageHeader,
+  PaginationBar,
+  RowChevron,
+  CLICKABLE_ROW,
   ShiftStatusBadge,
   Skeleton,
   type FilterBarChip,
 } from '@/components/ui'
-import { BilingualText } from '@/components/ui/BilingualText'
+import { SHIFT_STATUS } from '@/lib/bilingual/status'
 import { formatDate, formatTime } from '@/lib/formatters'
 import {
   SHIFT_PAGE_SIZE,
@@ -37,11 +40,13 @@ import { ShiftDetailDrawer } from './components/ShiftDetailDrawer'
 import { t } from '@/lib/bilingual/types'
 
 
-const STATUS_CHIPS: FilterBarChip[] = [
-  { value: 'all', label: 'Tout / All' },
-  { value: 'open', label: 'Ouvert / Open' },
-  { value: 'closed', label: 'Fermé / Closed' },
-]
+function statusChips(): FilterBarChip[] {
+  return [
+    { value: 'all', label: t(COMMON.all) },
+    { value: 'open', label: t(SHIFT_STATUS.open) },
+    { value: 'closed', label: t(SHIFT_STATUS.closed) },
+  ]
+}
 
 function TableSkeleton({ showDepot }: { showDepot: boolean }) {
   return (
@@ -98,16 +103,21 @@ export function ShiftsPage() {
     setPage(0)
   }
 
-  // Status | [Depot] | Caissier | Ouvert | Float | Écart | Actions
+  const showCashier = isLoading || shifts.some((s) => Boolean(s.cashier_name))
   const gridCols = showDepot
-    ? 'grid-cols-[5.5rem_minmax(5rem,0.9fr)_minmax(7rem,1.1fr)_4.5rem_5.75rem_6.5rem_5rem]'
-    : 'grid-cols-[5.5rem_minmax(7rem,1fr)_4.5rem_5.75rem_6.5rem_5rem]'
+    ? showCashier
+      ? 'grid-cols-[5.5rem_minmax(5rem,0.9fr)_minmax(7rem,1.1fr)_4.5rem_5.75rem_6.5rem_1.25rem]'
+      : 'grid-cols-[5.5rem_minmax(5rem,0.9fr)_4.5rem_5.75rem_6.5rem_1.25rem]'
+    : showCashier
+      ? 'grid-cols-[5.5rem_minmax(7rem,1fr)_4.5rem_5.75rem_6.5rem_1.25rem]'
+      : 'grid-cols-[5.5rem_4.5rem_5.75rem_6.5rem_1.25rem]'
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="flex-shrink-0 border-b border-border bg-surface">
         <PageHeader
           title={<BiPageTitle {...SHIFT_COPY.pageTitle} />}
+          icon={<NavPictogram path="/shifts" size="header" />}
           className="border-b-0"
           actions={
             canOpen ? (
@@ -119,7 +129,7 @@ export function ShiftsPage() {
         />
         <div className="px-3 sm:px-6 pb-3 sm:pb-4">
           <FilterBar
-            chips={STATUS_CHIPS}
+            chips={statusChips()}
             activeChip={statusFilter ?? 'all'}
             onChipChange={handleChipChange}
             count={totalCount}
@@ -161,63 +171,45 @@ export function ShiftsPage() {
           <>
             <div className="sticky top-0 bg-surface-muted border-b border-border">
               <div className={cn('grid gap-4 px-4 py-2', gridCols)}>
-                <span className="text-xs font-semibold text-text-secondary uppercase">
-                  <BilingualText fr="Statut" en="Status" variant="caption" layout="inline" />
+                <BiTableHeader {...COMMON.status} />
+                {showDepot && <BiTableHeader {...COMMON.depot} />}
+                {showCashier && <BiTableHeader {...COMMON.cashier} />}
+                <BiTableHeader {...COMMON.opened} />
+                <span className="text-right">
+                  <BiTableHeader {...COMMON.float} />
                 </span>
-                {showDepot && (
-                  <span className="text-xs font-semibold text-text-secondary uppercase">
-                    <BilingualText fr="Dépôt" en="Depot" variant="caption" layout="inline" />
-                  </span>
-                )}
-                <span className="text-xs font-semibold text-text-secondary uppercase">
-                  <BilingualText fr="Caissier" en="Cashier" variant="caption" layout="inline" />
+                <span className="text-right">
+                  <BiTableHeader {...COMMON.discrepancy} />
                 </span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">
-                  <BilingualText fr="Ouvert" en="Opened" variant="caption" layout="inline" />
-                </span>
-                <span className="text-xs font-semibold text-text-secondary uppercase text-right">
-                  <BilingualText fr="Flotte" en="Float" variant="caption" layout="inline" />
-                </span>
-                <span className="text-xs font-semibold text-text-secondary uppercase text-right">
-                  <BilingualText fr="Écart" en="Discrepancy" variant="caption" layout="inline" />
-                </span>
-                <span className="text-xs font-semibold text-text-secondary uppercase text-right">
-                  <BilingualText fr="Actions" en="Actions" variant="caption" layout="inline" />
-                </span>
+                <span aria-hidden="true" />
               </div>
             </div>
 
             {shifts.map((shift: ShiftListItem) => (
-              <div
+              <button
                 key={shift.id}
-                role="button"
-                tabIndex={0}
+                type="button"
                 onClick={() => setSelectedId(shift.id)}
-                onKeyDown={(e) => {
-                  if (e.target !== e.currentTarget) return
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    setSelectedId(shift.id)
-                  }
-                }}
                 className={cn(
-                  'w-full text-left grid gap-4 px-4 py-3 items-center',
+                  'w-full text-left grid gap-4 px-4 py-3 min-h-[44px] items-center',
                   gridCols,
-                  'border-b border-border hover:bg-surface-muted transition-colors cursor-pointer',
-                  'focus:outline-none focus:bg-primary-subtle',
+                  'border-b border-border',
+                  CLICKABLE_ROW,
                   selectedId === shift.id && 'bg-primary-subtle',
                 )}
-                aria-label={`Voir les détails du service — ${shift.cashier_name ?? 'caissier'}`}
+                aria-label={`${t(COMMON.view)} — ${shift.cashier_name ?? t(COMMON.cashier)}`}
               >
-                <span>
+                <span className="whitespace-nowrap">
                   <ShiftStatusBadge status={shift.status} />
                 </span>
                 {showDepot && (
                   <span className="text-sm text-text-primary truncate">{shift.depot_name}</span>
                 )}
-                <span className="text-sm text-text-primary truncate font-medium">
-                  {shift.cashier_name ?? '—'}
-                </span>
+                {showCashier && (
+                  <span className="text-sm text-text-primary truncate font-medium">
+                    {shift.cashier_name ?? '—'}
+                  </span>
+                )}
                 <span className="flex flex-col leading-tight">
                   <span className="text-sm text-text-primary tabular-nums">
                     {formatTime(shift.opened_at)}
@@ -234,53 +226,17 @@ export function ShiftsPage() {
                     <MoneyDisplay
                       amount={shift.discrepancy_cfa}
                       size="small"
-                      danger={(shift.discrepancy_cfa ?? 0) !== 0}
+                      tone={(shift.discrepancy_cfa ?? 0) !== 0 ? 'debt' : 'default'}
                     />
                   ) : (
                     <span className="text-sm text-text-secondary">—</span>
                   )}
                 </span>
-                <span
-                  className="text-right"
-                  onClick={(e) => e.stopPropagation()}
-                  onKeyDown={(e) => e.stopPropagation()}
-                >
-                  <button
-                    type="button"
-                    className="text-xs font-medium text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-sm"
-                    onClick={() => setSelectedId(shift.id)}
-                  >
-                    <BilingualText fr="Voir" en="View" variant="caption" layout="inline" />
-                  </button>
-                </span>
-              </div>
+                <RowChevron />
+              </button>
             ))}
 
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-                <span className="text-sm text-text-secondary">
-                  Page {page + 1} / {totalPages}
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.max(0, p - 1))}
-                    disabled={page === 0}
-                    className="px-3 h-8 text-sm rounded-md border border-border bg-surface hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    ← Précédent
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                    disabled={page >= totalPages - 1}
-                    className="px-3 h-8 text-sm rounded-md border border-border bg-surface hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Suivant →
-                  </button>
-                </div>
-              </div>
-            )}
+            <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />
           </>
         )}
       </div>

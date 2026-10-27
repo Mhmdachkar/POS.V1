@@ -107,7 +107,12 @@ export function AppShell() {
               isPos ? 'overflow-hidden' : 'overflow-y-auto overflow-x-hidden',
             )}
           >
-            <div className="app-route-enter flex min-h-0 min-w-0 flex-1 flex-col">
+            <div
+              className={cn(
+                'app-route-enter flex min-h-0 min-w-0 flex-1 flex-col w-full',
+                !isPos && 'mx-auto max-w-[90rem]',
+              )}
+            >
               <Outlet key={locale} />
             </div>
           </div>

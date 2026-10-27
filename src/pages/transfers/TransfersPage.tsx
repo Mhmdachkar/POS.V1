@@ -17,7 +17,8 @@ import { INVENTORY } from '@/lib/bilingual/inventory'
 import { SALES } from '@/lib/bilingual/sales'
 import { ArrowLeftRight, Plus } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import { Button, EmptyState, PageHeader, Skeleton, TransferStatusBadge } from '@/components/ui'
+import { Button, EmptyState, PageHeader, PaginationBar, Skeleton, TransferStatusBadge } from '@/components/ui'
+import { NavPictogram } from '@/components/layout/NavPictogram'
 import { formatDateTime } from '@/lib/formatters'
 import {
   TRANSFER_PAGE_SIZE,
@@ -119,7 +120,7 @@ export function TransfersPage() {
               ? t(TRANSFERS.transferCount(totalCount))
               : t(TRANSFERS.pageDesc)
           }
-          icon={<ArrowLeftRight className="h-5 w-5" />}
+          icon={<NavPictogram path="/transfers" size="header" />}
           className="border-b-0"
           actions={
             <Button
@@ -217,31 +218,7 @@ export function TransfersPage() {
               </button>
             ))}
 
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-                <span className="text-sm text-text-secondary">
-                  Page {page + 1} of {totalPages}
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.max(0, p - 1))}
-                    disabled={page === 0}
-                    className="px-3 h-8 text-sm rounded-md border border-border bg-surface hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    ← Previous
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                    disabled={page >= totalPages - 1}
-                    className="px-3 h-8 text-sm rounded-md border border-border bg-surface hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Next →
-                  </button>
-                </div>
-              </div>
-            )}
+            <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />
           </>
         )}
       </div>

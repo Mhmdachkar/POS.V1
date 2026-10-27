@@ -14,7 +14,7 @@ import { COMMON } from '@/lib/bilingual/common'
 import { BiButtonStack, BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
 import { DoorClosed } from 'lucide-react'
 import { Button, Drawer, MoneyDisplay, ShiftStatusBadge, Skeleton } from '@/components/ui'
-import { formatCFA, formatDateTime } from '@/lib/formatters'
+import { formatDateTime, formatMoney, formatShortId } from '@/lib/formatters'
 import { cn } from '@/lib/cn'
 import {
   canCloseShift,
@@ -22,11 +22,7 @@ import {
   useShiftDetail,
 } from '@/hooks/useShifts'
 import { useUnshiftedSalesForShiftWindow } from '@/hooks/useSales'
-import {
-  formatShiftTimeRange,
-  UNSHIFTED_OPEN_PERIOD_NOTE,
-  UNSHIFTED_SHIFT_WINDOW_NOTE,
-} from '@/lib/shiftAttribution'
+import { formatShiftTimeRange } from '@/lib/shiftAttribution'
 import { useAuthStore } from '@/stores/authStore'
 import { CloseShiftModal } from './CloseShiftModal'
 import { t } from '@/lib/bilingual/types'
@@ -109,10 +105,10 @@ export function ShiftDetailDrawer({ shiftId, onClose }: ShiftDetailDrawerProps) 
   const hasDiscrepancy = !isOpen && discrepancy != null && discrepancy !== 0
 
   const drawerTitle = isLoading
-    ? 'Shift Detail'
+    ? t(SHIFT_COPY.shiftDetailFallback)
     : shift
-      ? (shift.cashier_name ?? `Shift ${shift.id.slice(0, 8)}`)
-      : 'Shift Detail'
+      ? (shift.cashier_name ?? t(SHIFT_COPY.shiftShortTitle(formatShortId(shift.id))))
+      : t(SHIFT_COPY.shiftDetailFallback)
 
   return (
     <>
@@ -227,12 +223,12 @@ export function ShiftDetailDrawer({ shiftId, onClose }: ShiftDetailDrawerProps) 
                   {t(SHIFT_COPY.salesWithoutShift)}
                 </span>
                 <span className="text-sm font-medium tabular-nums text-warning-foreground">
-                  {unshiftedCount} vente{unshiftedCount === 1 ? '' : 's'} · {formatCFA(unshiftedTotal)}
+                  {t(SHIFT_COPY.salesCountAmount(unshiftedCount, formatMoney(unshiftedTotal)))}
                 </span>
               </div>
               <p className="mt-1 text-xs text-warning-foreground leading-snug">
-                {UNSHIFTED_SHIFT_WINDOW_NOTE}
-                {isOpen ? ` ${UNSHIFTED_OPEN_PERIOD_NOTE}` : ''}
+                {t(SHIFT_COPY.unshiftedWindowNote)}
+                {isOpen ? ` ${t(SHIFT_COPY.unshiftedOpenPeriod)}` : ''}
               </p>
             </div>
 
@@ -247,7 +243,7 @@ export function ShiftDetailDrawer({ shiftId, onClose }: ShiftDetailDrawerProps) 
             {!isOpen && (
               <DetailRow label={t(SHIFT_COPY.closedBy)} value={shift.closed_by_name ?? '—'} />
             )}
-            <DetailRow label={t(SHIFT_COPY.shiftId)} value={shift.id} mono />
+            <DetailRow label={t(SHIFT_COPY.shiftId)} value={formatShortId(shift.id)} mono />
 
             {canClose && (
               <>

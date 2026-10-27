@@ -16,6 +16,7 @@ import {
   LoadingButton,
   MoneyDisplay,
   PageHeader,
+  PaginationBar,
   Skeleton,
 } from '@/components/ui'
 import { formatDate } from '@/lib/formatters'
@@ -27,6 +28,7 @@ import {
   BiEmptyDescription,
   BiEmptyTitle,
   BiButtonInline,
+  BiTableHeader,
 } from '@/lib/bilingual/ui'
 import { useCustomer } from '@/hooks/useCustomers'
 import {
@@ -249,11 +251,11 @@ export function CustomerActivityPage() {
           <>
             <div className="sticky top-0 bg-surface-muted border-b border-border z-[1]">
               <div className={cn('grid gap-4 px-4 py-2 items-center', ACTIVITY_GRID)}>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Type</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Reference</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Description</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Date</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase text-right">Amount</span>
+                <span className="uppercase"><BiTableHeader {...COMMON.type} /></span>
+                <span className="uppercase"><BiTableHeader {...COMMON.reference} /></span>
+                <span className="uppercase"><BiTableHeader {...COMMON.description} /></span>
+                <span className="uppercase"><BiTableHeader {...COMMON.date} /></span>
+                <span className="uppercase text-right"><BiTableHeader {...COMMON.amount} /></span>
               </div>
             </div>
 
@@ -314,31 +316,7 @@ export function CustomerActivityPage() {
               )
             })}
 
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-                <span className="text-sm text-text-secondary">
-                  Page {page + 1} of {totalPages}
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.max(0, p - 1))}
-                    disabled={page === 0}
-                    className="px-3 h-8 text-sm rounded-md border border-border bg-surface hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    ← Previous
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                    disabled={page >= totalPages - 1}
-                    className="px-3 h-8 text-sm rounded-md border border-border bg-surface hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Next →
-                  </button>
-                </div>
-              </div>
-            )}
+            <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />
           </>
         )}
       </div>
