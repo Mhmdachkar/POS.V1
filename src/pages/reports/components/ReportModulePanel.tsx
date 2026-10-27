@@ -154,7 +154,11 @@ export function ReportModulePanel({
     const collected = Number(data.collected_cfa ?? 0)
     const closed = Number(cash?.closed_expected_total_cfa ?? 0)
     const noShift = Number(data.no_shift_cash_cfa ?? 0)
-    const open = collected - closed - noShift
+    // Real open-shift expected cash (float + activity), not residual collected − closed − noShift.
+    const open = (cash?.open_shifts ?? []).reduce(
+      (sum, s) => sum + Number(s.expected_cash_cfa ?? s.opening_float_cfa ?? 0),
+      0,
+    )
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

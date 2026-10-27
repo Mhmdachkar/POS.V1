@@ -21,6 +21,7 @@ import { SALES } from '@/lib/bilingual/sales'
 import { COMMON } from '@/lib/bilingual/common'
 import { POS } from '@/lib/bilingual/pos'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
+import { REPORTS } from '@/lib/bilingual/reports'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { BiModalTitle as BiSectionTitle, BiTableHeader } from '@/lib/bilingual/ui'
 import { PackageCheck, Printer, RotateCcw, XCircle } from 'lucide-react'
@@ -236,10 +237,12 @@ function SaleFulfillmentPanel({ sale }: { sale: SaleDetailData }) {
 interface SaleDetailDrawerProps {
   saleId: string | null
   shiftId?: string | null
+  /** Admin list: refunds exceed COALESCE(admin_override_total_cfa, total_cfa). */
+  isOverRefund?: boolean
   onClose: () => void
 }
 
-export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerProps) {
+export function SaleDetailDrawer({ saleId, shiftId, isOverRefund = false, onClose }: SaleDetailDrawerProps) {
   const [showReturn, setShowReturn] = useState(false)
   const [showVoid, setShowVoid] = useState(false)
   const queryClient = useQueryClient()
@@ -299,6 +302,12 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
             <div className="flex items-center gap-2 mb-4">
               <SaleStatusBadge status={sale.status} />
             </div>
+
+            {isOverRefund && (
+              <div className="mb-4 rounded-md border border-danger/30 bg-danger-bg px-3 py-2 text-sm font-medium text-danger-foreground">
+                {t(REPORTS.overRefundBadge)}
+              </div>
+            )}
 
             {/* Sale info */}
             <SectionHeader title={<BiSectionTitle {...SALES.saleInfo} />} />

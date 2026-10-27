@@ -180,7 +180,7 @@ export const REPORTS = {
   noAuditInPeriod: bi('Aucun événement sur la période', 'No audit events in period'),
   openShifts: bi('Services ouverts', 'Open shifts'),
   closedShiftsInPeriod: bi('Services fermés sur la période', 'Closed shifts in period'),
-  salesWithoutShiftPeriod: bi('Ventes sans service (période)', 'Sales without shift (period)'),
+  salesWithoutShiftPeriod: bi('Ventes sans service (montant dû)', 'Sales with no shift (amount due)'),
   closedExpectedTotal: bi('Attendu (services fermés)', 'Expected (closed shifts)'),
   closedActualTotal: bi('Compté (services fermés)', 'Counted (closed shifts)'),
   closedDiscrepancyTotal: bi('Écart (services fermés)', 'Difference (closed shifts)'),
@@ -241,8 +241,8 @@ export const REPORTS = {
   creditPeriod: bi('Crédit', 'Credit'),
   collectionsReconcile: (collected: string, closed: string, open: string, noShift: string) =>
     bi(
-      `Total encaissé ${collected} = Rapport Z fermé ${closed} + services ouverts ${open} + ventes sans service ${noShift}`,
-      `Total collected ${collected} = Closed Z report ${closed} + open shifts ${open} + sales with no shift ${noShift}`,
+      `Total encaissé ${collected} = services fermés ${closed} + services ouverts ${open} + espèces sans service ${noShift}`,
+      `Total collected ${collected} = closed shifts ${closed} + open shifts ${open} + cash with no shift ${noShift}`,
     ),
   shiftCash: bi('Espèces des services', 'Shift cash'),
   noShiftCash: bi('Espèces sans service', 'Cash with no shift'),
