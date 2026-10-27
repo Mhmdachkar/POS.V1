@@ -17,6 +17,14 @@ interface ReportCostTabProps {
   showDepotColumn: boolean
 }
 
+/** NULL when sell price missing/0 or cost missing (matches cost migration). */
+export function displayPotentialProfit(r: AdminCostInventoryRow): number | null {
+  if (r.selling_price_cfa == null || Number(r.selling_price_cfa) === 0) return null
+  if (r.cost_price_cfa == null) return null
+  if (r.potential_profit == null) return null
+  return Number(r.potential_profit)
+}
+
 function InventoryValueTable({
   rows,
   showDepotColumn,
@@ -27,12 +35,15 @@ function InventoryValueTable({
   const getText = useCallback((r: AdminCostInventoryRow) => `${r.product_name} ${r.depot_name ?? ''} ${r.category_name ?? ''}`, [])
   const pager = useReportSearchPager(rows, getText)
   const tot = pager.filtered.reduce(
-    (s, r) => ({
-      pieces: s.pieces + Number(r.current_stock_pieces),
-      cost: s.cost + Number(r.inventory_value_at_cost),
-      sell: s.sell + Number(r.inventory_value_at_selling),
-      profit: s.profit + (r.potential_profit == null ? 0 : Number(r.potential_profit)),
-    }),
+    (s, r) => {
+      const profit = displayPotentialProfit(r)
+      return {
+        pieces: s.pieces + Number(r.current_stock_pieces),
+        cost: s.cost + Number(r.inventory_value_at_cost),
+        sell: s.sell + Number(r.inventory_value_at_selling),
+        profit: s.profit + (profit ?? 0),
+      }
+    },
     { pieces: 0, cost: 0, sell: 0, profit: 0 },
   )
   if (rows.length === 0) {
@@ -83,15 +94,14 @@ function InventoryValueTable({
                   <MoneyDisplay amount={Number(r.inventory_value_at_selling)} size="small" />
                 </td>
                 <td className="px-3 py-2 text-right whitespace-nowrap">
-                  {r.potential_profit == null ? (
-                    <span className="text-text-muted" title={t(REPORTS.missingValue)}>—</span>
-                  ) : (
-                    <MoneyDisplay
-                      amount={Number(r.potential_profit)}
-                      size="small"
-                      danger={Number(r.potential_profit) < 0}
-                    />
-                  )}
+                  {(() => {
+                    const profit = displayPotentialProfit(r)
+                    return profit == null ? (
+                      <span className="text-text-muted" title={t(REPORTS.missingValue)}>—</span>
+                    ) : (
+                      <MoneyDisplay amount={profit} size="small" danger={profit < 0} />
+                    )
+                  })()}
                 </td>
               </tr>
             ))}
@@ -187,6 +197,11 @@ export function ReportCostTab({ cost, showDepotColumn }: ReportCostTabProps) {
   const inv = cost.inventory_totals
   const period = cost.period_totals
   const missingCost = cost.inventory_cost.filter((row) => !Number(row.cost_price_cfa)).length
+  const profits = cost.inventory_cost.map(displayPotentialProfit)
+  const hasPricedProfit = profits.some((p) => p != null)
+  const potentialProfitTotal = hasPricedProfit
+    ? profits.reduce<number>((s, p) => s + (p ?? 0), 0)
+    : null
 
   return (
     <div className="space-y-8">
@@ -201,8 +216,8 @@ export function ReportCostTab({ cost, showDepotColumn }: ReportCostTabProps) {
         />
         <ReportMetric
           label={<BiSectionTitle {...REPORTS.potentialProfit} />}
-          amount={Number(inv.total_potential_profit)}
-          danger={Number(inv.total_potential_profit) < 0}
+          amount={potentialProfitTotal}
+          danger={potentialProfitTotal != null && potentialProfitTotal < 0}
         />
       </div>
 

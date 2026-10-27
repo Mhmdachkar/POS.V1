@@ -9,9 +9,8 @@
  * All authoritative financial calculations happen server-side.
  */
 
-import { COMMON } from '@/lib/bilingual/common'
 import { bi, currentLocale, t } from '@/lib/bilingual/types'
-import { localizedUnitLabel } from '@/lib/localizedUnits'
+import { localizedUnitLabel, localizedUnitLabelForCount } from '@/lib/localizedUnits'
 
 export const DISPLAY_TIME_ZONE = 'Africa/Abidjan'
 export const MINUS_SIGN = '\u2212'
@@ -68,12 +67,13 @@ export function formatQuantity(qty: number, unitName: string): string {
   return `${new Intl.NumberFormat('fr-FR').format(rounded)} ${unit}`
 }
 
-/** Format a stock quantity in pieces: "124 Pièces" / "1 Pièce". */
+/** Format a stock quantity in pieces: "124 pièces" / "1 pièce". */
 export function formatPieces(pieces: number | null | undefined): string {
   if (pieces == null) return '—'
   const rounded = parseFloat(pieces.toFixed(3))
-  const unit = Math.abs(rounded) === 1 ? t(COMMON.piece) : t(COMMON.pieces)
-  return `${new Intl.NumberFormat('fr-FR').format(rounded)} ${unit}`
+  const unit = localizedUnitLabelForCount(Math.abs(rounded), 'pièce', 0)
+  const abs = new Intl.NumberFormat('fr-FR').format(Math.abs(rounded))
+  return `${rounded < 0 ? MINUS_SIGN : ''}${abs} ${unit}`
 }
 
 /** Format a date+time: French "26 oct. 2026, 22:31" (Africa/Abidjan). */
@@ -123,13 +123,13 @@ export function formatPercent(value: number | null | undefined): string {
   return `${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value)} %`
 }
 
-/** "2 pièces" / "2 pieces". */
+/** "2 pièces" / "2 pieces"; negatives use MINUS_SIGN. */
 export function formatReportPieces(pieces: number | null | undefined): string {
   if (pieces == null) return '—'
   const rounded = parseFloat(pieces.toFixed(3))
-  const one = Math.abs(rounded) === 1
-  const unit = currentLocale() === 'en' ? (one ? 'piece' : 'pieces') : (one ? 'pièce' : 'pièces')
-  return `${new Intl.NumberFormat('fr-FR').format(rounded)} ${unit}`
+  const unit = localizedUnitLabelForCount(Math.abs(rounded), 'pièce', 0)
+  const abs = new Intl.NumberFormat('fr-FR').format(Math.abs(rounded))
+  return `${rounded < 0 ? MINUS_SIGN : ''}${abs} ${unit}`
 }
 
 /** Calendar day from YYYY-MM-DD, not a UTC instant. "27 oct. 2026". */
