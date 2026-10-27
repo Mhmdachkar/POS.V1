@@ -263,6 +263,7 @@ describe('ReportsPage', () => {
     depotState.currentDepotId = null
     depotState.currentDepotName = null
     vi.mocked(downloadCsv).mockClear()
+    window.history.replaceState(null, '', '/')
   })
 
   it('renders Sales tab KPIs from the RPC payload', () => {

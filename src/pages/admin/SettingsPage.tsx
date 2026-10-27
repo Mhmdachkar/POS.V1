@@ -113,7 +113,6 @@ export function SettingsPage() {
           <div>
             <p className="text-xs text-text-muted mt-1">
               {t(ADMIN.lastUpdated)} {formatDateTime(data.rate_updated_at)}
-              <span className="block text-[10px]">{ADMIN.lastUpdated.en} {formatDateTime(data.rate_updated_at)}</span>
             </p>
           </div>
           {error && (

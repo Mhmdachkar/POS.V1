@@ -264,6 +264,7 @@ describe('fetchCustomerActivity', () => {
         id: 'ret-1',
         sale_id: 'sale-uuid-should-not-leak',
         refund_amount_cfa: 600,
+        balance_adjustment_cfa: 600,
         created_at: '2026-09-15T10:00:00Z',
         customer_id: 'cust-1',
         sales: { receipt_number: 'DKR-00000020', customer_id: 'cust-1' },

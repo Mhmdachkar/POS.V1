@@ -545,6 +545,8 @@ export interface SalesReportCashierRow {
   cashier_id: string
   cashier_name: string
   sales_activity_cfa: number
+  returns_activity_cfa?: number
+  net_sales_cfa?: number
   transaction_count: number
 }
 
@@ -552,6 +554,8 @@ export interface SalesReportCategoryRow {
   category_id: string | null
   category_name: string | null
   sales_activity_cfa: number
+  returns_activity_cfa?: number
+  net_sales_cfa?: number
   net_pieces: number
 }
 
@@ -581,6 +585,9 @@ export interface AdminSalesReport {
   net_sales_cfa: number
   transaction_count: number
   average_sale_cfa: number
+  discount_cfa?: number
+  override_reduction_cfa?: number
+  articles_sold?: number
   gross_profit_cfa: number
   cogs_cfa: number
   units_sold: number
@@ -648,6 +655,10 @@ export interface AdminInventoryReport {
   current_stock: InventoryStockRow[]
   low_stock: InventoryStockRow[]
   out_of_stock: InventoryStockRow[]
+  /** Stock on hand whose unit cost is missing or zero. Valuation excludes these. */
+  uncosted_stock?: InventoryStockRow[]
+  uncosted_stock_count?: number
+  valuation_partial?: boolean
   period_movement: InventoryMovementRow[]
   adjustment_breakdown: InventoryAdjustmentBreakdownRow[]
   low_stock_count: number

@@ -64,6 +64,7 @@ const RETURN_ACTIVITY_SELECT = `
   id,
   sale_id,
   refund_amount_cfa,
+  balance_adjustment_cfa,
   created_at,
   sales!inner(receipt_number, customer_id),
   sale_return_items(
@@ -139,14 +140,9 @@ export function mergeActivityEvents(events: CustomerActivityEvent[]): CustomerAc
   })
 }
 
+/** Only the unpaid part moves the customer balance. A cash sale nets to 0. */
 function saleActivityAmountCfa(row: Record<string, unknown>): number {
-  const balanceAdded = Number(row.balance_added_cfa ?? 0)
-  if (balanceAdded > 0) return balanceAdded
-  return authoritativeFinalSaleTotal({
-    total_cfa: Number(row.total_cfa ?? 0),
-    admin_override_total_cfa:
-      row.admin_override_total_cfa == null ? null : Number(row.admin_override_total_cfa),
-  })
+  return Number(row.balance_added_cfa ?? 0)
 }
 
 function mapSaleEvent(row: Record<string, unknown>): CustomerActivityEvent {
@@ -191,7 +187,7 @@ function mapReturnEvent(row: Record<string, unknown>): CustomerActivityEvent {
     occurredAt: String(row.created_at),
     reference: receipt,
     description: `${summary} ${bilingualPlain(CUSTOMERS.activityReturnedSuffix)}`,
-    amountCfa: -Number(row.refund_amount_cfa ?? 0),
+    amountCfa: -Number(row.balance_adjustment_cfa ?? 0),
     saleId: typeof row.sale_id === 'string' ? row.sale_id : null,
   }
 }

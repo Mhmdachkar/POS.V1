@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom'
+import { usePOSStore } from '@/stores/posStore'
 import {
   PanelLeftClose,
   PanelLeftOpen,
@@ -102,6 +103,7 @@ function RailItem({
   const aria = bilingualAriaLabel(item.label)
   const showExpandedLabel = expanded && !iconOnly
   const isPos = item.path === '/pos'
+  const cartCount = usePOSStore((s) => (isPos ? s.items.length : 0))
 
   return (
     <NavLink
@@ -126,11 +128,18 @@ function RailItem({
         />
       )}
 
-      <NavPictogram
-        path={item.path}
-        active={isActive}
-        size={isPos ? 'pos' : 'md'}
-      />
+      <span className="relative">
+        <NavPictogram
+          path={item.path}
+          active={isActive}
+          size={isPos ? 'pos' : 'md'}
+        />
+        {cartCount > 0 && (
+          <span className="absolute -right-2 -top-1 min-w-[1.25rem] h-5 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold leading-5 text-center">
+            {cartCount}
+          </span>
+        )}
+      </span>
 
       {showExpandedLabel ? (
         <span className="min-w-0 truncate">

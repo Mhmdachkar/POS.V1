@@ -14,7 +14,7 @@ export function BreakdownList({
     return <BilingualText {...REPORTS.noDataPeriod} variant="body" as="p" className="text-text-muted" />
   }
   return (
-    <ul className="divide-y divide-border rounded-md border border-border overflow-hidden">
+    <ul className="divide-y divide-border overflow-hidden rounded-xl bg-surface-muted">
       {rows.map((row) => (
         <li key={row.key} className="flex items-center justify-between gap-3 px-3 py-2 text-sm bg-surface">
           <span className="truncate text-text-primary">{row.label}</span>
@@ -39,7 +39,7 @@ export function BreakdownListPieces({
     return <BilingualText {...REPORTS.noDataPeriod} variant="body" as="p" className="text-text-muted" />
   }
   return (
-    <ul className="divide-y divide-border rounded-md border border-border overflow-hidden">
+    <ul className="divide-y divide-border overflow-hidden rounded-xl bg-surface-muted">
       {rows.map((row) => (
         <li key={row.key} className="flex items-center justify-between gap-3 px-3 py-2 text-sm bg-surface">
           <span className="truncate">{row.label}</span>

@@ -9,6 +9,7 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { embedOne } from '@/lib/embed'
+import { fillCashierNames } from '@/lib/staffDisplayNames'
 import { supabase } from '@/lib/supabase'
 import { invalidateAfterSaleSettled } from '@/lib/cacheInvalidation'
 import { CACHE_STALE, keepPlaceholderWhen } from '@/lib/cachePolicy'
@@ -254,7 +255,7 @@ export async function fetchSalesList(filters: SalesListFilters): Promise<{
     }
   })
 
-  return { data: items, count: count ?? 0 }
+  return { data: await fillCashierNames(items), count: count ?? 0 }
 }
 
 export async function fetchSaleDetail(id: string): Promise<SaleDetailData> {
@@ -331,7 +332,7 @@ export async function fetchSaleDetail(id: string): Promise<SaleDetailData> {
   const customer = embedOne(saleAny.customers)
   const staff = embedOne(saleAny.staff)
   const releasedBy = embedOne(ff?.released_by_staff)
-  return {
+  const detail = {
     ...(saleAny as any),
     customer_name: customer?.name ?? null,
     customer_phone: customer?.phone ?? null,
@@ -354,6 +355,8 @@ export async function fetchSaleDetail(id: string): Promise<SaleDetailData> {
     returns: (returnsRes.data ?? []) as SaleReturnDetail[],
     payments: (paymentsRes.data ?? []) as SalePaymentDetail[],
   }
+  const [named] = await fillCashierNames([detail])
+  return named
 }
 
 // ─────────────────────────────────────────────────────────────────

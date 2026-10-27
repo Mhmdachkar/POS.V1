@@ -35,7 +35,7 @@ function StockTable({
     return <p className="text-sm text-text-muted">Aucun</p>
   }
   return (
-    <ul className="divide-y divide-border border border-border rounded-md overflow-hidden">
+    <ul className="divide-y divide-border overflow-hidden rounded-xl bg-surface-muted">
       {rows.map((r) => (
         <li key={`${r.product_id}-${r.depot_id}`}>
           <button
@@ -72,9 +72,9 @@ export function ReportInventoryTab({ inventory, showDepotColumn }: ReportInvento
         {inventory.current_stock.length === 0 ? (
           <p className="text-sm text-text-muted">{t(REPORTS.noStockRows)}</p>
         ) : (
-          <div className="overflow-x-auto border border-border rounded-md max-h-80 overflow-y-auto">
+          <div className="max-h-80 overflow-x-auto overflow-y-auto rounded-xl bg-surface-muted">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-surface-alt text-xs">
+              <thead className="sticky top-0 bg-surface-muted text-xs text-text-secondary">
                 <tr>
                   <th className="text-left px-3 py-2">Produit</th>
                   {showDepotColumn && <th className="text-left px-3 py-2">Dépôt</th>}
@@ -141,6 +141,13 @@ export function ReportInventoryTab({ inventory, showDepotColumn }: ReportInvento
       <ReportSection title={<BiSectionTitle {...REPORTS.lowStock} />}>
         <StockTable rows={inventory.low_stock} showDepotColumn={showDepotColumn} onRowClick={setProductId} />
       </ReportSection>
+
+      {(inventory.uncosted_stock_count ?? 0) > 0 && (
+        <ReportSection title={<BiSectionTitle {...REPORTS.uncostedStock} />}>
+          <p className="text-sm text-text-secondary mb-3">{t(REPORTS.uncostedHint)}</p>
+          <StockTable rows={inventory.uncosted_stock ?? []} showDepotColumn={showDepotColumn} onRowClick={setProductId} />
+        </ReportSection>
+      )}
 
       <ReportSection title={<BiSectionTitle {...REPORTS.outOfStock} />}>
         <StockTable rows={inventory.out_of_stock} showDepotColumn={showDepotColumn} onRowClick={setProductId} />

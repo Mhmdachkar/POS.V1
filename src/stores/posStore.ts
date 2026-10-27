@@ -166,6 +166,7 @@ interface POSState {
   setOverrideTotalCfa: (amount: number | null) => void
   setPriceExceptionReason: (reason: string) => void
   clearCart: () => void
+  restoreCart: (items: CartItem[]) => void
 
   /**
    * Call immediately before the first submit attempt.
@@ -399,6 +400,14 @@ export const usePOSStore = create<POSState>()((set, get) => ({
     set({
       items: [],
       totals: computeTotals([], discountType, discountValue, cashTendered, overrideTotalCfa),
+    })
+  },
+
+  restoreCart: (items) => {
+    const { discountType, discountValue, cashTendered, overrideTotalCfa } = get()
+    set({
+      items,
+      totals: computeTotals(items, discountType, discountValue, cashTendered, overrideTotalCfa),
     })
   },
 

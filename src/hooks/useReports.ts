@@ -157,6 +157,7 @@ function normalizeShiftRow(row: Partial<CashShiftReportRow> & {
 /** Fill Phase 18A fields when hosted still returns Phase 12 payloads. */
 export function normalizeSalesReport(raw: AdminSalesReport): AdminSalesReport {
   const net = Number(raw.net_sales_cfa ?? 0)
+  const txn = Number(raw.transaction_count ?? 0)
   const gp = Number(raw.gross_profit_cfa ?? 0)
   const cogs = raw.cogs_cfa != null
     ? Number(raw.cogs_cfa)
@@ -169,6 +170,7 @@ export function normalizeSalesReport(raw: AdminSalesReport): AdminSalesReport {
     voided_amount_cfa: Number(raw.voided_amount_cfa ?? 0),
     no_shift_count: Number(raw.no_shift_count ?? 0),
     no_shift_amount_cfa: Number(raw.no_shift_amount_cfa ?? 0),
+    average_sale_cfa: txn > 0 ? Math.round(net / txn) : 0,
     amount_applied_cfa: Number(raw.amount_applied_cfa ?? 0),
     amount_tendered_cfa: Number(raw.amount_tendered_cfa ?? 0),
     balance_added_cfa: Number(raw.balance_added_cfa ?? 0),
@@ -190,12 +192,21 @@ export function normalizeSalesReport(raw: AdminSalesReport): AdminSalesReport {
 export function normalizeInventoryReport(raw: AdminInventoryReport): AdminInventoryReport {
   const current = (raw.current_stock ?? []).map(normalizeStockRow)
   const low = (raw.low_stock ?? []).map(normalizeStockRow)
-  const out = (raw.out_of_stock ?? []).map(normalizeStockRow)
+  const out = (raw.out_of_stock ?? [])
+    .map(normalizeStockRow)
+    .filter((row) => row.track_low_stock && Number(row.current_stock_pieces) <= 0)
+  const uncosted = raw.uncosted_stock
+    ? raw.uncosted_stock.map(normalizeStockRow)
+    : current.filter(
+      (row) => Number(row.current_stock_pieces) > 0 && row.cost_price_cfa == null,
+    )
   return {
     ...raw,
     current_stock: current,
     low_stock: low,
     out_of_stock: out,
+    uncosted_stock: uncosted,
+    uncosted_stock_count: uncosted.length,
     period_movement: (raw.period_movement ?? []).map((m) => ({
       transaction_type: m.transaction_type,
       quantity_pieces: Number(m.quantity_pieces ?? 0),
@@ -203,7 +214,7 @@ export function normalizeInventoryReport(raw: AdminInventoryReport): AdminInvent
     })),
     adjustment_breakdown: raw.adjustment_breakdown ?? [],
     low_stock_count: Number(raw.low_stock_count ?? low.length),
-    out_of_stock_count: Number(raw.out_of_stock_count ?? out.length),
+    out_of_stock_count: out.length,
   }
 }
 
