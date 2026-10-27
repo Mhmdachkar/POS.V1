@@ -108,13 +108,13 @@ export function ReportShiftsTab({ cash, sales }: ReportShiftsTabProps) {
                     <td className="px-3 py-2">{formatReportDateTime(s.closed_at ?? s.opened_at)}</td>
                     <td className="px-3 py-2">{s.cashier_name}</td>
                     <td className="px-3 py-2">{s.depot_name}</td>
-                    <td className="px-3 py-2 text-right">
+                    <td className="px-3 py-2 text-right whitespace-nowrap">
                       <MoneyDisplay amount={s.expected_cash_cfa ?? 0} size="small" />
                     </td>
-                    <td className="px-3 py-2 text-right">
+                    <td className="px-3 py-2 text-right whitespace-nowrap">
                       <MoneyDisplay amount={s.actual_cash_cfa ?? 0} size="small" />
                     </td>
-                    <td className="px-3 py-2 text-right">
+                    <td className="px-3 py-2 text-right whitespace-nowrap">
                       <MoneyDisplay amount={s.discrepancy_cfa ?? 0} size="small" danger={(s.discrepancy_cfa ?? 0) !== 0} />
                     </td>
                     <td className="px-3 py-2 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
@@ -125,6 +125,21 @@ export function ReportShiftsTab({ cash, sales }: ReportShiftsTabProps) {
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-border bg-surface-muted font-semibold">
+                  <td className="px-3 py-2" colSpan={3}>{t(COMMON.total)}</td>
+                  <td className="px-3 py-2 text-right whitespace-nowrap">
+                    <MoneyDisplay amount={Number(cash.closed_expected_total_cfa)} size="small" />
+                  </td>
+                  <td className="px-3 py-2 text-right whitespace-nowrap">
+                    <MoneyDisplay amount={Number(cash.closed_actual_total_cfa)} size="small" />
+                  </td>
+                  <td className="px-3 py-2 text-right whitespace-nowrap">
+                    <MoneyDisplay amount={Number(cash.closed_discrepancy_total_cfa)} size="small" danger={Number(cash.closed_discrepancy_total_cfa) !== 0} />
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
             </table>
           </div>
         )}

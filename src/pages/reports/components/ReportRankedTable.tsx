@@ -39,10 +39,12 @@ export function ReportRankedTable({
   rows,
   netTotal,
   marginTip,
+  nameHeader,
 }: {
   rows: RankedRow[]
   netTotal: number
   marginTip?: string
+  nameHeader?: string
 }) {
   const [page, setPage] = useState(0)
   const totals = useMemo(() => ({
@@ -62,7 +64,7 @@ export function ReportRankedTable({
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-surface-muted text-xs text-text-secondary">
             <tr>
-              <th className="px-3 py-3 text-left">{t(REPORTS.products)}</th>
+              <th className="px-3 py-3 text-left">{nameHeader ?? t(REPORTS.products)}</th>
               <th className="min-w-[7.5rem] px-3 py-3 text-right">{t(REPORTS.gross)}</th>
               <th className="min-w-[7.5rem] px-3 py-3 text-right">{t(REPORTS.returnsMetric)}</th>
               <th className="min-w-[7.5rem] px-3 py-3 text-right">{t(REPORTS.net)}</th>

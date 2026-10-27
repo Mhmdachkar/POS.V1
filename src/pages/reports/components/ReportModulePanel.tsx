@@ -1,14 +1,14 @@
 import { useQuery } from "@tanstack/react-query"
 import { rpc } from "@/lib/rpc"
-import { Button } from "@/components/ui"
+import { Button, MoneyDisplay } from "@/components/ui"
 import { COMMON } from "@/lib/bilingual/common"
-import { BiButtonInline } from "@/lib/bilingual/ui"
+import { BiButtonInline, BiModalTitle as BiSectionTitle } from "@/lib/bilingual/ui"
 import { REPORTS } from "@/lib/bilingual/reports"
+import { formatCFA } from "@/lib/formatters"
 import { t } from "@/lib/bilingual/types"
-import { MoneyDisplay } from "@/components/ui"
 import { ReportMetric } from "./ReportMetric"
 import { ReportSection } from "./ReportSection"
-import { BiModalTitle as BiSectionTitle } from "@/lib/bilingual/ui"
+import type { AdminCashReport } from "@/types/rpc"
 
 interface ReportModulePanelProps {
   kind: "collections" | "hours" | "shifts" | "ageing" | "stock" | "discounts" | "low"
@@ -16,6 +16,18 @@ interface ReportModulePanelProps {
   startDate: string
   endDate: string
   cashierId?: string
+  cash?: AdminCashReport | null
+}
+
+export type CollectionsPayload = {
+  cash_on_sales_cfa?: number
+  credit_cfa?: number
+  customer_payments_cfa?: number
+  cash_refunds_cfa?: number
+  balance_adjustments_cfa?: number
+  collected_cfa?: number
+  shift_cash_cfa?: number
+  no_shift_cash_cfa?: number
 }
 
 async function callReport(
@@ -42,12 +54,72 @@ async function callReport(
   return result.data
 }
 
+function PaymentModeTable({ data }: { data: CollectionsPayload }) {
+  const cashSales = Number(data.cash_on_sales_cfa ?? 0)
+  const creditSales = Number(data.credit_cfa ?? 0)
+  const payments = Number(data.customer_payments_cfa ?? 0)
+  const refunds = Number(data.cash_refunds_cfa ?? 0)
+  const balanceAdj = Number(data.balance_adjustments_cfa ?? 0)
+  const rows = [
+    { mode: REPORTS.modeCash, sales: cashSales, payments, refunds, net: cashSales + payments - refunds },
+    { mode: REPORTS.modeMobile, sales: 0, payments: 0, refunds: 0, net: 0 },
+    { mode: REPORTS.modeCard, sales: 0, payments: 0, refunds: 0, net: 0 },
+    { mode: REPORTS.modeCredit, sales: creditSales, payments: 0, refunds: balanceAdj, net: creditSales - balanceAdj },
+  ]
+  const tot = rows.reduce(
+    (s, r) => ({ sales: s.sales + r.sales, payments: s.payments + r.payments, refunds: s.refunds + r.refunds, net: s.net + r.net }),
+    { sales: 0, payments: 0, refunds: 0, net: 0 },
+  )
+  return (
+    <ReportSection title={<BiSectionTitle {...REPORTS.byPaymentMode} />}>
+      <div className="overflow-x-auto rounded-xl ring-1 ring-border">
+        <table className="w-full text-sm">
+          <thead className="bg-surface-muted text-xs text-text-secondary">
+            <tr>
+              <th className="px-3 py-2 text-left">{t(REPORTS.colMode)}</th>
+              <th className="px-3 py-2 text-right">{t(REPORTS.colSales)}</th>
+              <th className="px-3 py-2 text-right">{t(REPORTS.colCustomerPayments)}</th>
+              <th className="px-3 py-2 text-right">{t(REPORTS.colRefunds)}</th>
+              <th className="px-3 py-2 text-right">{t(REPORTS.colNet)}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((row) => (
+              <tr key={row.mode.fr}>
+                <td className="px-3 py-2">{t(row.mode)}</td>
+                <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums"><MoneyDisplay amount={row.sales} size="small" /></td>
+                <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums"><MoneyDisplay amount={row.payments} size="small" /></td>
+                <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums">
+                  <MoneyDisplay amount={row.refunds === 0 ? 0 : -Math.abs(row.refunds)} size="small" danger={row.refunds !== 0} />
+                </td>
+                <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums font-medium"><MoneyDisplay amount={row.net} size="small" /></td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-border bg-surface-muted font-semibold">
+              <td className="px-3 py-2">{t(COMMON.total)}</td>
+              <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums"><MoneyDisplay amount={tot.sales} size="small" /></td>
+              <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums"><MoneyDisplay amount={tot.payments} size="small" /></td>
+              <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums">
+                <MoneyDisplay amount={tot.refunds === 0 ? 0 : -Math.abs(tot.refunds)} size="small" danger={tot.refunds !== 0} />
+              </td>
+              <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums"><MoneyDisplay amount={tot.net} size="small" /></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </ReportSection>
+  )
+}
+
 export function ReportModulePanel({
   kind,
   depotId,
   startDate,
   endDate,
   cashierId,
+  cash,
 }: ReportModulePanelProps) {
   const name = {
     collections: "admin_report_collections",
@@ -78,17 +150,27 @@ export function ReportModulePanel({
   if (!query.data) return null
   const rows = Array.isArray(query.data) ? query.data : query.data
   if (kind === "collections" && rows && typeof rows === "object") {
-    const data = rows as Record<string, number>
+    const data = rows as CollectionsPayload
+    const collected = Number(data.collected_cfa ?? 0)
+    const closed = Number(cash?.closed_expected_total_cfa ?? 0)
+    const noShift = Number(data.no_shift_cash_cfa ?? 0)
+    const open = collected - closed - noShift
     return (
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <ReportMetric label={t(REPORTS.cashOnSales)} amount={Number(data.cash_on_sales_cfa ?? 0)} />
-        <ReportMetric label={t(REPORTS.customerPaymentsShort)} amount={Number(data.customer_payments_cfa ?? 0)} />
-        <ReportMetric
-          label={t(REPORTS.cashRefunds)}
-          amount={Number(data.cash_refunds_cfa ?? 0) === 0 ? 0 : -Math.abs(Number(data.cash_refunds_cfa ?? 0))}
-          danger={Number(data.cash_refunds_cfa ?? 0) !== 0}
-        />
-        <ReportMetric label={t(REPORTS.collected)} amount={Number(data.collected_cfa ?? 0)} emphasis />
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <ReportMetric label={t(REPORTS.cashOnSales)} amount={Number(data.cash_on_sales_cfa ?? 0)} />
+          <ReportMetric label={t(REPORTS.customerPaymentsShort)} amount={Number(data.customer_payments_cfa ?? 0)} />
+          <ReportMetric
+            label={t(REPORTS.cashRefunds)}
+            amount={Number(data.cash_refunds_cfa ?? 0) === 0 ? 0 : -Math.abs(Number(data.cash_refunds_cfa ?? 0))}
+            danger={Number(data.cash_refunds_cfa ?? 0) !== 0}
+          />
+          <ReportMetric label={t(REPORTS.collected)} amount={collected} emphasis />
+        </div>
+        <p className="text-sm text-text-secondary">
+          {t(REPORTS.collectionsReconcile(formatCFA(collected), formatCFA(closed), formatCFA(open), formatCFA(noShift)))}
+        </p>
+        <PaymentModeTable data={data} />
       </div>
     )
   }

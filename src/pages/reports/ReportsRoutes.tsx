@@ -1,6 +1,10 @@
 import { Navigate, Route } from 'react-router-dom'
 import { lastReportPath } from './lastReport'
 import { ReportsLayout } from './ReportsLayout'
+
+function LastReportRedirect() {
+  return <Navigate to={lastReportPath()} replace />
+}
 import {
   CashCollectionsPage,
   CashZPage,
@@ -22,7 +26,7 @@ import {
 export function reportsRouteTree() {
   return (
     <Route path="/reports" element={<ReportsLayout />}>
-      <Route index element={<Navigate to={lastReportPath()} replace />} />
+      <Route index element={<LastReportRedirect />} />
       <Route path="sales/summary" element={<SalesSummaryPage />} />
       <Route path="sales/products" element={<SalesProductsPage />} />
       <Route path="sales/categories" element={<SalesCategoriesPage />} />

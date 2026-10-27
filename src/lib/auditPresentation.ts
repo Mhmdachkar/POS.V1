@@ -33,7 +33,7 @@ function str(v: unknown): string | null {
 }
 
 const ADJUSTMENT_TYPE: Record<string, BilingualPair> = {
-  DAMAGE: bi('Dommage', 'Damage'),
+  DAMAGE: bi('Casse', 'Damage'),
   LOSS: bi('Perte', 'Loss'),
   EXPIRY: bi('Péremption', 'Expiry'),
   COUNT_CORRECTION: INVENTORY.countCorrection,
@@ -348,11 +348,10 @@ export function auditDetailChanges(row: AuditLogRow, units?: UnitLike[] | null):
 }
 
 export function auditActorLine(row: AuditLogRow): BilingualPair {
-  if (row.actor_name) {
-    const user = row.actor_username ? `@${row.actor_username}` : ''
-    const text = user ? `${row.actor_name} (${user})` : row.actor_name
-    return bi(text, text)
-  }
+  const display = str(row.actor_name)
+  if (display) return bi(display, display)
+  const username = str(row.actor_username)?.replace(/^@+/, '')
+  if (username) return bi(username, username)
   return ADMIN.systemActor
 }
 

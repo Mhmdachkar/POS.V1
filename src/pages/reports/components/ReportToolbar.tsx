@@ -3,6 +3,7 @@ import { ChevronDown, Download } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { Button, Select } from '@/components/ui'
 import { resolveReportDateRange, type ReportPreset } from '@/lib/reportDates'
+import { ReportDateInput } from './ReportDateInput'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { COMMON } from '@/lib/bilingual/common'
 import { REPORTS } from '@/lib/bilingual/reports'
@@ -172,26 +173,16 @@ export function ReportToolbar({
 
       {preset === 'custom' && (
         <div className="flex flex-wrap gap-3 items-center">
-          <label className="text-xs text-text-secondary inline-flex items-center gap-1">
-            <BilingualText {...REPORTS.dateFrom} variant="caption" layout="inline" />
-            <input
-              type="date"
-              lang="fr-FR"
-              value={customStart}
-              onChange={(e) => onCustomStartChange(e.target.value)}
-              className="ml-2 h-11 min-h-[44px] rounded-lg border border-border bg-surface px-2 text-sm"
-            />
-          </label>
-          <label className="text-xs text-text-secondary inline-flex items-center gap-1">
-            <BilingualText {...REPORTS.dateTo} variant="caption" layout="inline" />
-            <input
-              type="date"
-              lang="fr-FR"
-              value={customEnd}
-              onChange={(e) => onCustomEndChange(e.target.value)}
-              className="ml-2 h-11 min-h-[44px] rounded-lg border border-border bg-surface px-2 text-sm"
-            />
-          </label>
+          <ReportDateInput
+            label={bilingualPlain(REPORTS.dateFrom)}
+            value={customStart}
+            onChange={onCustomStartChange}
+          />
+          <ReportDateInput
+            label={bilingualPlain(REPORTS.dateTo)}
+            value={customEnd}
+            onChange={onCustomEndChange}
+          />
         </div>
       )}
 
