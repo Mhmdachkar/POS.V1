@@ -33,6 +33,7 @@ import { ReportInventoryTab } from './tabs/ReportInventoryTab'
 import { ReportCostTab } from './tabs/ReportCostTab'
 import { ReportTransfersTab } from './tabs/ReportTransfersTab'
 import { ReportAuditTab } from './tabs/ReportAuditTab'
+import { ReportMovementsTab } from './tabs/ReportMovementsTab'
 import { ReportModulePanel } from './components/ReportModulePanel'
 import { ReportSection } from './components/ReportSection'
 import { MoneyDisplay, PaginationBar } from '@/components/ui'
@@ -73,20 +74,6 @@ const LEGACY_TAB: Record<ReportId, ReportTabId> = {
   'control-audit': 'audit',
 }
 
-function movementLabel(type: string): string {
-  const key: Record<string, typeof REPORTS.moveSale> = {
-    SALE: REPORTS.moveSale,
-    RETURN: REPORTS.moveReturn,
-    RESTOCK: REPORTS.moveRestock,
-    ADJUSTMENT: REPORTS.moveAdjustment,
-    DAMAGE: REPORTS.moveDamage,
-    VOID: REPORTS.moveVoid,
-    TRANSFER_IN: REPORTS.moveIn,
-    TRANSFER_OUT: REPORTS.moveOut,
-  }
-  return t(key[type] ?? { fr: type, en: type })
-}
-
 function useExport(id: ReportId, extra: Record<string, unknown>) {
   const search = useReportSearch()
   const ctx = {
@@ -106,7 +93,7 @@ function useExport(id: ReportId, extra: Record<string, unknown>) {
     ...extra,
   }
   return {
-    disabled: extra.sales == null && extra.inventory == null && extra.customers == null && extra.cash == null && extra.cost == null && id !== 'stock-transfers' && id !== 'control-audit',
+    disabled: extra.sales == null && extra.inventory == null && extra.customers == null && extra.cash == null && extra.cost == null && id !== 'stock-transfers' && id !== 'control-audit' && id !== 'stock-movements' && id !== 'cash-collections',
     csv: () => { void exportReportCsv(ctx as never) },
     xlsx: () => { void exportReportXlsx(ctx as never) },
     print: () => { void exportReportPrint(ctx as never) },
@@ -250,6 +237,13 @@ function RankedPage({ id, rows, net }: { id: ReportId; rows: RankedRow[]; net: n
               rows={rows.length ? rows : mapRanked(id, sales)}
               netTotal={net || Number(sales.net_sales_cfa)}
               marginTip={id === 'sales-cashiers' ? t(REPORTS.marginShareTip) : undefined}
+              nameHeader={
+                id === 'sales-categories'
+                  ? t(REPORTS.colCategory)
+                  : id === 'sales-cashiers'
+                    ? t(REPORTS.colCashier)
+                    : undefined
+              }
             />
           </div>
         )}
@@ -360,24 +354,18 @@ export function SalesVoidsPage() {
 
 export function CashCollectionsPage() {
   const search = useReportSearch()
-  const q = useCustomersReport(search.depotId, search.range.startDate, search.range.endDate)
   const cashQ = useCashReport(search.depotId, search.range.startDate, search.range.endDate)
-  const exp = useExport('cash-collections', { customers: q.data, cash: cashQ.data })
+  const exp = useExport('cash-collections', { cash: cashQ.data })
   return (
     <Frame id="cash-collections" exp={exp}>
-      <ReportSectionState isLoading={q.isLoading} isError={q.isError} data={q.data} onRetry={() => { void q.refetch() }}>
-        {() => (
-          <div className="space-y-6">
-            <ReportModulePanel kind="collections" depotId={search.depotId} startDate={search.range.startDate} endDate={search.range.endDate} cashierId={search.cashier || undefined} />
-            {cashQ.data && (
-              <ReportMetric
-                label={<span className="inline-flex items-center">{t(REPORTS.zExpected)} <InfoTip text={t(REPORTS.zDifference)} /></span>}
-                amount={Number(cashQ.data.closed_expected_total_cfa)}
-              />
-            )}
-          </div>
-        )}
-      </ReportSectionState>
+      <ReportModulePanel
+        kind="collections"
+        depotId={search.depotId}
+        startDate={search.range.startDate}
+        endDate={search.range.endDate}
+        cashierId={search.cashier || undefined}
+        cash={cashQ.data}
+      />
     </Frame>
   )
 }
@@ -393,7 +381,6 @@ export function CashZPage() {
         {(cash) => (
           <div className="space-y-6">
             <ReportShiftsTab cash={cash} sales={salesQ.data} />
-            <ReportModulePanel kind="shifts" depotId={search.depotId} startDate={search.range.startDate} endDate={search.range.endDate} cashierId={search.cashier || undefined} />
           </div>
         )}
       </ReportSectionState>
@@ -410,8 +397,12 @@ export function CustomersReceivablesPage() {
       <ReportSectionState isLoading={q.isLoading} isError={q.isError} data={q.data} onRetry={() => { void q.refetch() }}>
         {(customers) => (
           <div className="space-y-6">
-            <ReportCustomersTab customers={customers} depotScoped={!!search.depotId} />
-            <ReportModulePanel kind="ageing" depotId={search.depotId} startDate={search.range.startDate} endDate={search.range.endDate} />
+            <ReportCustomersTab
+              customers={customers}
+              depotScoped={!!search.depotId}
+              depotId={search.depotId}
+              endDate={search.range.endDate}
+            />
           </div>
         )}
       </ReportSectionState>
@@ -446,28 +437,16 @@ export function StockInventoryPage() {
 
 export function StockMovementsPage() {
   const search = useReportSearch()
-  const q = useInventoryReport(search.depotId, search.range.startDate, search.range.endDate, true, {
-    p_category_id: search.category || null,
-    p_product_id: search.product || null,
-  })
-  const exp = useExport('stock-movements', { inventory: q.data })
+  const exp = useExport('stock-movements', {})
   return (
     <Frame id="stock-movements" exp={exp}>
-      <ReportSectionState isLoading={q.isLoading} isError={q.isError} data={q.data} onRetry={() => { void q.refetch() }}>
-        {(inventory) => (
-          <div className="space-y-6">
-            <ul className="divide-y divide-border overflow-hidden rounded-2xl bg-surface shadow-sm ring-1 ring-border">
-              {inventory.period_movement.map((m) => (
-                <li key={m.transaction_type} className="flex justify-between px-4 py-3 text-sm">
-                  <span>{movementLabel(m.transaction_type)}</span>
-                  <span className="tabular-nums">{formatReportPieces(Number(m.quantity_pieces))}</span>
-                </li>
-              ))}
-            </ul>
-            <ReportModulePanel kind="stock" depotId={search.depotId} startDate={search.range.startDate} endDate={search.range.endDate} />
-          </div>
-        )}
-      </ReportSectionState>
+      <ReportMovementsTab
+        depotId={search.depotId}
+        startDate={search.range.startDate}
+        endDate={search.range.endDate}
+        categoryId={search.category || undefined}
+        productId={search.product || undefined}
+      />
     </Frame>
   )
 }

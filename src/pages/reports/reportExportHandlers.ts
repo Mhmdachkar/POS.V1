@@ -241,7 +241,7 @@ export async function exportReportXlsx(ctx: ReportExportContext): Promise<void> 
   } else if (tab === 'returns' && sales) {
     downloadXlsx(`retours-${stamp}.xlsx`, [{
       name: 'Retours',
-      headers: ['Quand', 'Ticket', 'Remboursement', 'Espèces', 'Ajust. solde'],
+      headers: ['Quand', 'Ticket', 'Remboursement', 'Espèces', 'Avoir client'],
       rows: sales.returns.map((r) => [
         r.created_at,
         r.receipt_number,

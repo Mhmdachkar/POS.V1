@@ -384,10 +384,12 @@ export function ReportsPage() {
         )}
 
         {tab === 'customers' && customersQ.data && (
-          <>
-            <ReportCustomersTab customers={customersQ.data} depotScoped={!!depotId} />
-            <ReportModulePanel kind="ageing" depotId={depotId} startDate={range.startDate} endDate={range.endDate} />
-          </>
+          <ReportCustomersTab
+            customers={customersQ.data}
+            depotScoped={!!depotId}
+            depotId={depotId}
+            endDate={range.endDate}
+          />
         )}
 
         {tab === 'payments' && customersQ.data && (
@@ -398,10 +400,7 @@ export function ReportsPage() {
         )}
 
         {tab === 'shifts' && cashQ.data && (
-          <>
-            <ReportShiftsTab cash={cashQ.data} sales={salesQ.data} />
-            <ReportModulePanel kind="shifts" depotId={depotId} startDate={range.startDate} endDate={range.endDate} cashierId={cashierId || undefined} />
-          </>
+          <ReportShiftsTab cash={cashQ.data} sales={salesQ.data} />
         )}
 
         {tab === 'returns' && salesQ.data && (

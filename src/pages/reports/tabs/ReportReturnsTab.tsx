@@ -8,12 +8,20 @@ import { ReportMetric } from '../components/ReportMetric'
 import { ReportSection } from '../components/ReportSection'
 import { t } from '@/lib/bilingual/types'
 
-
 interface ReportReturnsTabProps {
   sales: AdminSalesReport
 }
 
 export function ReportReturnsTab({ sales }: ReportReturnsTabProps) {
+  const totals = sales.returns.reduce(
+    (s, r) => ({
+      refund: s.refund + Number(r.refund_amount_cfa),
+      cash: s.cash + Number(r.cash_refunded_cfa),
+      credit: s.credit + Number(r.balance_adjustment_cfa),
+    }),
+    { refund: 0, cash: 0, credit: 0 },
+  )
+
   return (
     <div className="space-y-8">
       <div className="grid md:grid-cols-3 gap-3 max-w-3xl">
@@ -27,18 +35,18 @@ export function ReportReturnsTab({ sales }: ReportReturnsTabProps) {
 
       <ReportSection title={<BiSectionTitle {...REPORTS.returnDetail} />}>
         {sales.returns.length === 0 ? (
-          <p className="text-sm text-text-muted">{t(REPORTS.noReturnsPeriod)}</p>
+          <p className="text-sm text-text-muted">{t(REPORTS.noDataPeriod)}</p>
         ) : (
           <div className="overflow-x-auto rounded-xl bg-surface-muted">
             <table className="w-full text-sm">
               <thead className="text-xs text-text-secondary">
                 <tr>
-                  <th className="text-left px-3 py-2">{t(REPORTS.colDate)}</th>
+                  <th className="text-left px-3 py-2">{t(REPORTS.whenCol)}</th>
                   <th className="text-left px-3 py-2">{t(COMMON.receipt)}</th>
                   <th className="text-left px-3 py-2">{t(COMMON.cashier)}</th>
-                  <th className="text-right px-3 py-2">{t(REPORTS.colRefunded)}</th>
-                  <th className="text-right px-3 py-2">{t(REPORTS.colCash)}</th>
-                  <th className="text-right px-3 py-2">{t(REPORTS.colOffBalance)}</th>
+                  <th className="text-right px-3 py-2">{t(REPORTS.refundCol)}</th>
+                  <th className="text-right px-3 py-2">{t(REPORTS.cashCol)}</th>
+                  <th className="text-right px-3 py-2">{t(REPORTS.customerCreditNote)}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -47,18 +55,26 @@ export function ReportReturnsTab({ sales }: ReportReturnsTabProps) {
                     <td className="px-3 py-2 text-text-muted">{formatReportDateTime(r.created_at)}</td>
                     <td className="px-3 py-2 font-mono text-xs">{r.receipt_number}</td>
                     <td className="px-3 py-2">{r.cashier_name}</td>
-                    <td className="px-3 py-2 text-right">
+                    <td className="px-3 py-2 text-right whitespace-nowrap">
                       <MoneyDisplay amount={r.refund_amount_cfa} size="small" />
                     </td>
-                    <td className="px-3 py-2 text-right">
+                    <td className="px-3 py-2 text-right whitespace-nowrap">
                       <MoneyDisplay amount={r.cash_refunded_cfa} size="small" />
                     </td>
-                    <td className="px-3 py-2 text-right">
+                    <td className="px-3 py-2 text-right whitespace-nowrap">
                       <MoneyDisplay amount={r.balance_adjustment_cfa} size="small" />
                     </td>
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-border bg-surface font-semibold">
+                  <td className="px-3 py-2" colSpan={3}>{t(COMMON.total)}</td>
+                  <td className="px-3 py-2 text-right whitespace-nowrap"><MoneyDisplay amount={totals.refund} size="small" /></td>
+                  <td className="px-3 py-2 text-right whitespace-nowrap"><MoneyDisplay amount={totals.cash} size="small" /></td>
+                  <td className="px-3 py-2 text-right whitespace-nowrap"><MoneyDisplay amount={totals.credit} size="small" /></td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         )}

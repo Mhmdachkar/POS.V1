@@ -1,15 +1,17 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
 import { REPORTS } from '@/lib/bilingual/reports'
+import { COMMON } from '@/lib/bilingual/common'
 import { INVENTORY, STOCK_TXN_TYPE } from '@/lib/bilingual/inventory'
 import { cn } from '@/lib/cn'
-import { MoneyDisplay, StockStatusBadge } from '@/components/ui'
+import { MoneyDisplay, PaginationBar, StockStatusBadge } from '@/components/ui'
 import { formatReportPieces } from '@/lib/formatters'
 import type { AdminInventoryReport, InventoryStockRow, InventoryStockStatus } from '@/types/rpc'
 import type { StockStatus } from '@/types'
 import { ProductDetailDrawer } from '@/pages/inventory/components/ProductDetailDrawer'
 import { ReportMetric } from '../components/ReportMetric'
 import { ReportSection } from '../components/ReportSection'
+import { ReportSearchField, useReportSearchPager } from '../components/ReportSearchPager'
 import { t } from '@/lib/bilingual/types'
 
 
@@ -78,6 +80,13 @@ function StockTable({
 
 export function ReportInventoryTab({ inventory, showDepotColumn }: ReportInventoryTabProps) {
   const [productId, setProductId] = useState<string | null>(null)
+  const getText = useCallback((r: InventoryStockRow) => `${r.name} ${r.depot_name ?? ''}`, [])
+  const pager = useReportSearchPager(inventory.current_stock, getText)
+  const piecesTotal = pager.filtered.reduce((s, r) => s + Number(r.current_stock_pieces), 0)
+  const valueTotal = pager.filtered.reduce(
+    (s, r) => s + (missingCost(r) ? 0 : Number(r.stock_value_cost_cfa ?? r.value_cfa ?? 0)),
+    0,
+  )
 
   return (
     <div className="space-y-8">
@@ -92,48 +101,60 @@ export function ReportInventoryTab({ inventory, showDepotColumn }: ReportInvento
         {inventory.current_stock.length === 0 ? (
           <p className="text-sm text-text-muted">{t(REPORTS.noStockRows)}</p>
         ) : (
-          <div className="overflow-x-auto rounded-xl bg-surface-muted">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-surface-muted text-xs text-text-secondary">
-                <tr>
-                  <th className="text-left px-3 py-2">{t(REPORTS.colProduct)}</th>
-                  {showDepotColumn && <th className="text-left px-3 py-2">{t(REPORTS.colDepot)}</th>}
-                  <th className="text-right px-3 py-2">{t(REPORTS.colPieces)}</th>
-                  <th className="text-right px-3 py-2">{t(REPORTS.colValue)}</th>
-                  <th className="text-right px-3 py-2">{t(REPORTS.colStatus)}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {inventory.current_stock.map((r) => (
-                  <tr
-                    key={`${r.product_id}-${r.depot_id}`}
-                    className={cn('hover:bg-surface-alt cursor-pointer')}
-                    onClick={() => setProductId(r.product_id)}
-                  >
-                    <td className="px-3 py-2">{r.name}</td>
-                    {showDepotColumn && <td className="px-3 py-2 text-text-secondary">{r.depot_name}</td>}
-                    <td className="px-3 py-2 text-right tabular-nums">{formatReportPieces(Number(r.current_stock_pieces))}</td>
-                    <td className="px-3 py-2 text-right">
-                      {missingCost(r) ? (
-                        <span className="text-text-muted">—</span>
-                      ) : (
-                        <MoneyDisplay amount={Number(r.stock_value_cost_cfa ?? r.value_cfa ?? 0)} size="small" />
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <span className="flex shrink-0 items-center gap-1">
-              {missingCost(r) && (
-                <span className="rounded-full bg-warning-bg px-2 py-0.5 text-[10px] font-medium text-warning-foreground">
-                  {t(REPORTS.uncostedStock)}
-                </span>
-              )}
-              <StockStatusBadge status={toStockBadgeStatus(r.stock_status)} />
-            </span>
-                    </td>
+          <div className="space-y-3">
+            <ReportSearchField value={pager.query} onChange={pager.setQuery} />
+            <div className="overflow-x-auto rounded-xl bg-surface-muted">
+              <table className="w-full text-sm">
+                <thead className="bg-surface-muted text-xs text-text-secondary">
+                  <tr>
+                    <th className="text-left px-3 py-2">{t(REPORTS.productCol)}</th>
+                    {showDepotColumn && <th className="text-left px-3 py-2">{t(REPORTS.depotCol)}</th>}
+                    <th className="text-right px-3 py-2">{t(REPORTS.piecesCol)}</th>
+                    <th className="text-right px-3 py-2">{t(REPORTS.valueCol)}</th>
+                    <th className="text-right px-3 py-2">{t(REPORTS.statusCol)}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {pager.slice.map((r) => (
+                    <tr
+                      key={`${r.product_id}-${r.depot_id}`}
+                      className={cn('hover:bg-surface-alt cursor-pointer')}
+                      onClick={() => setProductId(r.product_id)}
+                    >
+                      <td className="px-3 py-2">{r.name}</td>
+                      {showDepotColumn && <td className="px-3 py-2 text-text-secondary">{r.depot_name}</td>}
+                      <td className="px-3 py-2 text-right tabular-nums">{formatReportPieces(Number(r.current_stock_pieces))}</td>
+                      <td className="px-3 py-2 text-right whitespace-nowrap">
+                        {missingCost(r) ? (
+                          <span className="text-text-muted">—</span>
+                        ) : (
+                          <MoneyDisplay amount={Number(r.stock_value_cost_cfa ?? r.value_cfa ?? 0)} size="small" />
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <span className="flex shrink-0 items-center justify-end gap-1">
+                          {missingCost(r) && (
+                            <span className="rounded-full bg-warning-bg px-2 py-0.5 text-[10px] font-medium text-warning-foreground">
+                              {t(REPORTS.uncostedStock)}
+                            </span>
+                          )}
+                          <StockStatusBadge status={toStockBadgeStatus(r.stock_status)} />
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-border bg-surface font-semibold">
+                    <td className="px-3 py-2" colSpan={showDepotColumn ? 2 : 1}>{t(COMMON.total)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatReportPieces(piecesTotal)}</td>
+                    <td className="px-3 py-2 text-right whitespace-nowrap"><MoneyDisplay amount={valueTotal} size="small" /></td>
+                    <td />
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            <PaginationBar page={pager.page} totalPages={pager.pages} onPageChange={pager.setPage} />
           </div>
         )}
       </ReportSection>

@@ -348,9 +348,10 @@ export function auditDetailChanges(row: AuditLogRow, units?: UnitLike[] | null):
 }
 
 export function auditActorLine(row: AuditLogRow): BilingualPair {
-  if (row.actor_name) {
-    return bi(row.actor_name, row.actor_name)
-  }
+  const display = str(row.actor_name)
+  if (display) return bi(display, display)
+  const username = str(row.actor_username)?.replace(/^@+/, '')
+  if (username) return bi(username, username)
   return ADMIN.systemActor
 }
 

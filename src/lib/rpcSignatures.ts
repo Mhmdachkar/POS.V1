@@ -46,7 +46,7 @@ export const RPC_SIGNATURES = {
   admin_report_shift_lines: ['p_depot_id', 'p_start_date', 'p_end_date', 'p_cashier_id'],
   admin_report_discounts: ['p_depot_id', 'p_start_date', 'p_end_date', 'p_cashier_id'],
   admin_report_customer_ageing: ['p_depot_id', 'p_as_of'],
-  admin_report_stock_movements: ['p_depot_id', 'p_start_date', 'p_end_date'],
+  admin_report_stock_movements: ['p_depot_id', 'p_start_date', 'p_end_date', 'p_category_id', 'p_product_id'],
   admin_report_low_stock: ['p_depot_id'],
   admin_refunds_over_payable: [],
   staff_display_names: ['p_ids'],

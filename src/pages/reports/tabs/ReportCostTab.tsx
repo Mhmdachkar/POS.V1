@@ -1,12 +1,16 @@
-import { BiModalTitle as BiSectionTitle, BiEmptyTitle } from '@/lib/bilingual/ui'
+import { useCallback } from 'react'
+import { BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
 import { REPORTS } from '@/lib/bilingual/reports'
-import { MoneyDisplay } from '@/components/ui'
+import { COMMON } from '@/lib/bilingual/common'
+import { MoneyDisplay, PaginationBar } from '@/components/ui'
 import { formatReportDateTime, formatReportPieces } from '@/lib/formatters'
+import { localizedUnitLabel } from '@/lib/localizedUnits'
 import { t } from '@/lib/bilingual/types'
 import { InfoTip } from '../components/InfoTip'
 import type { AdminCostReport, AdminCostInventoryRow, AdminCostRestockRow } from '@/lib/rpc'
 import { ReportMetric } from '../components/ReportMetric'
 import { ReportSection } from '../components/ReportSection'
+import { ReportSearchField, useReportSearchPager } from '../components/ReportSearchPager'
 
 interface ReportCostTabProps {
   cost: AdminCostReport
@@ -20,62 +24,87 @@ function InventoryValueTable({
   rows: AdminCostInventoryRow[]
   showDepotColumn: boolean
 }) {
+  const getText = useCallback((r: AdminCostInventoryRow) => `${r.product_name} ${r.depot_name ?? ''} ${r.category_name ?? ''}`, [])
+  const pager = useReportSearchPager(rows, getText)
+  const tot = pager.filtered.reduce(
+    (s, r) => ({
+      pieces: s.pieces + Number(r.current_stock_pieces),
+      cost: s.cost + Number(r.inventory_value_at_cost),
+      sell: s.sell + Number(r.inventory_value_at_selling),
+      profit: s.profit + Number(r.potential_profit),
+    }),
+    { pieces: 0, cost: 0, sell: 0, profit: 0 },
+  )
   if (rows.length === 0) {
-    return <p className="text-sm text-text-muted"><BiEmptyTitle {...REPORTS.noInventoryCostRows} /></p>
+    return <p className="text-sm text-text-muted">{t(REPORTS.noDataPeriod)}</p>
   }
   return (
-    <div className="overflow-x-auto border border-border rounded-md">
-      <table className="w-full text-sm">
-        <thead className="sticky top-0 bg-surface-alt text-xs">
-          <tr>
-            <th className="text-left px-3 py-2">{t(REPORTS.colProduct)}</th>
-            {showDepotColumn && <th className="text-left px-3 py-2">{t(REPORTS.colDepot)}</th>}
-            <th className="text-right px-3 py-2">{t(REPORTS.stockPcs)}</th>
-            <th className="text-right px-3 py-2">{t(REPORTS.costPriceCol)}</th>
-            <th className="text-right px-3 py-2">{t(REPORTS.costValueCol)}</th>
-            <th className="text-right px-3 py-2">{t(REPORTS.saleValueCol)}</th>
-            <th className="text-right px-3 py-2">{t(REPORTS.marginCol)}</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {rows.map((r) => (
-            <tr key={`${r.product_id}-${r.depot_id}`} className="hover:bg-surface-alt">
-              <td className="px-3 py-2">
-                <span className="font-medium">{r.product_name}</span>
-                {!Number(r.cost_price_cfa) && (
-                  <span className="ml-2 rounded-full bg-warning/15 px-2 py-0.5 text-xs text-warning">{t(REPORTS.uncostedStock)}</span>
-                )}
-                {r.serial_number && (
-                  <span className="block text-xs text-text-muted">{r.serial_number}</span>
-                )}
-                <span className="block text-xs text-text-muted">{r.category_name}</span>
-              </td>
-              {showDepotColumn && (
-                <td className="px-3 py-2 text-text-secondary">{r.depot_name}</td>
-              )}
-              <td className="px-3 py-2 text-right tabular-nums">
-                {formatReportPieces(Number(r.current_stock_pieces))}
-              </td>
-              <td className="px-3 py-2 text-right">
-                <MoneyDisplay amount={Number(r.cost_price_cfa)} size="small" />
-              </td>
-              <td className="px-3 py-2 text-right">
-                <MoneyDisplay amount={Number(r.inventory_value_at_cost)} size="small" />
-              </td>
-              <td className="px-3 py-2 text-right">
-                <MoneyDisplay amount={Number(r.inventory_value_at_selling)} size="small" />
-              </td>
-              <td className="px-3 py-2 text-right">
-                <MoneyDisplay
-                  amount={Number(r.potential_profit)}
-                  size="small"
-                  danger={Number(r.potential_profit) < 0}
-                />
-              </td>
+    <div className="space-y-3">
+      <ReportSearchField value={pager.query} onChange={pager.setQuery} />
+      <div className="overflow-x-auto border border-border rounded-md">
+        <table className="w-full text-sm">
+          <thead className="bg-surface-alt text-xs">
+            <tr>
+              <th className="text-left px-3 py-2">{t(REPORTS.productCol)}</th>
+              {showDepotColumn && <th className="text-left px-3 py-2">{t(REPORTS.depotCol)}</th>}
+              <th className="text-right px-3 py-2">{t(REPORTS.stockPcs)}</th>
+              <th className="text-right px-3 py-2">{t(REPORTS.unitCost)}</th>
+              <th className="text-right px-3 py-2">{t(REPORTS.valueAtCost)}</th>
+              <th className="text-right px-3 py-2">{t(REPORTS.valueAtSale)}</th>
+              <th className="text-right px-3 py-2">{t(REPORTS.profitCol)}</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {pager.slice.map((r) => (
+              <tr key={`${r.product_id}-${r.depot_id}`} className="hover:bg-surface-alt">
+                <td className="px-3 py-2">
+                  <span className="font-medium">{r.product_name}</span>
+                  {!Number(r.cost_price_cfa) && (
+                    <span className="ml-2 rounded-full bg-warning/15 px-2 py-0.5 text-xs text-warning">{t(REPORTS.uncostedStock)}</span>
+                  )}
+                  {r.serial_number && (
+                    <span className="block text-xs text-text-muted">{r.serial_number}</span>
+                  )}
+                  <span className="block text-xs text-text-muted">{r.category_name}</span>
+                </td>
+                {showDepotColumn && (
+                  <td className="px-3 py-2 text-text-secondary">{r.depot_name}</td>
+                )}
+                <td className="px-3 py-2 text-right tabular-nums">
+                  {formatReportPieces(Number(r.current_stock_pieces))}
+                </td>
+                <td className="px-3 py-2 text-right whitespace-nowrap">
+                  <MoneyDisplay amount={Number(r.cost_price_cfa)} size="small" />
+                </td>
+                <td className="px-3 py-2 text-right whitespace-nowrap">
+                  <MoneyDisplay amount={Number(r.inventory_value_at_cost)} size="small" />
+                </td>
+                <td className="px-3 py-2 text-right whitespace-nowrap">
+                  <MoneyDisplay amount={Number(r.inventory_value_at_selling)} size="small" />
+                </td>
+                <td className="px-3 py-2 text-right whitespace-nowrap">
+                  <MoneyDisplay
+                    amount={Number(r.potential_profit)}
+                    size="small"
+                    danger={Number(r.potential_profit) < 0}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-border bg-surface-muted font-semibold">
+              <td className="px-3 py-2" colSpan={showDepotColumn ? 2 : 1}>{t(COMMON.total)}</td>
+              <td className="px-3 py-2 text-right tabular-nums">{formatReportPieces(tot.pieces)}</td>
+              <td />
+              <td className="px-3 py-2 text-right whitespace-nowrap"><MoneyDisplay amount={tot.cost} size="small" /></td>
+              <td className="px-3 py-2 text-right whitespace-nowrap"><MoneyDisplay amount={tot.sell} size="small" /></td>
+              <td className="px-3 py-2 text-right whitespace-nowrap"><MoneyDisplay amount={tot.profit} size="small" danger={tot.profit < 0} /></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <PaginationBar page={pager.page} totalPages={pager.pages} onPageChange={pager.setPage} />
     </div>
   )
 }
@@ -87,32 +116,31 @@ function RestockLogTable({
   rows: AdminCostRestockRow[]
   showDepotColumn: boolean
 }) {
+  const getText = useCallback((r: AdminCostRestockRow) => `${r.product_name} ${r.depot_name ?? ''}`, [])
+  const pager = useReportSearchPager(rows, getText)
   if (rows.length === 0) {
-    return (
-      <div className="space-y-2">
-        <p className="text-sm text-text-muted">{t(REPORTS.noDataPeriod)}</p>
-      </div>
-    )
+    return <p className="text-sm text-text-muted">{t(REPORTS.noDataPeriod)}</p>
   }
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
+      <ReportSearchField value={pager.query} onChange={pager.setQuery} />
       <div className="overflow-x-auto border border-border rounded-md">
         <table className="w-full text-sm">
-          <thead className="sticky top-0 bg-surface-alt text-xs">
+          <thead className="bg-surface-alt text-xs">
             <tr>
-              <th className="text-left px-3 py-2">{t(REPORTS.colDate)}</th>
-              <th className="text-left px-3 py-2">{t(REPORTS.colProduct)}</th>
-              {showDepotColumn && <th className="text-left px-3 py-2">{t(REPORTS.colDepot)}</th>}
-              <th className="text-left px-3 py-2">{t(REPORTS.colUnit)}</th>
-              <th className="text-right px-3 py-2">{t(REPORTS.colQty)}</th>
-              <th className="text-right px-3 py-2">{t(REPORTS.colPieces)}</th>
-              <th className="text-right px-3 py-2">{t(REPORTS.costPriceCol)}</th>
-              <th className="text-right px-3 py-2">{t(REPORTS.totalCostCol)}</th>
-              <th className="text-left px-3 py-2">{t(REPORTS.colNote)}</th>
+              <th className="text-left px-3 py-2">{t(REPORTS.dateCol)}</th>
+              <th className="text-left px-3 py-2">{t(REPORTS.productCol)}</th>
+              {showDepotColumn && <th className="text-left px-3 py-2">{t(REPORTS.depotCol)}</th>}
+              <th className="text-left px-3 py-2">{t(REPORTS.unitCol)}</th>
+              <th className="text-right px-3 py-2">{t(REPORTS.qtyCol)}</th>
+              <th className="text-right px-3 py-2">{t(REPORTS.piecesCol)}</th>
+              <th className="text-right px-3 py-2">{t(REPORTS.unitCost)}</th>
+              <th className="text-right px-3 py-2">{t(REPORTS.valueAtCost)}</th>
+              <th className="text-left px-3 py-2">{t(REPORTS.noteCol)}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {rows.map((r) => (
+            {pager.slice.map((r) => (
               <tr key={r.stock_entry_id} className="hover:bg-surface-alt">
                 <td className="px-3 py-2 text-text-secondary whitespace-nowrap">
                   {formatReportDateTime(r.entered_at)}
@@ -125,7 +153,7 @@ function RestockLogTable({
                   <td className="px-3 py-2 text-text-secondary">{r.depot_name}</td>
                 )}
                 <td className="px-3 py-2">
-                  {r.unit_name ?? (r.unit_level === 0 ? 'Pièce' : `L${r.unit_level}`)}
+                  {localizedUnitLabel(r.unit_name, r.unit_level)}
                   {r.serial_number && (
                     <span className="block text-xs text-text-muted">{r.serial_number}</span>
                   )}
@@ -134,10 +162,10 @@ function RestockLogTable({
                 <td className="px-3 py-2 text-right tabular-nums">
                   {formatReportPieces(Number(r.quantity_pieces))}
                 </td>
-                <td className="px-3 py-2 text-right">
+                <td className="px-3 py-2 text-right whitespace-nowrap">
                   <MoneyDisplay amount={Number(r.unit_cost_price_cfa)} size="small" />
                 </td>
-                <td className="px-3 py-2 text-right">
+                <td className="px-3 py-2 text-right whitespace-nowrap">
                   <MoneyDisplay amount={Number(r.total_cost_cfa)} size="small" />
                 </td>
                 <td className="px-3 py-2 text-text-muted text-xs">{r.note ?? '—'}</td>
@@ -146,7 +174,7 @@ function RestockLogTable({
           </tbody>
         </table>
       </div>
-      <InfoTip text={t(REPORTS.historicalCostNote)} />
+      <PaginationBar page={pager.page} totalPages={pager.pages} onPageChange={pager.setPage} />
     </div>
   )
 }
@@ -158,7 +186,6 @@ export function ReportCostTab({ cost, showDepotColumn }: ReportCostTabProps) {
 
   return (
     <div className="space-y-8">
-      {/* Inventory value metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <ReportMetric
           label={<BiSectionTitle {...REPORTS.inventoryValueAtCost} />}
@@ -175,7 +202,6 @@ export function ReportCostTab({ cost, showDepotColumn }: ReportCostTabProps) {
         />
       </div>
 
-      {/* Restock period metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <ReportMetric
           label={<BiSectionTitle {...REPORTS.totalRestockCost} />}
@@ -191,24 +217,16 @@ export function ReportCostTab({ cost, showDepotColumn }: ReportCostTabProps) {
         </div>
       </div>
 
-      {/* Current inventory cost valuation table */}
       {missingCost > 0 && (
         <p className="text-sm text-text-secondary">{t(REPORTS.partialValue(missingCost))}</p>
       )}
 
       <ReportSection title={<BiSectionTitle {...REPORTS.currentInventoryCost} />}>
-        <InventoryValueTable
-          rows={cost.inventory_cost}
-          showDepotColumn={showDepotColumn}
-        />
+        <InventoryValueTable rows={cost.inventory_cost} showDepotColumn={showDepotColumn} />
       </ReportSection>
 
-      {/* Restock log table */}
       <ReportSection title={<span className="inline-flex items-center"><BiSectionTitle {...REPORTS.restockLog} /> <InfoTip text={t(REPORTS.historicalCostNote)} /></span>}>
-        <RestockLogTable
-          rows={cost.restock_log}
-          showDepotColumn={showDepotColumn}
-        />
+        <RestockLogTable rows={cost.restock_log} showDepotColumn={showDepotColumn} />
       </ReportSection>
     </div>
   )
