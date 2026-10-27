@@ -92,6 +92,7 @@ export const AUDIT_ENTITY_LABELS: Record<string, BilingualPair> = {
   category: bi('Catégorie', 'Category'),
   product: bi('Produit', 'Product'),
   business_settings: bi('Paramètres', 'Settings'),
+  sale_fulfillment: bi('Préparation dépôt', 'Depot picking'),
 }
 
 export function auditActionLabel(action: string): BilingualPair {
@@ -250,6 +251,10 @@ export function auditEventSummary(row: AuditLogRow, units?: UnitLike[] | null): 
       `${action.fr}${refund != null ? ` · ${formatCFA(refund)}` : ''}`,
       `${action.en}${refund != null ? ` · ${formatCFA(refund)}` : ''}`,
     )
+  }
+
+  if (row.action === 'release_sale_fulfillment') {
+    return action
   }
 
   const entity = auditEntityLabel(row.entity_type)

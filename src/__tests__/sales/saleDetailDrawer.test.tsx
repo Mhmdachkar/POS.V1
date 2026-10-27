@@ -14,6 +14,7 @@ import type { SaleDetailData } from '@/hooks/useSales'
 import { formatCFA } from '@/lib/formatters'
 import { formatShiftTimeRange } from '@/lib/shiftAttribution'
 import { SALES } from '@/lib/bilingual/sales'
+import { REPORTS } from '@/lib/bilingual/reports'
 
 vi.mock('@/hooks/useSales', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useSales')>()
@@ -89,7 +90,10 @@ function baseSale(overrides: Partial<SaleDetailData> = {}): SaleDetailData {
   }
 }
 
-function renderDrawer(sale: SaleDetailData | null, opts?: { loading?: boolean; error?: boolean }) {
+function renderDrawer(
+  sale: SaleDetailData | null,
+  opts?: { loading?: boolean; error?: boolean; isOverRefund?: boolean },
+) {
   vi.mocked(useSaleDetail).mockReturnValue({
     data: sale,
     isLoading: !!opts?.loading,
@@ -101,7 +105,11 @@ function renderDrawer(sale: SaleDetailData | null, opts?: { loading?: boolean; e
 
   const view = render(
     <QueryClientProvider client={client}>
-      <SaleDetailDrawer saleId={sale ? sale.id : 'sale-1'} onClose={vi.fn()} />
+      <SaleDetailDrawer
+        saleId={sale ? sale.id : 'sale-1'}
+        isOverRefund={opts?.isOverRefund}
+        onClose={vi.fn()}
+      />
     </QueryClientProvider>,
   )
   return { ...view, client, invalidateSpy }
@@ -126,6 +134,16 @@ describe('SaleDetailDrawer', () => {
     renderDrawer(baseSale({ status: 'completed' }))
     expect(screen.getByRole('button', { name: SALES.returnTitle.fr })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: SALES.voidSale.fr })).toBeInTheDocument()
+  })
+
+  it('shows over-refund banner when isOverRefund is set', () => {
+    renderDrawer(baseSale({ status: 'partially_returned' }), { isOverRefund: true })
+    expect(screen.getByText(REPORTS.overRefundBadge.fr)).toBeInTheDocument()
+  })
+
+  it('hides over-refund banner by default', () => {
+    renderDrawer(baseSale({ status: 'partially_returned' }))
+    expect(screen.queryByText(REPORTS.overRefundBadge.fr)).not.toBeInTheDocument()
   })
 
   it('shows cashier without shift badge or explanation', () => {

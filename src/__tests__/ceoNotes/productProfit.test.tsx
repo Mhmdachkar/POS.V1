@@ -157,8 +157,8 @@ describe('CEO Notes — product profit / margin', () => {
         if (node?.tagName !== 'P') return false
         return (node.textContent ?? '').replace(/\s+/g, ' ').trim() === expected
       })
-    expect(matchRow('2 Cartons')).toBeInTheDocument()
-    expect(matchRow('2 Paquets')).toBeInTheDocument()
-    expect(matchRow('10 Pièces')).toBeInTheDocument()
+    expect(matchRow('2 cartons')).toBeInTheDocument()
+    expect(matchRow('2 paquets')).toBeInTheDocument()
+    expect(matchRow('10 pièces')).toBeInTheDocument()
   })
 })

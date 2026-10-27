@@ -123,7 +123,7 @@ export function ReportsPage() {
     tab === 'overview' || tab === 'sales' || tab === 'products' || tab === 'returns' || tab === 'voids' || tab === 'shifts'
   const inventoryEnabled = tab === 'overview' || tab === 'inventory'
   const customersEnabled = tab === 'overview' || tab === 'customers' || tab === 'payments'
-  const cashEnabled = tab === 'shifts'
+  const cashEnabled = tab === 'shifts' || tab === 'payments'
   const costEnabled = tab === 'cost'
 
   const salesQ = useSalesReport(
@@ -395,7 +395,7 @@ export function ReportsPage() {
         {tab === 'payments' && customersQ.data && (
           <>
             <ReportPaymentsTab customers={customersQ.data} />
-            <ReportModulePanel kind="collections" depotId={depotId} startDate={range.startDate} endDate={range.endDate} cashierId={cashierId || undefined} />
+            <ReportModulePanel kind="collections" depotId={depotId} startDate={range.startDate} endDate={range.endDate} cashierId={cashierId || undefined} cash={cashQ.data} />
           </>
         )}
 

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { PaginationBar } from '@/components/ui'
-import { formatMoney } from '@/lib/formatters'
+import { formatMoney, formatPercent } from '@/lib/formatters'
 import { InfoTip } from './InfoTip'
 import { COMMON } from '@/lib/bilingual/common'
 import { REPORTS } from '@/lib/bilingual/reports'
@@ -56,7 +56,7 @@ export function ReportRankedTable({
   assertKpiEqualsTable('net', netTotal, totals.net)
   const pages = Math.max(1, Math.ceil(rows.length / PAGE))
   const slice = rows.slice(page * PAGE, page * PAGE + PAGE)
-  const maxNet = Math.max(...rows.map((r) => Math.abs(r.net)), 1)
+  const shareBase = Math.abs(netTotal) > 0 ? Math.abs(netTotal) : 1
 
   return (
     <div className="overflow-hidden rounded-2xl bg-surface shadow-sm ring-1 ring-border">
@@ -69,14 +69,18 @@ export function ReportRankedTable({
               <th className="min-w-[7.5rem] px-3 py-3 text-right">{t(REPORTS.returnsMetric)}</th>
               <th className="min-w-[7.5rem] px-3 py-3 text-right">{t(REPORTS.net)}</th>
               <th className="min-w-[7.5rem] px-3 py-3 text-right">
-                {t(REPORTS.grossProfit)}
-                {marginTip ? <InfoTip text={marginTip} /> : null}
+                <span className="inline-flex items-center gap-1">
+                  {t(REPORTS.grossProfit)}
+                  {marginTip ? <InfoTip text={marginTip} /> : null}
+                </span>
               </th>
               <th className="min-w-[8rem] px-3 py-3 text-left">{t(REPORTS.shareOfNet)}</th>
             </tr>
           </thead>
           <tbody>
-            {slice.map((row) => (
+            {slice.map((row) => {
+              const sharePct = (Math.abs(row.net) / shareBase) * 100
+              return (
               <tr key={row.id} className="border-t border-border">
                 <td className="px-3 py-2">{row.name}</td>
                 <td className="px-3 py-2 text-right"><MoneyCell value={row.gross} /></td>
@@ -84,15 +88,21 @@ export function ReportRankedTable({
                 <td className="px-3 py-2 text-right font-medium"><MoneyCell value={row.net} /></td>
                 <td className="px-3 py-2 text-right"><MoneyCell value={row.margin ?? null} /></td>
                 <td className="px-3 py-2">
-                  <div className="h-2 rounded-full bg-surface-muted">
-                    <div
-                      className={cn('h-2 rounded-full bg-primary')}
-                      style={{ width: `${Math.min(100, (Math.abs(row.net) / maxNet) * 100)}%` }}
-                    />
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 min-w-0 flex-1 rounded-full bg-surface-muted">
+                      <div
+                        className={cn('h-2 rounded-full bg-primary')}
+                        style={{ width: `${Math.min(100, sharePct)}%` }}
+                      />
+                    </div>
+                    <span className="w-14 shrink-0 text-right text-xs tabular-nums text-text-secondary">
+                      {formatPercent(sharePct)}
+                    </span>
                   </div>
                 </td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-border bg-surface-muted font-semibold">

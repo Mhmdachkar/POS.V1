@@ -14,7 +14,7 @@ export const NAV = {
   staff: bi('Équipe', 'Staff'),
   depots: bi('Dépôts', 'Depots'),
   categories: bi('Catégories', 'Categories'),
-  auditLog: bi("Journal d\\'audit", 'Audit log'),
+  auditLog: bi("Journal d'audit", 'Audit log'),
   settings: bi('Paramètres', 'Settings'),
   pos: bi('Caisse', 'Register'),
   shift: bi('Service', 'Shift'),

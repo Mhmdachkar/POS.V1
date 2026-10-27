@@ -6,6 +6,7 @@ import { INVENTORY, STOCK_TXN_TYPE } from '@/lib/bilingual/inventory'
 import { cn } from '@/lib/cn'
 import { MoneyDisplay, PaginationBar, StockStatusBadge } from '@/components/ui'
 import { formatReportPieces } from '@/lib/formatters'
+import { adjustmentTypeLabel } from '@/lib/auditPresentation'
 import type { AdminInventoryReport, InventoryStockRow, InventoryStockStatus } from '@/types/rpc'
 import type { StockStatus } from '@/types'
 import { ProductDetailDrawer } from '@/pages/inventory/components/ProductDetailDrawer'
@@ -181,7 +182,7 @@ export function ReportInventoryTab({ inventory, showDepotColumn }: ReportInvento
             <ul className="text-sm space-y-1">
               {inventory.adjustment_breakdown.map((a) => (
                 <li key={a.adjustment_type} className="flex justify-between">
-                  <span>{a.adjustment_type}</span>
+                  <span>{adjustmentTypeLabel(a.adjustment_type)}</span>
                   <span className="tabular-nums">{formatReportPieces(Number(a.quantity_pieces))}</span>
                 </li>
               ))}

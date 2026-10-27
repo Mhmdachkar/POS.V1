@@ -363,6 +363,7 @@ export function SalesPage() {
       <SaleDetailDrawer
         saleId={selectedSaleId}
         shiftId={null}
+        isOverRefund={selectedSaleId != null && overRefundIds.has(selectedSaleId)}
         onClose={() => setSelectedSaleId(null)}
       />
     </div>

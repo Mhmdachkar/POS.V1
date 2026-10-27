@@ -1,18 +1,18 @@
 ﻿import { formatPieces } from '@/lib/formatters'
-import { localizedUnitLabel } from '@/lib/localizedUnits'
+import { localizedUnitLabel, localizedUnitLabelForCount } from '@/lib/localizedUnits'
 
 /** Frozen sale line unit label, localized for known packing names. */
 export function resolvedSaleUnitName(unitName: string | null | undefined, unitLevel: number): string {
   return localizedUnitLabel(unitName, unitLevel)
 }
 
-/** e.g. "3 Carton" — quantity sold in the unit chosen at checkout. */
+/** e.g. "3 cartons" — quantity sold in the unit chosen at checkout. */
 export function formatSoldQuantity(
   quantityInUnit: number,
   unitName: string | null | undefined,
   unitLevel: number,
 ): string {
-  const unit = resolvedSaleUnitName(unitName, unitLevel)
+  const unit = localizedUnitLabelForCount(quantityInUnit, unitName, unitLevel)
   return `${quantityInUnit} ${unit}`
 }
 
