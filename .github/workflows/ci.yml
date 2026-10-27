@@ -23,6 +23,12 @@ jobs:
       - name: Type-check
         run: npm run type-check
 
+      - name: RPC signatures vs migrations
+        run: node scripts/check-rpc-signatures.mjs
+
+      - name: French locale parity
+        run: npx vitest run src/__tests__/i18n/frenchParity.test.ts
+
       - name: Test
         run: npm test
 

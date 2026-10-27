@@ -7,6 +7,7 @@ export interface DepotOverviewMetrics {
   releasedToday: number
   lowStock: number
   outOfStock: number
+  untrackedZero: number
 }
 
 export const depotOverviewKeys = {
@@ -65,11 +66,14 @@ export async function fetchDepotOverview(depotId: string): Promise<{
 
   let lowStock = 0
   let outOfStock = 0
+  let untrackedZero = 0
   const products = (productsRes.data ?? []) as DepotOverviewProductRow[]
   for (const p of products) {
     const stock = Number(p.current_stock_pieces)
-    if (stock <= 0) outOfStock += 1
-    else if (p.is_low_stock || (p.track_low_stock && p.low_stock_threshold != null && stock <= Number(p.low_stock_threshold))) {
+    const tracked = p.track_low_stock === true
+    if (!tracked && stock <= 0) untrackedZero += 1
+    else if (tracked && stock <= 0) outOfStock += 1
+    else if (tracked && (p.is_low_stock || (p.low_stock_threshold != null && stock <= Number(p.low_stock_threshold)))) {
       lowStock += 1
     }
   }
@@ -90,6 +94,7 @@ export async function fetchDepotOverview(depotId: string): Promise<{
       releasedToday: releasedRes.count ?? 0,
       lowStock,
       outOfStock,
+      untrackedZero,
     },
     pendingSaleIds: ((pendingList.data ?? []) as PendingFulfillmentRow[]).map((r) => r.sale_id),
   }

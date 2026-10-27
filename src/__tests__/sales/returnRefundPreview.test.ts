@@ -332,3 +332,30 @@ describe('roundCfa2 / computeReturnLineRefund / computeReturnRefundTotal', () =>
     expect(preview.cashRefundCfa).not.toBe(unrounded)
   })
 })
+
+describe('override 8 000 full return', () => {
+  it('refunds exactly 8 000 when a 10 000 sale was overridden to 8 000', () => {
+    const sale = {
+      total_cfa: 10_000,
+      admin_override_total_cfa: 8_000,
+      amount_applied_cfa: 8_000,
+      balance_added_cfa: 0,
+    }
+    const pool = saleRefundPoolCfa(sale)
+    expect(pool).toBe(8_000)
+    const basis = lineRefundBasisCfa(10_000, 10_000, pool)
+    expect(basis).toBe(8_000)
+    const refund = computeReturnRefundTotal(
+      [{
+        originalQty: 1,
+        selectedQty: 1,
+        netLineTotalCfa: 10_000,
+        refundBasisCfa: basis,
+        alreadyReturnedQty: 0,
+        alreadyRefundedCfa: 0,
+      }],
+      remainingSaleRefundPool(pool, 0),
+    )
+    expect(refund).toBe(8_000)
+  })
+})

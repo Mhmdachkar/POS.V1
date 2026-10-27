@@ -8,6 +8,7 @@
 
 import { useState, type ReactNode } from 'react'
 import { INVENTORY } from '@/lib/bilingual/inventory'
+import { ADMIN } from '@/lib/bilingual/admin'
 import { COMMON } from '@/lib/bilingual/common'
 import { BiModalTitle as BiSectionTitle, BiModalTitle } from '@/lib/bilingual/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
@@ -458,8 +459,8 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
           }
         }}
         title={<BiModalTitle {...INVENTORY.deactivateProduct} />}
-        message="Allowed even with stock. Blocked only if this product is on a pending transfer."
-        confirmLabel="Deactivate"
+        message={t(INVENTORY.deactivateEvenWithStock)}
+        confirmLabel={t(ADMIN.deactivate)}
         isLoading={deactivating}
       />
     </>

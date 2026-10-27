@@ -17,6 +17,7 @@ import { CUSTOMERS } from '@/lib/bilingual/customers'
 import { SHIFT_COPY } from '@/lib/bilingual/shift'
 import { TRANSFERS } from '@/lib/bilingual/transfers'
 import { INVENTORY } from '@/lib/bilingual/inventory'
+import { REPORTS } from '@/lib/bilingual/reports'
 import { SALES } from '@/lib/bilingual/sales'
 import { Package, Plus } from 'lucide-react'
 import { cn } from '@/lib/cn'
@@ -339,13 +340,25 @@ export function InventoryPage() {
                   })()}
                 </span>
                 <span
-                  className="text-sm font-semibold tabular-nums text-right text-text-primary truncate"
+                  className="text-sm font-semibold tabular-nums text-right text-text-primary whitespace-normal"
                   title={formatPieces(product.current_stock_pieces)}
                 >
                   {formatStockCompact(product.current_stock_pieces, product.units ?? null)}
                 </span>
-                <span className="min-w-0">
+                <span className="min-w-0 inline-flex items-center gap-1">
                   <StockStatusBadge status={getProductStockStatus(product)} />
+                  {(() => {
+                    const unit = primarySellingUnit(product.units)
+                    const cost = unit && 'cost_price_cfa' in unit ? Number(unit.cost_price_cfa) : null
+                    if (cost == null || cost === 0) {
+                      return (
+                        <span className="rounded-full bg-warning-bg px-2 py-0.5 text-[10px] font-medium text-warning-foreground">
+                          {t(REPORTS.uncostedStock)}
+                        </span>
+                      )
+                    }
+                    return null
+                  })()}
                 </span>
                 <span className="text-sm text-text-secondary whitespace-nowrap">
                   {product.track_low_stock ? t(COMMON.yes) : t(COMMON.no)}

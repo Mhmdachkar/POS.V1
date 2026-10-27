@@ -107,7 +107,7 @@ export function StaffPage() {
               type="button"
               onClick={() => { setStatus(opt.value); setPage(0) }}
               className={cn(
-                'px-3 h-7 rounded-full text-xs font-medium',
+                'px-3 min-h-[44px] h-11 rounded-full text-sm font-medium',
                 status === opt.value ? 'bg-primary text-primary-foreground' : 'bg-surface-muted text-text-secondary border border-border',
               )}
             >
@@ -120,7 +120,7 @@ export function StaffPage() {
               type="button"
               onClick={() => { setRole(opt.value); setPage(0) }}
               className={cn(
-                'px-3 h-7 rounded-full text-xs font-medium',
+                'px-3 min-h-[44px] h-11 rounded-full text-sm font-medium',
                 role === opt.value ? 'bg-primary text-primary-foreground' : 'bg-surface-muted text-text-secondary border border-border',
               )}
             >
@@ -145,11 +145,11 @@ export function StaffPage() {
           <>
             <div className="sticky top-0 bg-surface-muted border-b border-border z-[1]">
               <div className={cn('grid gap-4 px-4 py-2 items-center', STAFF_GRID)}>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Name</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Username</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Role</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Depot</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Status</span>
+                <span className="text-xs font-semibold text-text-secondary">{t(ADMIN.colName)}</span>
+                <span className="text-xs font-semibold text-text-secondary">{t(ADMIN.colUsername)}</span>
+                <span className="text-xs font-semibold text-text-secondary">{t(ADMIN.colRole)}</span>
+                <span className="text-xs font-semibold text-text-secondary">{t(COMMON.depot)}</span>
+                <span className="text-xs font-semibold text-text-secondary">{t(ADMIN.colStatus)}</span>
               </div>
             </div>
             {rows.map((row) => (

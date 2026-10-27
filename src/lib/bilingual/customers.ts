@@ -81,6 +81,7 @@ export const CUSTOMERS = {
   activityTypePayment: bi('Paiement', 'Payment'),
   activityCreditAdded: bi('Crédit ajouté', 'Credit added'),
   activityCashSale: bi('Vente comptant', 'Cash sale'),
+  activityCashPayment: bi('Paiement espèces', 'Cash payment'),
   activitySaleCancelled: bi('Annulée', 'Cancelled'),
   activityCustomerPaymentRef: bi('Paiement client', 'Customer payment'),
   activityBalancePayment: bi('Paiement sur solde', 'Balance payment'),
@@ -97,6 +98,7 @@ export const CUSTOMERS = {
   exportAccountExcel: bi('Exporter Excel', 'Export Excel'),
   exportAccountPdf: bi('Exporter PDF', 'Export PDF'),
   outstandingBalance: bi('Solde dû restant', 'Outstanding balance owed'),
+  runningBalance: bi('Solde courant', 'Running balance'),
   balanceHelp: bi(
     'Les crédits des ventes et les paiements clients affectent ce solde. Les paiements ne sont pas liés à des tickets individuels.',
     'Credits from sales and customer payments affect this balance. Payments are not tied to individual receipts.',

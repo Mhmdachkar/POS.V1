@@ -11,6 +11,7 @@
  */
 
 import { supabase } from '@/lib/supabase'
+import { assertKnownRpc, type RpcName } from '@/lib/rpcSignatures'
 import { parseError } from '@/lib/errors'
 import type { VhmError } from '@/lib/errors'
 import type {
@@ -77,11 +78,12 @@ type RpcResult<T> = RpcSuccess<T> | RpcFailure
  * On success, casts the jsonb return value to T.
  */
 async function callRpc<TResult>(
-  fnName: string,
+  fnName: RpcName | string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   params: any,
 ): Promise<RpcResult<TResult>> {
   try {
+    assertKnownRpc(fnName)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase.rpc as any)(fnName, params)
     if (error) {
@@ -283,7 +285,47 @@ export const rpc = {
 
   adminReportCostDetail: (params: AdminCostReportParams): Promise<RpcResult<AdminCostReport>> =>
     callRpc<AdminCostReport>('admin_report_cost_detail', params),
+
+  adminReportCollections: (params: AdminReportParams): Promise<RpcResult<unknown>> =>
+    callRpc('admin_report_collections', params),
+
+  adminReportSalesByHour: (params: AdminReportParams): Promise<RpcResult<unknown>> =>
+    callRpc('admin_report_sales_by_hour', params),
+
+  adminReportShiftLines: (params: AdminReportParams): Promise<RpcResult<unknown>> =>
+    callRpc('admin_report_shift_lines', params),
+
+  adminReportDiscounts: (params: AdminReportParams): Promise<RpcResult<unknown>> =>
+    callRpc('admin_report_discounts', params),
+
+  adminReportCustomerAgeing: (params: { p_depot_id: string | null; p_as_of: string }): Promise<RpcResult<unknown>> =>
+    callRpc('admin_report_customer_ageing', params),
+
+  adminReportStockMovements: (params: AdminReportParams): Promise<RpcResult<unknown>> =>
+    callRpc('admin_report_stock_movements', params),
+
+  adminReportLowStock: (params: { p_depot_id: string | null }): Promise<RpcResult<unknown>> =>
+    callRpc('admin_report_low_stock', params),
+
+  adminRefundsOverPayable: (): Promise<RpcResult<Array<{ sale_id: string; receipt_number: string; payable_cfa: number; refunds_cfa: number }>>> =>
+    callRpc('admin_refunds_over_payable', {}),
+
+  customerLedger: (customerId: string): Promise<RpcResult<CustomerLedgerRpcRow[]>> =>
+    callRpc('customer_ledger', { p_customer_id: customerId }),
 } as const
+
+export interface CustomerLedgerRpcRow {
+  id: string
+  kind: 'sale' | 'cash_payment' | 'return' | 'account_payment'
+  occurred_at: string
+  reference: string | null
+  item_summary: string | null
+  note: string | null
+  amount_cfa: number
+  running_balance_cfa: number
+  sale_id: string | null
+  adds_credit: boolean
+}
 
 // ─── Cost report types (CEO Notes) ─────────────────────────────
 export interface AdminCostReportParams {

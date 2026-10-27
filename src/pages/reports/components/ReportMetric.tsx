@@ -9,6 +9,7 @@ export interface ReportMetricProps {
   secondaryAmount?: number
   secondaryText?: string
   danger?: boolean
+  emphasis?: boolean
   className?: string
 }
 
@@ -19,13 +20,21 @@ export function ReportMetric({
   secondaryAmount,
   secondaryText,
   danger,
+  emphasis,
   className,
 }: ReportMetricProps) {
   return (
-    <div className={cn('rounded-lg border border-border-strong bg-surface px-4 py-3', className)}>
-      <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">{label}</p>
-      <div className="mt-1">
-        <MoneyDisplay amount={amount} size="medium" danger={danger} />
+    <div className={cn(
+      'rounded-2xl bg-surface px-4 py-4 shadow-sm ring-1 ring-border',
+      emphasis && 'bg-primary-subtle ring-primary/25',
+      className,
+    )}>
+      <p className={cn(
+        'text-xs font-medium text-text-secondary',
+        emphasis && 'text-sm text-primary',
+      )}>{label}</p>
+      <div className="mt-2">
+        <MoneyDisplay amount={amount} size={emphasis ? 'large' : 'medium'} danger={danger} />
       </div>
       {(secondaryLabel != null && secondaryAmount != null) && (
         <p className="mt-2 text-xs text-text-muted">

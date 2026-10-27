@@ -5,7 +5,7 @@ import { COMMON } from '@/lib/bilingual/common'
 import { POS } from '@/lib/bilingual/pos'
 import { cn } from '@/lib/cn'
 import { EmptyState, MoneyDisplay, PaginationBar, SaleStatusBadge, Skeleton } from '@/components/ui'
-import { formatDateTime } from '@/lib/formatters'
+import { formatCFA, formatDateTime } from '@/lib/formatters'
 import type { AdminSalesReport } from '@/types/rpc'
 import { useSalesList } from '@/hooks/useSales'
 import { useDepotOptions } from '@/hooks/useInventory'
@@ -28,6 +28,19 @@ const GRID_WITH_DEPOT =
   'grid-cols-[6.5rem_5.5rem_minmax(4rem,0.85fr)_minmax(4rem,0.75fr)_minmax(4rem,0.85fr)_5rem_minmax(5.5rem,1fr)]'
 const GRID_NO_DEPOT =
   'grid-cols-[6.5rem_5.5rem_minmax(4.5rem,0.9fr)_minmax(4.5rem,0.85fr)_5rem_minmax(5.5rem,1fr)]'
+
+function marginSecondary(sales: AdminSalesReport): string | undefined {
+  const excluded = Number(sales.lines_without_cost_count ?? 0)
+  const base = excluded > 0
+    ? Number(sales.costed_net_sales_cfa ?? 0)
+    : Number(sales.net_sales_cfa)
+  const percent = base > 0
+    ? `${Math.round((Number(sales.gross_profit_cfa) / base) * 100)} %`
+    : undefined
+  if (excluded <= 0) return percent
+  const note = t(REPORTS.marginNotCalculable(excluded))
+  return percent ? `${percent} · ${note}` : note
+}
 
 function authoritativeSaleTotal(sale: {
   total_cfa: number
@@ -76,15 +89,32 @@ export function ReportSalesTab({
         <ReportMetric label={<BiTableHeader {...REPORTS.grossSales} />} amount={Number(sales.sales_activity_cfa)} />
         <ReportMetric label={<BiTableHeader {...REPORTS.returnsMetric} />} amount={Number(sales.returns_activity_cfa)} />
         <ReportMetric label={<BiTableHeader {...REPORTS.netSales} />} amount={Number(sales.net_sales_cfa)} />
-        <ReportMetric label={<BiTableHeader {...REPORTS.grossProfit} />} amount={Number(sales.gross_profit_cfa)} />
+        <ReportMetric
+          label={<BiTableHeader {...REPORTS.grossProfit} />}
+          amount={Number(sales.gross_profit_cfa)}
+          secondaryText={marginSecondary(sales)}
+        />
+        <ReportMetric
+          label={<BiTableHeader {...REPORTS.discounts} />}
+          amount={Number(sales.discount_cfa ?? 0) + Number(sales.override_reduction_cfa ?? 0)}
+        />
+        <ReportMetric
+          label={<BiTableHeader {...REPORTS.taxes} />}
+          amount={0}
+          secondaryText={t(REPORTS.taxesNa)}
+        />
         <ReportMetric label={<BiTableHeader {...REPORTS.cogs} />} amount={Number(sales.cogs_cfa)} />
         <ReportMetric label={<BiTableHeader {...REPORTS.averageSale} />} amount={Number(sales.average_sale_cfa)} />
         <ReportMetric
           label={<BiTableHeader {...REPORTS.completedSales} />}
           amount={Number(sales.net_sales_cfa)}
-          secondaryText={`${sales.transaction_count} txn`}
+          secondaryText={`${sales.transaction_count} · ${t(REPORTS.txnScope)}`}
         />
-        <ReportMetric label="Montant appliqué" amount={Number(sales.amount_applied_cfa)} />
+        <ReportMetric
+          label={<BiTableHeader {...REPORTS.cashCollectedOnSales} />}
+          amount={Number(sales.amount_applied_cfa)}
+          secondaryText={t(REPORTS.cashCollectedHint)}
+        />
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
@@ -94,7 +124,7 @@ export function ReportSalesTab({
               key: d.depot_id,
               label: d.depot_name,
               primary: Number(d.net_sales_cfa),
-              secondary: `${d.transaction_count} ventes`,
+              secondary: `${t(REPORTS.gross)} ${formatCFA(Number(d.sales_activity_cfa))} · ${t(REPORTS.returnsMetric)} ${formatCFA(Number(d.returns_activity_cfa))}`,
             }))}
           />
         </ReportSection>
@@ -103,8 +133,8 @@ export function ReportSalesTab({
             rows={sales.by_cashier.map((c) => ({
               key: c.cashier_id,
               label: c.cashier_name,
-              primary: Number(c.sales_activity_cfa),
-              secondary: `${c.transaction_count} ventes`,
+              primary: Number(c.net_sales_cfa ?? c.sales_activity_cfa),
+              secondary: `${t(REPORTS.gross)} ${formatCFA(Number(c.sales_activity_cfa))} · ${t(REPORTS.returnsMetric)} ${formatCFA(Number(c.returns_activity_cfa ?? 0))}`,
             }))}
           />
         </ReportSection>

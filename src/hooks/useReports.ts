@@ -10,6 +10,7 @@ import type {
   AdminSalesReport,
   CashShiftReportRow,
   InventoryStockRow,
+  InventoryStockStatus,
   SalesReportProductRow,
   SalesReportReturnRow,
 } from '@/types/rpc'
@@ -76,8 +77,9 @@ function normalizeProductRow(row: Partial<SalesReportProductRow> & { product_id:
     returns_cfa: Number(row.returns_cfa ?? 0),
     net_sales_cfa: netSales,
     net_revenue_cfa: Number(row.net_revenue_cfa ?? netSales),
-    cogs_cfa: Number(row.cogs_cfa ?? 0),
-    gross_profit_cfa: Number(row.gross_profit_cfa ?? netSales),
+    cogs_cfa: row.margin_status ? null : Number(row.cogs_cfa ?? 0),
+    gross_profit_cfa: row.margin_status ? null : Number(row.gross_profit_cfa ?? netSales),
+    margin_status: row.margin_status ?? null,
   }
 }
 
@@ -107,9 +109,22 @@ function normalizeStockRow(row: Partial<InventoryStockRow> & {
   name: string
   depot_id: string
 }): InventoryStockRow {
-  const cost = Number(row.cost_price_cfa ?? row.unit_cost_cfa ?? 0)
+  const rawCost = row.cost_price_cfa ?? row.unit_cost_cfa
+  const costNumber = rawCost == null ? null : Number(rawCost)
+  const missingCost = costNumber == null || costNumber === 0
   const stock = Number(row.current_stock_pieces ?? 0)
-  const valueCost = Number(row.stock_value_cost_cfa ?? row.value_cfa ?? stock * cost)
+  const tracked = row.track_low_stock ?? false
+  const valueCost = missingCost
+    ? null
+    : Number(row.stock_value_cost_cfa ?? row.value_cfa ?? stock * (costNumber ?? 0))
+  const inferredStatus: InventoryStockStatus = !tracked
+    ? (stock <= 0 ? 'untracked' : 'normal')
+    : stock <= 0
+      ? 'out_of_stock'
+      : 'normal'
+  const stockStatus: InventoryStockStatus = !tracked && stock <= 0
+    ? 'untracked'
+    : (row.stock_status === 'untracked' ? 'untracked' : (row.stock_status ?? inferredStatus))
   return {
     product_id: row.product_id,
     name: row.name,
@@ -119,16 +134,15 @@ function normalizeStockRow(row: Partial<InventoryStockRow> & {
     category_name: row.category_name ?? null,
     current_stock_pieces: stock,
     unit_name: row.unit_name ?? null,
-    cost_price_cfa: cost,
+    cost_price_cfa: missingCost ? null : costNumber,
     selling_price_cfa: Number(row.selling_price_cfa ?? 0),
     stock_value_cost_cfa: valueCost,
     stock_value_selling_cfa: Number(row.stock_value_selling_cfa ?? 0),
-    stock_status: row.stock_status
-      ?? (stock <= 0 ? 'out_of_stock' : 'normal'),
-    track_low_stock: row.track_low_stock ?? false,
+    stock_status: stockStatus,
+    track_low_stock: tracked,
     low_stock_threshold: row.low_stock_threshold ?? null,
-    unit_cost_cfa: row.unit_cost_cfa ?? cost,
-    value_cfa: row.value_cfa ?? valueCost,
+    unit_cost_cfa: missingCost ? undefined : (costNumber ?? undefined),
+    value_cfa: valueCost ?? undefined,
   }
 }
 
@@ -157,6 +171,7 @@ function normalizeShiftRow(row: Partial<CashShiftReportRow> & {
 /** Fill Phase 18A fields when hosted still returns Phase 12 payloads. */
 export function normalizeSalesReport(raw: AdminSalesReport): AdminSalesReport {
   const net = Number(raw.net_sales_cfa ?? 0)
+  const txn = Number(raw.transaction_count ?? 0)
   const gp = Number(raw.gross_profit_cfa ?? 0)
   const cogs = raw.cogs_cfa != null
     ? Number(raw.cogs_cfa)
@@ -169,6 +184,7 @@ export function normalizeSalesReport(raw: AdminSalesReport): AdminSalesReport {
     voided_amount_cfa: Number(raw.voided_amount_cfa ?? 0),
     no_shift_count: Number(raw.no_shift_count ?? 0),
     no_shift_amount_cfa: Number(raw.no_shift_amount_cfa ?? 0),
+    average_sale_cfa: txn > 0 ? Math.round(net / txn) : 0,
     amount_applied_cfa: Number(raw.amount_applied_cfa ?? 0),
     amount_tendered_cfa: Number(raw.amount_tendered_cfa ?? 0),
     balance_added_cfa: Number(raw.balance_added_cfa ?? 0),
@@ -190,12 +206,21 @@ export function normalizeSalesReport(raw: AdminSalesReport): AdminSalesReport {
 export function normalizeInventoryReport(raw: AdminInventoryReport): AdminInventoryReport {
   const current = (raw.current_stock ?? []).map(normalizeStockRow)
   const low = (raw.low_stock ?? []).map(normalizeStockRow)
-  const out = (raw.out_of_stock ?? []).map(normalizeStockRow)
+  const out = (raw.out_of_stock ?? [])
+    .map(normalizeStockRow)
+    .filter((row) => row.track_low_stock && Number(row.current_stock_pieces) <= 0)
+  const uncosted = raw.uncosted_stock
+    ? raw.uncosted_stock.map(normalizeStockRow)
+    : current.filter(
+      (row) => Number(row.current_stock_pieces) > 0 && Number(row.cost_price_cfa ?? 0) === 0,
+    )
   return {
     ...raw,
     current_stock: current,
     low_stock: low,
     out_of_stock: out,
+    uncosted_stock: uncosted,
+    uncosted_stock_count: uncosted.length,
     period_movement: (raw.period_movement ?? []).map((m) => ({
       transaction_type: m.transaction_type,
       quantity_pieces: Number(m.quantity_pieces ?? 0),
@@ -203,7 +228,7 @@ export function normalizeInventoryReport(raw: AdminInventoryReport): AdminInvent
     })),
     adjustment_breakdown: raw.adjustment_breakdown ?? [],
     low_stock_count: Number(raw.low_stock_count ?? low.length),
-    out_of_stock_count: Number(raw.out_of_stock_count ?? out.length),
+    out_of_stock_count: out.length,
   }
 }
 

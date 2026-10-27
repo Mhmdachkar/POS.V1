@@ -46,6 +46,10 @@ export function ShiftChip({ posDepotId }: { posDepotId?: string | null }) {
       : 'border-border bg-surface text-text-primary hover:bg-surface-muted',
   )
 
+  if (openShifts == null) {
+    return <div data-testid="shift-chip" className={chipClass} aria-busy="true" />
+  }
+
   if (!canManage) {
     return (
       <div data-testid="shift-chip" className={chipClass}>

@@ -158,7 +158,7 @@ interface PaymentListParams {
 
 async function fetchPaymentList(
   params: PaymentListParams,
-): Promise<{ data: Array<Payment & { customer_name: string | null }>; count: number }> {
+): Promise<{ data: Array<Payment & { customer_name: string | null; recorded_by_name: string | null }>; count: number }> {
   const { page, pageSize, customerSearch, showReversed } = params
   const from = page * pageSize
   const to = from + pageSize - 1
@@ -201,8 +201,20 @@ async function fetchPaymentList(
   const rows = ((data ?? []) as any[]).map((p: any) => ({
     ...p,
     customer_name: p.customers?.name ?? null,
+    recorded_by_name: null,
     customers: undefined,
   }))
+
+  const recorderIds = [...new Set(rows.map((p) => p.recorded_by).filter(Boolean))] as string[]
+  if (recorderIds.length > 0) {
+    const { data: names } = await supabase.rpc('staff_display_names', { p_ids: recorderIds })
+    const byId = new Map(
+      (Array.isArray(names) ? names : []).map((row: { id: string; full_name: string | null }) => [row.id, row.full_name]),
+    )
+    for (const row of rows) {
+      row.recorded_by_name = byId.get(row.recorded_by) ?? null
+    }
+  }
 
   return { data: rows, count: count ?? 0 }
 }

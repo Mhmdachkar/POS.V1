@@ -10,6 +10,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { rpc, type CustomerLedgerRpcRow } from '@/lib/rpc'
 import { CACHE_STALE, keepPlaceholderWhen } from '@/lib/cachePolicy'
 import { customerKeys } from '@/hooks/useCustomers'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
@@ -38,6 +39,8 @@ export interface CustomerActivityEvent {
   /** Original sale id for sale/return rows so existing sale detail can open. */
   saleId: string | null
   isReversed?: boolean
+  /** After this event, newest-first. The first row equals Solde dû. */
+  runningBalanceCfa?: number
 }
 
 export interface CustomerActivityResult {
@@ -64,6 +67,7 @@ const RETURN_ACTIVITY_SELECT = `
   id,
   sale_id,
   refund_amount_cfa,
+  balance_adjustment_cfa,
   created_at,
   sales!inner(receipt_number, customer_id),
   sale_return_items(
@@ -139,14 +143,22 @@ export function mergeActivityEvents(events: CustomerActivityEvent[]): CustomerAc
   })
 }
 
-function saleActivityAmountCfa(row: Record<string, unknown>): number {
-  const balanceAdded = Number(row.balance_added_cfa ?? 0)
-  if (balanceAdded > 0) return balanceAdded
-  return authoritativeFinalSaleTotal({
-    total_cfa: Number(row.total_cfa ?? 0),
-    admin_override_total_cfa:
-      row.admin_override_total_cfa == null ? null : Number(row.admin_override_total_cfa),
+/** Newest-first: first running balance equals the current Solde dû. */
+export function withRunningBalances(
+  events: CustomerActivityEvent[],
+  currentBalanceCfa: number,
+): CustomerActivityEvent[] {
+  let running = currentBalanceCfa
+  return events.map((event) => {
+    const next = { ...event, runningBalanceCfa: running }
+    if (!event.isReversed) running -= event.amountCfa
+    return next
   })
+}
+
+/** Only the unpaid part moves the customer balance. A cash sale nets to 0. */
+function saleActivityAmountCfa(row: Record<string, unknown>): number {
+  return Number(row.balance_added_cfa ?? 0)
 }
 
 function mapSaleEvent(row: Record<string, unknown>): CustomerActivityEvent {
@@ -191,7 +203,7 @@ function mapReturnEvent(row: Record<string, unknown>): CustomerActivityEvent {
     occurredAt: String(row.created_at),
     reference: receipt,
     description: `${summary} ${bilingualPlain(CUSTOMERS.activityReturnedSuffix)}`,
-    amountCfa: -Number(row.refund_amount_cfa ?? 0),
+    amountCfa: -Number(row.balance_adjustment_cfa ?? 0),
     saleId: typeof row.sale_id === 'string' ? row.sale_id : null,
   }
 }
@@ -236,6 +248,7 @@ async function fetchSaleEvents(
     .select(SALE_ACTIVITY_SELECT, { count: 'exact' })
     .eq('customer_id', customerId)
     .neq('status', 'voided')
+    .gt('balance_added_cfa', 0)
     .order('created_at', { ascending: false })
   q = applyWindow(q, filters, mode)
   const { data, count } = await unwrap<Record<string, unknown>[]>(q)
@@ -389,10 +402,90 @@ export async function fetchCustomerActivitySummary(
   }
 }
 
+export function mapCustomerLedgerRow(row: CustomerLedgerRpcRow): CustomerActivityEvent {
+  const amountCfa = Number(row.amount_cfa)
+  const runningBalanceCfa = Number(row.running_balance_cfa)
+  if (row.kind === 'sale') {
+    return {
+      id: row.id,
+      type: 'sale',
+      occurredAt: row.occurred_at,
+      reference: row.reference?.trim() || 'Sale',
+      description: row.adds_credit
+        ? bilingualPlain(CUSTOMERS.activityCreditAdded)
+        : bilingualPlain(CUSTOMERS.activityCashSale),
+      amountCfa,
+      saleId: row.sale_id,
+      runningBalanceCfa,
+    }
+  }
+  if (row.kind === 'cash_payment') {
+    return {
+      id: row.id,
+      type: 'payment',
+      occurredAt: row.occurred_at,
+      reference: row.reference?.trim() || bilingualPlain(CUSTOMERS.activityCashPayment),
+      description: bilingualPlain(CUSTOMERS.activityCashPayment),
+      amountCfa,
+      saleId: row.sale_id,
+      runningBalanceCfa,
+    }
+  }
+  if (row.kind === 'return') {
+    const summary = row.item_summary?.trim()
+    return {
+      id: row.id,
+      type: 'return',
+      occurredAt: row.occurred_at,
+      reference: row.reference?.trim() || 'Original sale',
+      description: summary
+        ? `${summary} ${bilingualPlain(CUSTOMERS.activityReturnedSuffix)}`
+        : bilingualPlain(CUSTOMERS.activityReturnedItems),
+      amountCfa,
+      saleId: row.sale_id,
+      runningBalanceCfa,
+    }
+  }
+  return {
+    id: row.id,
+    type: 'payment',
+    occurredAt: row.occurred_at,
+    reference: bilingualPlain(CUSTOMERS.activityCustomerPaymentRef),
+    description: row.note?.trim() || bilingualPlain(CUSTOMERS.activityBalancePayment),
+    amountCfa,
+    saleId: null,
+    runningBalanceCfa,
+  }
+}
+
+/** Oldest-first rows from customer_ledger. The last running balance is Solde dû. */
+export function pageCustomerLedger(
+  rows: CustomerLedgerRpcRow[],
+  filters: CustomerActivityFilters,
+): CustomerActivityResult {
+  const mapped = rows.map(mapCustomerLedgerRow)
+  const filtered = filters.type === 'all' ? mapped : mapped.filter((event) => event.type === filters.type)
+  const newestFirst = [...filtered].reverse()
+  const from = filters.page * filters.pageSize
+  return {
+    data: newestFirst.slice(from, from + filters.pageSize),
+    count: filtered.length,
+  }
+}
+
+export async function fetchCustomerLedger(
+  customerId: string,
+  filters: CustomerActivityFilters,
+): Promise<CustomerActivityResult> {
+  const result = await rpc.customerLedger(customerId)
+  if (result.error) throw result.error
+  return pageCustomerLedger(result.data ?? [], filters)
+}
+
 export function useCustomerActivity(customerId: string | null, filters: CustomerActivityFilters) {
   return useQuery({
     queryKey: customerKeys.activity(customerId ?? '', filters),
-    queryFn: () => fetchCustomerActivity(customerId!, filters),
+    queryFn: () => fetchCustomerLedger(customerId!, filters),
     enabled: !!customerId,
     staleTime: CACHE_STALE.customerDetail,
     placeholderData: keepPlaceholderWhen((prevKey) => {

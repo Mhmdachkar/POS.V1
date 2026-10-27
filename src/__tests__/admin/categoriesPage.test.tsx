@@ -81,7 +81,7 @@ describe('CategoriesPage accordion', () => {
   it('places a new subcategory under the opened category', async () => {
     const user = userEvent.setup()
     wrap(<CategoriesPage />)
-    await user.click(screen.getAllByRole('button', { name: 'Add subcategory' })[0])
+    await user.click(screen.getAllByRole('button', { name: ADMIN.addSubcategory.fr })[0])
     expect(screen.getByRole('heading', { name: /nouvelle sous-catégorie|new subcategory/i })).toBeInTheDocument()
     expect(screen.getAllByText(/Sous Drinks|Under Drinks/i).length).toBeGreaterThan(0)
     expect(screen.queryByLabelText('Parent')).not.toBeInTheDocument()

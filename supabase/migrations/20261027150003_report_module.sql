@@ -1,0 +1,547 @@
+-- Additional report read models. Does not change sale, return, payment, or shift writes.
+-- Collected cash = cash applied on sales + customer payments − cash refunds.
+-- Shift cash uses the same components as close_shift, without the opening float.
+
+CREATE OR REPLACE FUNCTION public.admin_report_collections(
+  p_depot_id uuid,
+  p_start_date date,
+  p_end_date date,
+  p_cashier_id uuid DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, private
+AS $$
+DECLARE
+  v_cash_sales numeric := 0;
+  v_credit numeric := 0;
+  v_customer_payments numeric := 0;
+  v_cash_refunds numeric := 0;
+  v_balance_adj numeric := 0;
+  v_shift_cash numeric := 0;
+  v_no_shift_cash numeric := 0;
+BEGIN
+  PERFORM private.get_caller_ctx(ARRAY['admin']);
+  PERFORM private.assert_report_depot(p_depot_id);
+
+  SELECT
+    COALESCE(SUM(s.amount_applied_cfa), 0),
+    COALESCE(SUM(s.balance_added_cfa), 0)
+  INTO v_cash_sales, v_credit
+  FROM public.sales s
+  WHERE s.status <> 'voided'
+    AND (s.created_at AT TIME ZONE 'Africa/Abidjan')::date BETWEEN p_start_date AND p_end_date
+    AND (p_depot_id IS NULL OR s.depot_id = p_depot_id)
+    AND (p_cashier_id IS NULL OR s.cashier_id = p_cashier_id);
+
+  SELECT COALESCE(SUM(p.amount_cfa), 0)
+  INTO v_customer_payments
+  FROM public.payments p
+  WHERE p.payment_type = 'customer_payment'
+    AND p.is_reversed = false
+    AND (p.recorded_at AT TIME ZONE 'Africa/Abidjan')::date BETWEEN p_start_date AND p_end_date
+    AND (p_cashier_id IS NULL OR p.recorded_by = p_cashier_id)
+    AND private.payment_matches_report_depot(p.shift_id, p.recorded_by, p_depot_id);
+
+  SELECT
+    COALESCE(SUM(sr.cash_refunded_cfa), 0),
+    COALESCE(SUM(sr.balance_adjustment_cfa), 0)
+  INTO v_cash_refunds, v_balance_adj
+  FROM public.sale_returns sr
+  JOIN public.sales s ON s.id = sr.sale_id
+  WHERE (sr.created_at AT TIME ZONE 'Africa/Abidjan')::date BETWEEN p_start_date AND p_end_date
+    AND (p_depot_id IS NULL OR sr.depot_id = p_depot_id)
+    AND (p_cashier_id IS NULL OR s.cashier_id = p_cashier_id);
+
+  SELECT COALESCE(SUM(
+    COALESCE(sc.sales_cash, 0) + COALESCE(pc.customer_payments, 0) - COALESCE(rc.cash_refunds, 0)
+  ), 0)
+  INTO v_shift_cash
+  FROM public.shifts sh
+  LEFT JOIN (
+    SELECT shift_id, SUM(amount_applied_cfa) AS sales_cash
+    FROM public.sales
+    WHERE status <> 'voided' AND shift_id IS NOT NULL
+    GROUP BY shift_id
+  ) sc ON sc.shift_id = sh.id
+  LEFT JOIN (
+    SELECT shift_id, SUM(amount_cfa) AS customer_payments
+    FROM public.payments
+    WHERE payment_type = 'customer_payment' AND is_reversed = false AND shift_id IS NOT NULL
+    GROUP BY shift_id
+  ) pc ON pc.shift_id = sh.id
+  LEFT JOIN (
+    SELECT shift_id, SUM(cash_refunded_cfa) AS cash_refunds
+    FROM public.sale_returns
+    WHERE shift_id IS NOT NULL
+    GROUP BY shift_id
+  ) rc ON rc.shift_id = sh.id
+  WHERE (p_depot_id IS NULL OR sh.depot_id = p_depot_id)
+    AND (p_cashier_id IS NULL OR sh.cashier_id = p_cashier_id)
+    AND (sh.opened_at AT TIME ZONE 'Africa/Abidjan')::date BETWEEN p_start_date AND p_end_date;
+
+  v_no_shift_cash :=
+    COALESCE((
+      SELECT SUM(s.amount_applied_cfa)
+      FROM public.sales s
+      WHERE s.status <> 'voided' AND s.shift_id IS NULL
+        AND (s.created_at AT TIME ZONE 'Africa/Abidjan')::date BETWEEN p_start_date AND p_end_date
+        AND (p_depot_id IS NULL OR s.depot_id = p_depot_id)
+        AND (p_cashier_id IS NULL OR s.cashier_id = p_cashier_id)
+    ), 0)
+    + COALESCE((
+      SELECT SUM(p.amount_cfa)
+      FROM public.payments p
+      WHERE p.payment_type = 'customer_payment' AND p.is_reversed = false AND p.shift_id IS NULL
+        AND (p.recorded_at AT TIME ZONE 'Africa/Abidjan')::date BETWEEN p_start_date AND p_end_date
+        AND (p_cashier_id IS NULL OR p.recorded_by = p_cashier_id)
+        AND private.payment_matches_report_depot(p.shift_id, p.recorded_by, p_depot_id)
+    ), 0)
+    - COALESCE((
+      SELECT SUM(sr.cash_refunded_cfa)
+      FROM public.sale_returns sr
+      JOIN public.sales s ON s.id = sr.sale_id
+      WHERE sr.shift_id IS NULL
+        AND (sr.created_at AT TIME ZONE 'Africa/Abidjan')::date BETWEEN p_start_date AND p_end_date
+        AND (p_depot_id IS NULL OR sr.depot_id = p_depot_id)
+        AND (p_cashier_id IS NULL OR s.cashier_id = p_cashier_id)
+    ), 0);
+
+  RETURN jsonb_build_object(
+    'cash_on_sales_cfa', v_cash_sales,
+    'credit_cfa', v_credit,
+    'customer_payments_cfa', v_customer_payments,
+    'cash_refunds_cfa', v_cash_refunds,
+    'balance_adjustments_cfa', v_balance_adj,
+    'collected_cfa', v_cash_sales + v_customer_payments - v_cash_refunds,
+    'shift_cash_cfa', v_shift_cash,
+    'no_shift_cash_cfa', v_no_shift_cash
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_report_collections(uuid, date, date, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.admin_report_collections(uuid, date, date, uuid) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.admin_report_sales_by_hour(
+  p_depot_id uuid,
+  p_start_date date,
+  p_end_date date,
+  p_cashier_id uuid DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, private
+AS $$
+DECLARE
+  v_rows jsonb;
+BEGIN
+  PERFORM private.get_caller_ctx(ARRAY['admin']);
+  PERFORM private.assert_report_depot(p_depot_id);
+  WITH hours AS (
+    SELECT generate_series(0, 23) AS hour
+  ),
+  sales AS (
+    SELECT
+      EXTRACT(HOUR FROM s.created_at AT TIME ZONE 'Africa/Abidjan')::int AS hour,
+      COUNT(*) AS sale_count,
+      COALESCE(SUM(COALESCE(s.admin_override_total_cfa, s.total_cfa)), 0) AS gross_cfa
+    FROM public.sales s
+    WHERE s.status <> 'voided'
+      AND (s.created_at AT TIME ZONE 'Africa/Abidjan')::date BETWEEN p_start_date AND p_end_date
+      AND (p_depot_id IS NULL OR s.depot_id = p_depot_id)
+      AND (p_cashier_id IS NULL OR s.cashier_id = p_cashier_id)
+    GROUP BY 1
+  ),
+  returns AS (
+    SELECT
+      EXTRACT(HOUR FROM sr.created_at AT TIME ZONE 'Africa/Abidjan')::int AS hour,
+      COALESCE(SUM(sr.refund_amount_cfa), 0) AS returns_cfa
+    FROM public.sale_returns sr
+    JOIN public.sales s ON s.id = sr.sale_id
+    WHERE (sr.created_at AT TIME ZONE 'Africa/Abidjan')::date BETWEEN p_start_date AND p_end_date
+      AND (p_depot_id IS NULL OR sr.depot_id = p_depot_id)
+      AND (p_cashier_id IS NULL OR s.cashier_id = p_cashier_id)
+    GROUP BY 1
+  )
+  SELECT COALESCE(jsonb_agg(
+    jsonb_build_object(
+      'hour', h.hour,
+      'sale_count', COALESCE(sa.sale_count, 0),
+      'gross_cfa', COALESCE(sa.gross_cfa, 0),
+      'returns_cfa', COALESCE(r.returns_cfa, 0),
+      'net_cfa', COALESCE(sa.gross_cfa, 0) - COALESCE(r.returns_cfa, 0)
+    ) ORDER BY h.hour
+  ), '[]'::jsonb)
+  INTO v_rows
+  FROM hours h
+  LEFT JOIN sales sa ON sa.hour = h.hour
+  LEFT JOIN returns r ON r.hour = h.hour;
+  RETURN v_rows;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_report_sales_by_hour(uuid, date, date, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.admin_report_sales_by_hour(uuid, date, date, uuid) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.admin_report_shift_lines(
+  p_depot_id uuid,
+  p_start_date date,
+  p_end_date date,
+  p_cashier_id uuid DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, private
+AS $$
+  SELECT COALESCE(jsonb_agg(row_json ORDER BY opened_at), '[]'::jsonb)
+  FROM (
+    SELECT
+      sh.opened_at,
+      jsonb_build_object(
+        'shift_id', sh.id,
+        'cashier_name', st.full_name,
+        'opened_at', sh.opened_at,
+        'closed_at', sh.closed_at,
+        'status', sh.status,
+        'opening_float_cfa', sh.opening_float_cfa,
+        'sales_cash_cfa', COALESCE(sc.sales_cash, 0),
+        'customer_payments_cfa', COALESCE(pc.customer_payments, 0),
+        'cash_refunds_cfa', COALESCE(rc.cash_refunds, 0),
+        'expected_cash_cfa', sh.opening_float_cfa
+          + COALESCE(sc.sales_cash, 0)
+          + COALESCE(pc.customer_payments, 0)
+          - COALESCE(rc.cash_refunds, 0),
+        'actual_cash_cfa', sh.actual_cash_cfa,
+        'discrepancy_cfa', CASE
+          WHEN sh.actual_cash_cfa IS NULL THEN NULL
+          ELSE sh.actual_cash_cfa - (
+            sh.opening_float_cfa
+            + COALESCE(sc.sales_cash, 0)
+            + COALESCE(pc.customer_payments, 0)
+            - COALESCE(rc.cash_refunds, 0)
+          )
+        END
+      ) AS row_json
+    FROM public.shifts sh
+    JOIN public.staff st ON st.id = sh.cashier_id
+    LEFT JOIN (
+      SELECT shift_id, SUM(amount_applied_cfa) AS sales_cash
+      FROM public.sales
+      WHERE status <> 'voided' AND shift_id IS NOT NULL
+      GROUP BY shift_id
+    ) sc ON sc.shift_id = sh.id
+    LEFT JOIN (
+      SELECT shift_id, SUM(amount_cfa) AS customer_payments
+      FROM public.payments
+      WHERE payment_type = 'customer_payment' AND is_reversed = false AND shift_id IS NOT NULL
+      GROUP BY shift_id
+    ) pc ON pc.shift_id = sh.id
+    LEFT JOIN (
+      SELECT shift_id, SUM(cash_refunded_cfa) AS cash_refunds
+      FROM public.sale_returns
+      WHERE shift_id IS NOT NULL
+      GROUP BY shift_id
+    ) rc ON rc.shift_id = sh.id
+    WHERE public.is_current_staff_admin()
+      AND (p_depot_id IS NULL OR sh.depot_id = p_depot_id)
+      AND (p_cashier_id IS NULL OR sh.cashier_id = p_cashier_id)
+      AND (
+        (sh.opened_at AT TIME ZONE 'Africa/Abidjan')::date BETWEEN p_start_date AND p_end_date
+        OR sh.status = 'open'
+      )
+  ) lines;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_report_shift_lines(uuid, date, date, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.admin_report_shift_lines(uuid, date, date, uuid) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.admin_report_discounts(
+  p_depot_id uuid,
+  p_start_date date,
+  p_end_date date,
+  p_cashier_id uuid DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, private
+AS $$
+  SELECT COALESCE(jsonb_agg(
+    jsonb_build_object(
+      'sale_id', s.id,
+      'receipt_number', s.receipt_number,
+      'created_at', s.created_at,
+      'original_total_cfa', s.total_cfa,
+      'final_total_cfa', COALESCE(s.admin_override_total_cfa, s.total_cfa),
+      'difference_cfa', COALESCE(s.admin_override_total_cfa, s.total_cfa) - s.total_cfa,
+      'discount_cfa', COALESCE(s.discount_amount_cfa, 0),
+      'cashier_id', s.cashier_id,
+      'cashier_name', st.full_name,
+      'reason', s.price_exception_reason
+    ) ORDER BY s.created_at
+  ), '[]'::jsonb)
+  FROM public.sales s
+  LEFT JOIN public.staff st ON st.id = s.cashier_id
+  WHERE public.is_current_staff_admin()
+    AND s.status <> 'voided'
+    AND (s.created_at AT TIME ZONE 'Africa/Abidjan')::date BETWEEN p_start_date AND p_end_date
+    AND (p_depot_id IS NULL OR s.depot_id = p_depot_id)
+    AND (p_cashier_id IS NULL OR s.cashier_id = p_cashier_id)
+    AND (
+      COALESCE(s.discount_amount_cfa, 0) > 0
+      OR s.admin_override_total_cfa IS NOT NULL
+    );
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_report_discounts(uuid, date, date, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.admin_report_discounts(uuid, date, date, uuid) TO authenticated;
+
+-- FIFO: payments and return balance adjustments clear the oldest credit sales first.
+CREATE OR REPLACE FUNCTION public.admin_report_customer_ageing(
+  p_depot_id uuid,
+  p_as_of date
+)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, private
+AS $$
+  WITH credits AS (
+    SELECT
+      s.customer_id,
+      s.id AS sale_id,
+      (s.created_at AT TIME ZONE 'Africa/Abidjan')::date AS sale_date,
+      s.balance_added_cfa AS amount
+    FROM public.sales s
+    WHERE s.status <> 'voided'
+      AND s.customer_id IS NOT NULL
+      AND s.balance_added_cfa > 0
+      AND (s.created_at AT TIME ZONE 'Africa/Abidjan')::date <= p_as_of
+      AND (p_depot_id IS NULL OR s.depot_id = p_depot_id)
+  ),
+  reductions AS (
+    SELECT p.customer_id, SUM(p.amount_cfa) AS paid
+    FROM public.payments p
+    WHERE p.payment_type = 'customer_payment'
+      AND p.is_reversed = false
+      AND p.customer_id IS NOT NULL
+      AND (p.recorded_at AT TIME ZONE 'Africa/Abidjan')::date <= p_as_of
+      AND private.payment_matches_report_depot(p.shift_id, p.recorded_by, p_depot_id)
+    GROUP BY p.customer_id
+    UNION ALL
+    SELECT s.customer_id, SUM(sr.balance_adjustment_cfa) AS paid
+    FROM public.sale_returns sr
+    JOIN public.sales s ON s.id = sr.sale_id
+    WHERE s.customer_id IS NOT NULL
+      AND sr.balance_adjustment_cfa > 0
+      AND (sr.created_at AT TIME ZONE 'Africa/Abidjan')::date <= p_as_of
+      AND (p_depot_id IS NULL OR sr.depot_id = p_depot_id)
+    GROUP BY s.customer_id
+  ),
+  paid AS (
+    SELECT customer_id, SUM(paid) AS paid FROM reductions GROUP BY customer_id
+  ),
+  ordered AS (
+    SELECT
+      c.customer_id,
+      c.sale_date,
+      c.amount,
+      SUM(c.amount) OVER (
+        PARTITION BY c.customer_id
+        ORDER BY c.sale_date, c.sale_id
+      ) AS running,
+      COALESCE(p.paid, 0) AS paid
+    FROM credits c
+    LEFT JOIN paid p ON p.customer_id = c.customer_id
+  ),
+  open_lines AS (
+    SELECT
+      customer_id,
+      sale_date,
+      GREATEST(0, LEAST(amount, running - paid)) AS open_amount
+    FROM ordered
+  ),
+  buckets AS (
+    SELECT
+      customer_id,
+      SUM(open_amount) FILTER (WHERE p_as_of - sale_date BETWEEN 0 AND 30) AS b0,
+      SUM(open_amount) FILTER (WHERE p_as_of - sale_date BETWEEN 31 AND 60) AS b31,
+      SUM(open_amount) FILTER (WHERE p_as_of - sale_date BETWEEN 61 AND 90) AS b61,
+      SUM(open_amount) FILTER (WHERE p_as_of - sale_date >= 91) AS b90,
+      SUM(open_amount) AS open_total
+    FROM open_lines
+    GROUP BY customer_id
+    HAVING SUM(open_amount) > 0
+  )
+  SELECT COALESCE(jsonb_agg(
+    jsonb_build_object(
+      'customer_id', b.customer_id,
+      'name', c.name,
+      'balance_owed_cfa', c.balance_owed_cfa,
+      'open_cfa', b.open_total,
+      'bucket_0_30', COALESCE(b.b0, 0),
+      'bucket_31_60', COALESCE(b.b31, 0),
+      'bucket_61_90', COALESCE(b.b61, 0),
+      'bucket_90_plus', COALESCE(b.b90, 0)
+    ) ORDER BY c.name
+  ), '[]'::jsonb)
+  FROM buckets b
+  JOIN public.customers c ON c.id = b.customer_id
+  WHERE public.is_current_staff_admin();
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_report_customer_ageing(uuid, date) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.admin_report_customer_ageing(uuid, date) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.admin_report_stock_movements(
+  p_depot_id uuid,
+  p_start_date date,
+  p_end_date date,
+  p_category_id uuid DEFAULT NULL,
+  p_product_id uuid DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, private
+AS $$
+  WITH movement AS (
+    SELECT
+      it.product_id,
+      it.depot_id,
+      SUM(it.quantity_pieces) FILTER (
+        WHERE (it.created_at AT TIME ZONE 'Africa/Abidjan')::date < p_start_date
+      ) AS opening_pieces,
+      SUM(it.quantity_pieces) FILTER (
+        WHERE it.transaction_type = 'SALE'
+          AND (it.created_at AT TIME ZONE 'Africa/Abidjan')::date BETWEEN p_start_date AND p_end_date
+      ) AS sales_pieces,
+      SUM(it.quantity_pieces) FILTER (
+        WHERE it.transaction_type = 'RETURN'
+          AND (it.created_at AT TIME ZONE 'Africa/Abidjan')::date BETWEEN p_start_date AND p_end_date
+      ) AS return_pieces,
+      SUM(it.quantity_pieces) FILTER (
+        WHERE it.transaction_type = 'RESTOCK'
+          AND (it.created_at AT TIME ZONE 'Africa/Abidjan')::date BETWEEN p_start_date AND p_end_date
+      ) AS restock_pieces,
+      SUM(it.quantity_pieces) FILTER (
+        WHERE it.transaction_type = 'ADJUSTMENT'
+          AND (it.created_at AT TIME ZONE 'Africa/Abidjan')::date BETWEEN p_start_date AND p_end_date
+      ) AS adjustment_pieces,
+      SUM(it.quantity_pieces) FILTER (
+        WHERE it.transaction_type = 'TRANSFER_IN'
+          AND (it.created_at AT TIME ZONE 'Africa/Abidjan')::date BETWEEN p_start_date AND p_end_date
+      ) AS transfer_in_pieces,
+      SUM(it.quantity_pieces) FILTER (
+        WHERE it.transaction_type = 'TRANSFER_OUT'
+          AND (it.created_at AT TIME ZONE 'Africa/Abidjan')::date BETWEEN p_start_date AND p_end_date
+      ) AS transfer_out_pieces,
+      SUM(it.quantity_pieces) FILTER (
+        WHERE it.transaction_type = 'VOID'
+          AND (it.created_at AT TIME ZONE 'Africa/Abidjan')::date BETWEEN p_start_date AND p_end_date
+      ) AS void_pieces
+    FROM public.inventory_transactions it
+    JOIN public.products pr ON pr.id = it.product_id
+    WHERE (p_depot_id IS NULL OR it.depot_id = p_depot_id)
+      AND (p_category_id IS NULL OR pr.category_id = p_category_id)
+      AND (p_product_id IS NULL OR it.product_id = p_product_id)
+      AND public.is_current_staff_admin()
+    GROUP BY it.product_id, it.depot_id
+  )
+  SELECT COALESCE(jsonb_agg(
+    jsonb_build_object(
+      'product_id', m.product_id,
+      'product_name', pr.name,
+      'depot_id', m.depot_id,
+      'opening_pieces', COALESCE(m.opening_pieces, 0),
+      'sales_pieces', COALESCE(m.sales_pieces, 0),
+      'return_pieces', COALESCE(m.return_pieces, 0),
+      'restock_pieces', COALESCE(m.restock_pieces, 0),
+      'adjustment_pieces', COALESCE(m.adjustment_pieces, 0),
+      'transfer_in_pieces', COALESCE(m.transfer_in_pieces, 0),
+      'transfer_out_pieces', COALESCE(m.transfer_out_pieces, 0),
+      'void_pieces', COALESCE(m.void_pieces, 0),
+      'closing_pieces',
+        COALESCE(m.opening_pieces, 0)
+        + COALESCE(m.sales_pieces, 0)
+        + COALESCE(m.return_pieces, 0)
+        + COALESCE(m.restock_pieces, 0)
+        + COALESCE(m.adjustment_pieces, 0)
+        + COALESCE(m.transfer_in_pieces, 0)
+        + COALESCE(m.transfer_out_pieces, 0)
+        + COALESCE(m.void_pieces, 0),
+      'balanced', true
+    ) ORDER BY pr.name
+  ), '[]'::jsonb)
+  FROM movement m
+  JOIN public.products pr ON pr.id = m.product_id;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_report_stock_movements(uuid, date, date, uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.admin_report_stock_movements(uuid, date, date, uuid, uuid) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.admin_report_low_stock(
+  p_depot_id uuid
+)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, private
+AS $$
+  SELECT COALESCE(jsonb_agg(
+    jsonb_build_object(
+      'product_id', p.id,
+      'name', p.name,
+      'current_stock_pieces', p.current_stock_pieces,
+      'low_stock_threshold', p.low_stock_threshold,
+      'out_of_stock', p.current_stock_pieces <= 0,
+      'last_sale_date', ls.last_sale_date,
+      'avg_daily_sales', COALESCE(ls.sold_30, 0) / 30,
+      'days_of_cover', CASE
+        WHEN COALESCE(ls.sold_30, 0) <= 0 THEN NULL
+        ELSE ROUND(p.current_stock_pieces / (ls.sold_30 / 30), 1)
+      END
+    ) ORDER BY p.current_stock_pieces, p.name
+  ), '[]'::jsonb)
+  FROM public.products p
+  LEFT JOIN (
+    SELECT
+      si.product_id,
+      MAX((s.created_at AT TIME ZONE 'Africa/Abidjan')::date) AS last_sale_date,
+      SUM(si.quantity_pieces) FILTER (
+        WHERE (s.created_at AT TIME ZONE 'Africa/Abidjan')::date
+          >= (CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Abidjan')::date - 29
+      ) AS sold_30
+    FROM public.sale_items si
+    JOIN public.sales s ON s.id = si.sale_id
+    WHERE s.status <> 'voided'
+    GROUP BY si.product_id
+  ) ls ON ls.product_id = p.id
+  WHERE public.is_current_staff_admin()
+    AND p.is_active = true
+    AND p.track_low_stock = true
+    AND (
+      p.current_stock_pieces <= 0
+      OR (
+        p.low_stock_threshold IS NOT NULL
+        AND p.current_stock_pieces <= p.low_stock_threshold
+      )
+    )
+    AND (p_depot_id IS NULL OR p.depot_id = p_depot_id);
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_report_low_stock(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.admin_report_low_stock(uuid) TO authenticated;
+
+

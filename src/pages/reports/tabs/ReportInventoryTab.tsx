@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
 import { REPORTS } from '@/lib/bilingual/reports'
+import { INVENTORY, STOCK_TXN_TYPE } from '@/lib/bilingual/inventory'
 import { cn } from '@/lib/cn'
 import { MoneyDisplay, StockStatusBadge } from '@/components/ui'
 import { formatPieces } from '@/lib/formatters'
@@ -19,7 +20,12 @@ interface ReportInventoryTabProps {
 
 function toStockBadgeStatus(status: InventoryStockStatus): StockStatus {
   if (status === 'normal') return 'healthy'
+  if (status === 'untracked') return 'untracked'
   return status
+}
+
+function missingCost(row: InventoryStockRow): boolean {
+  return row.cost_price_cfa == null || Number(row.cost_price_cfa) === 0
 }
 
 function StockTable({
@@ -35,7 +41,7 @@ function StockTable({
     return <p className="text-sm text-text-muted">Aucun</p>
   }
   return (
-    <ul className="divide-y divide-border border border-border rounded-md overflow-hidden">
+    <ul className="divide-y divide-border overflow-hidden rounded-xl bg-surface-muted">
       {rows.map((r) => (
         <li key={`${r.product_id}-${r.depot_id}`}>
           <button
@@ -49,11 +55,20 @@ function StockTable({
                 {showDepotColumn && `${r.depot_name} · `}
                 {formatPieces(Number(r.current_stock_pieces))}
                 {r.low_stock_threshold != null && r.track_low_stock && (
-                  <> · threshold {formatPieces(Number(r.low_stock_threshold))}</>
+                  <> · {t(INVENTORY.threshold)} {formatPieces(Number(r.low_stock_threshold))}</>
                 )}
+                {' · '}
+                {t(r.track_low_stock ? REPORTS.tracked : REPORTS.untracked)}
               </span>
             </span>
-            <StockStatusBadge status={toStockBadgeStatus(r.stock_status)} />
+            <span className="flex shrink-0 items-center gap-1">
+              {missingCost(r) && (
+                <span className="rounded-full bg-warning-bg px-2 py-0.5 text-[10px] font-medium text-warning-foreground">
+                  {t(REPORTS.uncostedStock)}
+                </span>
+              )}
+              <StockStatusBadge status={toStockBadgeStatus(r.stock_status)} />
+            </span>
           </button>
         </li>
       ))}
@@ -66,15 +81,20 @@ export function ReportInventoryTab({ inventory, showDepotColumn }: ReportInvento
 
   return (
     <div className="space-y-8">
-      <ReportMetric label={t(REPORTS.currentInventoryValue)} amount={Number(inventory.inventory_value_cfa)} className="max-w-xs" />
+      <ReportMetric label={t(REPORTS.currentInventoryValue)} amount={Number(inventory.value_at_cost ?? inventory.inventory_value_cfa)} className="max-w-xs" />
+      {(inventory.products_without_cost_count ?? inventory.uncosted_stock_count ?? 0) > 0 && (
+        <a href="#uncosted-stock" className="inline-flex text-sm font-medium text-warning-foreground underline">
+          {t(REPORTS.partialValue(inventory.products_without_cost_count ?? inventory.uncosted_stock_count ?? 0))}
+        </a>
+      )}
 
       <ReportSection title={<BiSectionTitle {...REPORTS.currentStock} />}>
         {inventory.current_stock.length === 0 ? (
           <p className="text-sm text-text-muted">{t(REPORTS.noStockRows)}</p>
         ) : (
-          <div className="overflow-x-auto border border-border rounded-md max-h-80 overflow-y-auto">
+          <div className="max-h-80 overflow-x-auto overflow-y-auto rounded-xl bg-surface-muted">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-surface-alt text-xs">
+              <thead className="sticky top-0 bg-surface-muted text-xs text-text-secondary">
                 <tr>
                   <th className="text-left px-3 py-2">Produit</th>
                   {showDepotColumn && <th className="text-left px-3 py-2">Dépôt</th>}
@@ -94,10 +114,21 @@ export function ReportInventoryTab({ inventory, showDepotColumn }: ReportInvento
                     {showDepotColumn && <td className="px-3 py-2 text-text-secondary">{r.depot_name}</td>}
                     <td className="px-3 py-2 text-right tabular-nums">{formatPieces(Number(r.current_stock_pieces))}</td>
                     <td className="px-3 py-2 text-right">
-                      <MoneyDisplay amount={r.stock_value_cost_cfa ?? r.value_cfa ?? 0} size="small" />
+                      {missingCost(r) ? (
+                        <span className="text-text-muted">—</span>
+                      ) : (
+                        <MoneyDisplay amount={Number(r.stock_value_cost_cfa ?? r.value_cfa ?? 0)} size="small" />
+                      )}
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <StockStatusBadge status={toStockBadgeStatus(r.stock_status)} />
+                      <span className="flex shrink-0 items-center gap-1">
+              {missingCost(r) && (
+                <span className="rounded-full bg-warning-bg px-2 py-0.5 text-[10px] font-medium text-warning-foreground">
+                  {t(REPORTS.uncostedStock)}
+                </span>
+              )}
+              <StockStatusBadge status={toStockBadgeStatus(r.stock_status)} />
+            </span>
                     </td>
                   </tr>
                 ))}
@@ -115,7 +146,7 @@ export function ReportInventoryTab({ inventory, showDepotColumn }: ReportInvento
             <ul className="text-sm space-y-1">
               {inventory.period_movement.map((m) => (
                 <li key={m.transaction_type} className="flex justify-between">
-                  <span>{m.transaction_type}</span>
+                  <span>{t(STOCK_TXN_TYPE[m.transaction_type as keyof typeof STOCK_TXN_TYPE] ?? { fr: m.transaction_type, en: m.transaction_type })}</span>
                   <span className="tabular-nums">{formatPieces(Number(m.quantity_pieces))}</span>
                 </li>
               ))}
@@ -142,8 +173,24 @@ export function ReportInventoryTab({ inventory, showDepotColumn }: ReportInvento
         <StockTable rows={inventory.low_stock} showDepotColumn={showDepotColumn} onRowClick={setProductId} />
       </ReportSection>
 
-      <ReportSection title={<BiSectionTitle {...REPORTS.outOfStock} />}>
+      {(inventory.uncosted_stock_count ?? 0) > 0 && (
+        <ReportSection title={<BiSectionTitle {...REPORTS.uncostedStock} />}>
+          <div id="uncosted-stock" />
+          <p className="text-sm text-text-secondary mb-3">{t(REPORTS.uncostedHint)}</p>
+          <StockTable rows={inventory.uncosted_stock ?? []} showDepotColumn={showDepotColumn} onRowClick={setProductId} />
+        </ReportSection>
+      )}
+
+      <ReportSection title={<BiSectionTitle {...REPORTS.trackedOutOfStock} />}>
         <StockTable rows={inventory.out_of_stock} showDepotColumn={showDepotColumn} onRowClick={setProductId} />
+      </ReportSection>
+
+      <ReportSection title={<BiSectionTitle {...REPORTS.untrackedZeroStock} />}>
+        <StockTable
+          rows={inventory.current_stock.filter((row) => row.stock_status === 'untracked' && Number(row.current_stock_pieces) <= 0)}
+          showDepotColumn={showDepotColumn}
+          onRowClick={setProductId}
+        />
       </ReportSection>
 
       <ProductDetailDrawer productId={productId} onClose={() => setProductId(null)} />

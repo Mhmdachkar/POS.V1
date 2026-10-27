@@ -19,7 +19,7 @@ import {
   PaginationBar,
   Skeleton,
 } from '@/components/ui'
-import { formatDate } from '@/lib/formatters'
+import { formatDate, formatMoney } from '@/lib/formatters'
 import { parseError } from '@/lib/errors'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
 import { NAV } from '@/lib/bilingual/nav'
@@ -28,7 +28,6 @@ import {
   BiEmptyDescription,
   BiEmptyTitle,
   BiButtonInline,
-  BiTableHeader,
 } from '@/lib/bilingual/ui'
 import { useCustomer } from '@/hooks/useCustomers'
 import {
@@ -37,6 +36,7 @@ import {
   formatActivityRange,
   useCustomerActivity,
   useCustomerActivitySummary,
+  withRunningBalances,
   type CustomerActivityTypeFilter,
 } from '@/hooks/useCustomerActivity'
 import {
@@ -56,7 +56,7 @@ import {
 } from './components/CustomerActivitySection'
 
 const ACTIVITY_GRID =
-  'grid-cols-[4.75rem_minmax(6.5rem,1fr)_minmax(6rem,1.4fr)_6.75rem_6.5rem]'
+  'grid-cols-[4.75rem_minmax(6.5rem,1fr)_minmax(6rem,1.4fr)_6.75rem_6.5rem_6.5rem]'
 
 function TableSkeleton() {
   return (
@@ -101,7 +101,10 @@ export function CustomerActivityPage() {
     customerId ?? null,
   )
 
-  const rows = activity?.data ?? []
+  const rows = withRunningBalances(
+    activity?.data ?? [],
+    customer?.balance_owed_cfa ?? 0,
+  )
   const totalCount = activity?.count ?? 0
   const totalPages = Math.max(1, Math.ceil(totalCount / CUSTOMER_ACTIVITY_PAGE_SIZE))
   const isLoading = loadingCustomer || loadingActivity
@@ -251,11 +254,12 @@ export function CustomerActivityPage() {
           <>
             <div className="sticky top-0 bg-surface-muted border-b border-border z-[1]">
               <div className={cn('grid gap-4 px-4 py-2 items-center', ACTIVITY_GRID)}>
-                <span className="uppercase"><BiTableHeader {...COMMON.type} /></span>
-                <span className="uppercase"><BiTableHeader {...COMMON.reference} /></span>
-                <span className="uppercase"><BiTableHeader {...COMMON.description} /></span>
-                <span className="uppercase"><BiTableHeader {...COMMON.date} /></span>
-                <span className="uppercase text-right"><BiTableHeader {...COMMON.amount} /></span>
+                <span className="text-xs font-semibold text-text-secondary">{t(COMMON.type)}</span>
+                <span className="text-xs font-semibold text-text-secondary">{t(COMMON.reference)}</span>
+                <span className="text-xs font-semibold text-text-secondary">{t(COMMON.description)}</span>
+                <span className="text-xs font-semibold text-text-secondary">{t(COMMON.date)}</span>
+                <span className="text-xs font-semibold text-text-secondary text-right">{t(COMMON.amount)}</span>
+                <span className="text-xs font-semibold text-text-secondary text-right">{t(CUSTOMERS.runningBalance)}</span>
               </div>
             </div>
 
@@ -280,6 +284,9 @@ export function CustomerActivityPage() {
                   </span>
                   <span className="text-right min-w-0">
                     <SignedActivityAmount event={event} />
+                  </span>
+                  <span className="text-right text-sm tabular-nums text-text-primary">
+                    {formatMoney(event.runningBalanceCfa ?? 0)}
                   </span>
                 </>
               )

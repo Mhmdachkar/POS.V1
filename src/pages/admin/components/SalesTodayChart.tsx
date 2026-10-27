@@ -10,7 +10,7 @@ import {
 } from 'recharts'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { ADMIN } from '@/lib/bilingual/admin'
-import { formatCFA } from '@/lib/formatters'
+import { formatCFA, formatCompactMoney } from '@/lib/formatters'
 import { t } from '@/lib/bilingual/types'
 import type { DashboardHourlySale } from '@/types/rpc'
 
@@ -77,11 +77,11 @@ export function SalesTodayChart({ hourlySales }: SalesTodayChartProps) {
                 interval={2}
               />
               <YAxis
-                width={52}
+                width={88}
                 tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={(v) => formatCFA(Number(v)).replace(/\s/g, '')}
+                tickFormatter={(v) => formatCompactMoney(Number(v))}
               />
               <Tooltip
                 cursor={{ fill: 'var(--color-primary-subtle)' }}

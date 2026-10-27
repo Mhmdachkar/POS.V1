@@ -158,7 +158,7 @@ export function SaleSuccessModal({
               />
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-text-secondary">{t(SALES.amountApplied)}</span>
+              <span className="text-text-secondary" title={t(SALES.amountAppliedHint)}>{t(SALES.amountApplied)}</span>
               <span className="text-text-primary">{formatCFA(result.amount_applied_cfa)}</span>
             </div>
             {isChange && (

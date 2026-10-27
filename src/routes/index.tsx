@@ -26,7 +26,7 @@ import { DepotOverviewPage } from '@/pages/depot/DepotOverviewPage'
 
 // Admin-only pages
 import { DashboardPage } from '@/pages/admin/DashboardPage'
-import { ReportsPage } from '@/pages/reports/ReportsPage'
+import { reportsRouteTree } from '@/pages/reports/ReportsRoutes'
 import { StaffPage } from '@/pages/admin/StaffPage'
 import { DepotsPage } from '@/pages/admin/DepotsPage'
 import { CategoriesPage } from '@/pages/admin/CategoriesPage'
@@ -87,7 +87,7 @@ export function AppRoutes() {
 
           <Route element={<RoleGuard roles={['admin']} redirectTo="/pos" />}>
             <Route path="/dashboard"         element={<DashboardPage />} />
-            <Route path="/reports"           element={<ReportsPage />} />
+            {reportsRouteTree()}
             <Route path="/admin/staff"       element={<StaffPage />} />
             <Route path="/admin/depots"      element={<DepotsPage />} />
             <Route path="/admin/categories"  element={<CategoriesPage />} />

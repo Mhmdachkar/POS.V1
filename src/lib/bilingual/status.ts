@@ -19,6 +19,7 @@ export const STOCK_STATUS: Record<StockStatus, BilingualPair> = {
   healthy: bi('Stock OK', 'Healthy'),
   low_stock: bi('Stock faible', 'Low Stock'),
   out_of_stock: bi('Rupture de stock', 'Out of Stock'),
+  untracked: bi('Non suivi', 'Not tracked'),
 }
 
 export const SHIFT_STATUS: Record<ShiftStatus, BilingualPair> = {

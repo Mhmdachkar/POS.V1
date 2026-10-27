@@ -66,3 +66,19 @@ export function isTrackedLowStock(input: LowStockSettings): boolean {
 export function isTrackedOutOfStock(input: LowStockSettings): boolean {
   return evaluateTrackedStockAlert(input) === 'out_of_stock'
 }
+
+/** Mirrors private.product_stock_status. Untracked zero stock is non_suivi. */
+export type ProductStockStatusCode = 'ok' | 'faible' | 'rupture' | 'non_suivi'
+
+export function productStockStatus(input: LowStockSettings): ProductStockStatusCode {
+  if (!input.track_low_stock && input.current_stock_pieces <= 0) return 'non_suivi'
+  if (!input.track_low_stock) return 'ok'
+  if (input.current_stock_pieces <= 0) return 'rupture'
+  if (
+    input.low_stock_threshold != null &&
+    input.current_stock_pieces <= input.low_stock_threshold
+  ) {
+    return 'faible'
+  }
+  return 'ok'
+}

@@ -253,6 +253,12 @@ export function ActivityEventRow({ event, onOpenSale }: ActivityEventRowProps) {
       <div className="text-right flex-shrink-0">
 
         <SignedActivityAmount event={event} />
+        {event.runningBalanceCfa != null && (
+          <p className="mt-0.5 text-xs text-text-muted">
+            {t(CUSTOMERS.runningBalance)}{' '}
+            <MoneyDisplay amount={event.runningBalanceCfa} size="small" />
+          </p>
+        )}
 
       </div>
 

@@ -3,6 +3,7 @@ import { ChevronDown, Download } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { Button, Select } from '@/components/ui'
 import { resolveReportDateRange, type ReportPreset } from '@/lib/reportDates'
+import { formatCalendarDate } from '@/lib/formatters'
 import { useDepotStore } from '@/stores/depotStore'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { COMMON } from '@/lib/bilingual/common'
@@ -90,29 +91,32 @@ export function ReportToolbar({
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-center gap-2">
-        {PRESETS.map((p) => (
-          <button
-            key={p}
-            type="button"
-            onClick={() => onPresetChange(p)}
-            className={cn(
-              'px-2.5 py-1 rounded-md text-xs font-medium border transition-colors',
-              preset === p
-                ? 'bg-primary text-primary-foreground border-primary'
-                : 'bg-surface border-border text-text-secondary hover:text-text-primary',
-            )}
-          >
-            <BilingualText {...PRESET_LABELS[p]} variant="filter" layout="inline" />
-          </button>
-        ))}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 flex-1 flex-wrap gap-1 rounded-xl bg-surface-muted p-1">
+          {PRESETS.map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => onPresetChange(p)}
+              className={cn(
+                'min-h-[44px] flex-1 rounded-lg px-3 text-sm font-medium transition-colors sm:flex-none',
+                preset === p
+                  ? 'bg-surface text-text-primary shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary',
+              )}
+            >
+              <BilingualText {...PRESET_LABELS[p]} variant="filter" layout="inline" />
+            </button>
+          ))}
+        </div>
         {hasExport && (
           <div className="relative w-full sm:w-auto sm:ml-auto">
             <Button
               variant="secondary"
-              size="sm"
-              className="gap-1.5 w-full sm:w-auto justify-center"
+              size="md"
+              className="w-full justify-center sm:w-auto"
               disabled={exportDisabled}
+              title={exportDisabled ? t(REPORTS.exportUnavailable) : undefined}
               onClick={() => setExportOpen((o) => !o)}
             >
               <Download className="h-4 w-4" />
@@ -177,31 +181,33 @@ export function ReportToolbar({
             <BilingualText {...REPORTS.dateFrom} variant="caption" layout="inline" />
             <input
               type="date"
+              lang="fr-FR"
               value={customStart}
               onChange={(e) => onCustomStartChange(e.target.value)}
-              className="ml-2 h-8 px-2 rounded-md border border-border bg-surface text-sm"
+              className="ml-2 h-11 min-h-[44px] rounded-lg border border-border bg-surface px-2 text-sm"
             />
           </label>
           <label className="text-xs text-text-secondary inline-flex items-center gap-1">
             <BilingualText {...REPORTS.dateTo} variant="caption" layout="inline" />
             <input
               type="date"
+              lang="fr-FR"
               value={customEnd}
               onChange={(e) => onCustomEndChange(e.target.value)}
-              className="ml-2 h-8 px-2 rounded-md border border-border bg-surface text-sm"
+              className="ml-2 h-11 min-h-[44px] rounded-lg border border-border bg-surface px-2 text-sm"
             />
           </label>
         </div>
       )}
 
       {(showCashierFilter || showCategoryFilter || showProductFilter || showShiftFilter) && (
-        <div className="flex flex-wrap gap-3 items-end">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {showCashierFilter && onCashierIdChange && (
             <Select
               label={bilingualPlain(REPORTS.filterCashier)}
               value={cashierId}
               onChange={(e) => onCashierIdChange(e.target.value)}
-              className="w-40 h-8 text-xs"
+              className="h-11 w-full text-sm"
             >
               <option value="">{bilingualPlain(REPORTS.allCashiersOption)}</option>
               {cashierOptions.map((o) => (
@@ -214,7 +220,7 @@ export function ReportToolbar({
               label={bilingualPlain(REPORTS.filterCategory)}
               value={categoryId}
               onChange={(e) => onCategoryIdChange(e.target.value)}
-              className="w-40 h-8 text-xs"
+              className="h-11 w-full text-sm"
             >
               <option value="">{bilingualPlain(REPORTS.allCategoriesOption)}</option>
               {categoryOptions.map((o) => (
@@ -227,7 +233,7 @@ export function ReportToolbar({
               label={bilingualPlain(REPORTS.filterProduct)}
               value={productId}
               onChange={(e) => onProductIdChange(e.target.value)}
-              className="w-48 h-8 text-xs"
+              className="h-11 w-full text-sm"
             >
               <option value="">{bilingualPlain(REPORTS.allProductsOption)}</option>
               {productOptions.map((o) => (
@@ -240,7 +246,7 @@ export function ReportToolbar({
               label={bilingualPlain(REPORTS.filterShift)}
               value={shiftId}
               onChange={(e) => onShiftIdChange(e.target.value)}
-              className="w-44 h-8 text-xs"
+              className="h-11 w-full text-sm"
             >
               <option value="">{bilingualPlain(REPORTS.allShiftsOption)}</option>
               {shiftOptions.map((o) => (
@@ -252,7 +258,7 @@ export function ReportToolbar({
       )}
 
       <p className="text-xs text-text-muted">
-        {depotId ? (depotName ?? bilingualPlain(REPORTS.selectedDepot)) : bilingualPlain(COMMON.allDepots)} · {range.startDate} → {range.endDate}
+        {depotId ? (depotName ?? bilingualPlain(REPORTS.selectedDepot)) : bilingualPlain(COMMON.allDepots)} · {formatCalendarDate(range.startDate)} → {formatCalendarDate(range.endDate)}
         {' · '}
         {bilingualPlain(REPORTS.balancesGlobalNote)}
       </p>

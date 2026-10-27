@@ -28,4 +28,6 @@ export const PAYMENTS = {
   colNote: bi('Note', 'Note'),
   statusRecorded: bi('Enregistré', 'Recorded'),
   statusReversed: bi('Annulé', 'Reversed'),
+  cashierScopeHint: bi('Paiements de votre dépôt', 'Payments for your depot'),
+  noShift: bi('Hors service', 'No shift'),
 } as const

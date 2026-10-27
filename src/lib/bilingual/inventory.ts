@@ -102,6 +102,10 @@ export const INVENTORY = {
   costSection: bi('Coût', 'Cost'),
   monitoringSection: bi('Suivi', 'Monitoring'),
   deactivateProduct: bi('Désactiver le produit ?', 'Deactivate product?'),
+  deactivateEvenWithStock: bi(
+    'Autorisé même avec du stock. Bloqué seulement si le produit est sur un transfert en cours.',
+    'Allowed even with stock. Blocked only if this product is on a pending transfer.',
+  ),
   adjustment: bi('Ajustement', 'Adjustment'),
   adjustmentReason: bi('Motif', 'Reason'),
   quantityPieces: bi('Quantité (pièces)', 'Quantity (pieces)'),

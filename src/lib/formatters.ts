@@ -68,11 +68,12 @@ export function formatQuantity(qty: number, unitName: string): string {
   return `${new Intl.NumberFormat('fr-FR').format(rounded)} ${unit}`
 }
 
-/** Format a stock quantity in pieces: "124 pces" / "124 pcs" */
+/** Format a stock quantity in pieces: "124 Pièces" / "1 Pièce". */
 export function formatPieces(pieces: number | null | undefined): string {
   if (pieces == null) return '—'
   const rounded = parseFloat(pieces.toFixed(3))
-  return `${new Intl.NumberFormat('fr-FR').format(rounded)} ${t(COMMON.pcsAbbrev)}`
+  const unit = Math.abs(rounded) === 1 ? t(COMMON.piece) : t(COMMON.pieces)
+  return `${new Intl.NumberFormat('fr-FR').format(rounded)} ${unit}`
 }
 
 /** Format a date+time: French "26 oct. 2026, 22:31" (Africa/Abidjan). */
@@ -91,6 +92,35 @@ export function formatDateTime(iso: string | null | undefined): string {
   const hour = part(parts, 'hour').padStart(2, '0')
   const minute = part(parts, 'minute').padStart(2, '0')
   return `${date}, ${hour}:${minute}`
+}
+
+/** Calendar day from YYYY-MM-DD, not a UTC instant. "27 oct. 2026". */
+export function formatCalendarDate(ymd: string | null | undefined): string {
+  if (!ymd) return '—'
+  const [y, m, d] = ymd.slice(0, 10).split('-').map(Number)
+  if (!y || !m || !d) return ymd
+  return formatDate(new Date(Date.UTC(y, m - 1, d, 12, 0, 0)).toISOString())
+}
+
+/** "27 oct." */
+export function formatCalendarDayMonth(ymd: string | null | undefined): string {
+  return formatCalendarDate(ymd).replace(/\s+\d{4}$/, '')
+}
+
+/** Chart axis: "30 k CFA" or the full amount under 1000. */
+export function formatCompactMoney(amount: number | null | undefined): string {
+  if (amount == null || !Number.isFinite(amount)) return '—'
+  const rounded = Math.round(amount)
+  const abs = Math.abs(rounded)
+  const sign = rounded < 0 ? MINUS_SIGN : ''
+  if (abs >= 1000) {
+    const k = abs / 1000
+    const body = Number.isInteger(k)
+      ? String(k)
+      : (Math.round(k * 10) / 10).toString().replace('.', ',')
+    return `${sign}${body} k CFA`
+  }
+  return formatMoney(rounded)
 }
 
 /** Format a date only: "26 oct. 2026" */

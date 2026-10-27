@@ -84,10 +84,18 @@ export function ReportProductsTab({ sales, showDepotColumn }: ReportProductsTabP
                       <MoneyDisplay amount={p.net_sales_cfa} size="small" />
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <MoneyDisplay amount={p.gross_profit_cfa} size="small" />
+                      {p.margin_status ? (
+                        <span className="text-xs text-warning-foreground">{p.margin_status}</span>
+                      ) : (
+                        <MoneyDisplay amount={Number(p.gross_profit_cfa ?? 0)} size="small" />
+                      )}
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <MoneyDisplay amount={p.cogs_cfa} size="small" />
+                      {p.margin_status ? (
+                        <span className="text-text-muted">—</span>
+                      ) : (
+                        <MoneyDisplay amount={Number(p.cogs_cfa ?? 0)} size="small" />
+                      )}
                     </td>
                   </tr>
                 ))}
