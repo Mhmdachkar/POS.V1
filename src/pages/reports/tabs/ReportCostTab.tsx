@@ -176,11 +176,11 @@ export function ReportCostTab({ cost, showDepotColumn }: ReportCostTabProps) {
           label={<BiSectionTitle {...REPORTS.totalRestockCost} />}
           amount={Number(period.total_restock_cost_cfa)}
         />
-        <div className="rounded-lg border border-border bg-surface px-4 py-3">
-          <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">
+        <div className="rounded-2xl bg-surface px-4 py-4 shadow-sm ring-1 ring-border">
+          <p className="text-xs font-medium text-text-secondary">
             <BiSectionTitle {...REPORTS.totalRestockPieces} />
           </p>
-          <p className="mt-1 text-2xl font-bold tabular-nums">
+          <p className="mt-2 text-2xl font-semibold tabular-nums">
             {formatPieces(Number(period.total_restock_quantity_pieces))}
           </p>
         </div>

@@ -18,9 +18,9 @@ export function ReportReturnsTab({ sales }: ReportReturnsTabProps) {
     <div className="space-y-8">
       <div className="grid md:grid-cols-3 gap-3 max-w-3xl">
         <ReportMetric label={<BiTableHeader {...REPORTS.returnsActivity} />} amount={Number(sales.returns_activity_cfa)} />
-        <div className="rounded-lg border border-border bg-surface px-4 py-3">
-          <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">{t(REPORTS.returnCount)}</p>
-          <p className="mt-1 text-lg font-semibold tabular-nums">{sales.returns.length}</p>
+        <div className="rounded-2xl bg-surface px-4 py-4 shadow-sm ring-1 ring-border">
+          <p className="text-xs font-medium text-text-secondary">{t(REPORTS.returnCount)}</p>
+          <p className="mt-2 text-2xl font-semibold tabular-nums">{sales.returns.length}</p>
         </div>
         <ReportMetric label={<BiTableHeader {...REPORTS.netAfterReturns} />} amount={Number(sales.net_sales_cfa)} />
       </div>
@@ -29,9 +29,9 @@ export function ReportReturnsTab({ sales }: ReportReturnsTabProps) {
         {sales.returns.length === 0 ? (
           <p className="text-sm text-text-muted">Aucun retour sur la période.</p>
         ) : (
-          <div className="overflow-x-auto border border-border rounded-md">
+          <div className="overflow-x-auto rounded-xl bg-surface-muted">
             <table className="w-full text-sm">
-              <thead className="bg-surface-alt text-xs">
+              <thead className="text-xs text-text-secondary">
                 <tr>
                   <th className="text-left px-3 py-2">Quand</th>
                   <th className="text-left px-3 py-2">{t(COMMON.receipt)}</th>

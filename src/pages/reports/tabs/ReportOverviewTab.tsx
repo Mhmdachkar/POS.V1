@@ -49,27 +49,34 @@ export function ReportOverviewTab({ sales, inventory, customers }: ReportOvervie
   }))
 
   return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
-        <ReportMetric label={<BiTableHeader {...REPORTS.grossSales} />} amount={Number(sales.sales_activity_cfa)} />
-        <ReportMetric label={<BiTableHeader {...REPORTS.returnsMetric} />} amount={Number(sales.returns_activity_cfa)} danger />
-        <ReportMetric label={<BiTableHeader {...REPORTS.netSales} />} amount={Number(sales.net_sales_cfa)} />
-        <ReportMetric label={<BiTableHeader {...REPORTS.cogs} />} amount={Number(sales.cogs_cfa)} />
-        <ReportMetric label={<BiTableHeader {...REPORTS.grossProfit} />} amount={Number(sales.gross_profit_cfa)} />
+    <div className="space-y-6">
+      <div className="grid gap-3 lg:grid-cols-5">
+        <ReportMetric
+          emphasis
+          className="lg:col-span-2 lg:flex lg:flex-col lg:justify-center lg:py-6"
+          label={<BiTableHeader {...REPORTS.netSales} />}
+          amount={Number(sales.net_sales_cfa)}
+        />
+        <div className="grid grid-cols-2 gap-3 lg:col-span-3">
+          <ReportMetric label={<BiTableHeader {...REPORTS.grossSales} />} amount={Number(sales.sales_activity_cfa)} />
+          <ReportMetric label={<BiTableHeader {...REPORTS.returnsMetric} />} amount={Number(sales.returns_activity_cfa)} danger />
+          <ReportMetric label={<BiTableHeader {...REPORTS.cogs} />} amount={Number(sales.cogs_cfa)} />
+          <ReportMetric label={<BiTableHeader {...REPORTS.grossProfit} />} amount={Number(sales.gross_profit_cfa)} />
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-3">
-        <div className="rounded-lg border border-border bg-surface px-4 py-3">
-          <div className="uppercase tracking-wide">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
+        <div className="rounded-2xl bg-surface px-4 py-4 shadow-sm ring-1 ring-border">
+          <div className="text-xs font-medium text-text-secondary">
             <BiTableHeader {...REPORTS.completedSales} />
           </div>
-          <p className="mt-1 text-lg font-semibold tabular-nums">{sales.transaction_count}</p>
+          <p className="mt-2 text-2xl font-semibold tabular-nums">{sales.transaction_count}</p>
         </div>
-        <div className="rounded-lg border border-border bg-surface px-4 py-3">
-          <div className="uppercase tracking-wide">
+        <div className="rounded-2xl bg-surface px-4 py-4 shadow-sm ring-1 ring-border">
+          <div className="text-xs font-medium text-text-secondary">
             <BiTableHeader {...REPORTS.unitsSold} />
           </div>
-          <p className="mt-1 text-lg font-semibold tabular-nums">{formatPieces(Number(sales.units_sold))}</p>
+          <p className="mt-2 text-2xl font-semibold tabular-nums">{formatPieces(Number(sales.units_sold))}</p>
         </div>
         <ReportMetric label={<BiTableHeader {...REPORTS.averageSale} />} amount={Number(sales.average_sale_cfa)} />
         <ReportMetric
@@ -94,7 +101,7 @@ export function ReportOverviewTab({ sales, inventory, customers }: ReportOvervie
 
       {daily.length > 0 && (
         <ReportSection title={<BiSectionTitle {...REPORTS.chartDaily} />}>
-          <div className="h-56 w-full">
+          <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={daily}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border, #e5e7eb)" />
@@ -147,20 +154,20 @@ export function ReportOverviewTab({ sales, inventory, customers }: ReportOvervie
       {inventory && (
         <ReportSection title={<BiSectionTitle {...REPORTS.inventoryAttention} />}>
           <div className="grid grid-cols-2 gap-3 max-w-md">
-            <div className="rounded-lg border border-border bg-surface px-4 py-3">
-              <div className="uppercase tracking-wide">
+            <div className="rounded-xl bg-warning-bg px-4 py-4">
+              <div className="text-xs font-medium text-warning-foreground">
                 <BiTableHeader {...REPORTS.lowStock} />
               </div>
-              <p className="mt-1 text-2xl font-semibold tabular-nums text-warning-foreground">{inventory.low_stock_count}</p>
-              <p className="text-xs text-text-muted mt-1">
+              <p className="mt-2 text-2xl font-semibold tabular-nums text-warning-foreground">{inventory.low_stock_count}</p>
+              <p className="mt-1 text-xs text-text-muted">
                 <BiTableHeader {...REPORTS.skusBelowThresholdShort} />
               </p>
             </div>
-            <div className="rounded-lg border border-border bg-surface px-4 py-3">
-              <div className="uppercase tracking-wide">
+            <div className="rounded-xl bg-danger-bg px-4 py-4">
+              <div className="text-xs font-medium text-danger-foreground">
                 <BiTableHeader {...REPORTS.outOfStock} />
               </div>
-              <p className="mt-1 text-2xl font-semibold tabular-nums text-danger-foreground">{inventory.out_of_stock_count}</p>
+              <p className="mt-2 text-2xl font-semibold tabular-nums text-danger-foreground">{inventory.out_of_stock_count}</p>
             </div>
           </div>
         </ReportSection>

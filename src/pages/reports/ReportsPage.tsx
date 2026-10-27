@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { BiEmptyTitle, BiPageDescription, BiPageTitle, BiTabLabel } from '@/lib/bilingual/ui'
 import { REPORTS } from '@/lib/bilingual/reports'
 import { BarChart2 } from 'lucide-react'
-import { EmptyState, PageHeader, Skeleton, Tabs } from '@/components/ui'
+import { EmptyState, Skeleton } from '@/components/ui'
 import { NavPictogram } from '@/components/layout/NavPictogram'
 import { resolveReportDateRange, type ReportPreset } from '@/lib/reportDates'
 import type { ReportFilterParams } from '@/hooks/useReports'
@@ -16,6 +16,7 @@ import {
 import { useCategories } from '@/hooks/useInventory'
 import { useStaffList } from '@/hooks/useStaff'
 import { useDepotStore } from '@/stores/depotStore'
+import { ReportNav } from './components/ReportNav'
 import { ReportToolbar } from './components/ReportToolbar'
 import { ReportModulePanel } from './components/ReportModulePanel'
 import { UpdatingBanner } from './components/UpdatingBanner'
@@ -282,15 +283,27 @@ export function ReportsPage() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div className="border-b border-border bg-surface flex-shrink-0">
-        <PageHeader
-          title={<BiPageTitle {...REPORTS.pageTitle} />}
-          description={<BiPageDescription {...REPORTS.pageDescription} />}
-          icon={<NavPictogram path="/reports" size="header" />}
-          className="border-b-0"
-        />
-        <div className="px-3 sm:px-6 pb-3 sm:pb-4 space-y-3">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background lg:flex-row">
+      <aside className="shrink-0 border-b border-border bg-surface lg:flex lg:w-64 lg:flex-col lg:border-b-0 lg:border-r lg:bg-surface">
+        <div className="hidden items-center gap-3 px-4 pb-2 pt-5 lg:flex">
+          <NavPictogram path="/reports" size="header" />
+          <p className="text-title text-text-primary">
+            <BiPageTitle {...REPORTS.pageTitle} />
+          </p>
+        </div>
+        <ReportNav tabs={TAB_ITEMS} active={tab} onChange={(v) => setTab(v as ReportTabId)} />
+      </aside>
+
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="shrink-0 border-b border-border bg-surface px-4 py-3 sm:px-6">
+          <div className="mb-3 lg:sr-only">
+            <h1 className="text-title text-text-primary">
+              <BiPageTitle {...REPORTS.pageTitle} />
+            </h1>
+            <div className="mt-0.5 text-sm text-text-secondary">
+              <BiPageDescription {...REPORTS.pageDescription} />
+            </div>
+          </div>
           <ReportToolbar
             preset={preset}
             onPresetChange={setPreset}
@@ -319,11 +332,9 @@ export function ReportsPage() {
             onExportXlsx={() => { void runExport('xlsx') }}
             onExportPrint={() => { void runExport('print') }}
           />
-          <Tabs tabs={TAB_ITEMS} active={tab} onChange={(v) => setTab(v as ReportTabId)} />
         </div>
-      </div>
 
-      <div className="flex-1 min-w-0 overflow-x-auto overflow-y-auto p-6">
+      <div className="min-w-0 flex-1 space-y-6 overflow-x-auto overflow-y-auto p-4 sm:p-6">
         <UpdatingBanner visible={isFetching && hasActiveData} />
 
         {activeQuery.isLoading && !hasActiveData && (
@@ -348,8 +359,6 @@ export function ReportsPage() {
 
         {tab === 'sales' && salesQ.data && (
           <>
-            <ReportModulePanel kind="hours" depotId={depotId} startDate={range.startDate} endDate={range.endDate} cashierId={cashierId || undefined} />
-            <ReportModulePanel kind="discounts" depotId={depotId} startDate={range.startDate} endDate={range.endDate} cashierId={cashierId || undefined} />
             <ReportSalesTab
               sales={salesQ.data}
               depotId={depotId}
@@ -357,6 +366,8 @@ export function ReportsPage() {
               endDate={range.endDate}
               cashierId={cashierId || undefined}
             />
+            <ReportModulePanel kind="hours" depotId={depotId} startDate={range.startDate} endDate={range.endDate} cashierId={cashierId || undefined} />
+            <ReportModulePanel kind="discounts" depotId={depotId} startDate={range.startDate} endDate={range.endDate} cashierId={cashierId || undefined} />
           </>
         )}
 
@@ -366,30 +377,30 @@ export function ReportsPage() {
 
         {tab === 'inventory' && inventoryQ.data && (
           <>
+            <ReportInventoryTab inventory={inventoryQ.data} showDepotColumn={showDepotColumn} />
             <ReportModulePanel kind="low" depotId={depotId} startDate={range.startDate} endDate={range.endDate} />
             <ReportModulePanel kind="stock" depotId={depotId} startDate={range.startDate} endDate={range.endDate} />
-            <ReportInventoryTab inventory={inventoryQ.data} showDepotColumn={showDepotColumn} />
           </>
         )}
 
         {tab === 'customers' && customersQ.data && (
           <>
-            <ReportModulePanel kind="ageing" depotId={depotId} startDate={range.startDate} endDate={range.endDate} />
             <ReportCustomersTab customers={customersQ.data} depotScoped={!!depotId} />
+            <ReportModulePanel kind="ageing" depotId={depotId} startDate={range.startDate} endDate={range.endDate} />
           </>
         )}
 
         {tab === 'payments' && customersQ.data && (
           <>
-            <ReportModulePanel kind="collections" depotId={depotId} startDate={range.startDate} endDate={range.endDate} cashierId={cashierId || undefined} />
             <ReportPaymentsTab customers={customersQ.data} />
+            <ReportModulePanel kind="collections" depotId={depotId} startDate={range.startDate} endDate={range.endDate} cashierId={cashierId || undefined} />
           </>
         )}
 
         {tab === 'shifts' && cashQ.data && (
           <>
-            <ReportModulePanel kind="shifts" depotId={depotId} startDate={range.startDate} endDate={range.endDate} cashierId={cashierId || undefined} />
             <ReportShiftsTab cash={cashQ.data} sales={salesQ.data} />
+            <ReportModulePanel kind="shifts" depotId={depotId} startDate={range.startDate} endDate={range.endDate} cashierId={cashierId || undefined} />
           </>
         )}
 
@@ -423,6 +434,7 @@ export function ReportsPage() {
         {tab === 'cost' && costQ.data && (
           <ReportCostTab cost={costQ.data} showDepotColumn={showDepotColumn} />
         )}
+      </div>
       </div>
     </div>
   )

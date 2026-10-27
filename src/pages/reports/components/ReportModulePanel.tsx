@@ -71,9 +71,18 @@ export function ReportModulePanel({
     )
   }
   if (!Array.isArray(rows) || rows.length === 0) return null
+  const title = {
+    hours: REPORTS.salesSummary,
+    discounts: REPORTS.discounts,
+    shifts: REPORTS.shifts,
+    ageing: REPORTS.customers,
+    stock: REPORTS.periodMovement,
+    low: REPORTS.lowStock,
+    collections: REPORTS.collected,
+  }[kind]
   return (
-    <ReportSection title={<BiSectionTitle {...REPORTS.salesSummary} />}>
-      <ul className="divide-y divide-border border border-border rounded-md text-sm">
+    <ReportSection title={<BiSectionTitle {...title} />}>
+      <ul className="divide-y divide-border overflow-hidden rounded-xl bg-surface-muted text-sm">
         {rows.slice(0, 50).map((row, index) => {
           const record = row as Record<string, unknown>
           const label = String(record.name ?? record.receipt_number ?? record.product_name ?? record.cashier_name ?? record.hour ?? index)
