@@ -57,10 +57,7 @@ export const ERROR_MESSAGES_BI: Record<VhmErrorCode, BilingualPair> = {
     'This sale was cancelled and cannot be processed further.',
   ),
   SALE_NOT_FOUND: bi('Vente introuvable.', 'Sale not found.'),
-  PAYMENT_EXCEEDS_BALANCE: bi(
-    'Le paiement dépasse le solde du client.',
-    'Payment amount exceeds the customer\'s outstanding balance.',
-  ),
+  PAYMENT_EXCEEDS_BALANCE: bi('Montant supérieur au solde dû du client.', 'Amount exceeds the customer balance due.'),
   TRANSFER_ALREADY_COMPLETED: bi(
     'Ce transfert est déjà terminé.',
     'This transfer has already been completed.',
@@ -140,14 +137,8 @@ export const ERROR_MESSAGES_BI: Record<VhmErrorCode, BilingualPair> = {
     'Le dernier administrateur actif ne peut pas être désactivé ou rétrogradé.',
     'The last active admin cannot be deactivated or demoted.',
   ),
-  STAFF_HAS_OPEN_SHIFT: bi(
-    'Ce membre a un service ouvert. Fermez-le avant de désactiver.',
-    'This staff member has an open shift. Close the shift before deactivating.',
-  ),
-  AUTH_SYNC_FAILED: bi(
-    'Compte mis à jour mais l\'accès n\'a pas pu être synchronisé. Réessayez.',
-    'The account was updated but login access could not be synced. Retry from the current staff status.',
-  ),
+  STAFF_HAS_OPEN_SHIFT: bi("Cet employé a un service ouvert. Fermez-le d'abord.", 'This staff member has an open shift. Close it first.'),
+  AUTH_SYNC_FAILED: bi("Compte mis à jour, mais l'accès n'est pas synchronisé. Réessayez.", 'Account updated, but login not synced. Try again.'),
   STAFF_ROLE_SLOT_TAKEN: bi(
     'Ce dépôt a déjà un membre actif pour ce rôle.',
     'This depot already has an active staff member in that role.',

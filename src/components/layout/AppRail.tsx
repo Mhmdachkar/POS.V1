@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom'
+import { lastReportPath } from '@/pages/reports/lastReport'
 import { usePOSStore } from '@/stores/posStore'
 import {
   PanelLeftClose,
@@ -107,7 +108,7 @@ function RailItem({
 
   return (
     <NavLink
-      to={item.path}
+      to={item.path === '/reports' ? lastReportPath() : item.path}
       end={end}
       aria-label={aria}
       title={iconOnly ? bilingualPlain(item.label) : undefined}

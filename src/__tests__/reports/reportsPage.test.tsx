@@ -340,12 +340,10 @@ describe('ReportsPage', () => {
     renderReports()
     await user.click(screen.getByRole('tab', { name: REPORTS.groupCustomers.fr }))
     expect(screen.getByText(REPORTS.receivable.fr)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: REPORTS.balancesGlobalNote.fr })).toBeInTheDocument()
     expect(screen.getAllByText(hasFormatted(formatCFA(4000))).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText(REPORTS.collected.fr).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText(REPORTS.creditGranted.fr)).toBeInTheDocument()
+    expect(screen.getByText(REPORTS.collectedOnReceivables.fr)).toBeInTheDocument()
     expect(screen.getAllByText(hasFormatted(formatCFA(200))).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText(REPORTS.noShiftCash.fr)).toBeInTheDocument()
-    expect(screen.getAllByText(hasFormatted(formatCFA(75))).length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('PHASE12_TEST_CUST')).toBeInTheDocument()
   })
 
@@ -357,7 +355,7 @@ describe('ReportsPage', () => {
     expect(screen.getAllByText(hasFormatted(formatCFA(1000))).length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText(hasFormatted(formatCFA(980))).length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText(hasFormatted(formatCFA(-20))).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText('Fermé — écart total')).toBeInTheDocument()
+    expect(screen.getByText(REPORTS.closedDiscrepancyTotal.fr)).toBeInTheDocument()
     expect(screen.getByText(REPORTS.openShifts.fr)).toBeInTheDocument()
   })
 

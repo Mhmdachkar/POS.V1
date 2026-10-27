@@ -1,3 +1,5 @@
+import { COMMON } from '@/lib/bilingual/common'
+import { t } from '@/lib/bilingual/types'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuthStore, selectAuthLoadState } from '@/stores/authStore'
 import { Skeleton } from '@/components/ui'
@@ -47,7 +49,7 @@ export function AuthGuard() {
       <div
         className="flex h-screen items-center justify-center bg-background"
         role="status"
-        aria-label="Chargement de l'application"
+        aria-label={t(COMMON.loadingApp)}
       >
         <div className="space-y-3 w-56">
           <Skeleton height={8} className="rounded-full" />

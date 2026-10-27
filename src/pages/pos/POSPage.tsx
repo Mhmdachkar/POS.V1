@@ -135,7 +135,7 @@ export function POSPage() {
         {/* Mobile workspace tabs — full-height panes instead of 50/50 stack */}
         <div
           role="tablist"
-          aria-label="Caisse mobile"
+          aria-label={bilingualAriaLabel(POS.mobileRegisterAria)}
           data-testid="pos-mobile-tabs"
           className="min-[800px]:hidden flex-shrink-0 grid grid-cols-2 gap-1 p-1.5 border-b border-border bg-surface"
         >

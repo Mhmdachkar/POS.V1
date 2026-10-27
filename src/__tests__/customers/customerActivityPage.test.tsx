@@ -137,7 +137,7 @@ describe('CustomerActivityPage', () => {
 
   it('shows sales, returns, payments totals and outstanding balance', () => {
     renderPage()
-    expect(screen.getByText(CUSTOMERS.balanceOwed.fr)).toBeInTheDocument()
+    expect(screen.getAllByText(CUSTOMERS.balanceOwed.fr)[0]).toBeInTheDocument()
     expect(screen.getByText('12')).toBeInTheDocument()
     expect(screen.getByText('2')).toBeInTheDocument()
     expect(screen.getByText('4')).toBeInTheDocument()
@@ -152,7 +152,7 @@ describe('CustomerActivityPage', () => {
   it('shows customer name, authoritative balance, and first page count', () => {
     renderPage()
     expect(screen.getByRole('heading', { name: 'Aminata Diallo' })).toBeInTheDocument()
-    expect(screen.getByText(CUSTOMERS.outstandingBalance.fr)).toBeInTheDocument()
+    expect(screen.getAllByText(CUSTOMERS.outstandingBalance.fr)[0]).toBeInTheDocument()
     const owed = formatCFA(4500)
     const node = screen.getAllByText((_, el) =>
       el?.tagName === 'SPAN' && el.textContent === owed,

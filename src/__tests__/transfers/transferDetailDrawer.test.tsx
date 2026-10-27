@@ -106,7 +106,7 @@ describe('TransferDetailDrawer', () => {
   it('shows complete and cancel for pending admin', () => {
     renderDrawer(detail())
     expect(
-      screen.getByRole('button', { name: /Complete transfer|Terminer le transfert/i }),
+      screen.getByRole('button', { name: /Complete transfer|Valider le transfert/i }),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Cancel|Annuler/i })).toBeInTheDocument()
     expect(screen.getByText('PHASE9 Water A')).toBeInTheDocument()
@@ -126,7 +126,7 @@ describe('TransferDetailDrawer', () => {
       cancelled_by_name: 'System Administrator',
       cancel_reason: 'Wrong destination',
     }))
-    expect(screen.getAllByText('Annulée').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Annulé/i).length).toBeGreaterThan(0)
     expect(screen.getByText('Wrong destination')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Complete' })).not.toBeInTheDocument()
   })

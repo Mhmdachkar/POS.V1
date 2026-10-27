@@ -21,6 +21,6 @@ describe('saleQuantityDisplay', () => {
   })
 
   it('appends piece total for non-piece units', () => {
-    expect(formatSoldQuantityDetail(2, 'Carton', 2, 24)).toBe('2 Carton (24 Pièces)')
+    expect(formatSoldQuantityDetail(2, 'Carton', 2, 24)).toBe('2 Carton (24 pièces)')
   })
 })

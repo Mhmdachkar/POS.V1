@@ -98,7 +98,7 @@ describe('CEO Notes — seller attribution', () => {
   it('shows Cashier role badge from cashier_role', () => {
     renderDrawer(baseSale({ cashier_role: 'cashier', cashier_name: 'Awa Ndiaye' }))
     expect(screen.getByText('Awa Ndiaye')).toBeInTheDocument()
-    expect(getByFrench(SALES.sellerCashier.fr)).toBeInTheDocument()
+    expect(screen.getByText(SALES.sellerCashier.fr, { exact: true })).toBeInTheDocument()
     expect(screen.queryByText(SALES.sellerAdmin.fr)).not.toBeInTheDocument()
   })
 
@@ -111,7 +111,7 @@ describe('CEO Notes — seller attribution', () => {
       }),
     )
     expect(screen.getByText('Admin User')).toBeInTheDocument()
-    expect(getByFrench(SALES.sellerAdmin.fr)).toBeInTheDocument()
+    expect(screen.getByText(SALES.sellerAdmin.fr, { exact: true })).toBeInTheDocument()
     expect(screen.queryByText(SALES.sellerCashier.fr)).not.toBeInTheDocument()
   })
 

@@ -329,8 +329,8 @@ export function ProductFormModal({ open, onClose, depotId, product }: ProductFor
       open={open}
       onClose={onClose}
       title={isEdit
-        ? <BilingualText fr="Modifier le produit" en="Edit Product" variant="heading" />
-        : <BilingualText fr="Nouveau produit" en="New Product" variant="heading" />
+        ? <BilingualText {...INVENTORY.editProduct} variant="heading" />
+        : <BilingualText {...INVENTORY.newProduct} variant="heading" />
       }
       size="2xl"
       footer={
@@ -341,7 +341,7 @@ export function ProductFormModal({ open, onClose, depotId, product }: ProductFor
           <LoadingButton type="submit" form="product-form" loading={isPending}>
             <BilingualText
               fr={isEdit ? 'Enregistrer' : 'Créer le produit'}
-              en={isEdit ? 'Save Changes' : 'Create Product'}
+              en={isEdit ? 'Save changes' : 'Create product'}
               variant="inline"
               layout="inline"
             />
@@ -422,8 +422,7 @@ export function ProductFormModal({ open, onClose, depotId, product }: ProductFor
             </p>
             <p className="mt-1 text-xs text-text-muted">
               <BilingualText
-                fr="Numéro de série requis par unité. Le niveau 0 est toujours la pièce de base."
-                en="Serial number required per unit. Level 0 is always the base piece."
+                {...INVENTORY.serialRequiredHint}
                 variant="caption"
                 layout="inline"
               />

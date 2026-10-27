@@ -33,7 +33,7 @@ describe('customer ledger', () => {
     const page = pageCustomerLedger(rows, { type: 'all', page: 0, pageSize: 25 })
     expect(page.data.map((event) => event.amountCfa)).toEqual([-8000, 8000])
     expect(page.data[0]?.runningBalanceCfa).toBe(0)
-    expect(page.data[0]?.description).toBe('Paiement espèces')
+    expect(page.data[0]?.description).toBe('Paiement client')
   })
 
   it('nets client testing posted movements to 2400', () => {

@@ -83,7 +83,7 @@ describe('StaffPage', () => {
     expect(screen.getAllByText(/actif|active/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/inactif|inactive/i)).toBeInTheDocument()
     expect(screen.getByText('Cashier Dakar')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /ajouter un membre|add staff/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /ajouter un employé|add staff/i })).toBeInTheDocument()
   })
 
   it('shows depot field for cashier and hides it for admin', async () => {
@@ -97,7 +97,7 @@ describe('StaffPage', () => {
   it('surfaces last-admin, open-shift, and self-deactivate messages', async () => {
     const user = userEvent.setup()
     wrap(<StaffDetailDrawer staffId="s-cashier" onClose={() => undefined} />)
-    await user.click(screen.getByRole('button', { name: /désactiver le membre|deactivate staff/i }))
+    await user.click(screen.getByRole('button', { name: /désactiver l'employé|deactivate staff/i }))
     await user.click(screen.getByRole('button', { name: /Deactivate|Désactiver/i }))
     expect(
       await screen.findByText(messageForCodePlain('LAST_ADMIN_REQUIRED'), { exact: false }),

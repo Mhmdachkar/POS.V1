@@ -18,7 +18,7 @@ type PaymentRow = Payment & {
   [key: string]: unknown
 }
 
-const PAYMENTS_DESCRIPTION = PAYMENTS.pageDescLong.fr
+const PAYMENTS_DESCRIPTION = PAYMENTS.pageDesc.fr
 
 function makePayment(i: number, overrides: Partial<PaymentRow> = {}): PaymentRow {
   return {

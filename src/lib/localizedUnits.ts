@@ -19,6 +19,23 @@ const LEVEL_FALLBACK = [
   UNIT_ALIASES.carton,
 ] as const
 
+function resolveUnitKind(
+  unitName: string | null | undefined,
+  unitLevel?: number,
+): 'piece' | 'package' | 'carton' | 'custom' {
+  const raw = unitName?.trim()
+  if (raw) {
+    const key = raw.toLowerCase()
+    if (key.startsWith('piece') || key.startsWith('pièce') || key === 'pièce' || key === 'pièces') return 'piece'
+    if (key.startsWith('package') || key.startsWith('paquet')) return 'package'
+    if (key.startsWith('carton')) return 'carton'
+    return 'custom'
+  }
+  if (unitLevel === 1) return 'package'
+  if (unitLevel === 2) return 'carton'
+  return 'piece'
+}
+
 /** Localized packing unit for display. Custom unit names stay as stored. */
 export function localizedUnitLabel(
   unitName: string | null | undefined,
@@ -32,6 +49,20 @@ export function localizedUnitLabel(
   }
   const fallback = LEVEL_FALLBACK[unitLevel ?? 0] ?? UNIT_ALIASES.piece
   return t(fallback)
+}
+
+/** Singular/plural unit label for a count (known units only; custom names unchanged). */
+export function localizedUnitLabelForCount(
+  count: number,
+  unitName: string | null | undefined,
+  unitLevel?: number,
+): string {
+  const raw = unitName?.trim()
+  const kind = resolveUnitKind(unitName, unitLevel)
+  if (kind === 'custom') return raw || localizedUnitLabel(unitName, unitLevel)
+  if (kind === 'piece') return t(count === 1 ? UNIT_ALIASES.piece : UNIT_ALIASES.pieces)
+  if (kind === 'package') return t(count === 1 ? UNIT_ALIASES.package : UNIT_ALIASES.packages)
+  return t(count === 1 ? UNIT_ALIASES.carton : UNIT_ALIASES.cartons)
 }
 
 export function productInitials(name: string): string {

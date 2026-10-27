@@ -6,7 +6,7 @@ import { type ReportDef } from '../reportCatalog'
 import { useReportSearch } from '../useReportSearch'
 import { BiPageTitle } from '@/lib/bilingual/ui'
 import { REPORTS } from '@/lib/bilingual/reports'
-import { t } from '@/lib/bilingual/types'
+import { bilingualPlain, t } from '@/lib/bilingual/types'
 import { supabase } from '@/lib/supabase'
 import { useCategories } from '@/hooks/useInventory'
 import { useStaffList } from '@/hooks/useStaff'
@@ -72,19 +72,29 @@ export function ReportPageFrame({
     <Tooltip.Provider delayDuration={150}>
       <div className="min-w-0 space-y-4 p-4 sm:p-6">
         <ReportSwitcher report={report} />
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-title text-text-primary">
-              <BiPageTitle {...report.title} />
-            </h1>
-            <InfoTip text={t(report.description)} />
+        <div className="rounded-2xl bg-surface p-4 shadow-sm ring-1 ring-border/70 sm:p-5">
+          <div className="flex items-start gap-3">
+            <span
+              aria-hidden="true"
+              className="mt-1 h-8 w-1 shrink-0 rounded-full bg-primary"
+            />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h1 className="text-title text-text-primary">
+                  <BiPageTitle {...report.title} />
+                </h1>
+                <InfoTip text={t(report.description)} />
+              </div>
+              <p className="mt-1 text-xs text-text-muted">
+                <span className="font-medium text-text-secondary">{bilingualPlain(report.group)}</span>
+                {' · '}
+                {formatReportDate(search.range.startDate)} → {formatReportDate(search.range.endDate)}
+                {' · '}
+                {depotId ? (depotName ?? t(REPORTS.selectedDepot)) : t(COMMON.allDepots)}
+              </p>
+            </div>
           </div>
-          <p className="mt-1 text-xs text-text-muted">
-            {formatReportDate(search.range.startDate)} → {formatReportDate(search.range.endDate)}
-            {' · '}
-            {depotId ? (depotName ?? t(REPORTS.selectedDepot)) : t(COMMON.allDepots)}
-          </p>
-          <div className="mt-3">
+          <div className="mt-4">
             <ReportToolbar
               preset={search.preset}
               onPresetChange={search.setPreset}
@@ -115,7 +125,7 @@ export function ReportPageFrame({
             />
           </div>
         </div>
-        <div className="min-w-0 space-y-6">
+        <div key={report.id} className="min-w-0 space-y-6 animate-[app-route-enter_240ms_ease-out]">
           {children}
         </div>
       </div>

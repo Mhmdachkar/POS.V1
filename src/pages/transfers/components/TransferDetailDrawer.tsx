@@ -136,10 +136,10 @@ export function TransferDetailDrawer({ transferId, onClose }: TransferDetailDraw
             <SectionHeader title={<BiSectionTitle {...TRANSFERS.lines} />} />
             <div className="rounded-md border border-border overflow-hidden">
               <div className="grid grid-cols-[minmax(6rem,1fr)_minmax(6rem,1fr)_7rem_5.5rem] gap-2 px-3 py-2 bg-surface-muted items-center">
-                <span className="text-xs font-semibold text-text-secondary uppercase">Source</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Destination</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase text-right">Qty</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase text-right">Pieces</span>
+                <span className="text-xs font-semibold text-text-secondary uppercase">{t(TRANSFERS.sourceCol)}</span>
+                <span className="text-xs font-semibold text-text-secondary uppercase">{t(TRANSFERS.destinationCol)}</span>
+                <span className="text-xs font-semibold text-text-secondary uppercase text-right">{t(TRANSFERS.qty)}</span>
+                <span className="text-xs font-semibold text-text-secondary uppercase text-right">{t(TRANSFERS.piecesCol)}</span>
               </div>
               {transfer.items.map((item) => (
                 <div

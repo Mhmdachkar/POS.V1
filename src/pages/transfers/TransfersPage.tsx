@@ -179,12 +179,12 @@ export function TransfersPage() {
           <>
             <div className="sticky top-0 bg-surface-muted border-b border-border z-[1]">
               <div className={cn('grid gap-4 px-4 py-2 items-center', gridCols)}>
-                <span className="text-xs font-semibold text-text-secondary uppercase">Status</span>
+                <span className="text-xs font-semibold text-text-secondary uppercase">{t(TRANSFERS.statusCol)}</span>
                 <span className="text-xs font-semibold text-text-secondary uppercase">{t(TRANSFERS.sourceCol)}</span>
                 <span className="text-xs font-semibold text-text-secondary uppercase">{t(TRANSFERS.destinationCol)}</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase text-right">Items</span>
+                <span className="text-xs font-semibold text-text-secondary uppercase text-right">{t(TRANSFERS.itemsCol)}</span>
                 <span className="text-xs font-semibold text-text-secondary uppercase">{t(TRANSFERS.createdBy)}</span>
-                <span className="text-xs font-semibold text-text-secondary uppercase text-right">Created</span>
+                <span className="text-xs font-semibold text-text-secondary uppercase text-right">{t(TRANSFERS.createdAtCol)}</span>
               </div>
             </div>
 

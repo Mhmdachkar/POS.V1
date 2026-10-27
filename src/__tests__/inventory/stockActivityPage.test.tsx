@@ -279,7 +279,7 @@ describe('StockActivityPage', () => {
     vi.mocked(supabase.from).mockImplementation(from as never)
     renderPage()
 
-    expect(await screen.findByRole('heading', { name: /activité du stock|stock activity/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /mouvements de stock|stock movements/i })).toBeInTheDocument()
     expect(screen.getAllByText(/Mouvements de stock|Stock movements for the current depot/i).length).toBeGreaterThan(0)
     expect(screen.queryByRole('button', { name: INVENTORY.addProduct.fr })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Inventory' })).not.toBeInTheDocument()
@@ -290,7 +290,7 @@ describe('StockActivityPage', () => {
     const { from, queryCalls } = createLedgerFrom(catalog)
     vi.mocked(supabase.from).mockImplementation(from as never)
     renderPage()
-    await screen.findByRole('heading', { name: /activité du stock|stock activity/i })
+    await screen.findByRole('heading', { name: /mouvements de stock|stock movements/i })
 
     await user.click(screen.getByRole('button', { name: STOCK_TXN_TYPE.SALE.fr }))
 
@@ -357,7 +357,7 @@ describe('StockActivityPage', () => {
     vi.mocked(supabase.from).mockImplementation(from as never)
     renderPage()
 
-    await screen.findByRole('heading', { name: /activité du stock|stock activity/i })
+    await screen.findByRole('heading', { name: /mouvements de stock|stock movements/i })
     await waitFor(() => {
       expect(queryCalls().some((c) => c.startsWith('range:'))).toBe(true)
     })
@@ -378,7 +378,7 @@ describe('StockActivityPage', () => {
     vi.mocked(supabase.from).mockImplementation(from as never)
     renderPage()
 
-    expect(screen.getByRole('status', { name: /chargement activité stock|loading stock activity/i })).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: /chargement…|loading…/i })).toBeInTheDocument()
     expect(screen.queryByText(/^quand$|^when$/i)).not.toBeInTheDocument()
   })
 
@@ -483,13 +483,13 @@ describe('Stock Activity routes', () => {
     authorize(depotStaff())
     renderApp('/inventory')
     expect(await screen.findByRole('heading', { name: /inventaire|inventory/i })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: /activité du stock|stock activity/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /mouvements de stock|stock movements/i })).not.toBeInTheDocument()
   })
 
   it('/inventory/activity renders StockActivityPage and highlights only that rail item', async () => {
     authorize(depotStaff())
     renderApp('/inventory/activity')
-    expect(await screen.findByRole('heading', { name: /activité du stock|stock activity/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /mouvements de stock|stock movements/i })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Inventory' })).not.toBeInTheDocument()
 
     const activityLink = document.querySelector('a[href="/inventory/activity"]')
@@ -502,6 +502,6 @@ describe('Stock Activity routes', () => {
     authorize(cashierStaff())
     renderApp('/inventory/activity')
     expect(await screen.findByText('pos-page')).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: /activité du stock|stock activity/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /mouvements de stock|stock movements/i })).not.toBeInTheDocument()
   })
 })

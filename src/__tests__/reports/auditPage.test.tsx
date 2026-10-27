@@ -116,7 +116,7 @@ describe('AuditPage', () => {
       .toBe(AUDIT_ACTIONS.length + 1)
     expect((screen.getByDisplayValue(ADMIN.allEntityTypes.fr) as HTMLSelectElement).options.length)
       .toBe(AUDIT_ENTITY_TYPES.length + 1)
-    expect(screen.getByPlaceholderText(/ID entité/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/Réf\. élément|Item ref/i)).toBeInTheDocument()
     expect(screen.getByText(ADMIN.allDepotsIncludesGlobal.fr)).toBeInTheDocument()
   })
 
@@ -126,7 +126,7 @@ describe('AuditPage', () => {
     await user.selectOptions(screen.getByDisplayValue(ADMIN.allActions.fr), 'complete_sale')
     await user.selectOptions(screen.getByDisplayValue(ADMIN.allEntityTypes.fr), 'sale')
     await user.selectOptions(screen.getByDisplayValue(ADMIN.allActors.fr), 'admin-1')
-    await user.type(screen.getByPlaceholderText(/ID entité/i), 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee')
+    await user.type(screen.getByPlaceholderText(/Réf\. élément|Item ref/i), 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee')
     expect(lastFilters?.action).toBe('complete_sale')
     expect(lastFilters?.entityType).toBe('sale')
     expect(lastFilters?.actorId).toBe('admin-1')
@@ -160,16 +160,16 @@ describe('AuditPage', () => {
     expect(within(dialog).getByText('Ce qui a changé')).toBeInTheDocument()
     expect(screen.getAllByText(/CFA 1[\s\u202f]?500|1[\s\u202f]?500/).length).toBeGreaterThan(0)
     // rowA has depot_id = 'depot-a' (Depot Dakar) — the drawer description should NOT say global
-    expect(within(dialog).queryByText(/Global \/ tous les dépôts/)).not.toBeInTheDocument()
+    expect(within(dialog).queryByText(/Tous les dépôts|All depots/)).not.toBeInTheDocument()
   })
 
-  it('shows Global / all depots in the drawer for null depot_id', async () => {
+  it('shows Tous les dépôts in the drawer for null depot_id', async () => {
     const user = userEvent.setup()
     render(<AuditPage />)
     await user.click(screen.getByRole('button', { name: /Retour traité|Return processed/i }))
     // The depot label is in the drawer description header; scope to the dialog
     const dialog = screen.getByRole('dialog')
-    expect(within(dialog).getByText(/Global \/ tous les dépôts/)).toBeInTheDocument()
+    expect(within(dialog).getAllByText((content, node) => (node?.textContent ?? '').includes(ADMIN.globalDepots.fr)).length).toBeGreaterThan(0)
   })
 
   it('exports the current page as CSV', async () => {
