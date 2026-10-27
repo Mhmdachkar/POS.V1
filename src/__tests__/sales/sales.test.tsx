@@ -22,6 +22,7 @@ import { useDepotStore } from '@/stores/depotStore'
 import { usePOSStore } from '@/stores/posStore'
 import type { Staff } from '@/types/database'
 import { SALES } from '@/lib/bilingual/sales'
+import { COMMON } from '@/lib/bilingual/common'
 import { SALE_STATUS } from '@/lib/bilingual/status'
 
 vi.mock('@/hooks/useSales', async (importOriginal) => {
@@ -297,7 +298,7 @@ describe('SalesPage', () => {
     vi.mocked(supabase.from).mockReturnValue(builder as never)
     const { rerender } = renderSales()
     expect(await screen.findByText('DKR-00000000')).toBeInTheDocument()
-    expect(screen.getByText('Depot')).toBeInTheDocument()
+    expect(screen.getByText(COMMON.depot.fr)).toBeInTheDocument()
     expect(screen.getAllByText('Depot Dakar').length).toBeGreaterThan(0)
 
     useDepotStore.setState({ currentDepotId: 'depot-a', currentDepotName: 'Depot Dakar' })
@@ -308,7 +309,7 @@ describe('SalesPage', () => {
       </QueryClientProvider>,
     )
     expect(await screen.findByText('DKR-00000000')).toBeInTheDocument()
-    expect(screen.queryByText('Depot')).not.toBeInTheDocument()
+    expect(screen.queryByText(COMMON.depot.fr)).not.toBeInTheDocument()
   })
 
   it('cashier uses staff.depot_id even if depot store is a different depot', async () => {
@@ -329,7 +330,7 @@ describe('SalesPage', () => {
     await screen.findByText('DKR-00000000')
     expect(calls).toContain('eq:depot_id:depot-a')
     expect(calls).not.toContain('eq:depot_id:depot-b')
-    expect(screen.queryByText('Depot')).not.toBeInTheDocument()
+    expect(screen.queryByText(COMMON.depot.fr)).not.toBeInTheDocument()
   })
 
   it('does not query on each keystroke; one ilike after 300 ms idle', async () => {
@@ -373,7 +374,7 @@ describe('SalesPage', () => {
     renderSales()
     expect(await screen.findByRole('heading', { name: SALES.historyTitle.fr })).toBeInTheDocument()
 
-    const next = await screen.findByRole('button', { name: 'Next →' })
+    const next = await screen.findByRole('button', { name: COMMON.next.fr })
     await user.click(next)
     await waitFor(() => {
       expect(calls.some((c) => c === 'range:30-59')).toBe(true)

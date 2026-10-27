@@ -1,4 +1,6 @@
 import { Loader2 } from 'lucide-react'
+import { COMMON } from '@/lib/bilingual/common'
+import { t } from '@/lib/bilingual/types'
 import { Button, type ButtonProps } from './Button'
 import { cn } from '@/lib/cn'
 
@@ -44,7 +46,7 @@ export function LoadingButton({
         />
       )}
       <span>{loading && loadingLabel ? loadingLabel : children}</span>
-      {loading && <span className="sr-only">Processing, please wait</span>}
+      {loading && <span className="sr-only">{t(COMMON.processingPleaseWait)}</span>}
     </Button>
   )
 }

@@ -56,7 +56,7 @@ export function CategoryRail({
 
   function tabClass(isActive: boolean) {
     return cn(
-      'relative z-[1] h-9 px-3.5 rounded-full text-xs font-semibold flex-shrink-0 whitespace-nowrap',
+      'relative z-[1] h-11 min-h-[44px] px-3.5 rounded-full text-sm font-semibold flex-shrink-0 whitespace-nowrap',
       'transition-colors duration-200',
       isActive ? 'text-primary' : 'text-text-secondary hover:text-text-primary',
     )

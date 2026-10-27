@@ -27,6 +27,8 @@ function sample(overrides: Partial<ReceiptData> = {}): ReceiptData {
     discount_value: null,
     discount_amount_cfa: 0,
     total_cfa: 700,
+    payable_total_cfa: 700,
+    adjustment_cfa: 0,
     amount_tendered_cfa: 1000,
     change_given_cfa: 300,
     balance_added_cfa: 0,
@@ -74,6 +76,21 @@ describe('buildReceiptHtml', () => {
     expect(html).not.toContain('Depot Dakar')
     expect(html).not.toContain('Caissier')
     expect(html).not.toContain('Monnaie')
+  })
+
+  it('shows calculated total, adjustment, and payable TOTAL when overridden', () => {
+    const html = buildReceiptHtml(sample({
+      total_cfa: 10_000,
+      payable_total_cfa: 8_000,
+      adjustment_cfa: 2_000,
+      amount_tendered_cfa: 8_000,
+      change_given_cfa: 0,
+    }))
+    expect(html).toContain('Total calculé')
+    expect(html).toContain(formatCFA(10_000))
+    expect(html).toContain('Ajustement')
+    expect(html).toContain(formatCFA(2_000))
+    expect(html).toContain(`TOTAL</span><span>${formatCFA(8_000)}`)
   })
 
   it('shows discount, balance, refund, and ANNULÉ stamp', () => {
@@ -192,5 +209,42 @@ describe('receiptDataFromSaleDetail', () => {
     expect(data.refund_amount_cfa).toBe(50)
     expect(data.cashierName).toBe('Cashier Dakar')
     expect(data.customerName).toBe('Fatou Diallo')
+    expect(data.payable_total_cfa).toBe(700)
+    expect(data.adjustment_cfa).toBe(0)
+  })
+
+  it('maps payable total and adjustment from admin override', () => {
+    const sale: SaleDetailData = {
+      id: 'sale-2',
+      depot_id: 'depot-a',
+      cashier_id: 'c1',
+      customer_id: null,
+      shift_id: null,
+      receipt_number: 'MAIN-00000004',
+      status: 'completed',
+      display_currency: 'CFA',
+      cfa_to_usd_rate_used: 620,
+      subtotal_cfa: 10_000,
+      discount_type: null,
+      discount_value: null,
+      discount_amount_cfa: 0,
+      total_cfa: 10_000,
+      admin_override_total_cfa: 8_000,
+      amount_tendered_cfa: 5_000,
+      amount_applied_cfa: 5_000,
+      change_given_cfa: 0,
+      balance_added_cfa: 3_000,
+      created_at: '2026-09-16T01:45:00Z',
+      customer_name: null,
+      customer_phone: null,
+      customer_balance_owed_cfa: 0,
+      cashier_name: 'Admin',
+      items: [],
+      returns: [],
+      payments: [],
+    }
+    const data = receiptDataFromSaleDetail(sale, 'Shop', 'Main')
+    expect(data.payable_total_cfa).toBe(8_000)
+    expect(data.adjustment_cfa).toBe(2_000)
   })
 })

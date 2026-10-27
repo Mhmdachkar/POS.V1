@@ -9,6 +9,7 @@ import { SALES } from '@/lib/bilingual/sales'
 import { SHIFT_COPY } from '@/lib/bilingual/shift'
 import { TRANSFERS } from '@/lib/bilingual/transfers'
 import { ClipboardList } from 'lucide-react'
+import { NavPictogram } from '@/components/layout/NavPictogram'
 import { cn } from '@/lib/cn'
 import { EmptyState, PageHeader, Skeleton } from '@/components/ui'
 import { formatDateTime } from '@/lib/formatters'
@@ -110,7 +111,7 @@ export function AuditPage() {
         <PageHeader
           title={<BiPageTitle {...ADMIN.auditLog} />}
           description={t(ADMIN.auditDesc)}
-          icon={<ClipboardList className="h-5 w-5" />}
+          icon={<NavPictogram path="/admin/audit" size="header" />}
           className="border-b-0"
         />
         <div className="space-y-3">

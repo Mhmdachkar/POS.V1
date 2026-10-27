@@ -8,6 +8,7 @@
  */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { embedOne } from '@/lib/embed'
 import { supabase } from '@/lib/supabase'
 import { invalidateAfterSaleSettled } from '@/lib/cacheInvalidation'
 import { CACHE_STALE, keepPlaceholderWhen } from '@/lib/cachePolicy'
@@ -139,8 +140,7 @@ const SALE_SHIFT_EMBED = 'shifts!shift_id(opened_at, closed_at, status)'
 function flattenShiftEmbed(row: {
   shifts?: { opened_at?: string; closed_at?: string | null } | { opened_at?: string; closed_at?: string | null }[] | null
 }): { shift_opened_at: string | null; shift_closed_at: string | null } {
-  const raw = row.shifts
-  const shift = Array.isArray(raw) ? raw[0] : raw
+  const shift = embedOne(row.shifts)
   return {
     shift_opened_at: shift?.opened_at ?? null,
     shift_closed_at: shift?.closed_at ?? null,
@@ -240,14 +240,14 @@ export async function fetchSalesList(filters: SalesListFilters): Promise<{
   if (error) throw error
 
   const items: SaleListItem[] = (data ?? []).map((row: any) => {
-    const ff = Array.isArray(row.sale_fulfillments)
-      ? row.sale_fulfillments[0]
-      : row.sale_fulfillments
+    const ff = embedOne(row.sale_fulfillments)
+    const customer = embedOne(row.customers)
+    const staff = embedOne(row.staff)
     return {
       ...row,
-      customer_name: row.customers?.name ?? null,
-      cashier_name: row.staff?.full_name ?? null,
-      cashier_role: row.staff?.role ?? null,
+      customer_name: customer?.name ?? null,
+      cashier_name: staff?.full_name ?? null,
+      cashier_role: staff?.role ?? null,
       fulfillment_status: ff?.status ?? null,
       fulfillment_released_at: ff?.released_at ?? null,
       ...flattenShiftEmbed(row),
@@ -258,68 +258,58 @@ export async function fetchSalesList(filters: SalesListFilters): Promise<{
 }
 
 export async function fetchSaleDetail(id: string): Promise<SaleDetailData> {
-  // Fetch sale + customer + cashier
-  const { data: sale, error: saleError } = await supabase
-    .from('sales')
-    .select(
-      `
-      *,
-      customers!customer_id(name, phone, balance_owed_cfa),
-      staff!cashier_id(full_name, role),
-      sale_fulfillments(
-        status,
-        released_at,
-        released_by,
-        depot_id,
-        created_at,
-        released_by_staff:staff!sale_fulfillments_released_by_fkey(full_name)
-      ),
-      ${SALE_SHIFT_EMBED}
-      `,
-    )
-    .eq('id', id)
-    .single()
+  const [saleRes, itemsRes, returnsRes, paymentsRes] = await Promise.all([
+    supabase
+      .from('sales')
+      .select(
+        `
+        *,
+        customers!customer_id(name, phone, balance_owed_cfa),
+        staff!cashier_id(full_name, role),
+        sale_fulfillments(
+          status,
+          released_at,
+          released_by,
+          depot_id,
+          created_at,
+          released_by_staff:staff!sale_fulfillments_released_by_fkey(full_name)
+        ),
+        ${SALE_SHIFT_EMBED}
+        `,
+      )
+      .eq('id', id)
+      .single(),
+    supabase
+      .from('sale_items')
+      .select(
+        `
+        *,
+        products!product_id(name, product_units(unit_level, unit_name))
+        `,
+      )
+      .eq('sale_id', id)
+      .order('id'),
+    supabase
+      .from('sale_returns')
+      .select(`*, sale_return_items(*)`)
+      .eq('sale_id', id)
+      .order('created_at'),
+    supabase
+      .from('payments')
+      .select('*')
+      .eq('sale_id', id)
+      .order('recorded_at'),
+  ])
 
-  if (saleError) throw saleError
+  if (saleRes.error) throw saleRes.error
+  if (itemsRes.error) throw itemsRes.error
+  if (returnsRes.error) throw returnsRes.error
+  if (paymentsRes.error) throw paymentsRes.error
 
-  // Fetch sale items + product names
-  const { data: itemsRaw, error: itemsError } = await supabase
-    .from('sale_items')
-    .select(
-      `
-      *,
-      products!product_id(name, product_units(unit_level, unit_name))
-      `,
-    )
-    .eq('sale_id', id)
-    .order('id')
-
-  if (itemsError) throw itemsError
-
-  // Fetch sale returns + return items
-  const { data: returnsRaw, error: returnsError } = await supabase
-    .from('sale_returns')
-    .select(`*, sale_return_items(*)`)
-    .eq('sale_id', id)
-    .order('created_at')
-
-  if (returnsError) throw returnsError
-
-  // Fetch payments for this sale
-  const { data: paymentsRaw, error: paymentsError } = await supabase
-    .from('payments')
-    .select('*')
-    .eq('sale_id', id)
-    .order('recorded_at')
-
-  if (paymentsError) throw paymentsError
-
-  // Build items with resolved product/unit names
-  const items: SaleItemDetail[] = (itemsRaw ?? []).map((item: any) => {
-    const product = item.products
-    const unitRow = (product?.product_units ?? []).find(
-      (u: any) => u.unit_level === item.unit_level,
-    )
+  const items: SaleItemDetail[] = (itemsRes.data ?? []).map((item: any) => {
+    const product = embedOne(item.products)
+    const units = product?.product_units ?? []
+    const unitRow = units.find((u: any) => u.unit_level === item.unit_level)
     return {
       id: item.id,
       sale_id: item.sale_id,
@@ -331,23 +321,23 @@ export async function fetchSaleDetail(id: string): Promise<SaleDetailData> {
       cost_price_cfa: item.cost_price_cfa,
       line_total_cfa: item.line_total_cfa,
       net_line_total_cfa: item.net_line_total_cfa,
-      product_name: product?.name ?? 'Unknown Product',
-      unit_name:
-        unitRow?.unit_name ??
-        (item.unit_level === 0 ? 'Piece' : item.unit_level === 1 ? 'Package' : 'Carton'),
+      product_name: product?.name ?? '',
+      unit_name: unitRow?.unit_name ?? '',
     }
   })
 
-  const saleAny = sale as any
-  const ffRaw = saleAny.sale_fulfillments
-  const ff = Array.isArray(ffRaw) ? ffRaw[0] : ffRaw
+  const saleAny = saleRes.data as any
+  const ff = embedOne(saleAny.sale_fulfillments)
+  const customer = embedOne(saleAny.customers)
+  const staff = embedOne(saleAny.staff)
+  const releasedBy = embedOne(ff?.released_by_staff)
   return {
-    ...(sale as any),
-    customer_name: saleAny.customers?.name ?? null,
-    customer_phone: saleAny.customers?.phone ?? null,
-    customer_balance_owed_cfa: saleAny.customers?.balance_owed_cfa ?? null,
-    cashier_name: saleAny.staff?.full_name ?? null,
-    cashier_role: saleAny.staff?.role ?? null,
+    ...(saleAny as any),
+    customer_name: customer?.name ?? null,
+    customer_phone: customer?.phone ?? null,
+    customer_balance_owed_cfa: customer?.balance_owed_cfa ?? null,
+    cashier_name: staff?.full_name ?? null,
+    cashier_role: staff?.role ?? null,
     fulfillment: ff
       ? ({
           sale_id: id,
@@ -355,14 +345,14 @@ export async function fetchSaleDetail(id: string): Promise<SaleDetailData> {
           status: ff.status,
           released_at: ff.released_at,
           released_by: ff.released_by,
-          released_by_name: ff.released_by_staff?.full_name ?? null,
+          released_by_name: releasedBy?.full_name ?? null,
           created_at: ff.created_at,
         } satisfies SaleFulfillmentRow)
       : null,
     ...flattenShiftEmbed(saleAny),
     items,
-    returns: (returnsRaw ?? []) as SaleReturnDetail[],
-    payments: (paymentsRaw ?? []) as SalePaymentDetail[],
+    returns: (returnsRes.data ?? []) as SaleReturnDetail[],
+    payments: (paymentsRes.data ?? []) as SalePaymentDetail[],
   }
 }
 

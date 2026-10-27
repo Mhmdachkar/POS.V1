@@ -194,7 +194,7 @@ describe('PaymentPanel', () => {
   it('disables commit when the cart is empty', () => {
     renderPanel()
     expect(screen.getByRole('button', { name: bilingualAriaLabel(POS.completeSaleAria) })).toBeDisabled()
-    expect(screen.getByText(POS.addProductsBegin.fr)).toBeInTheDocument()
+    expect(screen.queryByText(POS.addProductsBegin.fr)).not.toBeInTheDocument()
     expect(screen.queryByLabelText(bilingualAriaLabel(POS.cashReceived))).not.toBeInTheDocument()
     expect(screen.queryByText(/Amount applied|Montant appliqué/i)).not.toBeInTheDocument()
   })
@@ -227,6 +227,20 @@ describe('PaymentPanel', () => {
     renderPanel()
     expect(screen.getByRole('button', { name: bilingualAriaLabel(POS.completeSaleAria) })).toBeDisabled()
     expect(screen.getByText(POS.discountPercentError.fr, { exact: false })).toBeInTheDocument()
+  })
+
+  it('B2: a negative percent shows an error and does not raise the total', () => {
+    addLine()
+    usePOSStore.getState().setCashTendered(1000)
+    usePOSStore.getState().setDiscountType('percent')
+    renderPanel()
+    const input = screen.getByLabelText(bilingualAriaLabel(POS.discountValue))
+    fireEvent.change(input, { target: { value: '-10' } })
+    expect(input).toHaveValue(-10)
+    expect(screen.getByText(POS.discountPercentError.fr, { exact: false })).toBeInTheDocument()
+    expect(screen.getByTestId('checkout-total')).toHaveTextContent(/1[\s\u00a0\u202f]?000/)
+    expect(screen.getByTestId('checkout-total').querySelector('.text-financial-lg')).not.toBeNull()
+    expect(screen.getByRole('button', { name: bilingualAriaLabel(POS.completeSaleAria) })).toBeDisabled()
   })
 
   it('B2: typing 150% in the discount field keeps Complete disabled at CFA 0', () => {
@@ -469,7 +483,7 @@ describe('PaymentPanel', () => {
     renderPanel(null)
     expect(screen.getByRole('button', { name: bilingualAriaLabel(POS.completeSaleAria) })).toBeDisabled()
     expect(screen.queryByLabelText(bilingualAriaLabel(POS.cashReceived))).not.toBeInTheDocument()
-    expect(screen.getByText(POS.addProductsBegin.fr)).toBeInTheDocument()
+    expect(screen.getByText(POS.noDepotSelected.fr)).toBeInTheDocument()
   })
 
   it('blocks Complete when cart exceeds known stock', () => {

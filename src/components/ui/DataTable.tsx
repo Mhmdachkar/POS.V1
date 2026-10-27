@@ -1,4 +1,7 @@
+import { COMMON } from '@/lib/bilingual/common'
+import { t } from '@/lib/bilingual/types'
 import { cn } from '@/lib/cn'
+import { RowChevron } from './RowChevron'
 
 // ─────────────────────────────────────────────────────────────────
 // Generic DataTable
@@ -55,7 +58,7 @@ export function DataTable<T>({
               <th
                 key={col.key}
                 className={cn(
-                  'px-4 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wide select-none',
+                  'px-4 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wide select-none whitespace-nowrap',
                   alignClass(col.align),
                   col.width,
                 )}
@@ -63,6 +66,7 @@ export function DataTable<T>({
                 {col.header}
               </th>
             ))}
+            {onRowClick && <th className="w-8 px-3 py-3" aria-hidden="true" />}
           </tr>
         </thead>
         <tbody>
@@ -79,10 +83,10 @@ export function DataTable<T>({
             ))
           ) : data.length === 0 ? (
             <tr>
-              <td colSpan={columns.length}>
+              <td colSpan={columns.length + (onRowClick ? 1 : 0)}>
                 {emptyState ?? (
                   <div className="py-12 text-center text-sm text-text-muted">
-                    No records found.
+                    {t(COMMON.noResults)}
                   </div>
                 )}
               </td>
@@ -92,7 +96,7 @@ export function DataTable<T>({
               <tr
                 key={rowKey(row)}
                 className={cn(
-                  'border-b border-border last:border-0',
+                  'border-b border-border last:border-0 min-h-[44px]',
                   'transition-colors duration-100',
                   onRowClick
                     ? 'hover:bg-surface-muted cursor-pointer'
@@ -112,6 +116,11 @@ export function DataTable<T>({
                     {col.render(row, idx)}
                   </td>
                 ))}
+                {onRowClick && (
+                  <td className="px-3 py-3 w-8">
+                    <RowChevron />
+                  </td>
+                )}
               </tr>
             ))
           )}

@@ -157,7 +157,7 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
                   if (display.length === 0) {
                     return (
                       <p className="text-xs text-text-secondary tabular-nums">
-                        <span className="font-medium text-text-primary">0</span> pcs
+                        <span className="font-medium text-text-primary">{formatPieces(0)}</span>
                       </p>
                     )
                   }

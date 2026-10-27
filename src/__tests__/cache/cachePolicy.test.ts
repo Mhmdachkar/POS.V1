@@ -127,7 +127,9 @@ describe('invalidateAfterSaleSettled', () => {
     expect(keys).toContainEqual({ queryKey: ['inventory', 'list'] })
     expect(keys).toContainEqual({ queryKey: ['inventory', 'stock-activity'] })
     expect(keys).toContainEqual({ queryKey: ['sales', 'list'] })
-    expect(keys).toContainEqual({ queryKey: ['sales', 'detail', 'sale-1'] })
+    expect(keys).toContainEqual(
+      expect.objectContaining({ queryKey: ['sales', 'detail', 'sale-1'] }),
+    )
     expect(keys).toContainEqual({ queryKey: ['customers'] })
     expect(keys).toContainEqual({ queryKey: ['customers', 'detail', 'cust-1'] })
     expect(keys).toContainEqual({ queryKey: ['shifts', 'list'] })

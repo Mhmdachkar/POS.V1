@@ -54,7 +54,7 @@ import { SaleUnitBadge } from '@/components/sales/SaleUnitBadge'
 
 function SectionHeader({ title }: { title: ReactNode }) {
   return (
-    <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-2 mt-4 first:mt-0">
+    <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-2 mt-5 first:mt-0">
       {title}
     </p>
   )
@@ -253,11 +253,13 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
 
   const handleMutationSuccess = () => {
     if (!saleId) return
+    const customerId = sale?.customer_id
     invalidateAfterSaleSettled(queryClient, {
       saleId,
-      customerId: sale?.customer_id,
+      customerId,
       shiftId: sale?.shift_id ?? shiftId,
     })
+    void queryClient.refetchQueries({ queryKey: ['sales', 'detail', saleId] })
   }
 
   // ── Action eligibility ─────────────────────────────────────────
@@ -367,7 +369,9 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
                   {sale.items.map((item) => (
                     <tr key={item.id} className="border-t border-border">
                       <td className="px-3 py-2">
-                        <p className="font-medium text-text-primary">{item.product_name}</p>
+                        <p className="font-medium text-text-primary">
+                          {item.product_name || t(SALES.unknownProduct)}
+                        </p>
                       </td>
                       <td className="px-3 py-2">
                         <SaleUnitBadge unitLevel={item.unit_level} unitName={item.unit_name} />
@@ -415,7 +419,6 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
                   <MoneyDisplay
                     amount={-sale.discount_amount_cfa}
                     size="small"
-                    className="text-success-foreground"
                   />
                 }
               />
@@ -431,8 +434,8 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
                   value={<MoneyDisplay amount={sale.admin_override_total_cfa} size="medium" />}
                   bold
                 />
-                <p className="text-xs text-warning-foreground mt-0.5">
-                  <BilingualText {...SALES.adminOverrideNote} variant="caption" layout="inline" />
+                <p className="text-sm text-warning-foreground mt-1">
+                  <BilingualText {...SALES.adminOverrideNote} variant="body" layout="inline" />
                 </p>
               </>
             ) : (
@@ -456,7 +459,6 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
                   <MoneyDisplay
                     amount={sale.change_given_cfa}
                     size="small"
-                    className="text-success-foreground"
                   />
                 }
               />
@@ -486,16 +488,16 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
                     >
                       <div className="flex justify-between">
                         <span className="text-text-secondary">{formatDateTime(ret.created_at)}</span>
-                        <MoneyDisplay amount={ret.refund_amount_cfa} size="small" />
+                        <MoneyDisplay amount={ret.refund_amount_cfa} size="small" tone="refund" />
                       </div>
                       <div className="flex justify-between text-xs text-text-muted">
                         <span className="inline-flex items-baseline gap-1">
-                          Cash:
-                          <MoneyDisplay amount={ret.cash_refunded_cfa} size="small" />
+                          {t(SALES.returnsCash)}
+                          <MoneyDisplay amount={ret.cash_refunded_cfa} size="small" tone="refund" />
                         </span>
                         <span className="inline-flex items-baseline gap-1">
-                          Balance:
-                          <MoneyDisplay amount={ret.balance_adjustment_cfa} size="small" />
+                          {t(SALES.returnsBalance)}
+                          <MoneyDisplay amount={ret.balance_adjustment_cfa} size="small" tone="refund" />
                         </span>
                       </div>
                       {ret.reason && (
@@ -551,7 +553,7 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
             {sale.status !== 'voided' && <SaleFulfillmentPanel sale={sale} />}
 
             <SectionHeader title={<BiSectionTitle {...COMMON.actions} />} />
-            <div className="space-y-2">
+            <div className="flex flex-col gap-3">
               {(staffRole === 'cashier' || staffRole === 'admin') && (
               <SalePrintReceipt
                 sale={sale}
@@ -565,8 +567,8 @@ export function SaleDetailDrawer({ saleId, shiftId, onClose }: SaleDetailDrawerP
               )}
               {canMutateSale && canReturn && (
                 <Button
-                  variant="secondary"
-                  className="w-full gap-2"
+                  variant="outline"
+                  className="w-full gap-2 border-warning text-warning-foreground hover:bg-warning-bg"
                   onClick={() => setShowReturn(true)}
                 >
                   <RotateCcw className="h-4 w-4" />

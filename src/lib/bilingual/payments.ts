@@ -16,8 +16,8 @@ export const PAYMENTS = {
     'Paiements qui réduisent la dette client. Non liés à un ticket.',
     'Payments that reduce what a customer owes. Not tied to one receipt.',
   ),
-  excludingReversed: bi('Hors annulations', 'Excluding reversed'),
-  includingReversed: bi('Avec annulations', 'Showing reversed'),
+  excludingReversed: bi('Actifs', 'Active'),
+  includingReversed: bi('Tous (y compris annulés)', 'All (including reversed)'),
   searchCustomer: bi('Nom du client…', 'Customer name…'),
   noPaymentsFor: (q: string) =>
     bi(`Aucun paiement pour « ${q} ».`, `No payments found for "${q}".`),

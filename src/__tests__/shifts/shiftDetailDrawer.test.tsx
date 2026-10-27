@@ -116,7 +116,7 @@ describe('ShiftDetailDrawer', () => {
     expect(screen.getByText(SHIFT_COPY.actualCash.fr)).toBeInTheDocument()
     expect(screen.getAllByText(SHIFT_COPY.shiftDetails.fr).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/^Actions$/i).length).toBeGreaterThan(0)
-    expect(screen.getByRole('button', { name: /Close Shift|Fermer le service/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Close [Ss]hift|Fermer le service|Clôturer le service/i })).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /Select for POS|Sélectionner pour la caisse/i }),
     ).not.toBeInTheDocument()

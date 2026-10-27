@@ -113,7 +113,7 @@ export function POSPage() {
           role="tablist"
           aria-label="Caisse mobile"
           data-testid="pos-mobile-tabs"
-          className="lg:hidden flex-shrink-0 grid grid-cols-2 gap-1 p-1.5 border-b border-border bg-surface"
+          className="min-[800px]:hidden flex-shrink-0 grid grid-cols-2 gap-1 p-1.5 border-b border-border bg-surface"
         >
           <button
             type="button"
@@ -122,7 +122,7 @@ export function POSPage() {
             data-testid="pos-mobile-tab-catalog"
             onClick={() => setMobilePane('catalog')}
             className={cn(
-              'h-10 rounded-xl text-sm font-semibold transition-colors',
+              'h-11 min-h-[44px] rounded-xl text-sm font-semibold transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1',
               mobilePane === 'catalog'
                 ? 'bg-primary text-primary-foreground shadow-sm'
@@ -138,7 +138,7 @@ export function POSPage() {
             data-testid="pos-mobile-tab-cart"
             onClick={() => setMobilePane('cart')}
             className={cn(
-              'h-10 rounded-xl text-sm font-semibold transition-colors inline-flex items-center justify-center gap-2',
+              'h-11 min-h-[44px] rounded-xl text-sm font-semibold transition-colors inline-flex items-center justify-center gap-2',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1',
               mobilePane === 'cart'
                 ? 'bg-primary text-primary-foreground shadow-sm'
@@ -163,23 +163,24 @@ export function POSPage() {
           </button>
         </div>
 
-        <div className="flex flex-1 min-h-0 flex-col lg:flex-row overflow-hidden">
+        <div className="flex flex-1 min-h-0 flex-col min-[800px]:flex-row overflow-hidden">
           {/* Discovery */}
           <div
             className={cn(
               'flex-1 flex-col overflow-hidden border-border min-w-0 min-h-0',
-              'lg:flex lg:border-r',
-              mobilePane === 'catalog' ? 'flex' : 'hidden lg:flex',
+              'min-[800px]:flex min-[800px]:border-r',
+              mobilePane === 'catalog' ? 'flex' : 'hidden min-[800px]:flex',
             )}
           >
-            <div className="flex-shrink-0 flex flex-col gap-2 px-3 py-2.5 sm:px-4 sm:py-3 border-b border-border bg-surface/90 backdrop-blur-sm shadow-[0_1px_0_rgba(16,24,40,0.04)]">
-              <div className="w-full min-w-0">
+            <div className="flex-shrink-0 flex flex-col min-[800px]:flex-row min-[800px]:items-center gap-2 px-3 py-2.5 sm:px-4 sm:py-3 border-b border-border bg-surface/90 backdrop-blur-sm shadow-[0_1px_0_rgba(16,24,40,0.04)]">
+              <div className="w-full min-w-0 min-[800px]:w-64 min-[800px]:flex-shrink-0">
                 <SearchInput
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder={bilingualAriaLabel(POS.searchProducts)}
                   aria-label={bilingualAriaLabel(POS.searchProducts)}
                   autoFocus
+                  className="text-base"
                 />
               </div>
               <CategoryRail
@@ -202,7 +203,7 @@ export function POSPage() {
 
             {/* Mobile cart jump — keep browsing while cart is one tap away */}
             {cartCount > 0 && (
-              <div className="lg:hidden flex-shrink-0 border-t border-border bg-surface p-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
+              <div className="min-[800px]:hidden flex-shrink-0 border-t border-border bg-surface p-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
                 <button
                   type="button"
                   data-testid="pos-mobile-view-cart"
@@ -231,9 +232,9 @@ export function POSPage() {
           {/* Cart + payment — full height on mobile tab; fixed width column on ≥ lg */}
           <div
             className={cn(
-              'w-full lg:w-[480px] xl:w-[520px] flex-shrink-0 flex-col min-h-0 overflow-hidden bg-background',
-              'lg:flex lg:min-h-0',
-              mobilePane === 'cart' ? 'flex flex-1' : 'hidden lg:flex',
+              'w-full min-[800px]:w-[320px] lg:w-[480px] xl:w-[520px] flex-shrink-0 flex-col min-h-0 overflow-hidden bg-background',
+              'min-[800px]:flex min-[800px]:min-h-0',
+              mobilePane === 'cart' ? 'flex flex-1' : 'hidden min-[800px]:flex',
             )}
           >
             <div

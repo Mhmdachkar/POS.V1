@@ -1,6 +1,8 @@
 import { MoneyDisplay } from '@/components/ui'
+import { BilingualText } from '@/components/ui/BilingualText'
 import { BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
 import { REPORTS } from '@/lib/bilingual/reports'
+import { t } from '@/lib/bilingual/types'
 import { formatDateTime } from '@/lib/formatters'
 import type { AdminCustomersReport } from '@/types/rpc'
 import { ReportMetric } from '../components/ReportMetric'
@@ -15,26 +17,28 @@ export function ReportPaymentsTab({ customers }: ReportPaymentsTabProps) {
     <div className="space-y-8">
       <div className="grid md:grid-cols-3 gap-3">
         <ReportMetric
-          label="Paiements rattachés"
+          label={t(REPORTS.attributedPaymentsMetric)}
           amount={Number(customers.payment_activity_cfa)}
-          secondaryText={`${customers.payment_activity_count} paiements`}
+          secondaryText={t(REPORTS.paymentCount(customers.payment_activity_count))}
         />
         <ReportMetric
-          label="Paiements non rattachés"
+          label={t(REPORTS.unattributedPaymentsMetric)}
           amount={Number(customers.unattributed_payment_activity_cfa)}
-          secondaryText={`${customers.unattributed_payment_activity_count} autonomes — non alloués aux tickets`}
+          secondaryText={`${customers.unattributed_payment_activity_count} ${t(REPORTS.standaloneUnallocated)}`}
         />
         <ReportMetric
-          label="Annulés (période)"
+          label={t(REPORTS.reversedPaymentsMetric)}
           amount={Number(customers.reversed_payment_activity_cfa)}
-          secondaryText={`${customers.reversed_payment_activity_count} annulés`}
+          secondaryText={t(REPORTS.reversedCount(customers.reversed_payment_activity_count))}
           danger={customers.reversed_payment_activity_count > 0}
         />
       </div>
 
       <ReportSection title={<BiSectionTitle {...REPORTS.attributedPaymentList} />}>
         {customers.payments.length === 0 ? (
-          <p className="text-sm text-text-muted">Aucun sur la période.</p>
+          <p className="text-sm text-text-muted">
+            <BilingualText {...REPORTS.noneInPeriod} variant="caption" layout="inline" />
+          </p>
         ) : (
           <ul className="divide-y divide-border border border-border rounded-md text-sm">
             {customers.payments.map((p) => (
@@ -50,10 +54,12 @@ export function ReportPaymentsTab({ customers }: ReportPaymentsTabProps) {
 
       <ReportSection title={<BiSectionTitle {...REPORTS.unattributedStandalone} />}>
         <p className="text-xs text-text-muted mb-2">
-          Paiements clients autonomes sans service — non alloués aux tickets de vente.
+          <BilingualText {...REPORTS.unattributedHint} variant="caption" />
         </p>
         {customers.unattributed_payments.length === 0 ? (
-          <p className="text-sm text-text-muted">Aucun sur la période.</p>
+          <p className="text-sm text-text-muted">
+            <BilingualText {...REPORTS.noneInPeriod} variant="caption" layout="inline" />
+          </p>
         ) : (
           <ul className="divide-y divide-border border border-border rounded-md text-sm">
             {customers.unattributed_payments.map((p) => (

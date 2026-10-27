@@ -1,21 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import {
-  LayoutDashboard,
-  ShoppingCart,
-  Warehouse,
-  Receipt,
-  Package,
-  Users,
-  Banknote,
-  ArrowLeftRight,
-  BarChart2,
-  UserCog,
-  Building2,
-  ClipboardList,
-  Settings,
-  Tags,
-  Clock,
-  TrendingUp,
   PanelLeftClose,
   PanelLeftOpen,
   LogOut,
@@ -29,11 +13,11 @@ import { useAuthStore } from '@/stores/authStore'
 import { useLocaleStore } from '@/stores/localeStore'
 import { supabase } from '@/lib/supabase'
 import type { StaffRole } from '@/types/database'
+import { NavPictogram } from './NavPictogram'
 
 interface NavItem {
   label: BilingualPair
   path: string
-  icon: React.ElementType
 }
 
 interface NavGroup {
@@ -45,52 +29,52 @@ const ADMIN_GROUPS: NavGroup[] = [
   {
     title: NAV_GROUP.overview,
     items: [
-      { label: NAV.pos, path: '/pos', icon: ShoppingCart },
-      { label: NAV.overview, path: '/dashboard', icon: LayoutDashboard },
+      { label: NAV.pos, path: '/pos' },
+      { label: NAV.overview, path: '/dashboard' },
     ],
   },
   {
     title: NAV_GROUP.operations,
     items: [
-      { label: NAV.sales, path: '/sales', icon: Receipt },
-      { label: NAV.inventory, path: '/inventory', icon: Package },
-      { label: NAV.customers, path: '/customers', icon: Users },
-      { label: NAV.payments, path: '/payments', icon: Banknote },
-      { label: NAV.transfers, path: '/transfers', icon: ArrowLeftRight },
-      { label: NAV.shifts, path: '/shifts', icon: Clock },
+      { label: NAV.sales, path: '/sales' },
+      { label: NAV.inventory, path: '/inventory' },
+      { label: NAV.customers, path: '/customers' },
+      { label: NAV.payments, path: '/payments' },
+      { label: NAV.transfers, path: '/transfers' },
+      { label: NAV.shifts, path: '/shifts' },
     ],
   },
   {
     title: NAV_GROUP.insights,
-    items: [{ label: NAV.reports, path: '/reports', icon: BarChart2 }],
+    items: [{ label: NAV.reports, path: '/reports' }],
   },
   {
     title: NAV_GROUP.administration,
     items: [
-      { label: NAV.staff, path: '/admin/staff', icon: UserCog },
-      { label: NAV.depots, path: '/admin/depots', icon: Building2 },
-      { label: NAV.categories, path: '/admin/categories', icon: Tags },
-      { label: NAV.auditLog, path: '/admin/audit', icon: ClipboardList },
-      { label: NAV.settings, path: '/admin/settings', icon: Settings },
+      { label: NAV.staff, path: '/admin/staff' },
+      { label: NAV.depots, path: '/admin/depots' },
+      { label: NAV.categories, path: '/admin/categories' },
+      { label: NAV.auditLog, path: '/admin/audit' },
+      { label: NAV.settings, path: '/admin/settings' },
     ],
   },
 ]
 
 const NAV_ITEMS: Record<Exclude<StaffRole, 'admin'>, NavItem[]> = {
   cashier: [
-    { label: NAV.pos, path: '/pos', icon: ShoppingCart },
-    { label: NAV.sales, path: '/sales', icon: Receipt },
-    { label: NAV.customers, path: '/customers', icon: Users },
-    { label: NAV.payments, path: '/payments', icon: Banknote },
-    { label: NAV.shift, path: '/shifts', icon: Clock },
+    { label: NAV.pos, path: '/pos' },
+    { label: NAV.sales, path: '/sales' },
+    { label: NAV.customers, path: '/customers' },
+    { label: NAV.payments, path: '/payments' },
+    { label: NAV.shift, path: '/shifts' },
   ],
   depot_staff: [
-    { label: NAV.overview, path: '/depot', icon: Warehouse },
-    { label: NAV.sales, path: '/sales', icon: Receipt },
-    { label: NAV.inventory, path: '/inventory', icon: Package },
-    { label: NAV.stockActivity, path: '/inventory/activity', icon: TrendingUp },
-    { label: NAV.transfers, path: '/transfers', icon: ArrowLeftRight },
-    { label: NAV.customers, path: '/customers', icon: Users },
+    { label: NAV.overview, path: '/depot' },
+    { label: NAV.sales, path: '/sales' },
+    { label: NAV.inventory, path: '/inventory' },
+    { label: NAV.stockActivity, path: '/inventory/activity' },
+    { label: NAV.transfers, path: '/transfers' },
+    { label: NAV.customers, path: '/customers' },
   ],
 }
 
@@ -112,27 +96,27 @@ function RailItem({
   expanded: boolean
   iconOnly: boolean
 }) {
-  const Icon = item.icon
   const { pathname } = useLocation()
   const end = railEnd(item.path)
   const isActive = isRailPathActive(pathname, item.path, end)
   const aria = bilingualAriaLabel(item.label)
-  const showLabel = expanded && !iconOnly
+  const showExpandedLabel = expanded && !iconOnly
+  const isPos = item.path === '/pos'
 
   return (
     <NavLink
       to={item.path}
       end={end}
       aria-label={aria}
-      title={!showLabel ? bilingualPlain(item.label) : undefined}
+      title={iconOnly ? bilingualPlain(item.label) : undefined}
       className={cn(
         'group relative flex select-none transition-colors duration-150',
-        showLabel
-          ? 'items-center gap-2.5 h-9 px-2.5 rounded-md'
-          : 'items-center justify-center h-10 w-full',
+        showExpandedLabel
+          ? 'items-center gap-2.5 h-11 min-h-[44px] px-2.5 rounded-md'
+          : 'flex-col items-center justify-center gap-0.5 min-h-[52px] py-1.5 px-1 w-full rounded-md',
         isActive
           ? 'text-text-primary bg-primary-subtle'
-          : 'text-text-secondary hover:text-text-primary',
+          : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted',
       )}
     >
       {isActive && (
@@ -142,15 +126,23 @@ function RailItem({
         />
       )}
 
-      <Icon
-        className="h-5 w-5 flex-shrink-0 text-current"
-        strokeWidth={isActive ? 2 : 1.75}
-        aria-hidden="true"
+      <NavPictogram
+        path={item.path}
+        active={isActive}
+        size={isPos ? 'pos' : 'md'}
       />
 
-      {showLabel && (
+      {showExpandedLabel ? (
         <span className="min-w-0 truncate">
           <BilingualText {...item.label} variant="nav" />
+        </span>
+      ) : (
+        <span className="w-full px-0.5">
+          <BilingualText
+            {...item.label}
+            variant="navCollapsed"
+            className="w-full items-center"
+          />
         </span>
       )}
     </NavLink>
@@ -261,8 +253,8 @@ export function AppRail({ expanded, onToggle, drawer = false, lockCollapsed = fa
           className={cn(
             'w-full text-text-secondary hover:text-text-primary transition-colors duration-150',
             showExpanded
-              ? 'flex items-center gap-2.5 h-9 px-2.5 rounded-md'
-              : 'flex items-center justify-center h-10',
+              ? 'flex items-center gap-2.5 h-11 min-h-[44px] px-2.5 rounded-md'
+              : 'flex items-center justify-center h-11 min-h-[44px]',
           )}
           aria-label={bilingualAriaLabel(AUTH_NAV.signOut)}
         >
@@ -279,8 +271,8 @@ export function AppRail({ expanded, onToggle, drawer = false, lockCollapsed = fa
             className={cn(
               'w-full text-text-muted hover:text-text-primary transition-colors duration-150',
               expanded
-                ? 'flex items-center gap-2.5 h-9 px-2.5 rounded-md'
-                : 'flex items-center justify-center h-10',
+                ? 'flex items-center gap-2.5 h-11 min-h-[44px] px-2.5 rounded-md'
+                : 'flex items-center justify-center h-11 min-h-[44px]',
             )}
             aria-label={bilingualAriaLabel(collapseLabel)}
           >

@@ -185,10 +185,10 @@ describe('PaymentsPage (13E-C)', () => {
 
     expect(await screen.findByPlaceholderText(PAYMENTS.searchCustomer.fr)).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: new RegExp(PAYMENTS.excludingReversed.fr, 'i') }),
+      screen.getByRole('button', { name: PAYMENTS.excludingReversed.fr }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: new RegExp(PAYMENTS.includingReversed.fr, 'i') }),
+      screen.getByRole('button', { name: PAYMENTS.includingReversed.fr }),
     ).toBeInTheDocument()
     expect(await screen.findByText('39')).toBeInTheDocument()
   })
@@ -264,7 +264,7 @@ describe('PaymentsPage (13E-C)', () => {
     calls.length = 0
 
     await user.click(
-      screen.getByRole('button', { name: new RegExp(PAYMENTS.includingReversed.fr, 'i') }),
+      screen.getByRole('button', { name: PAYMENTS.includingReversed.fr }),
     )
 
     await waitFor(() => {

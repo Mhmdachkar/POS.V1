@@ -3,6 +3,8 @@ import * as Dialog from '@radix-ui/react-dialog'
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/cn'
+import { COMMON } from '@/lib/bilingual/common'
+import { t } from '@/lib/bilingual/types'
 import { Button } from './Button'
 
 // ─────────────────────────────────────────────────────────────────
@@ -82,7 +84,7 @@ export function Modal({
                   variant="ghost"
                   size="icon-sm"
                   className="ml-4 flex-shrink-0 -mr-1 -mt-1"
-                  aria-label="Fermer"
+                  aria-label={t(COMMON.close)}
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -94,18 +96,20 @@ export function Modal({
           {!description && (
             <VisuallyHidden.Root>
               <Dialog.Description id="modal-desc">
-                {title} dialog
+                {title}
               </Dialog.Description>
             </VisuallyHidden.Root>
           )}
           {description && (
-            <Dialog.Description className="sr-only">{description}</Dialog.Description>
+            <Dialog.Description asChild>
+              <div className="sr-only">{description}</div>
+            </Dialog.Description>
           )}
 
           {/* Body */}
           <div className="min-h-0 flex-1 overflow-y-auto p-5 scrollbar-thin">{children}</div>
           {footer && (
-            <div className="flex-shrink-0 border-t border-border bg-surface px-5 py-4">
+            <div className="flex-shrink-0 border-t border-border bg-surface px-5 py-4 flex items-center justify-end gap-3 [&>button]:min-h-[44px]">
               {footer}
             </div>
           )}
@@ -143,22 +147,28 @@ export function ConfirmDialog({
   isLoading = false,
 }: ConfirmDialogProps) {
   return (
-    <Modal open={open} onClose={onClose} title={title} size="sm" hideClose>
-      <div className="space-y-5">
-        <div className="text-sm text-text-secondary">{message}</div>
-        <div className="flex gap-3 justify-end">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={title}
+      size="sm"
+      hideClose
+      footer={
+        <>
           <Button variant="secondary" onClick={onClose} disabled={isLoading}>
-            {cancelLabel ?? 'Annuler'}
+            {cancelLabel ?? t(COMMON.cancel)}
           </Button>
           <Button
             variant={variant}
             onClick={onConfirm}
             disabled={isLoading}
           >
-            {isLoading ? 'Traitement…' : (confirmLabel ?? 'Confirmer')}
+            {isLoading ? t(COMMON.processing) : (confirmLabel ?? t(COMMON.confirm))}
           </Button>
-        </div>
-      </div>
+        </>
+      }
+    >
+      <div className="text-sm text-text-secondary">{message}</div>
     </Modal>
   )
 }
@@ -222,12 +232,12 @@ export function Drawer({
               )}
               {!description && (
                 <VisuallyHidden.Root>
-                  <Dialog.Description>{title} panel</Dialog.Description>
+                  <Dialog.Description>{title}</Dialog.Description>
                 </VisuallyHidden.Root>
               )}
             </div>
             <Dialog.Close asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="Fermer" className="flex-shrink-0">
+              <Button variant="ghost" size="icon-sm" aria-label={t(COMMON.close)} className="flex-shrink-0 min-h-[44px] min-w-[44px]">
                 <X className="h-4 w-4" />
               </Button>
             </Dialog.Close>

@@ -12,6 +12,8 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { CACHE_STALE, keepPlaceholderWhen } from '@/lib/cachePolicy'
 import { customerKeys } from '@/hooks/useCustomers'
+import { CUSTOMERS } from '@/lib/bilingual/customers'
+import { bilingualPlain } from '@/lib/bilingual/types'
 import { authoritativeFinalSaleTotal } from '@/lib/saleTotals'
 
 export const CUSTOMER_ACTIVITY_DRAWER_LIMIT = 5
@@ -96,14 +98,16 @@ export function saleActivityDescription(sale: {
   balance_added_cfa?: number | null
   status?: string | null
 }): string {
-  if (sale.status === 'voided') return 'Cancelled'
-  return (sale.balance_added_cfa ?? 0) > 0 ? 'Credit added' : 'Cash sale'
+  if (sale.status === 'voided') return bilingualPlain(CUSTOMERS.activitySaleCancelled)
+  return (sale.balance_added_cfa ?? 0) > 0
+    ? bilingualPlain(CUSTOMERS.activityCreditAdded)
+    : bilingualPlain(CUSTOMERS.activityCashSale)
 }
 
 export function formatReturnedItemsSummary(
   items: Array<{ quantity_in_unit?: number | null; product_name?: string | null }>,
 ): string {
-  if (items.length === 0) return 'Returned items'
+  if (items.length === 0) return bilingualPlain(CUSTOMERS.activityReturnedItems)
   return items
     .map((item) => {
       const qty = Number(item.quantity_in_unit ?? 0)
@@ -114,17 +118,17 @@ export function formatReturnedItemsSummary(
 }
 
 export function emptyActivityMessage(type: CustomerActivityTypeFilter): string {
-  if (type === 'sale') return 'No sales recorded.'
-  if (type === 'return') return 'No returns recorded.'
-  if (type === 'payment') return 'No payments recorded.'
-  return 'No account activity yet.'
+  if (type === 'sale') return bilingualPlain(CUSTOMERS.activityEmptySales)
+  if (type === 'return') return bilingualPlain(CUSTOMERS.activityEmptyReturns)
+  if (type === 'payment') return bilingualPlain(CUSTOMERS.activityEmptyPayments)
+  return bilingualPlain(CUSTOMERS.activityEmptyAll)
 }
 
 export function formatActivityRange(page: number, pageSize: number, count: number): string {
-  if (count === 0) return 'Showing 0 of 0 activities'
+  if (count === 0) return bilingualPlain(CUSTOMERS.activityShowingZero)
   const from = page * pageSize + 1
   const to = Math.min((page + 1) * pageSize, count)
-  return `Showing ${from}–${to} of ${count} activities`
+  return bilingualPlain(CUSTOMERS.activityShowingRange(from, to, count))
 }
 
 export function mergeActivityEvents(events: CustomerActivityEvent[]): CustomerActivityEvent[] {
@@ -132,6 +136,16 @@ export function mergeActivityEvents(events: CustomerActivityEvent[]): CustomerAc
     const byTime = b.occurredAt.localeCompare(a.occurredAt)
     if (byTime !== 0) return byTime
     return b.id.localeCompare(a.id)
+  })
+}
+
+function saleActivityAmountCfa(row: Record<string, unknown>): number {
+  const balanceAdded = Number(row.balance_added_cfa ?? 0)
+  if (balanceAdded > 0) return balanceAdded
+  return authoritativeFinalSaleTotal({
+    total_cfa: Number(row.total_cfa ?? 0),
+    admin_override_total_cfa:
+      row.admin_override_total_cfa == null ? null : Number(row.admin_override_total_cfa),
   })
 }
 
@@ -146,11 +160,7 @@ function mapSaleEvent(row: Record<string, unknown>): CustomerActivityEvent {
       balance_added_cfa: Number(row.balance_added_cfa ?? 0),
       status: typeof row.status === 'string' ? row.status : null,
     }),
-    amountCfa: authoritativeFinalSaleTotal({
-      total_cfa: Number(row.total_cfa ?? 0),
-      admin_override_total_cfa:
-        row.admin_override_total_cfa == null ? null : Number(row.admin_override_total_cfa),
-    }),
+    amountCfa: saleActivityAmountCfa(row),
     saleId: String(row.id),
   }
 }
@@ -180,19 +190,22 @@ function mapReturnEvent(row: Record<string, unknown>): CustomerActivityEvent {
     type: 'return',
     occurredAt: String(row.created_at),
     reference: receipt,
-    description: `${summary} returned`,
+    description: `${summary} ${bilingualPlain(CUSTOMERS.activityReturnedSuffix)}`,
     amountCfa: -Number(row.refund_amount_cfa ?? 0),
     saleId: typeof row.sale_id === 'string' ? row.sale_id : null,
   }
 }
 
 function mapPaymentEvent(row: Record<string, unknown>): CustomerActivityEvent {
-  const note = typeof row.note === 'string' && row.note.trim() ? row.note.trim() : 'Balance payment'
+  const note =
+    typeof row.note === 'string' && row.note.trim()
+      ? row.note.trim()
+      : bilingualPlain(CUSTOMERS.activityBalancePayment)
   return {
     id: String(row.id),
     type: 'payment',
     occurredAt: String(row.recorded_at),
-    reference: 'Customer payment',
+    reference: bilingualPlain(CUSTOMERS.activityCustomerPaymentRef),
     description: note,
     amountCfa: -Number(row.amount_cfa ?? 0),
     saleId: null,

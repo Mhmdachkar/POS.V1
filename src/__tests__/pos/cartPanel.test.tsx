@@ -12,7 +12,7 @@ import { usePOSStore } from '@/stores/posStore'
 import type { CartItem as CartItemType, ProductWithUnits } from '@/types'
 import type { ProductUnit } from '@/types/database'
 import { POS } from '@/lib/bilingual/pos'
-import { bilingualAriaLabel, getByBilingualRole } from '../helpers/bilingualQueries'
+import { bilingualAriaLabel, expectToastErrorFr, getByBilingualRole } from '../helpers/bilingualQueries'
 import { toast } from 'sonner'
 
 vi.mock('sonner', () => ({
@@ -335,6 +335,17 @@ describe('CartPanel', () => {
     const input = screen.getByLabelText(bilingualAriaLabel(POS.qtyAria('Water')))
     fireEvent.change(input, { target: { value: '15' } })
     expect(usePOSStore.getState().items[0].quantity_in_unit).toBe(10)
-    expect(toast.error).toHaveBeenCalled()
+    expectToastErrorFr(toast.error, POS.remainingStock(10).fr)
+  })
+
+  it('B7: negative qty shows invalide and keeps the previous value', () => {
+    addLine({ quantity_in_unit: 5 })
+    render(<CartItem item={usePOSStore.getState().items[0]} />)
+
+    const input = screen.getByLabelText(bilingualAriaLabel(POS.qtyAria('Water')))
+    fireEvent.change(input, { target: { value: '-2' } })
+    expect(usePOSStore.getState().items[0].quantity_in_unit).toBe(5)
+    expect(input).toHaveValue(5)
+    expect(screen.getByText(POS.qtyInvalid.fr)).toBeInTheDocument()
   })
 })

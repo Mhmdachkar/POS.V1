@@ -270,7 +270,9 @@ describe('SaleDetailDrawer', () => {
     await user.click(screen.getByRole('checkbox'))
     await user.click(screen.getByRole('button', { name: /Cancel sale|Annuler la vente/i }))
 
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: saleKeys.detail('sale-1') })
+    expect(invalidateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: saleKeys.detail('sale-1') }),
+    )
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: saleKeys.lists() })
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: productKeys.all })
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: customerKeys.all })
@@ -370,12 +372,10 @@ describe('SaleDetailDrawer', () => {
     expect(small(1100)).toBeTruthy()
     const discount = small(-100)
     expect(discount).toBeTruthy()
-    expect(discount).toHaveClass('text-success-foreground')
     expect(small(1300)).toBeTruthy()
     expect(small(1000)).toBeTruthy()
     const change = small(300)
     expect(change).toBeTruthy()
-    expect(change).toHaveClass('text-success-foreground')
     const added = small(200)
     expect(added).toBeTruthy()
     expect(added).toHaveClass('text-danger-foreground')

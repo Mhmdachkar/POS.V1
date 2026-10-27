@@ -14,7 +14,7 @@ import { BilingualText } from '@/components/ui/BilingualText'
 import { POS } from '@/lib/bilingual/pos'
 import type { ProductWithUnits } from '@/types'
 import type { ProductUnit } from '@/types/database'
-import { t } from '@/lib/bilingual/types'
+import { localizedUnitLabel, productInitials } from '@/lib/localizedUnits'
 
 
 export interface ProductCardProps {
@@ -99,7 +99,7 @@ export function ProductCard({ product, onAddItem }: ProductCardProps) {
           disabled={addDisabled && units.length <= 1}
           onClick={handleTap}
           className={cn(
-            'relative w-full h-full text-left overflow-hidden rounded-xl',
+            'relative w-full h-full min-h-full text-left overflow-hidden rounded-xl flex flex-col',
             'bg-surface border transition-all duration-150 ease-out',
             'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1',
             'hover:shadow-sm active:scale-[0.99]',
@@ -126,13 +126,11 @@ export function ProductCard({ product, onAddItem }: ProductCardProps) {
                 interactive
               />
             ) : (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-surface-muted px-2">
-                <Package className="h-7 w-7 text-text-muted/70" strokeWidth={1.5} />
-                {serial && (
-                  <span className="text-[9px] font-mono font-semibold text-text-secondary text-center break-all leading-tight">
-                    {serial}
-                  </span>
-                )}
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-surface-muted px-2">
+                <Package className="h-8 w-8 text-text-muted/70" strokeWidth={1.5} />
+                <span className="text-sm font-semibold uppercase tracking-wide text-text-secondary">
+                  {productInitials(product.name)}
+                </span>
               </div>
             )}
 
@@ -153,19 +151,19 @@ export function ProductCard({ product, onAddItem }: ProductCardProps) {
             )}
 
             {presence.kind === 'one' && (
-              <span className="absolute top-1 right-1 min-w-[1.25rem] h-5 px-1 rounded-full bg-surface text-primary border border-primary text-[10px] font-bold flex items-center justify-center">
+              <span className="absolute top-1.5 right-1.5 min-w-[1.375rem] h-[22px] px-1.5 rounded-full bg-surface text-primary border border-primary text-xs font-bold flex items-center justify-center">
                 ×{presence.qty}
               </span>
             )}
             {presence.kind === 'multi' && (
               <Tooltip.Root delayDuration={200}>
                 <Tooltip.Trigger asChild>
-                  <span className="absolute top-1 right-1 h-5 px-1.5 rounded-full bg-surface text-primary border border-primary text-[9px] font-semibold flex items-center">
+                  <span className="absolute top-1.5 right-1.5 h-[22px] px-1.5 rounded-full bg-surface text-primary border border-primary text-[11px] font-semibold flex items-center">
                     <BilingualText
                       {...POS.inCartBadge}
                       variant="caption"
                       layout="inline"
-                      frClassName="text-[9px] text-primary"
+                      frClassName="text-[11px] text-primary"
                     />
                   </span>
                 </Tooltip.Trigger>
@@ -192,12 +190,12 @@ export function ProductCard({ product, onAddItem }: ProductCardProps) {
             )}
           </div>
 
-          <div className="px-2 py-1.5 space-y-1">
-            <p className="text-xs font-semibold text-text-primary leading-tight line-clamp-2">
+          <div className="px-2.5 py-2 space-y-1.5 flex-1 flex flex-col">
+            <p className="text-product-name text-text-primary leading-tight line-clamp-2">
               {product.name}
             </p>
             {serial && (
-              <p className="text-[10px] font-mono text-text-muted truncate" title={serial}>
+              <p className="text-xs font-mono text-text-muted truncate" title={serial}>
                 {serial}
               </p>
             )}
@@ -219,10 +217,10 @@ export function ProductCard({ product, onAddItem }: ProductCardProps) {
                       key={unit.id}
                       className="inline-flex items-center gap-1 rounded-md bg-surface-muted border border-border/60 px-1.5 py-0.5 max-w-full min-w-0"
                     >
-                      <span className="text-[9px] font-medium uppercase text-text-muted truncate">
-                        {unit.unit_name}
+                      <span className="text-[11px] font-medium text-text-muted whitespace-normal break-words leading-tight">
+                        {localizedUnitLabel(unit.unit_name, unit.unit_level)}
                       </span>
-                      <span className="text-[13px] font-bold text-text-primary financial-value whitespace-nowrap">
+                      <span className="text-product-price text-text-primary financial-value whitespace-nowrap">
                         {formatCFA(unit.selling_price_cfa)}
                       </span>
                     </span>

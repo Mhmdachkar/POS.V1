@@ -23,6 +23,8 @@ import {
   type CustomerActivityEvent,
 } from '@/hooks/useCustomerActivity'
 import { invalidateAfterSaleSettled } from '@/lib/cacheInvalidation'
+import { CUSTOMERS } from '@/lib/bilingual/customers'
+import { bilingualPlain } from '@/lib/bilingual/types'
 
 vi.mock('@/lib/rpc', () => ({
   rpc: {
@@ -112,24 +114,34 @@ function makeSaleRow(i: number, overrides: Row = {}): Row {
 
 describe('activity helpers', () => {
   it('describes credit vs cash sales', () => {
-    expect(saleActivityDescription({ balance_added_cfa: 350 })).toBe('Credit added')
-    expect(saleActivityDescription({ balance_added_cfa: 0 })).toBe('Cash sale')
+    expect(saleActivityDescription({ balance_added_cfa: 350 })).toBe(
+      bilingualPlain(CUSTOMERS.activityCreditAdded),
+    )
+    expect(saleActivityDescription({ balance_added_cfa: 0 })).toBe(
+      bilingualPlain(CUSTOMERS.activityCashSale),
+    )
   })
 
   it('formats returned item summaries without UUIDs', () => {
     expect(formatReturnedItemsSummary([
       { quantity_in_unit: 2, product_name: 'Cola Can 33cl' },
     ])).toBe('2 × Cola Can 33cl')
-    expect(emptyActivityMessage('all')).toBe('No account activity yet.')
-    expect(emptyActivityMessage('sale')).toBe('No sales recorded.')
-    expect(emptyActivityMessage('return')).toBe('No returns recorded.')
-    expect(emptyActivityMessage('payment')).toBe('No payments recorded.')
+    expect(emptyActivityMessage('all')).toBe(bilingualPlain(CUSTOMERS.activityEmptyAll))
+    expect(emptyActivityMessage('sale')).toBe(bilingualPlain(CUSTOMERS.activityEmptySales))
+    expect(emptyActivityMessage('return')).toBe(bilingualPlain(CUSTOMERS.activityEmptyReturns))
+    expect(emptyActivityMessage('payment')).toBe(bilingualPlain(CUSTOMERS.activityEmptyPayments))
   })
 
   it('formats paginated counts newest-page style', () => {
-    expect(formatActivityRange(0, 25, 119)).toBe('Showing 1–25 of 119 activities')
-    expect(formatActivityRange(1, 25, 119)).toBe('Showing 26–50 of 119 activities')
-    expect(formatActivityRange(4, 25, 119)).toBe('Showing 101–119 of 119 activities')
+    expect(formatActivityRange(0, 25, 119)).toBe(
+      bilingualPlain(CUSTOMERS.activityShowingRange(1, 25, 119)),
+    )
+    expect(formatActivityRange(1, 25, 119)).toBe(
+      bilingualPlain(CUSTOMERS.activityShowingRange(26, 50, 119)),
+    )
+    expect(formatActivityRange(4, 25, 119)).toBe(
+      bilingualPlain(CUSTOMERS.activityShowingRange(101, 119, 119)),
+    )
   })
 
   it('merges events newest first', () => {
@@ -207,6 +219,26 @@ describe('fetchCustomerActivity', () => {
     expect(result.data.every((event) => event.type === 'sale')).toBe(true)
   })
 
+  it('uses balance_added_cfa for credit sale amounts in the ledger', async () => {
+    mockTables({
+      sales: [makeSaleRow(0, {
+        receipt_number: 'MAIN-00000004',
+        total_cfa: 10_000,
+        admin_override_total_cfa: 8_000,
+        balance_added_cfa: 3_000,
+      })],
+      sale_returns: [],
+      payments: [],
+    })
+
+    const result = await fetchCustomerActivity('cust-1', {
+      type: 'sale',
+      page: 0,
+      pageSize: 25,
+    })
+    expect(result.data[0]?.amountCfa).toBe(3_000)
+  })
+
   it('paginates a single type on the server with range', async () => {
     const sales = Array.from({ length: 80 }, (_, i) => makeSaleRow(i))
     const calls = mockTables({ sales, sale_returns: [], payments: [] })
@@ -258,7 +290,9 @@ describe('fetchCustomerActivity', () => {
       pageSize: 25,
     })
     expect(returns.data[0]?.reference).toBe('DKR-00000020')
-    expect(returns.data[0]?.description).toBe('2 × Cola Can 33cl returned')
+    expect(returns.data[0]?.description).toBe(
+      `2 × Cola Can 33cl ${bilingualPlain(CUSTOMERS.activityReturnedSuffix)}`,
+    )
     expect(returns.data[0]?.amountCfa).toBe(-600)
     expect(returns.data[0]?.reference).not.toContain('sale-uuid')
 
@@ -267,7 +301,9 @@ describe('fetchCustomerActivity', () => {
       page: 0,
       pageSize: 25,
     })
-    expect(payments.data[0]?.reference).toBe('Customer payment')
+    expect(payments.data[0]?.reference).toBe(
+      bilingualPlain(CUSTOMERS.activityCustomerPaymentRef),
+    )
     expect(payments.data[0]?.saleId).toBeNull()
     expect(payments.data[0]?.amountCfa).toBe(-500)
   })

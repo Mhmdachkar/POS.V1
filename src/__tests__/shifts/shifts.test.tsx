@@ -23,6 +23,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
 import { formatCFA } from '@/lib/formatters'
 import { COMMON } from '@/lib/bilingual/common'
+import { SHIFT_STATUS } from '@/lib/bilingual/status'
 import type { Staff } from '@/types/database'
 
 vi.mock('@/hooks/useShifts', async (importOriginal) => {
@@ -251,15 +252,15 @@ describe('ShiftsPage', () => {
     vi.mocked(supabase.from).mockReturnValue(builder as never)
   })
 
-  it('renders historical list and status pills without Open Shift or Select for POS', async () => {
+  it('renders historical list, Open Shift, and status pills without Select for POS', async () => {
     renderShifts()
     expect(await screen.findByRole('heading', { name: /Shifts|Services/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Open Shift|Ouvrir un service/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Open Shift|Ouvrir un service/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Select for POS|Sélectionner pour la caisse/i })).not.toBeInTheDocument()
     expect(screen.queryByText('Current')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Tout \/ All|All/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Ouvert \/ Open|Open/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Fermé \/ Closed|Closed/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: COMMON.all.fr })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: SHIFT_STATUS.open.fr })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: SHIFT_STATUS.closed.fr })).toBeInTheDocument()
     expect(screen.queryByPlaceholderText('Search shifts…')).not.toBeInTheDocument()
   })
 

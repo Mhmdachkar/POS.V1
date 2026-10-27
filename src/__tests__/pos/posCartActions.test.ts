@@ -60,8 +60,16 @@ describe('posCartActions', () => {
     expect(usePOSStore.getState().items[0].quantity_in_unit).toBe(9)
     const over = tryUpdateCartQuantity('onion', 0, 11, 10)
     expect(over.ok).toBe(false)
-    if (!over.ok) expect(over.remainingPieces).toBe(1)
+    if (!over.ok) expect(over.remainingPieces).toBe(10)
     expect(usePOSStore.getState().items[0].quantity_in_unit).toBe(10)
+  })
+
+  it('rejects negative quantity without mutating the line', () => {
+    tryAddCartItem(baseItem({ quantity_in_unit: 5 }), 10)
+    const r = tryUpdateCartQuantity('onion', 0, -3, 10)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.reason).toBe('invalid_quantity')
+    expect(usePOSStore.getState().items[0].quantity_in_unit).toBe(5)
   })
 
   it('remove via qty 0 works at max', () => {

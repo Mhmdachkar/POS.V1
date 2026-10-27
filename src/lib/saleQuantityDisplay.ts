@@ -1,12 +1,9 @@
 ﻿import { formatPieces } from '@/lib/formatters'
+import { localizedUnitLabel } from '@/lib/localizedUnits'
 
-const LEVEL_FALLBACK = ['Piece', 'Package', 'Carton'] as const
-
-/** Frozen sale line unit label (from product_units at sale time). */
+/** Frozen sale line unit label, localized for known packing names. */
 export function resolvedSaleUnitName(unitName: string | null | undefined, unitLevel: number): string {
-  const trimmed = unitName?.trim()
-  if (trimmed) return trimmed
-  return LEVEL_FALLBACK[unitLevel] ?? 'Piece'
+  return localizedUnitLabel(unitName, unitLevel)
 }
 
 /** e.g. "3 Carton" — quantity sold in the unit chosen at checkout. */

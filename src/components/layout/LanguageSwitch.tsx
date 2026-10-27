@@ -19,7 +19,7 @@ export function LanguageSwitch({ compact = false }: { compact?: boolean }) {
       data-testid="language-switch"
       className={cn(
         'inline-flex items-center rounded-md border border-border bg-surface p-0.5',
-        compact ? 'h-8' : 'h-8',
+        compact ? 'h-11' : 'h-11',
       )}
     >
       {OPTIONS.map((option) => {
@@ -31,7 +31,7 @@ export function LanguageSwitch({ compact = false }: { compact?: boolean }) {
             aria-pressed={active}
             onClick={() => setLocale(option.id)}
             className={cn(
-              'h-7 min-w-[1.75rem] px-2 rounded text-[11px] font-semibold tracking-wide',
+              'h-10 min-h-[40px] min-w-[44px] px-2.5 rounded text-xs font-semibold tracking-wide',
               'transition-colors duration-150',
               active
                 ? 'bg-primary text-primary-foreground'

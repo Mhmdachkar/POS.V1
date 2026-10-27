@@ -23,6 +23,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 import { Users, Plus } from 'lucide-react'
+import { NavPictogram } from '@/components/layout/NavPictogram'
 import { cn } from '@/lib/cn'
 import {
   Badge,
@@ -31,10 +32,13 @@ import {
   FilterBar,
   MoneyDisplay,
   PageHeader,
+  PaginationBar,
+  RowChevron,
+  CLICKABLE_ROW,
   Skeleton,
 } from '@/components/ui'
 import { formatDate } from '@/lib/formatters'
-import { COMMON, commonPageOf } from '@/lib/bilingual/common'
+import { COMMON } from '@/lib/bilingual/common'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
 import {
   BiButtonStack,
@@ -75,7 +79,7 @@ const FILTER_OPTIONS: FilterOption[] = [
 
 /** Name | Phone | Balance Owed | Status | Since */
 const CUSTOMERS_GRID =
-  'grid-cols-[minmax(10rem,1.4fr)_8.5rem_7rem_6.5rem_7.5rem]'
+  'grid-cols-[minmax(10rem,1.4fr)_8.5rem_7rem_6.5rem_7.5rem_1.25rem]'
 
 // ─────────────────────────────────────────────────────────────────
 // Table skeleton
@@ -157,6 +161,7 @@ export function CustomersPage() {
       <div className="flex-shrink-0 border-b border-border bg-surface">
         <PageHeader
           title={<BiPageTitle {...CUSTOMERS.pageTitle} />}
+          icon={<NavPictogram path="/customers" size="header" />}
           className="border-b-0"
           actions={
             canCreateCustomer ? (
@@ -221,6 +226,7 @@ export function CustomersPage() {
                 </span>
                 <BiTableHeader {...COMMON.status} />
                 <BiTableHeader {...CUSTOMERS.colSince} />
+                <span aria-hidden="true" />
               </div>
             </div>
 
@@ -236,10 +242,10 @@ export function CustomersPage() {
                 type="button"
                 onClick={() => setSelectedCustomerId(customer.id)}
                 className={cn(
-                  'w-full text-left grid gap-4 px-4 py-3 items-center',
+                  'w-full text-left grid gap-4 px-4 py-3 min-h-[44px] items-center',
                   CUSTOMERS_GRID,
-                  'border-b border-border hover:bg-surface-muted transition-colors',
-                  'focus:outline-none focus:bg-primary-subtle border-l-4',
+                  'border-b border-border border-l-4',
+                  CLICKABLE_ROW,
                   tone === 'owing' && 'border-l-danger',
                   tone === 'settled' && 'border-l-success',
                   tone === 'inactive' && 'border-l-border-strong',
@@ -252,7 +258,7 @@ export function CustomersPage() {
                     balanceOwedCfa={customer.balance_owed_cfa}
                     isActive={customer.is_active}
                   />
-                  <span className="text-sm font-medium text-text-primary truncate min-w-0">
+                  <span className="text-sm font-semibold text-text-primary truncate min-w-0">
                     {customer.name}
                   </span>
                 </span>
@@ -283,36 +289,12 @@ export function CustomersPage() {
                 <span className="text-sm text-text-secondary whitespace-nowrap">
                   {formatDate(customer.created_at)}
                 </span>
+                <RowChevron />
               </button>
               )
             })}
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-                <span className="text-sm text-text-secondary">
-                  <BilingualText {...commonPageOf(page + 1, totalPages)} variant="caption" layout="inline" />
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.max(0, p - 1))}
-                    disabled={page === 0}
-                    className="px-3 h-8 text-sm rounded-md border border-border bg-surface hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <BilingualText {...COMMON.previous} variant="caption" layout="inline" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                    disabled={page >= totalPages - 1}
-                    className="px-3 h-8 text-sm rounded-md border border-border bg-surface hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <BilingualText {...COMMON.next} variant="caption" layout="inline" />
-                  </button>
-                </div>
-              </div>
-            )}
+            <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />
           </>
         )}
       </div>

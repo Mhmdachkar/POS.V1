@@ -26,6 +26,7 @@ import {
 import type { ProductWithUnits } from '@/types'
 import type { InventoryAdjustmentType } from '@/types/rpc'
 import type { z } from 'zod'
+import { COMMON } from '@/lib/bilingual/common'
 import { t, type BilingualPair } from '@/lib/bilingual/types'
 
 
@@ -33,11 +34,11 @@ type AdjustmentForm = z.infer<typeof adjustmentFormSchema>
 
 function adjustmentTypes(): Array<{ value: InventoryAdjustmentType; label: string }> {
   return [
-    { value: 'DAMAGE', label: 'Damage' },
-    { value: 'LOSS', label: 'Loss' },
-    { value: 'EXPIRY', label: 'Expiry' },
+    { value: 'DAMAGE', label: t(INVENTORY.adjustmentTypeDamage) },
+    { value: 'LOSS', label: t(INVENTORY.adjustmentTypeLoss) },
+    { value: 'EXPIRY', label: t(INVENTORY.adjustmentTypeExpiry) },
     { value: 'COUNT_CORRECTION', label: t(INVENTORY.countCorrection) },
-    { value: 'OTHER', label: 'Other' },
+    { value: 'OTHER', label: t(INVENTORY.adjustmentTypeOther) },
   ]
 }
 
@@ -132,13 +133,18 @@ export function AdjustmentModal({ open, onClose, product }: AdjustmentModalProps
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={`Adjust — ${product.name}`} size="md">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={t(INVENTORY.adjustProductTitle(product.name))}
+      size="md"
+    >
       <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4">
         <FormActionGuide steps={guideSteps} />
 
         <div>
           <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
-            Adjustment type <span className="text-danger-foreground">*</span>
+            {t(INVENTORY.adjustmentTypeLabel)} <span className="text-danger-foreground">*</span>
           </label>
           <select
             {...register('adjustment_type')}
@@ -200,11 +206,11 @@ export function AdjustmentModal({ open, onClose, product }: AdjustmentModalProps
 
         <div>
           <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
-            Reason{' '}
+            {t(COMMON.reason)}{' '}
             {type === 'OTHER' ? (
               <span className="text-danger-foreground">*</span>
             ) : (
-              <span className="text-text-muted font-normal">(optional)</span>
+              <span className="text-text-muted font-normal">{t(INVENTORY.restockNoteOptional)}</span>
             )}
           </label>
           <textarea
@@ -235,10 +241,12 @@ export function AdjustmentModal({ open, onClose, product }: AdjustmentModalProps
             </div>
           )}
           <p className="text-xs text-text-muted">
-            Estimate is informational. Server stock is authoritative.
+            <BilingualText {...INVENTORY.estimateDisclaimer} variant="caption" layout="inline" />
           </p>
           {estimate === 0 && (
-            <p className="text-xs text-warning-foreground">This will empty the stock.</p>
+            <p className="text-xs text-warning-foreground">
+              <BilingualText {...INVENTORY.stockWillEmpty} variant="caption" layout="inline" />
+            </p>
           )}
         </div>
 
@@ -250,10 +258,10 @@ export function AdjustmentModal({ open, onClose, product }: AdjustmentModalProps
 
         <div className="flex gap-3 justify-end pt-1">
           <Button type="button" variant="secondary" onClick={onClose} disabled={isPending}>
-            Cancel
+            {t(COMMON.cancel)}
           </Button>
           <LoadingButton type="submit" loading={isPending}>
-            Apply Adjustment
+            {t(INVENTORY.applyAdjustment)}
           </LoadingButton>
         </div>
       </form>

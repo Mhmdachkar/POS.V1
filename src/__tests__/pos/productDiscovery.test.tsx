@@ -240,9 +240,9 @@ describe('UnitPickerPopover', () => {
     expect(
       screen.getByRole('dialog', { name: bilingualAriaLabel(POS.selectUnitAria('Water')) }),
     ).toBeInTheDocument()
-    expect(screen.getByText('Piece')).toBeInTheDocument()
+    expect(screen.getByText('Pièce')).toBeInTheDocument()
     expect(screen.getByText('Pack')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Piece/ })).toHaveTextContent('CFA 350')
+    expect(screen.getByRole('button', { name: /Pièce/ })).toHaveTextContent('350 CFA')
     expect(screen.getByRole('button', { name: /Pack/ }).textContent).toContain('1')
     expect(screen.getByRole('button', { name: /Pack/ }).textContent).toContain('800')
 

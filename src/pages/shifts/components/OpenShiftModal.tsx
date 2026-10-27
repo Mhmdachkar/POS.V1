@@ -7,13 +7,14 @@ import { Button, Input, LoadingButton, Modal } from '@/components/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { COMMON } from '@/lib/bilingual/common'
 import { SHIFT_COPY } from '@/lib/bilingual/shift'
-import { BiButtonStack, BiModalTitle, BiPageDescription } from '@/lib/bilingual/ui'
+import { BiButtonStack, BiModalTitle } from '@/lib/bilingual/ui'
 import { toastSuccessBi } from '@/lib/bilingual/toast'
-import { t, bilingualPlain } from '@/lib/bilingual/types'
+import { bilingualPlain } from '@/lib/bilingual/types'
 import { parseError } from '@/lib/errors'
 import { useDepotOptions } from '@/hooks/useInventory'
 import { parseNonNegativeCfa, useOpenShift } from '@/hooks/useShifts'
 import { useAuthStore } from '@/stores/authStore'
+import { useDepotStore } from '@/stores/depotStore'
 
 interface OpenShiftModalProps {
   open: boolean
@@ -23,11 +24,13 @@ interface OpenShiftModalProps {
 
 export function OpenShiftModal({ open, onClose, onOpened }: OpenShiftModalProps) {
   const staff = useAuthStore((s) => s.staff)
+  const currentDepotId = useDepotStore((s) => s.currentDepotId)
   const { data: depots } = useDepotOptions()
   const { mutateAsync: openShift, isPending } = useOpenShift()
 
   const isCashier = staff?.role === 'cashier'
   const lockedDepotId = isCashier ? staff?.depot_id ?? '' : ''
+  const adminDefaultDepot = !isCashier ? (currentDepotId ?? '') : ''
 
   const [depotId, setDepotId] = useState(lockedDepotId)
   const [floatStr, setFloatStr] = useState('0')
@@ -41,10 +44,10 @@ export function OpenShiftModal({ open, onClose, onOpened }: OpenShiftModalProps)
 
   useEffect(() => {
     if (!open) return
-    setDepotId(lockedDepotId)
+    setDepotId(lockedDepotId || adminDefaultDepot)
     setFloatStr('0')
     setFormError(null)
-  }, [open, lockedDepotId])
+  }, [open, lockedDepotId, adminDefaultDepot])
 
   const floatValue = parseNonNegativeCfa(floatStr)
   const canSubmit = floatValue !== null && (isCashier || !!depotId) && !isPending
@@ -78,7 +81,7 @@ export function OpenShiftModal({ open, onClose, onOpened }: OpenShiftModalProps)
       open={open}
       onClose={() => { if (!isPending) onClose() }}
       title={<BiModalTitle {...SHIFT_COPY.openShiftTitle} />}
-      description={<BiPageDescription {...SHIFT_COPY.openShiftDesc} />}
+      description={<BilingualText {...SHIFT_COPY.openShiftDesc} variant="caption" as="span" />}
       size="sm"
     >
       <div className="space-y-4">

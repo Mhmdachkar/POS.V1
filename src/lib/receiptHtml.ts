@@ -8,6 +8,7 @@ import { formatCFA, formatDateTime } from '@/lib/formatters'
 import { APP_BUSINESS_FALLBACK } from '@/lib/formatters'
 import type { DiscountType, SaleStatus } from '@/types/database'
 import type { SaleDetailData } from '@/hooks/useSales'
+import { authoritativeFinalSaleTotal } from '@/lib/saleTotals'
 
 export interface ReceiptLineItem {
   product_name: string
@@ -31,6 +32,10 @@ export interface ReceiptData {
   discount_value: number | null
   discount_amount_cfa: number
   total_cfa: number
+  /** Payable total (override when set). Shown as receipt TOTAL. */
+  payable_total_cfa: number
+  /** total_cfa - payable_total_cfa when an admin adjustment applies. */
+  adjustment_cfa: number
   amount_tendered_cfa: number
   change_given_cfa: number
   balance_added_cfa: number
@@ -73,6 +78,14 @@ export function receiptDataFromSaleDetail(
   businessName: string,
   depotName: string | null,
 ): ReceiptData {
+  const calculatedTotal = sale.total_cfa
+  const payableTotal = authoritativeFinalSaleTotal({
+    total_cfa: calculatedTotal,
+    admin_override_total_cfa: sale.admin_override_total_cfa,
+  })
+  const adjustmentCfa =
+    payableTotal < calculatedTotal ? calculatedTotal - payableTotal : 0
+
   return {
     businessName,
     depotName,
@@ -92,7 +105,9 @@ export function receiptDataFromSaleDetail(
     discount_type: sale.discount_type,
     discount_value: sale.discount_value,
     discount_amount_cfa: sale.discount_amount_cfa,
-    total_cfa: sale.total_cfa,
+    total_cfa: calculatedTotal,
+    payable_total_cfa: payableTotal,
+    adjustment_cfa: adjustmentCfa,
     amount_tendered_cfa: sale.amount_tendered_cfa,
     change_given_cfa: sale.change_given_cfa,
     balance_added_cfa: sale.balance_added_cfa,
@@ -127,6 +142,16 @@ export function buildReceiptHtml(data: ReceiptData): string {
     ? kv(discountLabel(data), `− ${formatCFA(data.discount_amount_cfa)}`)
     : ''
 
+  const calculatedTotalRow =
+    data.adjustment_cfa > 0
+      ? kv('Total calculé', formatCFA(data.total_cfa))
+      : ''
+
+  const adjustmentRow =
+    data.adjustment_cfa > 0
+      ? kv('Ajustement', `− ${formatCFA(data.adjustment_cfa)}`)
+      : ''
+
   const changeRow = data.change_given_cfa > 0
     ? kv('Monnaie', formatCFA(data.change_given_cfa))
     : ''
@@ -159,7 +184,9 @@ export function buildReceiptHtml(data: ReceiptData): string {
       <div class="receipt-totals">
         ${kv('Sous-total', formatCFA(data.subtotal_cfa))}
         ${discountRow}
-        ${kv('TOTAL', formatCFA(data.total_cfa), 'receipt-total')}
+        ${calculatedTotalRow}
+        ${adjustmentRow}
+        ${kv('TOTAL', formatCFA(data.payable_total_cfa), 'receipt-total')}
         ${kv('Espèces', formatCFA(data.amount_tendered_cfa))}
         ${changeRow}
         ${balanceRow}

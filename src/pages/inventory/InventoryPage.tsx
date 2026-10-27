@@ -18,10 +18,11 @@ import { SHIFT_COPY } from '@/lib/bilingual/shift'
 import { TRANSFERS } from '@/lib/bilingual/transfers'
 import { INVENTORY } from '@/lib/bilingual/inventory'
 import { SALES } from '@/lib/bilingual/sales'
-import { Package, Plus, Search } from 'lucide-react'
+import { Package, Plus } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { resolveProductPhotoUrl } from '@/lib/productPhotos'
-import { ActiveBadge, Button, EmptyState, PageHeader, Skeleton, StockStatusBadge } from '@/components/ui'
+import { ActiveBadge, Button, EmptyState, PageHeader, SearchInput, Skeleton, StockStatusBadge } from '@/components/ui'
+import { NavPictogram } from '@/components/layout/NavPictogram'
 import { formatCFA, formatDate, formatPieces } from '@/lib/formatters'
 import { formatStockCompact } from '@/lib/stockQuantityDisplay'
 import { getProductStockStatus, type StockStatus } from '@/types'
@@ -158,8 +159,8 @@ export function InventoryPage() {
   }
 
   const gridCols = showDepotColumn
-    ? 'grid-cols-[2.25rem_minmax(7rem,1.3fr)_minmax(5rem,0.8fr)_minmax(5rem,0.7fr)_minmax(5.5rem,0.7fr)_4.75rem_6.5rem_4.25rem_6.5rem]'
-    : 'grid-cols-[2.25rem_minmax(7rem,1.3fr)_minmax(5rem,0.8fr)_minmax(5.5rem,0.7fr)_4.75rem_6.5rem_4.25rem_6.5rem]'
+    ? 'grid-cols-[4rem_minmax(7rem,1.3fr)_minmax(5rem,0.8fr)_minmax(5rem,0.7fr)_minmax(5.5rem,0.7fr)_4.75rem_6.5rem_4.25rem_6.5rem]'
+    : 'grid-cols-[4rem_minmax(7rem,1.3fr)_minmax(5rem,0.8fr)_minmax(5.5rem,0.7fr)_4.75rem_6.5rem_4.25rem_6.5rem]'
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -173,7 +174,7 @@ export function InventoryPage() {
               <BiPageDescription {...INVENTORY.stockByDepot} />
             )
           }
-          icon={<Package className="h-5 w-5" />}
+          icon={<NavPictogram path="/inventory" size="header" />}
           className="border-b-0"
           actions={
             canCreateProduct ? (
@@ -186,25 +187,18 @@ export function InventoryPage() {
         />
         <div className="px-3 sm:px-6 pb-3 sm:pb-4 space-y-3">
           <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-            <div className="relative w-full sm:w-52 min-w-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
-              <input
-                type="search"
+            <div className="w-full sm:w-56 min-w-0">
+              <SearchInput
                 value={search}
                 onChange={handleSearchChange}
                 placeholder={t(INVENTORY.searchProducts)}
                 aria-label={t(INVENTORY.searchProducts)}
-                className={cn(
-                  'w-full h-9 pl-9 pr-3 rounded-md border border-border bg-surface',
-                  'text-sm text-text-primary placeholder:text-text-muted',
-                  'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary',
-                )}
               />
             </div>
             <select
               value={categoryId ?? ''}
               onChange={handleCategoryChange}
-              className="h-9 w-full sm:w-auto px-3 rounded-md border border-border bg-surface text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              className="h-11 min-h-[44px] w-full sm:w-auto px-3 rounded-md border border-border bg-surface text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
             >
               <option value="">{t(COMMON.allCategories)}</option>
               {(categories ?? []).map((cat) => (
@@ -268,7 +262,7 @@ export function InventoryPage() {
           <>
             <div className="sticky top-0 bg-surface-muted border-b border-border z-[1]">
               <div className={cn('grid gap-4 px-4 py-2 items-center', gridCols)}>
-                <span className="text-xs font-semibold text-text-secondary uppercase w-8" />
+                <span className="text-xs font-semibold text-text-secondary uppercase w-16" />
                 <span className="text-xs font-semibold text-text-secondary uppercase">{t(COMMON.product)}</span>
                 <span className="text-xs font-semibold text-text-secondary uppercase">{t(INVENTORY.category)}</span>
                 {showDepotColumn && (
@@ -288,7 +282,7 @@ export function InventoryPage() {
                 type="button"
                 onClick={() => setSelectedProductId(product.id)}
                 className={cn(
-                  'w-full text-left grid gap-4 px-4 py-3 items-center',
+                  'w-full text-left grid gap-4 px-4 py-3 min-h-[72px] items-center',
                   gridCols,
                   'border-b border-border hover:bg-surface-muted transition-colors',
                   'focus:outline-none focus:bg-primary-subtle',
@@ -301,16 +295,19 @@ export function InventoryPage() {
                     <img
                       src={thumb}
                       alt=""
-                      className="h-8 w-8 rounded object-contain object-center bg-surface-muted p-0.5"
+                      width={64}
+                      height={64}
+                      loading="lazy"
+                      className="h-16 w-16 rounded-md object-contain object-center bg-surface-muted p-0.5"
                     />
                   ) : (
                     <span
-                      className="h-8 w-8 rounded bg-surface-muted flex-shrink-0"
+                      className="h-16 w-16 rounded-md bg-surface-muted flex-shrink-0"
                       aria-hidden="true"
                     />
                   )
                 })()}
-                <span className="text-sm font-medium text-text-primary truncate flex flex-col min-w-0">
+                <span className="text-sm font-semibold text-text-primary truncate flex flex-col min-w-0">
                   <span className="truncate flex items-center gap-2">
                     <span className="truncate">{product.name}</span>
                     {!product.is_active && <ActiveBadge isActive={false} />}

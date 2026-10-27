@@ -338,7 +338,7 @@ describe('ReturnModal', () => {
     const cashLabel = screen.getAllByText(/remboursement espèces|cash refund/i)[0]
     const cashRow = cashLabel.closest('div')
     expect(cashRow?.textContent).toContain(formatCFA(600))
-    expect(cashRow?.textContent).not.toMatch(/CFA\s*$/)
+    expect(cashRow?.textContent).toMatch(/\d[\s\u202f]*CFA/)
   })
 
   it('submits credit return with computed cash 19050, not 0', async () => {

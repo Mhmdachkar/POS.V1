@@ -60,5 +60,10 @@ export type { TabsProps, TabItem } from './Tabs'
 export { PageHeader } from './PageHeader'
 export type { PageHeaderProps } from './PageHeader'
 
+export { PaginationBar } from './PaginationBar'
+export type { PaginationBarProps } from './PaginationBar'
+
+export { RowChevron, CLICKABLE_ROW } from './RowChevron'
+
 export { BilingualText } from './BilingualText'
 export type { BilingualTextProps, BilingualVariant } from './BilingualText'

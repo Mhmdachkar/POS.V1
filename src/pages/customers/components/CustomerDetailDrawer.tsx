@@ -34,6 +34,10 @@ import {
   fetchCustomerAccountExport,
   printCustomerAccountPdf,
 } from '@/lib/customerAccountExport'
+import { authorizedOpenShifts, useOpenShifts } from '@/hooks/useShifts'
+import { resolveRequiredShiftId } from '@/lib/posShiftContext'
+import { SHIFT_COPY } from '@/lib/bilingual/shift'
+import { useDepotStore } from '@/stores/depotStore'
 import { useAuthStore } from '@/stores/authStore'
 import { SaleDetailDrawer } from '@/pages/sales/components/SaleDetailDrawer'
 import { RecordPaymentModal } from './RecordPaymentModal'
@@ -84,6 +88,16 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
 
   const staff = useAuthStore((s) => s.staff)
   const isAdmin = staff?.role === 'admin'
+  const currentDepotId = useDepotStore((s) => s.currentDepotId)
+  const { data: openShifts } = useOpenShifts()
+  const cashierDepotId = staff?.role === 'cashier' ? staff.depot_id : currentDepotId
+  const paymentShiftId = resolveRequiredShiftId(
+    null,
+    cashierDepotId,
+    staff?.id,
+    authorizedOpenShifts(staff, openShifts),
+  )
+  const hasOpenShift = !!paymentShiftId
 
   useEffect(() => {
     setActivityFilter('all')
@@ -334,11 +348,16 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
                 </>
               )}
 
+              {!hasOpenShift && (
+                <p className="text-xs text-warning-foreground bg-warning-bg border border-warning/20 rounded-md px-3 py-2">
+                  {t(SHIFT_COPY.openShiftRequired)}
+                </p>
+              )}
               <Button
                 variant={hasOutstanding ? 'primary' : 'secondary'}
                 className="w-full gap-2"
                 onClick={() => setShowPaymentModal(true)}
-                disabled={!hasOutstanding}
+                disabled={!hasOutstanding || !hasOpenShift}
               >
                 <Banknote className="h-4 w-4" />
                 {t(CUSTOMERS.recordPayment)}

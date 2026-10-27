@@ -24,8 +24,8 @@ export function CheckoutSummary() {
   const effectiveTotal = effectiveFinalTotal(totals.total_cfa, overrideTotalCfa)
   const isChangeGiven = totals.change_given_cfa > 0
   const isBalanceAdded = totals.balance_added_cfa > 0
-  const hasOverride = isAdmin && overrideTotalCfa != null
   const overrideInvalid = isOverrideOutOfRange(overrideTotalCfa, totals.total_cfa)
+  const hasOverride = isAdmin && overrideTotalCfa != null && !overrideInvalid
 
   const discountLabel =
     discountType === 'percent'
@@ -65,7 +65,7 @@ export function CheckoutSummary() {
             frClassName="text-xs font-semibold uppercase tracking-wide text-text-secondary"
           />
           <span data-testid="checkout-total" aria-live="polite">
-            <MoneyDisplay amount={totals.total_cfa} size="large" />
+            <MoneyDisplay amount={totals.total_cfa} size="display" />
           </span>
         </div>
       )}
@@ -110,7 +110,7 @@ export function CheckoutSummary() {
             frClassName="text-xs font-semibold uppercase tracking-wide text-warning-foreground"
           />
           <span data-testid="checkout-total" aria-live="polite">
-            <MoneyDisplay amount={effectiveTotal} size="large" />
+            <MoneyDisplay amount={effectiveTotal} size="display" />
           </span>
         </div>
       )}
@@ -129,7 +129,7 @@ export function CheckoutSummary() {
           />
           <MoneyDisplay
             amount={totals.change_given_cfa}
-            size="medium"
+            size="large"
             className="text-success-foreground"
           />
         </div>
@@ -146,7 +146,7 @@ export function CheckoutSummary() {
             variant="caption"
             frClassName="text-xs font-semibold uppercase tracking-wide text-danger-foreground"
           />
-          <MoneyDisplay amount={totals.balance_added_cfa} size="medium" danger />
+          <MoneyDisplay amount={totals.balance_added_cfa} size="large" danger />
         </div>
       )}
     </div>

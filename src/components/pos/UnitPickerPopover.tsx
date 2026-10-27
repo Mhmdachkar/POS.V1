@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/lib/cn'
-import { formatCFA } from '@/lib/formatters'
+import { formatMoney } from '@/lib/formatters'
+import { localizedUnitLabel } from '@/lib/localizedUnits'
 import { POS } from '@/lib/bilingual/pos'
 import { t, bilingualAriaLabel } from '@/lib/bilingual/types'
 import { canAddUnitQuantity } from '@/lib/posCartStock'
@@ -112,9 +113,11 @@ export function UnitPickerPopover({
                 : 'hover:bg-primary-subtle',
             )}
           >
-            <span className="font-medium truncate">{unit.unit_name}</span>
+            <span className="font-medium whitespace-normal leading-tight">
+              {localizedUnitLabel(unit.unit_name, unit.unit_level)}
+            </span>
             <span className="financial-value text-sm flex-shrink-0">
-              {formatCFA(unit.selling_price_cfa)}
+              {formatMoney(unit.selling_price_cfa)}
             </span>
           </button>
         )

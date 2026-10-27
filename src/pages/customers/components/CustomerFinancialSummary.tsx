@@ -79,7 +79,7 @@ export function CustomerFinancialSummary({
             <p className="mt-1 text-base font-semibold tabular-nums text-text-primary">&nbsp;</p>
             <MoneyDisplay
               amount={outstandingBalanceCfa}
-              size="small"
+              size="medium"
               danger={outstandingBalanceCfa > 0}
               className={cn('mt-0.5', outstandingBalanceCfa <= 0 && 'text-success-foreground')}
             />
