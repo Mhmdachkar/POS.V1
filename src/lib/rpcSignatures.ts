@@ -50,6 +50,7 @@ export const RPC_SIGNATURES = {
   admin_report_low_stock: ['p_depot_id'],
   admin_refunds_over_payable: [],
   staff_display_names: ['p_ids'],
+  customer_ledger: ['p_customer_id'],
 } as const
 
 export type RpcName = keyof typeof RPC_SIGNATURES

@@ -46,7 +46,7 @@ const REVERSED_CHIPS: FilterBarChip[] = [
 ]
 
 const PAYMENTS_GRID =
-  'grid-cols-[minmax(9.5rem,10.5rem)_minmax(8rem,1.2fr)_6.5rem_7rem_minmax(6rem,1fr)]'
+  'grid-cols-[minmax(9.5rem,10.5rem)_minmax(7rem,1fr)_minmax(7rem,0.9fr)_6.5rem_minmax(7rem,0.9fr)_minmax(6rem,1fr)]'
 
 function TableSkeleton() {
   return (
@@ -149,6 +149,7 @@ export function PaymentsPage() {
               <div className={cn('grid gap-4 px-4 py-2 items-center', PAYMENTS_GRID)}>
                 <BiTableHeader {...COMMON.date} />
                 <BiTableHeader {...COMMON.customer} />
+                <BiTableHeader {...PAYMENTS.recordedBy} />
                 <span className="text-right">
                   <BiTableHeader {...PAYMENTS.amount} />
                 </span>
@@ -172,6 +173,9 @@ export function PaymentsPage() {
                     </span>
                   )}
                 </span>
+                <span className="text-sm text-text-secondary truncate min-w-0">
+                  {payment.recorded_by_name ?? '—'}
+                </span>
                 <span className="text-right min-w-0">
                   <MoneyDisplay
                     amount={payment.amount_cfa}
@@ -179,7 +183,7 @@ export function PaymentsPage() {
                     className={payment.is_reversed ? 'line-through text-text-muted' : undefined}
                   />
                 </span>
-                <span className="min-w-0">
+                <span className="min-w-0 flex flex-wrap items-center gap-1">
                   {payment.is_reversed ? (
                     <Badge variant="neutral">
                       <BilingualText {...PAYMENTS.statusReversed} variant="caption" layout="inline" />
@@ -187,6 +191,11 @@ export function PaymentsPage() {
                   ) : (
                     <Badge variant="success" dot>
                       <BilingualText {...PAYMENTS.statusRecorded} variant="caption" layout="inline" />
+                    </Badge>
+                  )}
+                  {payment.shift_id == null && (
+                    <Badge variant="warning">
+                      <BilingualText {...PAYMENTS.noShift} variant="caption" layout="inline" />
                     </Badge>
                   )}
                 </span>

@@ -115,7 +115,7 @@ function buildCatalog(): ProductRow[] {
       depot_id: i < 50 ? 'depot-a' : 'depot-b',
       category_id: i % 2 === 0 ? 'cat-water' : 'cat-food',
       current_stock_pieces: outOfStock ? 0 : 50,
-      track_low_stock: false,
+      track_low_stock: outOfStock,
       low_stock_threshold: null,
       is_low_stock: false,
       is_active: true,
@@ -231,8 +231,12 @@ function createFilterAwareFrom(allRows: ProductRow[]) {
 // ─────────────────────────────────────────────────────────────────
 
 describe('getStockStatus', () => {
-  it('maps 0 to out_of_stock', () => {
-    expect(getStockStatus(0)).toBe('out_of_stock')
+  it('maps untracked zero stock to untracked', () => {
+    expect(getStockStatus(0)).toBe('untracked')
+  })
+
+  it('maps tracked zero stock to out_of_stock', () => {
+    expect(getStockStatus(0, { trackLowStock: true, threshold: 10 })).toBe('out_of_stock')
   })
 
   it('does not treat untracked stock of 1 as low_stock', () => {
@@ -257,8 +261,9 @@ describe('getStockStatus', () => {
 // ─────────────────────────────────────────────────────────────────
 
 describe('stock status query predicates', () => {
-  it('out_of_stock uses lte current_stock_pieces 0', () => {
+  it('out_of_stock is tracked stock at or below zero', () => {
     expect(stockStatusPredicates('out_of_stock')).toEqual({
+      eq: [['track_low_stock', true]],
       lte: [['current_stock_pieces', 0]],
     })
   })

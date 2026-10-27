@@ -34,6 +34,8 @@ export interface StockAlertsResult {
   lowStockCount: number
   outOfStock: StockAlertItem[]
   outOfStockCount: number
+  /** Active products at zero that are not on the low-stock watch list. */
+  untrackedZeroCount: number
 }
 
 function embedOne<T>(value: T | T[] | null | undefined): T | null {
@@ -119,16 +121,31 @@ async function queryTrackedAlerts(
   return { data: mapped, count: count ?? mapped.length }
 }
 
+async function countUntrackedZero(depotId: string | null): Promise<number> {
+  let q = supabase
+    .from('products')
+    .select('id', { count: 'exact', head: true })
+    .eq('is_active', true)
+    .eq('track_low_stock', false)
+    .lte('current_stock_pieces', 0)
+  if (depotId) q = q.eq('depot_id', depotId)
+  const { count, error } = await q
+  if (error) throw error
+  return count ?? 0
+}
+
 export async function fetchStockAlerts(depotId: string | null): Promise<StockAlertsResult> {
-  const [low, out] = await Promise.all([
+  const [low, out, untrackedZeroCount] = await Promise.all([
     queryTrackedAlerts(depotId, 'low_stock'),
     queryTrackedAlerts(depotId, 'out_of_stock'),
+    countUntrackedZero(depotId),
   ])
   return {
     lowStock: low.data,
     lowStockCount: low.count,
     outOfStock: out.data,
     outOfStockCount: out.count,
+    untrackedZeroCount,
   }
 }
 

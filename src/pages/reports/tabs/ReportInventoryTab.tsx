@@ -20,7 +20,12 @@ interface ReportInventoryTabProps {
 
 function toStockBadgeStatus(status: InventoryStockStatus): StockStatus {
   if (status === 'normal') return 'healthy'
+  if (status === 'untracked') return 'untracked'
   return status
+}
+
+function missingCost(row: InventoryStockRow): boolean {
+  return row.cost_price_cfa == null || Number(row.cost_price_cfa) === 0
 }
 
 function StockTable({
@@ -56,7 +61,14 @@ function StockTable({
                 {t(r.track_low_stock ? REPORTS.tracked : REPORTS.untracked)}
               </span>
             </span>
-            <StockStatusBadge status={toStockBadgeStatus(r.stock_status)} />
+            <span className="flex shrink-0 items-center gap-1">
+              {missingCost(r) && (
+                <span className="rounded-full bg-warning-bg px-2 py-0.5 text-[10px] font-medium text-warning-foreground">
+                  {t(REPORTS.uncostedStock)}
+                </span>
+              )}
+              <StockStatusBadge status={toStockBadgeStatus(r.stock_status)} />
+            </span>
           </button>
         </li>
       ))}
@@ -69,7 +81,12 @@ export function ReportInventoryTab({ inventory, showDepotColumn }: ReportInvento
 
   return (
     <div className="space-y-8">
-      <ReportMetric label={t(REPORTS.currentInventoryValue)} amount={Number(inventory.inventory_value_cfa)} className="max-w-xs" />
+      <ReportMetric label={t(REPORTS.currentInventoryValue)} amount={Number(inventory.value_at_cost ?? inventory.inventory_value_cfa)} className="max-w-xs" />
+      {(inventory.products_without_cost_count ?? inventory.uncosted_stock_count ?? 0) > 0 && (
+        <a href="#uncosted-stock" className="inline-flex text-sm font-medium text-warning-foreground underline">
+          {t(REPORTS.partialValue(inventory.products_without_cost_count ?? inventory.uncosted_stock_count ?? 0))}
+        </a>
+      )}
 
       <ReportSection title={<BiSectionTitle {...REPORTS.currentStock} />}>
         {inventory.current_stock.length === 0 ? (
@@ -97,10 +114,21 @@ export function ReportInventoryTab({ inventory, showDepotColumn }: ReportInvento
                     {showDepotColumn && <td className="px-3 py-2 text-text-secondary">{r.depot_name}</td>}
                     <td className="px-3 py-2 text-right tabular-nums">{formatPieces(Number(r.current_stock_pieces))}</td>
                     <td className="px-3 py-2 text-right">
-                      <MoneyDisplay amount={r.stock_value_cost_cfa ?? r.value_cfa ?? 0} size="small" />
+                      {missingCost(r) ? (
+                        <span className="text-text-muted">—</span>
+                      ) : (
+                        <MoneyDisplay amount={Number(r.stock_value_cost_cfa ?? r.value_cfa ?? 0)} size="small" />
+                      )}
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <StockStatusBadge status={toStockBadgeStatus(r.stock_status)} />
+                      <span className="flex shrink-0 items-center gap-1">
+              {missingCost(r) && (
+                <span className="rounded-full bg-warning-bg px-2 py-0.5 text-[10px] font-medium text-warning-foreground">
+                  {t(REPORTS.uncostedStock)}
+                </span>
+              )}
+              <StockStatusBadge status={toStockBadgeStatus(r.stock_status)} />
+            </span>
                     </td>
                   </tr>
                 ))}
@@ -147,13 +175,22 @@ export function ReportInventoryTab({ inventory, showDepotColumn }: ReportInvento
 
       {(inventory.uncosted_stock_count ?? 0) > 0 && (
         <ReportSection title={<BiSectionTitle {...REPORTS.uncostedStock} />}>
+          <div id="uncosted-stock" />
           <p className="text-sm text-text-secondary mb-3">{t(REPORTS.uncostedHint)}</p>
           <StockTable rows={inventory.uncosted_stock ?? []} showDepotColumn={showDepotColumn} onRowClick={setProductId} />
         </ReportSection>
       )}
 
-      <ReportSection title={<BiSectionTitle {...REPORTS.outOfStock} />}>
+      <ReportSection title={<BiSectionTitle {...REPORTS.trackedOutOfStock} />}>
         <StockTable rows={inventory.out_of_stock} showDepotColumn={showDepotColumn} onRowClick={setProductId} />
+      </ReportSection>
+
+      <ReportSection title={<BiSectionTitle {...REPORTS.untrackedZeroStock} />}>
+        <StockTable
+          rows={inventory.current_stock.filter((row) => row.stock_status === 'untracked' && Number(row.current_stock_pieces) <= 0)}
+          showDepotColumn={showDepotColumn}
+          onRowClick={setProductId}
+        />
       </ReportSection>
 
       <ProductDetailDrawer productId={productId} onClose={() => setProductId(null)} />

@@ -28,8 +28,6 @@ export const PAYMENTS = {
   colNote: bi('Note', 'Note'),
   statusRecorded: bi('Enregistré', 'Recorded'),
   statusReversed: bi('Annulé', 'Reversed'),
-  cashierScopeHint: bi(
-    'Paiements du dépôt. Un paiement admin sans service n’apparaît pas ici — il est réservé à l’admin (non attribué à un dépôt).',
-    'Depot payments. An admin payment with no shift does not appear here — it is admin-only (not attributed to a depot).',
-  ),
+  cashierScopeHint: bi('Paiements de votre dépôt', 'Payments for your depot'),
+  noShift: bi('Hors service', 'No shift'),
 } as const

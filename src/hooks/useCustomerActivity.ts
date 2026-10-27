@@ -10,6 +10,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { rpc, type CustomerLedgerRpcRow } from '@/lib/rpc'
 import { CACHE_STALE, keepPlaceholderWhen } from '@/lib/cachePolicy'
 import { customerKeys } from '@/hooks/useCustomers'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
@@ -401,10 +402,90 @@ export async function fetchCustomerActivitySummary(
   }
 }
 
+export function mapCustomerLedgerRow(row: CustomerLedgerRpcRow): CustomerActivityEvent {
+  const amountCfa = Number(row.amount_cfa)
+  const runningBalanceCfa = Number(row.running_balance_cfa)
+  if (row.kind === 'sale') {
+    return {
+      id: row.id,
+      type: 'sale',
+      occurredAt: row.occurred_at,
+      reference: row.reference?.trim() || 'Sale',
+      description: row.adds_credit
+        ? bilingualPlain(CUSTOMERS.activityCreditAdded)
+        : bilingualPlain(CUSTOMERS.activityCashSale),
+      amountCfa,
+      saleId: row.sale_id,
+      runningBalanceCfa,
+    }
+  }
+  if (row.kind === 'cash_payment') {
+    return {
+      id: row.id,
+      type: 'payment',
+      occurredAt: row.occurred_at,
+      reference: row.reference?.trim() || bilingualPlain(CUSTOMERS.activityCashPayment),
+      description: bilingualPlain(CUSTOMERS.activityCashPayment),
+      amountCfa,
+      saleId: row.sale_id,
+      runningBalanceCfa,
+    }
+  }
+  if (row.kind === 'return') {
+    const summary = row.item_summary?.trim()
+    return {
+      id: row.id,
+      type: 'return',
+      occurredAt: row.occurred_at,
+      reference: row.reference?.trim() || 'Original sale',
+      description: summary
+        ? `${summary} ${bilingualPlain(CUSTOMERS.activityReturnedSuffix)}`
+        : bilingualPlain(CUSTOMERS.activityReturnedItems),
+      amountCfa,
+      saleId: row.sale_id,
+      runningBalanceCfa,
+    }
+  }
+  return {
+    id: row.id,
+    type: 'payment',
+    occurredAt: row.occurred_at,
+    reference: bilingualPlain(CUSTOMERS.activityCustomerPaymentRef),
+    description: row.note?.trim() || bilingualPlain(CUSTOMERS.activityBalancePayment),
+    amountCfa,
+    saleId: null,
+    runningBalanceCfa,
+  }
+}
+
+/** Oldest-first rows from customer_ledger. The last running balance is Solde dû. */
+export function pageCustomerLedger(
+  rows: CustomerLedgerRpcRow[],
+  filters: CustomerActivityFilters,
+): CustomerActivityResult {
+  const mapped = rows.map(mapCustomerLedgerRow)
+  const filtered = filters.type === 'all' ? mapped : mapped.filter((event) => event.type === filters.type)
+  const newestFirst = [...filtered].reverse()
+  const from = filters.page * filters.pageSize
+  return {
+    data: newestFirst.slice(from, from + filters.pageSize),
+    count: filtered.length,
+  }
+}
+
+export async function fetchCustomerLedger(
+  customerId: string,
+  filters: CustomerActivityFilters,
+): Promise<CustomerActivityResult> {
+  const result = await rpc.customerLedger(customerId)
+  if (result.error) throw result.error
+  return pageCustomerLedger(result.data ?? [], filters)
+}
+
 export function useCustomerActivity(customerId: string | null, filters: CustomerActivityFilters) {
   return useQuery({
     queryKey: customerKeys.activity(customerId ?? '', filters),
-    queryFn: () => fetchCustomerActivity(customerId!, filters),
+    queryFn: () => fetchCustomerLedger(customerId!, filters),
     enabled: !!customerId,
     staleTime: CACHE_STALE.customerDetail,
     placeholderData: keepPlaceholderWhen((prevKey) => {

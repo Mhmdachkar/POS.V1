@@ -11,7 +11,8 @@ export const DEPOT = {
   pendingRelease: bi('À préparer', 'Waiting to pick'),
   releasedToday: bi('Préparées aujourd\'hui', 'Picked today'),
   lowStockSkus: bi('SKU stock faible', 'Low stock SKUs'),
-  outOfStockSkus: bi('Rupture de stock', 'Out of stock'),
+  outOfStockSkus: bi('En rupture (suivis)', 'Out of stock (tracked)'),
+  untrackedZeroSkus: bi('Stock nul (non suivis)', 'Zero stock (not tracked)'),
   noPendingRelease: bi(
     'Aucune commande à préparer.',
     'No orders waiting to be picked.',

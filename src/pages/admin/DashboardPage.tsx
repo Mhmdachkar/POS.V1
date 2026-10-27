@@ -171,12 +171,15 @@ export function DashboardPage() {
                   status="low_stock"
                 />
                 <AlertList
-                  title={<BiTableHeader {...STOCK_STATUS.out_of_stock} />}
+                  title={<BiTableHeader {...ADMIN.trackedOutOfStock} />}
                   items={alerts?.outOfStock ?? []}
                   count={alerts?.outOfStockCount ?? 0}
                   empty={<BilingualText {...ADMIN.noOutOfStock} variant="caption" />}
                   status="out_of_stock"
                 />
+                <p className="text-sm text-text-secondary">
+                  <BilingualText {...ADMIN.untrackedZeroStock(alerts?.untrackedZeroCount ?? 0)} variant="body" />
+                </p>
               </>
             )}
           </div>

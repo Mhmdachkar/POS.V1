@@ -160,6 +160,9 @@ export const ADMIN = {
   noNetSalesToday: bi('Aucune vente nette aujourd\'hui.', 'No net sales yet today.'),
   noLowStock: bi('Aucun produit suivi en stock faible.', 'No tracked products are low on stock.'),
   noOutOfStock: bi('Aucun produit suivi en rupture.', 'No tracked products are out of stock.'),
+  trackedOutOfStock: bi('En rupture (suivis)', 'Out of stock (tracked)'),
+  untrackedZeroStock: (n: number) =>
+    bi(`Stock nul (non suivis) : ${n}`, `Zero stock (not tracked): ${n}`),
   failedStockAlerts: bi(
     'Impossible de charger les alertes stock. Réessayez.',
     "Couldn't load stock alerts. Try again.",

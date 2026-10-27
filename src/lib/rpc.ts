@@ -307,9 +307,25 @@ export const rpc = {
   adminReportLowStock: (params: { p_depot_id: string | null }): Promise<RpcResult<unknown>> =>
     callRpc('admin_report_low_stock', params),
 
-  adminRefundsOverPayable: (): Promise<RpcResult<Array<{ sale_id: string; receipt_number: string; payable_cfa: number; refunded_cfa: number }>>> =>
+  adminRefundsOverPayable: (): Promise<RpcResult<Array<{ sale_id: string; receipt_number: string; payable_cfa: number; refunds_cfa: number }>>> =>
     callRpc('admin_refunds_over_payable', {}),
+
+  customerLedger: (customerId: string): Promise<RpcResult<CustomerLedgerRpcRow[]>> =>
+    callRpc('customer_ledger', { p_customer_id: customerId }),
 } as const
+
+export interface CustomerLedgerRpcRow {
+  id: string
+  kind: 'sale' | 'cash_payment' | 'return' | 'account_payment'
+  occurred_at: string
+  reference: string | null
+  item_summary: string | null
+  note: string | null
+  amount_cfa: number
+  running_balance_cfa: number
+  sale_id: string | null
+  adds_credit: boolean
+}
 
 // ─── Cost report types (CEO Notes) ─────────────────────────────
 export interface AdminCostReportParams {

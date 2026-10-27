@@ -81,6 +81,7 @@ export const CUSTOMERS = {
   activityTypePayment: bi('Paiement', 'Payment'),
   activityCreditAdded: bi('Crédit ajouté', 'Credit added'),
   activityCashSale: bi('Vente comptant', 'Cash sale'),
+  activityCashPayment: bi('Paiement espèces', 'Cash payment'),
   activitySaleCancelled: bi('Annulée', 'Cancelled'),
   activityCustomerPaymentRef: bi('Paiement client', 'Customer payment'),
   activityBalancePayment: bi('Paiement sur solde', 'Balance payment'),

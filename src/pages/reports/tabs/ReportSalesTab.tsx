@@ -29,6 +29,19 @@ const GRID_WITH_DEPOT =
 const GRID_NO_DEPOT =
   'grid-cols-[6.5rem_5.5rem_minmax(4.5rem,0.9fr)_minmax(4.5rem,0.85fr)_5rem_minmax(5.5rem,1fr)]'
 
+function marginSecondary(sales: AdminSalesReport): string | undefined {
+  const excluded = Number(sales.lines_without_cost_count ?? 0)
+  const base = excluded > 0
+    ? Number(sales.costed_net_sales_cfa ?? 0)
+    : Number(sales.net_sales_cfa)
+  const percent = base > 0
+    ? `${Math.round((Number(sales.gross_profit_cfa) / base) * 100)} %`
+    : undefined
+  if (excluded <= 0) return percent
+  const note = t(REPORTS.marginNotCalculable(excluded))
+  return percent ? `${percent} · ${note}` : note
+}
+
 function authoritativeSaleTotal(sale: {
   total_cfa: number
   admin_override_total_cfa?: number | null
@@ -79,11 +92,7 @@ export function ReportSalesTab({
         <ReportMetric
           label={<BiTableHeader {...REPORTS.grossProfit} />}
           amount={Number(sales.gross_profit_cfa)}
-          secondaryText={
-            Number(sales.net_sales_cfa) > 0
-              ? `${Math.round((Number(sales.gross_profit_cfa) / Number(sales.net_sales_cfa)) * 100)} %`
-              : undefined
-          }
+          secondaryText={marginSecondary(sales)}
         />
         <ReportMetric
           label={<BiTableHeader {...REPORTS.discounts} />}

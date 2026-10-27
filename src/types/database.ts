@@ -431,6 +431,10 @@ export interface Database {
         Args: { p_depot_id: string | null }
         Returns: unknown
       }
+      customer_ledger: {
+        Args: { p_customer_id: string }
+        Returns: unknown
+      }
     }
     Enums: Record<string, never>
   }

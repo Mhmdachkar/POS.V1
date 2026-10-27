@@ -6,6 +6,7 @@ export * from './database'
 // ─────────────────────────────────────────────────────────────────
 
 import type { Product, ProductUnit, Customer, StaffRole } from './database'
+import { productStockStatus } from '@/lib/lowStock'
 
 /** A product with its units pre-loaded (used in POS product grid) */
 export interface ProductWithUnits extends Product {
@@ -65,7 +66,7 @@ export interface PaginatedResult<T> {
 }
 
 /** Stock status derived from current_stock_pieces + optional per-product tracking. */
-export type StockStatus = 'out_of_stock' | 'low_stock' | 'healthy'
+export type StockStatus = 'out_of_stock' | 'low_stock' | 'healthy' | 'untracked'
 
 /**
  * Suggested default when an admin turns tracking on.
@@ -78,19 +79,19 @@ export interface StockStatusTracking {
   threshold?: number | null
 }
 
-/** Derive stock status from authoritative current_stock_pieces. */
+/** Same four-way result as private.product_stock_status. */
 export function getStockStatus(
   pieces: number,
   tracking?: StockStatusTracking,
 ): StockStatus {
-  if (pieces <= 0) return 'out_of_stock'
-  if (
-    tracking?.trackLowStock === true &&
-    tracking.threshold != null &&
-    pieces <= tracking.threshold
-  ) {
-    return 'low_stock'
-  }
+  const code = productStockStatus({
+    track_low_stock: tracking?.trackLowStock === true,
+    current_stock_pieces: pieces,
+    low_stock_threshold: tracking?.threshold ?? null,
+  })
+  if (code === 'non_suivi') return 'untracked'
+  if (code === 'rupture') return 'out_of_stock'
+  if (code === 'faible') return 'low_stock'
   return 'healthy'
 }
 

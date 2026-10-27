@@ -507,8 +507,9 @@ export interface SalesReportProductRow {
   net_sales_cfa: number
   /** Legacy alias; same as net_sales_cfa */
   net_revenue_cfa: number
-  cogs_cfa: number
-  gross_profit_cfa: number
+  cogs_cfa: number | null
+  gross_profit_cfa: number | null
+  margin_status?: string | null
 }
 
 export interface SalesReportReturnItemRow {
@@ -590,6 +591,8 @@ export interface AdminSalesReport {
   articles_sold?: number
   gross_profit_cfa: number
   cogs_cfa: number
+  costed_net_sales_cfa?: number
+  lines_without_cost_count?: number
   units_sold: number
   voided_count: number
   voided_amount_cfa: number
@@ -614,7 +617,7 @@ export interface AdminSalesReport {
   end_date: string
 }
 
-export type InventoryStockStatus = 'out_of_stock' | 'low_stock' | 'normal'
+export type InventoryStockStatus = 'out_of_stock' | 'low_stock' | 'normal' | 'untracked'
 
 export interface InventoryStockRow {
   product_id: string
@@ -625,9 +628,9 @@ export interface InventoryStockRow {
   category_name: string | null
   current_stock_pieces: number
   unit_name: string | null
-  cost_price_cfa: number
+  cost_price_cfa: number | null
   selling_price_cfa: number
-  stock_value_cost_cfa: number
+  stock_value_cost_cfa: number | null
   stock_value_selling_cfa: number
   stock_status: InventoryStockStatus
   track_low_stock: boolean
@@ -652,6 +655,11 @@ export interface InventoryAdjustmentBreakdownRow {
 
 export interface AdminInventoryReport {
   inventory_value_cfa: number
+  value_at_cost?: number
+  value_at_price?: number
+  products_without_cost_count?: number
+  qty_without_cost?: number
+  untracked_zero_count?: number
   current_stock: InventoryStockRow[]
   low_stock: InventoryStockRow[]
   out_of_stock: InventoryStockRow[]

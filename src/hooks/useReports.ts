@@ -77,8 +77,9 @@ function normalizeProductRow(row: Partial<SalesReportProductRow> & { product_id:
     returns_cfa: Number(row.returns_cfa ?? 0),
     net_sales_cfa: netSales,
     net_revenue_cfa: Number(row.net_revenue_cfa ?? netSales),
-    cogs_cfa: Number(row.cogs_cfa ?? 0),
-    gross_profit_cfa: Number(row.gross_profit_cfa ?? netSales),
+    cogs_cfa: row.margin_status ? null : Number(row.cogs_cfa ?? 0),
+    gross_profit_cfa: row.margin_status ? null : Number(row.gross_profit_cfa ?? netSales),
+    margin_status: row.margin_status ?? null,
   }
 }
 
@@ -108,15 +109,22 @@ function normalizeStockRow(row: Partial<InventoryStockRow> & {
   name: string
   depot_id: string
 }): InventoryStockRow {
-  const cost = Number(row.cost_price_cfa ?? row.unit_cost_cfa ?? 0)
+  const rawCost = row.cost_price_cfa ?? row.unit_cost_cfa
+  const costNumber = rawCost == null ? null : Number(rawCost)
+  const missingCost = costNumber == null || costNumber === 0
   const stock = Number(row.current_stock_pieces ?? 0)
   const tracked = row.track_low_stock ?? false
-  const valueCost = Number(row.stock_value_cost_cfa ?? row.value_cfa ?? stock * cost)
+  const valueCost = missingCost
+    ? null
+    : Number(row.stock_value_cost_cfa ?? row.value_cfa ?? stock * (costNumber ?? 0))
   const inferredStatus: InventoryStockStatus = !tracked
-    ? 'normal'
+    ? (stock <= 0 ? 'untracked' : 'normal')
     : stock <= 0
       ? 'out_of_stock'
       : 'normal'
+  const stockStatus: InventoryStockStatus = !tracked && stock <= 0
+    ? 'untracked'
+    : (row.stock_status === 'untracked' ? 'untracked' : (row.stock_status ?? inferredStatus))
   return {
     product_id: row.product_id,
     name: row.name,
@@ -126,15 +134,15 @@ function normalizeStockRow(row: Partial<InventoryStockRow> & {
     category_name: row.category_name ?? null,
     current_stock_pieces: stock,
     unit_name: row.unit_name ?? null,
-    cost_price_cfa: cost,
+    cost_price_cfa: missingCost ? null : costNumber,
     selling_price_cfa: Number(row.selling_price_cfa ?? 0),
     stock_value_cost_cfa: valueCost,
     stock_value_selling_cfa: Number(row.stock_value_selling_cfa ?? 0),
-    stock_status: tracked ? (row.stock_status ?? inferredStatus) : 'normal',
+    stock_status: stockStatus,
     track_low_stock: tracked,
     low_stock_threshold: row.low_stock_threshold ?? null,
-    unit_cost_cfa: row.unit_cost_cfa ?? cost,
-    value_cfa: row.value_cfa ?? valueCost,
+    unit_cost_cfa: missingCost ? undefined : (costNumber ?? undefined),
+    value_cfa: valueCost ?? undefined,
   }
 }
 

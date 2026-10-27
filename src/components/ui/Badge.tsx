@@ -91,6 +91,7 @@ const STOCK_STATUS_VARIANT: Record<StockStatus, BadgeVariant> = {
   healthy: 'success',
   low_stock: 'warning',
   out_of_stock: 'danger',
+  untracked: 'neutral',
 }
 
 export function StockStatusBadge({ status }: { status: StockStatus }) {

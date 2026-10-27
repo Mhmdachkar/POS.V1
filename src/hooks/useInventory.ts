@@ -124,7 +124,7 @@ export function applyInventoryStockStatusFilter<
   },
 >(q: T, stockStatus: StockStatus | 'all'): T {
   if (stockStatus === 'out_of_stock') {
-    return q.lte('current_stock_pieces', 0)
+    return q.eq('track_low_stock', true).lte('current_stock_pieces', 0)
   }
   if (stockStatus === 'low_stock') {
     return q.eq('is_low_stock', true)
@@ -137,7 +137,10 @@ export function applyInventoryStockStatusFilter<
 
 export function stockStatusPredicates(stockStatus: StockStatus | 'all') {
   if (stockStatus === 'out_of_stock') {
-    return { lte: [['current_stock_pieces', 0] as const] }
+    return {
+      eq: [['track_low_stock', true] as const],
+      lte: [['current_stock_pieces', 0] as const],
+    }
   }
   if (stockStatus === 'low_stock') {
     return { eq: [['is_low_stock', true] as const] }

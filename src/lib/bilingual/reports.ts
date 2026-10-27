@@ -77,7 +77,7 @@ export const REPORTS = {
   printZA4: bi('Z A4', 'Z A4'),
   printX: bi('Rapport X (ouvert)', 'X report (open)'),
   printStatement: bi('Relevé client', 'Customer statement'),
-  overRefundBadge: bi('Remboursements > payable', 'Refunds exceed payable'),
+  overRefundBadge: bi('Remboursement supérieur au total', 'Refund exceeds the total'),
   moveSale: bi('Vente', 'Sale'),
   moveReturn: bi('Retour', 'Return'),
   moveRestock: bi('Réappro', 'Restock'),
@@ -215,6 +215,18 @@ export const REPORTS = {
   ),
   openFullAudit: bi('Ouvrir le journal complet', 'Open full audit log'),
   uncostedStock: bi('Sans prix de revient', 'No cost price'),
+  partialValue: (n: number) =>
+    bi(
+      `Valeur partielle — ${n} produit${n === 1 ? '' : 's'} sans prix de revient`,
+      `Partial value — ${n} product${n === 1 ? '' : 's'} without a cost price`,
+    ),
+  marginNotCalculable: (n: number) =>
+    bi(
+      `${n} ligne${n === 1 ? '' : 's'} : marge non calculable`,
+      `${n} line${n === 1 ? '' : 's'}: margin not calculable`,
+    ),
+  trackedOutOfStock: bi('En rupture (suivis)', 'Out of stock (tracked)'),
+  untrackedZeroStock: bi('Stock nul (non suivis)', 'Zero stock (not tracked)'),
   uncostedHint: bi(
     'Stock présent sans coût unitaire. La valeur inventaire est partielle.',
     'Stock on hand with no unit cost. Inventory value is partial.',

@@ -87,11 +87,12 @@ export function DepotOverviewPage() {
 
         {data && (
           <>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
               <MetricCard label={DEPOT.pendingRelease} value={data.metrics.pendingRelease} tone="warn" />
               <MetricCard label={DEPOT.releasedToday} value={data.metrics.releasedToday} />
               <MetricCard label={DEPOT.lowStockSkus} value={data.metrics.lowStock} tone="warn" />
               <MetricCard label={DEPOT.outOfStockSkus} value={data.metrics.outOfStock} tone="danger" />
+              <MetricCard label={DEPOT.untrackedZeroSkus} value={data.metrics.untrackedZero} />
             </div>
 
             <div className="flex flex-wrap gap-3">
