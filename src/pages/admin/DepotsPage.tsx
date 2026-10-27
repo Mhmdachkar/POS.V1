@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BiButtonStack, BiEmptyTitle, BiPageTitle, BiTableHeader } from '@/lib/bilingual/ui'
+import { BiButtonStack, BiEmptyTitle, BiPageTitle } from '@/lib/bilingual/ui'
 import { ADMIN } from '@/lib/bilingual/admin'
 import { COMMON } from '@/lib/bilingual/common'
 import { DEPOT } from '@/lib/bilingual/depot'
@@ -85,10 +85,10 @@ export function DepotsPage() {
           <>
             <div className="sticky top-0 bg-surface-muted border-b border-border z-[1]">
               <div className={cn('grid gap-4 px-4 py-2 items-center', DEPOTS_GRID)}>
-                <span className="uppercase"><BiTableHeader {...ADMIN.colName} /></span>
-                <span className="uppercase"><BiTableHeader {...ADMIN.colLocation} /></span>
-                <span className="uppercase"><BiTableHeader {...ADMIN.colCode} /></span>
-                <span className="uppercase"><BiTableHeader {...ADMIN.colStatus} /></span>
+                <span className="text-xs font-semibold text-text-secondary">{t(ADMIN.colName)}</span>
+                <span className="text-xs font-semibold text-text-secondary">{t(ADMIN.colLocation)}</span>
+                <span className="text-xs font-semibold text-text-secondary">{t(ADMIN.colCode)}</span>
+                <span className="text-xs font-semibold text-text-secondary">{t(ADMIN.colStatus)}</span>
               </div>
             </div>
             {rows.map((row) => (

@@ -19,7 +19,11 @@ export const SALES = {
   receiptNumber: bi('N° ticket', 'Receipt #'),
   currentBalance: bi('Solde actuel', 'Current balance'),
   cashReceived: bi('Espèces reçues', 'Cash received'),
-  amountApplied: bi('Montant appliqué', 'Amount applied'),
+  amountApplied: bi('Espèces appliquées au ticket', 'Cash applied to the ticket'),
+  amountAppliedHint: bi(
+    'Espèces appliquées aux tickets, hors monnaie rendue. N\'inclut pas les paiements sur compte client.',
+    'Cash applied to receipts, excluding change. Does not include customer account payments.',
+  ),
   balanceAdded: bi('Solde ajouté', 'Balance added'),
   flatDiscount: bi('Remise fixe', 'Flat discount'),
   percentDiscount: bi('Remise %', 'Percent discount'),

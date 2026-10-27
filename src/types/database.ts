@@ -396,7 +396,42 @@ export interface Database {
       inventory_transactions: { Row: InventoryTransaction }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      admin_report_sales: {
+        Args: {
+          p_depot_id: string | null
+          p_start_date: string
+          p_end_date: string
+          p_cashier_id?: string | null
+          p_category_id?: string | null
+          p_product_id?: string | null
+          p_shift_id?: string | null
+        }
+        Returns: unknown
+      }
+      admin_report_inventory: {
+        Args: {
+          p_depot_id: string | null
+          p_start_date: string
+          p_end_date: string
+          p_category_id?: string | null
+          p_product_id?: string | null
+        }
+        Returns: unknown
+      }
+      admin_report_customers: {
+        Args: { p_depot_id: string | null; p_start_date: string; p_end_date: string }
+        Returns: unknown
+      }
+      admin_report_cash: {
+        Args: { p_depot_id: string | null; p_start_date: string; p_end_date: string }
+        Returns: unknown
+      }
+      admin_dashboard_summary: {
+        Args: { p_depot_id: string | null }
+        Returns: unknown
+      }
+    }
     Enums: Record<string, never>
   }
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
 import { REPORTS } from '@/lib/bilingual/reports'
+import { INVENTORY, STOCK_TXN_TYPE } from '@/lib/bilingual/inventory'
 import { cn } from '@/lib/cn'
 import { MoneyDisplay, StockStatusBadge } from '@/components/ui'
 import { formatPieces } from '@/lib/formatters'
@@ -49,8 +50,10 @@ function StockTable({
                 {showDepotColumn && `${r.depot_name} · `}
                 {formatPieces(Number(r.current_stock_pieces))}
                 {r.low_stock_threshold != null && r.track_low_stock && (
-                  <> · threshold {formatPieces(Number(r.low_stock_threshold))}</>
+                  <> · {t(INVENTORY.threshold)} {formatPieces(Number(r.low_stock_threshold))}</>
                 )}
+                {' · '}
+                {t(r.track_low_stock ? REPORTS.tracked : REPORTS.untracked)}
               </span>
             </span>
             <StockStatusBadge status={toStockBadgeStatus(r.stock_status)} />
@@ -115,7 +118,7 @@ export function ReportInventoryTab({ inventory, showDepotColumn }: ReportInvento
             <ul className="text-sm space-y-1">
               {inventory.period_movement.map((m) => (
                 <li key={m.transaction_type} className="flex justify-between">
-                  <span>{m.transaction_type}</span>
+                  <span>{t(STOCK_TXN_TYPE[m.transaction_type as keyof typeof STOCK_TXN_TYPE] ?? { fr: m.transaction_type, en: m.transaction_type })}</span>
                   <span className="tabular-nums">{formatPieces(Number(m.quantity_pieces))}</span>
                 </li>
               ))}

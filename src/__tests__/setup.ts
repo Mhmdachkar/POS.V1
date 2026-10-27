@@ -44,8 +44,19 @@ vi.mock('@/lib/supabase', () => ({
     from:  vi.fn().mockReturnThis(),
     select: vi.fn().mockReturnThis(),
     eq:     vi.fn().mockReturnThis(),
+    gte:    vi.fn().mockReturnThis(),
+    lte:    vi.fn().mockReturnThis(),
+    gt:     vi.fn().mockReturnThis(),
+    neq:    vi.fn().mockReturnThis(),
+    in:     vi.fn().mockReturnThis(),
+    or:     vi.fn().mockReturnThis(),
+    limit:  vi.fn().mockReturnThis(),
+    range:  vi.fn().mockReturnThis(),
     order:  vi.fn().mockReturnThis(),
+    maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
     single: vi.fn().mockResolvedValue({ data: null, error: null }),
+    then: (resolve: (value: unknown) => unknown) =>
+      Promise.resolve({ data: [], error: null, count: 0 }).then(resolve),
     rpc:    vi.fn().mockResolvedValue({ data: null, error: null }),
     storage: {
       from: vi.fn(() => ({

@@ -28,8 +28,9 @@ import {
   BiTableHeader,
 } from '@/lib/bilingual/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
-import { bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
+import { bilingualAriaLabel, bilingualPlain, t } from '@/lib/bilingual/types'
 import { usePaymentList } from '@/hooks/useCustomers'
+import { useAuthStore } from '@/stores/authStore'
 
 const REVERSED_CHIPS: FilterBarChip[] = [
   {
@@ -70,6 +71,7 @@ export function PaymentsPage() {
   const [page, setPage] = useState(0)
   const [customerSearch, setCustomerSearch] = useState('')
   const [showReversed, setShowReversed] = useState(false)
+  const isCashier = useAuthStore((s) => s.staff?.role === 'cashier')
 
   const pageSize = 30
 
@@ -89,7 +91,11 @@ export function PaymentsPage() {
       <div className="flex-shrink-0 border-b border-border bg-surface">
         <PageHeader
           title={<BiPageTitle {...PAYMENTS.pageTitle} />}
-          description={<BiPageDescription {...PAYMENTS.pageDescLong} />}
+          description={
+            isCashier
+              ? t(PAYMENTS.cashierScopeHint)
+              : <BiPageDescription {...PAYMENTS.pageDescLong} />
+          }
           icon={<NavPictogram path="/payments" size="header" />}
           className="border-b-0"
         />

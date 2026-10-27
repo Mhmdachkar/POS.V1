@@ -16,7 +16,10 @@
  * Custom sticky CSS-grid list retained (not DataTable).
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { rpc } from '@/lib/rpc'
+import { REPORTS } from '@/lib/bilingual/reports'
 import { BiEmptyTitle, BiPageTitle, BiTableHeader } from '@/lib/bilingual/ui'
 import { SALES } from '@/lib/bilingual/sales'
 import { COMMON } from '@/lib/bilingual/common'
@@ -168,6 +171,19 @@ export function SalesPage() {
   const depotName = (id: string) =>
     depots?.find((d) => d.id === id)?.name ?? '—'
 
+  const overRefundsQ = useQuery({
+    queryKey: ['admin-refunds-over-payable'],
+    enabled: staff?.role === 'admin',
+    queryFn: async () => {
+      const result = await rpc.adminRefundsOverPayable()
+      if (result.error) return [] as Array<{ sale_id: string }>
+      return result.data ?? []
+    },
+  })
+  const overRefundIds = useMemo(
+    () => new Set((overRefundsQ.data ?? []).map((row) => row.sale_id)),
+    [overRefundsQ.data],
+  )
   const sales = data?.data ?? []
   const totalCount = data?.count ?? 0
   const pageSize = 30
@@ -292,8 +308,13 @@ export function SalesPage() {
                   selectedSaleId === sale.id && 'bg-primary-subtle',
                 )}
               >
-                <span className="text-sm font-mono font-semibold text-text-primary truncate min-w-0">
+                <span className="text-sm font-mono font-semibold text-text-primary truncate min-w-0 inline-flex items-center gap-2">
                   {sale.receipt_number}
+                  {overRefundIds.has(sale.id) && (
+                    <span className="rounded-full bg-danger-bg px-2 py-0.5 text-[10px] font-medium text-danger-foreground">
+                      {t(REPORTS.overRefundBadge)}
+                    </span>
+                  )}
                 </span>
                 <span className="min-w-0 whitespace-nowrap">
                   <SaleStatusBadge status={sale.status} />

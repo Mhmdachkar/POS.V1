@@ -90,8 +90,8 @@ describe('Dashboard stock alerts', () => {
 
     wrap()
 
-    expect(screen.getByText(/Onion.*Abidjan Depot.*7 pces.*(remaining|restant).*(threshold|seuil) 10 pces/i)).toBeInTheDocument()
-    expect(screen.getByText(/Safety Matches.*Dakar Depot.*0 pces.*(remaining|restant)/i)).toBeInTheDocument()
+    expect(screen.getByText(/Onion.*Abidjan Depot.*7 Pièces.*(remaining|restant).*(threshold|seuil) 10 Pièces/i)).toBeInTheDocument()
+    expect(screen.getByText(/Safety Matches.*Dakar Depot.*0 Pièces.*(remaining|restant)/i)).toBeInTheDocument()
     expect(screen.getAllByText(/stock faible|low stock/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/rupture de stock|out of stock/i).length).toBeGreaterThan(0)
     expect(screen.queryByText('Should not render from RPC')).not.toBeInTheDocument()

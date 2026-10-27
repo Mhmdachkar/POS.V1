@@ -6,7 +6,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ReportCostTab } from '@/pages/reports/tabs/ReportCostTab'
-import { ReportsPage } from '@/pages/reports/ReportsPage'
+import { reportsRouteTree } from '@/pages/reports/ReportsRoutes'
+import { MemoryRouter, Routes } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { REPORTS } from '@/lib/bilingual/reports'
 import { formatCFA, formatPieces } from '@/lib/formatters'
 import type { AdminCostReport } from '@/lib/rpc'
@@ -218,6 +220,8 @@ vi.mock('@/pages/admin/components/AuditDetailDrawer', () => ({ AuditDetailDrawer
 const depotState = {
   currentDepotId: null as string | null,
   currentDepotName: null as string | null,
+  availableDepots: [] as Array<{ id: string; name: string }>,
+  setCurrentDepot: (_id: string | null, _name: string | null) => {},
 }
 
 vi.mock('@/stores/depotStore', () => ({
@@ -260,7 +264,14 @@ describe('CEO Notes — ReportsPage cost tab', () => {
 
   it('includes Cost tab and renders ReportCostTab content', async () => {
     const user = userEvent.setup()
-    render(<ReportsPage />)
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <MemoryRouter initialEntries={['/reports/sales/summary']}>
+        <QueryClientProvider client={client}>
+          <Routes>{reportsRouteTree()}</Routes>
+        </QueryClientProvider>
+      </MemoryRouter>,
+    )
 
     const costTab = screen.getByRole('tab', { name: new RegExp(REPORTS.cost.fr, 'i') })
     expect(costTab).toBeInTheDocument()

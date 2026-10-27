@@ -1,5 +1,8 @@
-﻿import { useQuery } from "@tanstack/react-query"
-import { supabase } from "@/lib/supabase"
+import { useQuery } from "@tanstack/react-query"
+import { rpc } from "@/lib/rpc"
+import { Button } from "@/components/ui"
+import { COMMON } from "@/lib/bilingual/common"
+import { BiButtonInline } from "@/lib/bilingual/ui"
 import { REPORTS } from "@/lib/bilingual/reports"
 import { t } from "@/lib/bilingual/types"
 import { formatCFA } from "@/lib/formatters"
@@ -17,9 +20,19 @@ interface ReportModulePanelProps {
 }
 
 async function callReport(name: string, args: Record<string, unknown>) {
-  const { data, error } = await supabase.rpc(name, args)
-  if (error) throw error
-  return data
+  const map = {
+    admin_report_collections: rpc.adminReportCollections,
+    admin_report_sales_by_hour: rpc.adminReportSalesByHour,
+    admin_report_shift_lines: rpc.adminReportShiftLines,
+    admin_report_discounts: rpc.adminReportDiscounts,
+    admin_report_customer_ageing: rpc.adminReportCustomerAgeing,
+    admin_report_stock_movements: rpc.adminReportStockMovements,
+    admin_report_low_stock: rpc.adminReportLowStock,
+  } as const
+  const fn = map[name as keyof typeof map]
+  const result = await fn(args as never)
+  if (result.error) throw result.error
+  return result.data
 }
 
 export function ReportModulePanel({
@@ -49,7 +62,20 @@ export function ReportModulePanel({
     queryKey: ["report-module", name, depotId, startDate, endDate, cashierId ?? null],
     queryFn: () => callReport(name, kind === "low" ? { p_depot_id: depotId } : kind === "ageing" ? { p_depot_id: depotId, p_as_of: endDate } : kind === "stock" ? { p_depot_id: depotId, p_start_date: startDate, p_end_date: endDate } : args),
   })
-  if (query.isError || !query.data) return null
+  if (query.isLoading) {
+    return <div className="h-24 animate-pulse rounded-2xl bg-surface-muted" />
+  }
+  if (query.isError) {
+    return (
+      <div className="rounded-2xl bg-surface p-4 shadow-sm ring-1 ring-border">
+        <p className="text-sm text-text-secondary">{t(REPORTS.failedReport)}</p>
+        <Button type="button" variant="secondary" className="mt-3" onClick={() => { void query.refetch() }}>
+          <BiButtonInline {...COMMON.retry} />
+        </Button>
+      </div>
+    )
+  }
+  if (!query.data) return null
   const rows = Array.isArray(query.data) ? query.data : query.data
   if (kind === "collections" && rows && typeof rows === "object") {
     const data = rows as Record<string, number>

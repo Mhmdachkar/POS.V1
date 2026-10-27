@@ -77,7 +77,7 @@ export function SalesTodayChart({ hourlySales }: SalesTodayChartProps) {
                 interval={2}
               />
               <YAxis
-                width={52}
+                width={88}
                 tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
                 axisLine={false}
                 tickLine={false}

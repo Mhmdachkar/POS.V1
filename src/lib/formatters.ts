@@ -68,11 +68,12 @@ export function formatQuantity(qty: number, unitName: string): string {
   return `${new Intl.NumberFormat('fr-FR').format(rounded)} ${unit}`
 }
 
-/** Format a stock quantity in pieces: "124 pces" / "124 pcs" */
+/** Format a stock quantity in pieces: "124 Pièces" / "1 Pièce". */
 export function formatPieces(pieces: number | null | undefined): string {
   if (pieces == null) return '—'
   const rounded = parseFloat(pieces.toFixed(3))
-  return `${new Intl.NumberFormat('fr-FR').format(rounded)} ${t(COMMON.pcsAbbrev)}`
+  const unit = Math.abs(rounded) === 1 ? t(COMMON.piece) : t(COMMON.pieces)
+  return `${new Intl.NumberFormat('fr-FR').format(rounded)} ${unit}`
 }
 
 /** Format a date+time: French "26 oct. 2026, 22:31" (Africa/Abidjan). */

@@ -3,9 +3,10 @@ import { BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
 import { REPORTS } from '@/lib/bilingual/reports'
 import { COMMON } from '@/lib/bilingual/common'
 import { SHIFT_STATUS } from '@/lib/bilingual/status'
-import { MoneyDisplay } from '@/components/ui'
+import { Button, MoneyDisplay } from '@/components/ui'
 import { formatCFA, formatDateTime } from '@/lib/formatters'
-import type { AdminCashReport, AdminSalesReport } from '@/types/rpc'
+import { printHtmlDocument } from '@/lib/reportExport'
+import type { AdminCashReport, AdminSalesReport, CashShiftReportRow } from '@/types/rpc'
 import { ShiftDetailDrawer } from '@/pages/shifts/components/ShiftDetailDrawer'
 import { ReportMetric } from '../components/ReportMetric'
 import { ReportSection } from '../components/ReportSection'
@@ -15,6 +16,24 @@ import { t } from '@/lib/bilingual/types'
 interface ReportShiftsTabProps {
   cash: AdminCashReport
   sales?: AdminSalesReport
+}
+
+function printShiftReport(shift: CashShiftReportRow, kind: '80' | '58' | 'A4' | 'X') {
+  const title = kind === 'X' ? t(REPORTS.printX) : t(kind === '80' ? REPORTS.printZ80 : kind === '58' ? REPORTS.printZ58 : REPORTS.printZA4)
+  const width = kind === '58' ? '58mm' : kind === 'A4' ? '210mm' : '80mm'
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
+<style>body{font-family:system-ui,sans-serif;width:${width};padding:8px;color:#111}h1{font-size:14px;margin:0 0 8px}p{margin:2px 0;font-size:12px}@media print{body{padding:0}}</style></head>
+<body>
+<h1>${title}</h1>
+<p>${t(COMMON.cashier)}: ${shift.cashier_name}</p>
+<p>${t(COMMON.depot)}: ${shift.depot_name}</p>
+<p>${t(REPORTS.openShifts)}: ${formatDateTime(shift.opened_at)}</p>
+<p>${t(SHIFT_STATUS.closed)}: ${shift.closed_at ? formatDateTime(shift.closed_at) : '—'}</p>
+<p>${t(REPORTS.colExpected)}: ${formatCFA(Number(shift.expected_cash_cfa ?? 0))}</p>
+<p>${t(REPORTS.colActual)}: ${formatCFA(Number(shift.actual_cash_cfa ?? 0))}</p>
+<p>${t(COMMON.discrepancy)}: ${formatCFA(Number(shift.discrepancy_cfa ?? 0))}</p>
+</body></html>`
+  printHtmlDocument(html)
 }
 
 export function ReportShiftsTab({ cash, sales }: ReportShiftsTabProps) {
@@ -42,17 +61,20 @@ export function ReportShiftsTab({ cash, sales }: ReportShiftsTabProps) {
         ) : (
           <ul className="divide-y divide-border border border-border rounded-md text-sm">
             {cash.open_shifts.map((s) => (
-              <li key={s.shift_id}>
+              <li key={s.shift_id} className="flex w-full flex-wrap items-center justify-between gap-2 px-3 py-2 hover:bg-surface-alt">
                 <button
                   type="button"
                   onClick={() => setShiftId(s.shift_id)}
-                  className="flex w-full flex-wrap justify-between gap-2 px-3 py-2 hover:bg-surface-alt text-left"
+                  className="text-left min-w-0"
                 >
                   <span>{s.cashier_name} · {s.depot_name}</span>
-                  <span className="text-text-muted">
+                  <span className="ml-2 text-text-muted">
                     {t(REPORTS.openShiftMeta(formatDateTime(s.opened_at), formatCFA(Number(s.opening_float_cfa))))}
                   </span>
                 </button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => printShiftReport(s, 'X')}>
+                  {t(REPORTS.printX)}
+                </Button>
               </li>
             ))}
           </ul>
@@ -73,6 +95,7 @@ export function ReportShiftsTab({ cash, sales }: ReportShiftsTabProps) {
                   <th className="text-right px-3 py-2">{t(REPORTS.colExpected)}</th>
                   <th className="text-right px-3 py-2">{t(REPORTS.colActual)}</th>
                   <th className="text-right px-3 py-2">{t(COMMON.discrepancy)}</th>
+                  <th className="text-right px-3 py-2">{t(REPORTS.exportPrintPdf)}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -93,6 +116,11 @@ export function ReportShiftsTab({ cash, sales }: ReportShiftsTabProps) {
                     </td>
                     <td className="px-3 py-2 text-right">
                       <MoneyDisplay amount={s.discrepancy_cfa ?? 0} size="small" danger={(s.discrepancy_cfa ?? 0) !== 0} />
+                    </td>
+                    <td className="px-3 py-2 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => printShiftReport(s, '80')}>{t(REPORTS.printZ80)}</Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => printShiftReport(s, '58')}>{t(REPORTS.printZ58)}</Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => printShiftReport(s, 'A4')}>{t(REPORTS.printZA4)}</Button>
                     </td>
                   </tr>
                 ))}

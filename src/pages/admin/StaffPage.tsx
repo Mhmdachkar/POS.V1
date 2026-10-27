@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BiButtonStack, BiEmptyTitle, BiPageTitle, BiTableHeader } from '@/lib/bilingual/ui'
+import { BiButtonStack, BiEmptyTitle, BiPageTitle } from '@/lib/bilingual/ui'
 import { t, bilingualPlain } from '@/lib/bilingual/types'
 import { ADMIN } from '@/lib/bilingual/admin'
 import { COMMON } from '@/lib/bilingual/common'
@@ -145,11 +145,11 @@ export function StaffPage() {
           <>
             <div className="sticky top-0 bg-surface-muted border-b border-border z-[1]">
               <div className={cn('grid gap-4 px-4 py-2 items-center', STAFF_GRID)}>
-                <span className="uppercase"><BiTableHeader {...ADMIN.colName} /></span>
-                <span className="uppercase"><BiTableHeader {...ADMIN.colUsername} /></span>
-                <span className="uppercase"><BiTableHeader {...ADMIN.colRole} /></span>
-                <span className="uppercase"><BiTableHeader {...COMMON.depot} /></span>
-                <span className="uppercase"><BiTableHeader {...ADMIN.colStatus} /></span>
+                <span className="text-xs font-semibold text-text-secondary">{t(ADMIN.colName)}</span>
+                <span className="text-xs font-semibold text-text-secondary">{t(ADMIN.colUsername)}</span>
+                <span className="text-xs font-semibold text-text-secondary">{t(ADMIN.colRole)}</span>
+                <span className="text-xs font-semibold text-text-secondary">{t(COMMON.depot)}</span>
+                <span className="text-xs font-semibold text-text-secondary">{t(ADMIN.colStatus)}</span>
               </div>
             </div>
             {rows.map((row) => (

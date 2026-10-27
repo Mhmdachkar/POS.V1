@@ -5,7 +5,7 @@
  * Current balance is read from the customer record, never from visible rows.
  */
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Download, FileText, ScrollText } from 'lucide-react'
 import { cn } from '@/lib/cn'
@@ -28,7 +28,6 @@ import {
   BiEmptyDescription,
   BiEmptyTitle,
   BiButtonInline,
-  BiTableHeader,
 } from '@/lib/bilingual/ui'
 import { useCustomer } from '@/hooks/useCustomers'
 import {
@@ -37,6 +36,7 @@ import {
   formatActivityRange,
   useCustomerActivity,
   useCustomerActivitySummary,
+  withRunningBalances,
   type CustomerActivityTypeFilter,
 } from '@/hooks/useCustomerActivity'
 import {
@@ -56,7 +56,7 @@ import {
 } from './components/CustomerActivitySection'
 
 const ACTIVITY_GRID =
-  'grid-cols-[4.75rem_minmax(6.5rem,1fr)_minmax(6rem,1.4fr)_6.75rem_6.5rem]'
+  'grid-cols-[4.75rem_minmax(6.5rem,1fr)_minmax(6rem,1.4fr)_6.75rem_6.5rem_6.5rem]'
 
 function TableSkeleton() {
   return (
@@ -101,19 +101,11 @@ export function CustomerActivityPage() {
     customerId ?? null,
   )
 
-  const rows = activity?.data ?? []
+  const rows = withRunningBalances(
+    activity?.data ?? [],
+    customer?.balance_owed_cfa ?? 0,
+  )
   const totalCount = activity?.count ?? 0
-  const runningById = useMemo(() => {
-    const map = new Map<string, number>()
-    if (filter !== 'all' || rows.length === 0 || rows.length !== totalCount) return map
-    const chrono = [...rows].sort((a, b) => a.occurredAt.localeCompare(b.occurredAt) || a.id.localeCompare(b.id))
-    let balance = 0
-    for (const event of chrono) {
-      if (!event.isReversed) balance += event.amountCfa
-      map.set(`${event.type}-${event.id}`, balance)
-    }
-    return map
-  }, [filter, rows, totalCount])
   const totalPages = Math.max(1, Math.ceil(totalCount / CUSTOMER_ACTIVITY_PAGE_SIZE))
   const isLoading = loadingCustomer || loadingActivity
 
@@ -262,11 +254,12 @@ export function CustomerActivityPage() {
           <>
             <div className="sticky top-0 bg-surface-muted border-b border-border z-[1]">
               <div className={cn('grid gap-4 px-4 py-2 items-center', ACTIVITY_GRID)}>
-                <span className="uppercase"><BiTableHeader {...COMMON.type} /></span>
-                <span className="uppercase"><BiTableHeader {...COMMON.reference} /></span>
-                <span className="uppercase"><BiTableHeader {...COMMON.description} /></span>
-                <span className="uppercase"><BiTableHeader {...COMMON.date} /></span>
-                <span className="uppercase text-right"><BiTableHeader {...COMMON.amount} /></span>
+                <span className="text-xs font-semibold text-text-secondary">{t(COMMON.type)}</span>
+                <span className="text-xs font-semibold text-text-secondary">{t(COMMON.reference)}</span>
+                <span className="text-xs font-semibold text-text-secondary">{t(COMMON.description)}</span>
+                <span className="text-xs font-semibold text-text-secondary">{t(COMMON.date)}</span>
+                <span className="text-xs font-semibold text-text-secondary text-right">{t(COMMON.amount)}</span>
+                <span className="text-xs font-semibold text-text-secondary text-right">{t(CUSTOMERS.runningBalance)}</span>
               </div>
             </div>
 
@@ -291,11 +284,9 @@ export function CustomerActivityPage() {
                   </span>
                   <span className="text-right min-w-0">
                     <SignedActivityAmount event={event} />
-                    {runningById.has(`${event.type}-${event.id}`) && (
-                      <span className="block text-xs text-text-muted tabular-nums">
-                        {formatMoney(runningById.get(`${event.type}-${event.id}`) ?? 0)}
-                      </span>
-                    )}
+                  </span>
+                  <span className="text-right text-sm tabular-nums text-text-primary">
+                    {formatMoney(event.runningBalanceCfa ?? 0)}
                   </span>
                 </>
               )

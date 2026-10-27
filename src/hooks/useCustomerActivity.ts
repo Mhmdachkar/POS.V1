@@ -38,6 +38,8 @@ export interface CustomerActivityEvent {
   /** Original sale id for sale/return rows so existing sale detail can open. */
   saleId: string | null
   isReversed?: boolean
+  /** After this event, newest-first. The first row equals Solde dû. */
+  runningBalanceCfa?: number
 }
 
 export interface CustomerActivityResult {
@@ -140,6 +142,19 @@ export function mergeActivityEvents(events: CustomerActivityEvent[]): CustomerAc
   })
 }
 
+/** Newest-first: first running balance equals the current Solde dû. */
+export function withRunningBalances(
+  events: CustomerActivityEvent[],
+  currentBalanceCfa: number,
+): CustomerActivityEvent[] {
+  let running = currentBalanceCfa
+  return events.map((event) => {
+    const next = { ...event, runningBalanceCfa: running }
+    if (!event.isReversed) running -= event.amountCfa
+    return next
+  })
+}
+
 /** Only the unpaid part moves the customer balance. A cash sale nets to 0. */
 function saleActivityAmountCfa(row: Record<string, unknown>): number {
   return Number(row.balance_added_cfa ?? 0)
@@ -232,6 +247,7 @@ async function fetchSaleEvents(
     .select(SALE_ACTIVITY_SELECT, { count: 'exact' })
     .eq('customer_id', customerId)
     .neq('status', 'voided')
+    .gt('balance_added_cfa', 0)
     .order('created_at', { ascending: false })
   q = applyWindow(q, filters, mode)
   const { data, count } = await unwrap<Record<string, unknown>[]>(q)

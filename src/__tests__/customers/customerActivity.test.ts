@@ -20,6 +20,7 @@ import {
   formatReturnedItemsSummary,
   mergeActivityEvents,
   saleActivityDescription,
+  withRunningBalances,
   type CustomerActivityEvent,
 } from '@/hooks/useCustomerActivity'
 import { invalidateAfterSaleSettled } from '@/lib/cacheInvalidation'
@@ -64,6 +65,11 @@ function createTableBuilder(table: string, allRows: Row[], calls: string[]) {
     filtered = filtered.filter((row) => row[String(col)] !== val)
     return builder
   }
+  builder.gt = (col: unknown, val: unknown) => {
+    calls.push(`${table}:gt:${String(col)}:${String(val)}`)
+    filtered = filtered.filter((row) => Number(row[String(col)] ?? 0) > Number(val))
+    return builder
+  }
   builder.order = (col: unknown, opts?: { ascending?: boolean }) => {
     calls.push(`${table}:order:${String(col)}:${opts?.ascending === false ? 'desc' : 'asc'}`)
     return builder
@@ -105,7 +111,7 @@ function makeSaleRow(i: number, overrides: Row = {}): Row {
     receipt_number: `DKR-${String(i).padStart(8, '0')}`,
     created_at: `2026-09-16T${String(10 + (i % 10)).padStart(2, '0')}:${String(i % 60).padStart(2, '0')}:00Z`,
     total_cfa: 100 + i,
-    balance_added_cfa: i % 2 === 0 ? 100 + i : 0,
+    balance_added_cfa: 100 + i,
     status: 'completed',
     customer_id: 'cust-1',
     ...overrides,
@@ -237,6 +243,36 @@ describe('fetchCustomerActivity', () => {
       pageSize: 25,
     })
     expect(result.data[0]?.amountCfa).toBe(3_000)
+  })
+
+  it('excludes fully paid cash sales from the ledger', async () => {
+    mockTables({
+      sales: [
+        makeSaleRow(0, { receipt_number: 'CASH-1', balance_added_cfa: 0, total_cfa: 8000 }),
+        makeSaleRow(1, { receipt_number: 'CREDIT-1', balance_added_cfa: 2400 }),
+      ],
+      sale_returns: [],
+      payments: [],
+    })
+    const result = await fetchCustomerActivity('cust-1', {
+      type: 'sale',
+      page: 0,
+      pageSize: 25,
+    })
+    expect(result.count).toBe(1)
+    expect(result.data[0]?.reference).toBe('CREDIT-1')
+  })
+
+  it('running balance newest-first starts at Solde dû', () => {
+    const events = withRunningBalances(
+      [
+        { id: 'p', type: 'payment', occurredAt: '2026-10-02', reference: 'p', description: '', amountCfa: -100, saleId: null },
+        { id: 's', type: 'sale', occurredAt: '2026-10-01', reference: 's', description: '', amountCfa: 2500, saleId: 's' },
+      ],
+      2400,
+    )
+    expect(events[0]?.runningBalanceCfa).toBe(2400)
+    expect(events[1]?.runningBalanceCfa).toBe(2500)
   })
 
   it('paginates a single type on the server with range', async () => {

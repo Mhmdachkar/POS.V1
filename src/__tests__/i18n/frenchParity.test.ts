@@ -32,6 +32,9 @@ const ALLOW = new Set([
   "Original",
   "Source",
   "Destination",
+  "Z 80 mm",
+  "Z 58 mm",
+  "Z A4",
 ])
 
 function pairs(source: string): Array<{ fr: string; en: string }> {
