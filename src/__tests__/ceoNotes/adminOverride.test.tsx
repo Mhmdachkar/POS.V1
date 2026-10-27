@@ -53,7 +53,7 @@ vi.mock('@/hooks/useShifts', async (importOriginal) => {
         discrepancy_cfa: null,
         status: 'open',
         depot_name: 'Depot Dakar',
-        cashier_name: 'Cashier Dakar',
+        cashier_name: 'Cashier',
         closed_by_name: null,
       }],
       isLoading: false,
@@ -65,7 +65,7 @@ function cashierStaff(): Staff {
   return {
     id: 'cashier-1',
     username: 'cashier',
-    full_name: 'Cashier Dakar',
+    full_name: 'Cashier',
     role: 'cashier',
     depot_id: 'depot-a',
     is_active: true,

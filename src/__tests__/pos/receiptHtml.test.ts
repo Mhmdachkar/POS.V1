@@ -10,7 +10,7 @@ function sample(overrides: Partial<ReceiptData> = {}): ReceiptData {
     depotName: 'Depot Dakar',
     receiptNumber: 'DKR-00000010',
     createdAt: '2026-09-16T01:45:00Z',
-    cashierName: 'Cashier Dakar',
+    cashierName: 'Cashier',
     customerName: 'Fatou Diallo',
     status: 'completed',
     items: [
@@ -44,7 +44,7 @@ describe('buildReceiptHtml', () => {
     expect(html).toContain('LOT: DKR')
     expect(html).toContain('DKR-00000010')
     expect(html).toContain('Fatou Diallo')
-    expect(html).toContain('Cashier Dakar')
+    expect(html).toContain('Cashier')
     expect(html).toContain(formatDateTime('2026-09-16T01:45:00Z'))
     expect(html).toContain('Cola Can 33cl')
     expect(html).toContain('2 Can')
@@ -173,7 +173,7 @@ describe('receiptDataFromSaleDetail', () => {
       customer_name: 'Fatou Diallo',
       customer_phone: null,
       customer_balance_owed_cfa: 0,
-      cashier_name: 'Cashier Dakar',
+      cashier_name: 'Cashier',
       items: [{
         id: 'si-1',
         sale_id: 'sale-1',
@@ -207,7 +207,7 @@ describe('receiptDataFromSaleDetail', () => {
     expect(data.receiptNumber).toBe('DKR-00000010')
     expect(data.items[0].product_name).toBe('Cola Can 33cl')
     expect(data.refund_amount_cfa).toBe(50)
-    expect(data.cashierName).toBe('Cashier Dakar')
+    expect(data.cashierName).toBe('Cashier')
     expect(data.customerName).toBe('Fatou Diallo')
     expect(data.payable_total_cfa).toBe(700)
     expect(data.adjustment_cfa).toBe(0)

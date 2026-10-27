@@ -65,7 +65,7 @@ function baseSale(overrides: Partial<SaleDetailData> = {}): SaleDetailData {
     customer_name: 'Test Customer',
     customer_phone: '77000000',
     customer_balance_owed_cfa: 0,
-    cashier_name: 'Cashier Dakar',
+    cashier_name: 'Cashier',
     items: [
       {
         id: 'item-1',
@@ -130,7 +130,7 @@ describe('SaleDetailDrawer', () => {
 
   it('shows cashier without shift badge or explanation', () => {
     renderDrawer(baseSale({ shift_id: null }))
-    expect(screen.getByText('Cashier Dakar')).toBeInTheDocument()
+    expect(screen.getByText('Cashier')).toBeInTheDocument()
     expect(screen.queryByText('NO SHIFT')).not.toBeInTheDocument()
     expect(screen.queryByText(/^Shift$/)).not.toBeInTheDocument()
   })
@@ -141,7 +141,7 @@ describe('SaleDetailDrawer', () => {
       shift_opened_at: '2026-09-13T08:00:00.000Z',
       shift_closed_at: '2026-09-13T16:00:00.000Z',
     }))
-    expect(screen.getByText('Cashier Dakar')).toBeInTheDocument()
+    expect(screen.getByText('Cashier')).toBeInTheDocument()
     expect(screen.queryByText('NO SHIFT')).not.toBeInTheDocument()
     expect(
       screen.queryByText(formatShiftTimeRange('2026-09-13T08:00:00.000Z', '2026-09-13T16:00:00.000Z')),

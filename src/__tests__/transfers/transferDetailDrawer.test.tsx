@@ -38,7 +38,7 @@ function depotStaff(depotId = 'depot-a'): Staff {
   return {
     id: 'depot-1',
     username: 'depot',
-    full_name: 'Stock Manager Dakar',
+    full_name: 'Stock Manager',
     role: 'depot_staff',
     depot_id: depotId,
     is_active: true,

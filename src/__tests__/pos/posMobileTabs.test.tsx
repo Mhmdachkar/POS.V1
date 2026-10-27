@@ -58,7 +58,7 @@ function cashierStaff() {
   return {
     id: 'cashier-1',
     username: 'cashier',
-    full_name: 'Cashier Dakar',
+    full_name: 'Cashier',
     role: 'cashier',
     depot_id: 'depot-a',
     is_active: true,

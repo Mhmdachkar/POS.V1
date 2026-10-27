@@ -67,8 +67,8 @@ function makeRow(i: number, overrides: Partial<ShiftRow> = {}): ShiftRow {
     discrepancy_cfa: open ? null : 0,
     status: open ? 'open' : 'closed',
     depot: { name: i % 3 === 0 ? 'Depot Abidjan' : 'Depot Dakar' },
-    cashier: { full_name: 'Cashier Dakar' },
-    closed_staff: open ? null : { full_name: 'Cashier Dakar' },
+    cashier: { full_name: 'Cashier' },
+    closed_staff: open ? null : { full_name: 'Cashier' },
     ...overrides,
   }
 }
@@ -131,7 +131,7 @@ function cashierStaff(): Staff {
   return {
     id: 'cashier-1',
     username: 'cashier',
-    full_name: 'Cashier Dakar',
+    full_name: 'Cashier',
     role: 'cashier',
     depot_id: 'depot-a',
     is_active: true,
@@ -167,7 +167,7 @@ function openShift(id = 'sh-1', depotId = 'depot-a'): ShiftListItem {
     discrepancy_cfa: null,
     status: 'open',
     depot_name: depotId === 'depot-a' ? 'Depot Dakar' : 'Depot Abidjan',
-    cashier_name: 'Cashier Dakar',
+    cashier_name: 'Cashier',
     closed_by_name: null,
   }
 }
@@ -282,7 +282,7 @@ describe('ShiftsPage', () => {
   it('does not offer Select for POS on open shifts', async () => {
     renderShifts()
     await screen.findByRole('heading', { name: /Shifts|Services/i })
-    await screen.findAllByText('Cashier Dakar')
+    await screen.findAllByText('Cashier')
     expect(screen.queryByRole('button', { name: /Select for POS|Sélectionner pour la caisse/i })).not.toBeInTheDocument()
     expect(screen.queryByText('Current')).not.toBeInTheDocument()
   })
@@ -290,7 +290,7 @@ describe('ShiftsPage', () => {
   it('uses MoneyDisplay for float amounts', async () => {
     renderShifts()
     await screen.findByRole('heading', { name: /Shifts|Services/i })
-    await screen.findAllByText('Cashier Dakar')
+    await screen.findAllByText('Cashier')
     const floatLabel = formatCFA(5000)
     const node = screen.getAllByText((_, el) =>
       el?.tagName === 'SPAN' && el.textContent === floatLabel,

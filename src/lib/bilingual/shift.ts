@@ -7,7 +7,7 @@ export const SHIFT_COPY = {
   expectedCash: bi('Attendu', 'Expected'),
   actualCash: bi('Compté', 'Counted'),
   discrepancy: bi('Écart', 'Difference'),
-  salesWithoutShift: bi('Ventes sans service', 'Sales without shift'),
+  salesWithoutShift: bi('Ventes sans service', 'Sales with no shift'),
   shiftDetailFallback: bi('Détail du service', 'Shift detail'),
   shiftShortTitle: (id: string) => bi(`Service ${id}`, `Shift ${id}`),
   salesCountAmount: (count: number, amount: string) =>

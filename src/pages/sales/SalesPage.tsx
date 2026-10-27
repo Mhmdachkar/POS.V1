@@ -29,6 +29,7 @@ import { Receipt } from 'lucide-react'
 import { NavPictogram } from '@/components/layout/NavPictogram'
 import { cn } from '@/lib/cn'
 import {
+  DatePresetFilter,
   EmptyState,
   FilterBar,
   MoneyDisplay,
@@ -38,8 +39,10 @@ import {
   CLICKABLE_ROW,
   SaleStatusBadge,
   Skeleton,
+  type ListDatePreset,
 } from '@/components/ui'
 import { formatDateTime } from '@/lib/formatters'
+import { resolveReportDateRange } from '@/lib/reportDates'
 import { useSalesList } from '@/hooks/useSales'
 import { useDepotOptions } from '@/hooks/useInventory'
 import { useAuthStore } from '@/stores/authStore'
@@ -131,6 +134,9 @@ export function SalesPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<SaleStatus | null>(null)
   const [fulfillmentFilter, setFulfillmentFilter] = useState<FulfillmentStatus | null>(null)
+  const [datePreset, setDatePreset] = useState<ListDatePreset>('today')
+  const [customStart, setCustomStart] = useState('')
+  const [customEnd, setCustomEnd] = useState('')
   const [page, setPage] = useState(0)
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null)
 
@@ -143,6 +149,11 @@ export function SalesPage() {
     staff?.role === 'cashier' || isDepotStaff ? staff.depot_id : depotId
 
   const showDepotColumn = staff?.role === 'admin' && depotId === null
+
+  const dateRange = useMemo(
+    () => resolveReportDateRange(datePreset, customStart, customEnd),
+    [datePreset, customStart, customEnd],
+  )
 
   useEffect(() => {
     if (isDepotStaff && fulfillmentFilter === null) {
@@ -157,13 +168,15 @@ export function SalesPage() {
 
   useEffect(() => {
     setPage(0)
-  }, [depotId])
+  }, [depotId, datePreset, customStart, customEnd])
 
   const { data, isLoading, isError } = useSalesList({
     depotId: effectiveDepotId,
     status:  statusFilter,
     fulfillmentStatus: fulfillmentFilter,
     search:  debouncedSearch,
+    startDate: dateRange.startDate,
+    endDate: dateRange.endDate,
     page,
     pageSize: 30,
   })
@@ -225,6 +238,21 @@ export function SalesPage() {
             activeChip={statusFilter ?? 'all'}
             onChipChange={handleChipChange}
             count={totalCount}
+          />
+          <DatePresetFilter
+            className="mt-3"
+            preset={datePreset}
+            onPresetChange={(p) => {
+              setDatePreset(p)
+              if (p === 'custom' && !customStart && !customEnd) {
+                setCustomStart(dateRange.startDate)
+                setCustomEnd(dateRange.endDate)
+              }
+            }}
+            customStart={customStart || dateRange.startDate}
+            customEnd={customEnd || dateRange.endDate}
+            onCustomStartChange={setCustomStart}
+            onCustomEndChange={setCustomEnd}
           />
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {(isDepotStaff || staff?.role === 'admin') &&

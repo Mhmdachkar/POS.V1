@@ -12,7 +12,7 @@ import type { Staff } from '@/types/database'
 const staffRow: Staff = {
   id: 's-cashier',
   username: 'cashier',
-  full_name: 'Cashier Dakar',
+  full_name: 'Cashier',
   role: 'cashier',
   depot_id: 'depot-a',
   is_active: true,
@@ -82,7 +82,7 @@ describe('StaffPage', () => {
     expect(screen.getByRole('heading', { name: /équipe|staff/i })).toBeInTheDocument()
     expect(screen.getAllByText(/actif|active/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/inactif|inactive/i)).toBeInTheDocument()
-    expect(screen.getByText('Cashier Dakar')).toBeInTheDocument()
+    expect(screen.getByText('Cashier')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /ajouter un employé|add staff/i })).toBeInTheDocument()
   })
 

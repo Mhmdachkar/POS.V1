@@ -82,7 +82,7 @@ function makeSale(overrides: Partial<SaleDetailData> = {}): SaleDetailData {
     customer_name: 'Return Customer',
     customer_phone: null,
     customer_balance_owed_cfa: 0,
-    cashier_name: 'Cashier Dakar',
+    cashier_name: 'Cashier',
     items: [
       makeItem(),
       makeItem({
@@ -211,7 +211,7 @@ function processingShift(): ShiftListItem {
     discrepancy_cfa: null,
     status: 'open',
     depot_name: 'Depot Dakar',
-    cashier_name: 'Cashier Dakar',
+    cashier_name: 'Cashier',
     closed_by_name: null,
   }
 }
@@ -220,7 +220,7 @@ function cashierStaff(): Staff {
   return {
     id: 'cashier-1',
     username: 'cashier',
-    full_name: 'Cashier Dakar',
+    full_name: 'Cashier',
     role: 'cashier',
     depot_id: 'depot-a',
     is_active: true,

@@ -48,7 +48,7 @@ export const INVENTORY = {
     'No products in this inventory view.',
   ),
   countCorrection: bi("Correction d'inventaire", 'Count correction'),
-  adjustmentTypeDamage: bi('Dommage', 'Damage'),
+  adjustmentTypeDamage: bi('Casse', 'Damage'),
   adjustmentTypeLoss: bi('Perte', 'Loss'),
   adjustmentTypeExpiry: bi('Péremption', 'Expiry'),
   adjustmentTypeOther: bi('Autre', 'Other'),

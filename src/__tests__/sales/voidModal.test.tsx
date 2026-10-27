@@ -52,7 +52,7 @@ function makeSale(overrides: Partial<SaleDetailData> = {}): SaleDetailData {
     customer_name: 'Void Customer',
     customer_phone: null,
     customer_balance_owed_cfa: 1000,
-    cashier_name: 'Cashier Dakar',
+    cashier_name: 'Cashier',
     items: [{
       id: 'item-1',
       sale_id: 'sale-void-1',

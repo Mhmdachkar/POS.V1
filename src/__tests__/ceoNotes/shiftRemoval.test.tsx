@@ -65,7 +65,7 @@ function cashierStaff(): Staff {
   return {
     id: 'cashier-1',
     username: 'cashier',
-    full_name: 'Cashier Dakar',
+    full_name: 'Cashier',
     role: 'cashier',
     depot_id: 'depot-a',
     is_active: true,
@@ -119,7 +119,7 @@ function makeRow(overrides: Partial<ShiftRow> = {}): ShiftRow {
     discrepancy_cfa: null,
     status: 'open',
     depot: { name: 'Depot Dakar' },
-    cashier: { full_name: 'Cashier Dakar' },
+    cashier: { full_name: 'Cashier' },
     closed_staff: null,
     ...overrides,
   }
@@ -229,7 +229,7 @@ describe('CEO Notes — ShiftsPage historical only', () => {
           expected_cash_cfa: 5000,
           actual_cash_cfa: 5000,
           discrepancy_cfa: 0,
-          closed_staff: { full_name: 'Cashier Dakar' },
+          closed_staff: { full_name: 'Cashier' },
         }),
       ]) as never,
     )

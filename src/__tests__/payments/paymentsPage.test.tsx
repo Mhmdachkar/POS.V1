@@ -11,6 +11,7 @@ import { PaymentsPage } from '@/pages/payments/PaymentsPage'
 import { formatCFA } from '@/lib/formatters'
 import type { Payment } from '@/types/database'
 import { PAYMENTS } from '@/lib/bilingual/payments'
+import { COMMON } from '@/lib/bilingual/common'
 
 type PaymentRow = Payment & {
   customers: { name: string } | null
@@ -90,6 +91,14 @@ function createPaymentsFrom(allRows: PaymentRow[]) {
   builder.range = (from: unknown, to: unknown) => {
     calls.push(`${table}:range:${from}-${to}`)
     range = [Number(from), Number(to)]
+    return builder
+  }
+  builder.gte = (col: unknown, val: unknown) => {
+    calls.push(`${table}:gte:${String(col)}:${String(val)}`)
+    return builder
+  }
+  builder.lte = (col: unknown, val: unknown) => {
+    calls.push(`${table}:lte:${String(col)}:${String(val)}`)
     return builder
   }
 
@@ -252,6 +261,24 @@ describe('PaymentsPage (13E-C)', () => {
     expect(calls).toContain('payments:eq:payment_type:customer_payment')
     expect(calls).toContain('payments:eq:is_reversed:false')
     expect(calls.some((c) => c.includes('sale_payment'))).toBe(false)
+    expect(calls.some((c) => c.startsWith('payments:gte:recorded_at:'))).toBe(true)
+    expect(calls.some((c) => c.startsWith('payments:lte:recorded_at:'))).toBe(true)
+  })
+
+  it('defaults to today date chips and switches to yesterday', async () => {
+    const user = userEvent.setup()
+    const { from, calls } = createPaymentsFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation(from as never)
+    renderPayments()
+
+    await screen.findByText('John Doe')
+    expect(screen.getByRole('button', { name: COMMON.today.fr })).toHaveAttribute('aria-pressed', 'true')
+    calls.length = 0
+    await user.click(screen.getByRole('button', { name: COMMON.yesterday.fr }))
+    await waitFor(() => {
+      expect(calls.some((c) => c.startsWith('payments:gte:recorded_at:'))).toBe(true)
+      expect(calls.some((c) => c.startsWith('payments:lte:recorded_at:'))).toBe(true)
+    })
   })
 
   it('Showing reversed removes the is_reversed filter while keeping customer_payment', async () => {

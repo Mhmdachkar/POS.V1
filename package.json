@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "predev": "node scripts/check-no-conflict-markers.mjs",
+    "build": "node scripts/check-no-conflict-markers.mjs && tsc -b && vite build",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
     "type-check": "tsc --noEmit",
+    "check:conflicts": "node scripts/check-no-conflict-markers.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",

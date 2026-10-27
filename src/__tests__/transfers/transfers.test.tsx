@@ -162,7 +162,7 @@ function depotStaff(): Staff {
   return {
     id: 'depot-1',
     username: 'depot',
-    full_name: 'Stock Manager Dakar',
+    full_name: 'Stock Manager',
     role: 'depot_staff',
     depot_id: 'depot-a',
     is_active: true,
@@ -175,7 +175,7 @@ function cashierStaff(): Staff {
   return {
     id: 'cashier-1',
     username: 'cashier',
-    full_name: 'Cashier Dakar',
+    full_name: 'Cashier',
     role: 'cashier',
     depot_id: 'depot-a',
     is_active: true,

@@ -68,7 +68,7 @@ function makeSale(i: number, overrides: Partial<SaleRow> = {}): SaleRow {
     total_cfa: 1000 + i,
     created_at: `2026-09-12T${String(10 + (i % 10)).padStart(2, '0')}:00:00Z`,
     customers: { name: `Customer ${i}` },
-    staff: { full_name: 'Cashier Dakar' },
+    staff: { full_name: 'Cashier' },
     cashier_id: 'cashier-1',
     customer_id: `cust-${i}`,
     shift_id: null,
@@ -124,6 +124,22 @@ function createFilterAwareFrom(allRows: SaleRow[]) {
     range = [Number(from), Number(to)]
     return builder
   }
+  builder.gte = (col: unknown, val: unknown) => {
+    calls.push(`gte:${String(col)}:${String(val)}`)
+    return builder
+  }
+  builder.lte = (col: unknown, val: unknown) => {
+    calls.push(`lte:${String(col)}:${String(val)}`)
+    return builder
+  }
+  builder.is = (col: unknown, val: unknown) => {
+    calls.push(`is:${String(col)}:${String(val)}`)
+    return builder
+  }
+  builder.not = (col: unknown, op: unknown, val: unknown) => {
+    calls.push(`not:${String(col)}:${String(op)}:${String(val)}`)
+    return builder
+  }
   const execute = () => {
     const count = filtered.length
     const page = range ? filtered.slice(range[0], range[1] + 1) : filtered
@@ -152,7 +168,7 @@ function cashierStaff(): Staff {
   return {
     id: 'cashier-1',
     username: 'cashier',
-    full_name: 'Cashier Dakar',
+    full_name: 'Cashier',
     role: 'cashier',
     depot_id: 'depot-a',
     is_active: true,
@@ -399,6 +415,30 @@ describe('SalesPage', () => {
     await waitFor(() => {
       expect(calls).toContain('eq:status:voided')
       expect(calls.filter((c) => c === 'range:0-29').length).toBeGreaterThan(0)
+    })
+  })
+
+  it('defaults to today and applies created_at date bounds', async () => {
+    const { builder, calls } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    renderSales()
+    await screen.findByText('DKR-00000000')
+    expect(screen.getByRole('button', { name: COMMON.today.fr })).toHaveAttribute('aria-pressed', 'true')
+    expect(calls.some((c) => c.startsWith('gte:created_at:'))).toBe(true)
+    expect(calls.some((c) => c.startsWith('lte:created_at:'))).toBe(true)
+  })
+
+  it('switches to yesterday date bounds', async () => {
+    const user = userEvent.setup()
+    const { builder, calls } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    renderSales()
+    await screen.findByText('DKR-00000000')
+    calls.length = 0
+    await user.click(screen.getByRole('button', { name: COMMON.yesterday.fr }))
+    await waitFor(() => {
+      expect(calls.some((c) => c.startsWith('gte:created_at:'))).toBe(true)
+      expect(calls.some((c) => c.startsWith('lte:created_at:'))).toBe(true)
     })
   })
 

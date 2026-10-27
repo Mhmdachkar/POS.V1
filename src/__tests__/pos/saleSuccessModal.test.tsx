@@ -84,7 +84,7 @@ function saleDetail(overrides: Partial<SaleDetailData> = {}): SaleDetailData {
     customer_name: 'Aminata Diallo',
     customer_phone: null,
     customer_balance_owed_cfa: 0,
-    cashier_name: 'Cashier Dakar',
+    cashier_name: 'Cashier',
     items: [
       {
         id: 'si-1',

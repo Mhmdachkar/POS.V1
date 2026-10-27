@@ -60,7 +60,7 @@ function baseSale(overrides: Partial<SaleDetailData> = {}): SaleDetailData {
     customer_name: null,
     customer_phone: null,
     customer_balance_owed_cfa: null,
-    cashier_name: 'Cashier Dakar',
+    cashier_name: 'Cashier',
     cashier_role: 'cashier',
     items: [],
     returns: [],
@@ -92,7 +92,7 @@ describe('CEO Notes — seller attribution', () => {
   it('shows French Vendu par label', () => {
     renderDrawer(baseSale())
     expect(getByFrench(SALES.soldBy.fr)).toBeInTheDocument()
-    expect(screen.getByText('Cashier Dakar')).toBeInTheDocument()
+    expect(screen.getByText('Cashier')).toBeInTheDocument()
   })
 
   it('shows Cashier role badge from cashier_role', () => {

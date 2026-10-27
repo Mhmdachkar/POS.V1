@@ -31,7 +31,7 @@ export const FORM_GUIDANCE = {
     'Choose the unit (piece, package, or carton), then enter the quantity in that unit.',
   ),
   adjustmentQtyReduction: bi(
-    'Pour Dommage / Perte / Péremption : entrez une quantité positive à retirer.',
+    'Pour Casse / Perte / Péremption : entrez une quantité positive à retirer.',
     'For Damage / Loss / Expiry: enter a positive quantity to remove.',
   ),
   adjustmentQtySigned: bi('Correction : + ajoute, - retire (dans l’unité choisie).', 'Correction: + adds, - removes (in chosen unit).'),

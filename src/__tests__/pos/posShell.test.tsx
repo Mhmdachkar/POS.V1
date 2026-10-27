@@ -87,7 +87,7 @@ function cashierStaff(): Staff {
   return {
     id: 'cashier-1',
     username: 'cashier',
-    full_name: 'Cashier Dakar',
+    full_name: 'Cashier',
     role: 'cashier',
     depot_id: 'depot-a',
     is_active: true,
@@ -305,7 +305,7 @@ describe('AppShell navigation', () => {
 
   it('renders cashier full name in the top bar', () => {
     renderApp('/pos')
-    expect(screen.getByRole('banner')).toHaveTextContent('Cashier Dakar')
+    expect(screen.getByRole('banner')).toHaveTextContent('Cashier')
   })
 
   it('does not render Overview for cashier', () => {
@@ -496,7 +496,7 @@ describe('AppRail icons and accessibility', () => {
       id: 'depot-1',
       role: 'depot_staff',
       depot_id: 'depot-a',
-      full_name: 'Stock Manager Dakar',
+      full_name: 'Stock Manager',
     })
     render(
       <MemoryRouter initialEntries={['/inventory/activity']}>

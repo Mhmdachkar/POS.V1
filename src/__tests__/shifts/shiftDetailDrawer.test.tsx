@@ -37,7 +37,7 @@ function cashierStaff(): Staff {
   return {
     id: 'cashier-1',
     username: 'cashier',
-    full_name: 'Cashier Dakar',
+    full_name: 'Cashier',
     role: 'cashier',
     depot_id: 'depot-a',
     is_active: true,
@@ -60,7 +60,7 @@ function openDetail(): ShiftDetailData {
     discrepancy_cfa: null,
     status: 'open',
     depot_name: 'Depot Dakar',
-    cashier_name: 'Cashier Dakar',
+    cashier_name: 'Cashier',
     closed_by_name: null,
     running: { sales_cash_cfa: 200, customer_pmts_cfa: 0, return_cash_cfa: 0 },
   }
@@ -76,7 +76,7 @@ function closedDetail(): ShiftDetailData {
     expected_cash_cfa: 1200,
     actual_cash_cfa: 1200,
     discrepancy_cfa: 0,
-    closed_by_name: 'Cashier Dakar',
+    closed_by_name: 'Cashier',
   }
 }
 
@@ -105,7 +105,7 @@ describe('ShiftDetailDrawer', () => {
       isError: false,
     } as never)
     renderDrawer('sh-open')
-    expect(screen.getByRole('heading', { name: 'Cashier Dakar' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Cashier' })).toBeInTheDocument()
     expect(screen.getAllByText('Depot Dakar').length).toBeGreaterThan(0)
     expect(screen.getByText(SHIFT_COPY.cashSummary.fr)).toBeInTheDocument()
     expect(screen.getByText(SHIFT_COPY.openingFloat.fr)).toBeInTheDocument()
