@@ -436,25 +436,9 @@ export function StockInventoryPage() {
   return (
     <Frame id="stock-inventory" exp={exp}>
       <ReportSectionState isLoading={q.isLoading} isError={q.isError} data={q.data} onRetry={() => { void q.refetch() }}>
-        {(inventory) => {
-          const oos = splitTracked(inventory.current_stock.filter((r) => Number(r.current_stock_pieces) <= 0))
-          return (
-            <div className="space-y-6">
-              <ReportMetric
-                label={<BiTableHeader {...REPORTS.currentInventoryValue} />}
-                amount={Number(inventory.inventory_value_cfa)}
-                secondaryText={(inventory.uncosted_stock_count ?? 0) > 0 ? t(REPORTS.uncostedHint) : undefined}
-              />
-              <ReportInventoryTab inventory={inventory} showDepotColumn={!search.depotId} />
-              <ReportSection title={<span>{t(REPORTS.outOfStock)} — {t(REPORTS.tracked)}</span>}>
-                <p className="text-sm tabular-nums">{oos.tracked.length}</p>
-              </ReportSection>
-              <ReportSection title={<span>{t(REPORTS.outOfStock)} — {t(REPORTS.untracked)}</span>}>
-                <p className="text-sm tabular-nums">{oos.untracked.length}</p>
-              </ReportSection>
-            </div>
-          )
-        }}
+        {(inventory) => (
+          <ReportInventoryTab inventory={inventory} showDepotColumn={!search.depotId} />
+        )}
       </ReportSectionState>
     </Frame>
   )

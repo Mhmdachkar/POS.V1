@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { ChevronDown, Download } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { Button, Select } from '@/components/ui'
@@ -83,26 +83,76 @@ export function ReportToolbar({
 }: ReportToolbarProps) {
   const [exportOpen, setExportOpen] = useState(false)
   const hasExport = onExportCsv || onExportXlsx || onExportPrint
+  const presetRailRef = useRef<HTMLDivElement>(null)
+  const presetRefs = useRef<Map<ReportPreset, HTMLButtonElement>>(new Map())
+  const [presetIndicator, setPresetIndicator] = useState({ left: 0, width: 0, ready: false })
+
+  const measurePreset = useCallback(() => {
+    const rail = presetRailRef.current
+    const el = presetRefs.current.get(preset)
+    if (!rail || !el) return
+    const railRect = rail.getBoundingClientRect()
+    const tabRect = el.getBoundingClientRect()
+    setPresetIndicator({
+      left: tabRect.left - railRect.left + rail.scrollLeft,
+      width: tabRect.width,
+      ready: true,
+    })
+  }, [preset])
+
+  useLayoutEffect(() => {
+    measurePreset()
+    const rail = presetRailRef.current
+    if (!rail) return
+    const ro = new ResizeObserver(measurePreset)
+    ro.observe(rail)
+    return () => ro.disconnect()
+  }, [measurePreset])
 
   return (
     <div className="space-y-2">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex min-w-0 flex-1 flex-wrap gap-1 rounded-xl bg-surface-muted p-1">
-          {PRESETS.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => onPresetChange(p)}
-              className={cn(
-                'min-h-[44px] flex-1 rounded-lg px-3 text-sm font-medium transition-colors sm:flex-none',
-                preset === p
-                  ? 'bg-surface text-text-primary shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary',
-              )}
-            >
-              <BilingualText {...PRESET_LABELS[p]} variant="filter" layout="inline" />
-            </button>
-          ))}
+        <div
+          ref={presetRailRef}
+          className="relative flex min-w-0 flex-1 flex-nowrap gap-1 overflow-x-auto scrollbar-thin rounded-xl bg-surface-muted p-1 ring-1 ring-border/50"
+        >
+          <span
+            aria-hidden="true"
+            className={cn(
+              'pointer-events-none absolute top-1 bottom-1 rounded-lg bg-surface shadow-sm ring-1 ring-primary/25',
+              'transition-[transform,width,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
+              presetIndicator.ready ? 'opacity-100' : 'opacity-0',
+            )}
+            style={{
+              width: presetIndicator.width,
+              transform: `translateX(${presetIndicator.left}px)`,
+            }}
+          />
+          {PRESETS.map((p) => {
+            const active = preset === p
+            return (
+              <button
+                key={p}
+                type="button"
+                aria-pressed={active}
+                ref={(el) => {
+                  if (el) presetRefs.current.set(p, el)
+                  else presetRefs.current.delete(p)
+                }}
+                onClick={() => onPresetChange(p)}
+                className={cn(
+                  'relative z-[1] min-h-[44px] flex-1 rounded-lg px-3 text-sm font-medium sm:flex-none',
+                  'transition-colors duration-200',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1',
+                  active
+                    ? 'text-primary'
+                    : 'text-text-secondary hover:text-text-primary',
+                )}
+              >
+                <BilingualText {...PRESET_LABELS[p]} variant="filter" layout="inline" />
+              </button>
+            )
+          })}
         </div>
         {hasExport && (
           <div className="relative w-full sm:w-auto sm:ml-auto">
