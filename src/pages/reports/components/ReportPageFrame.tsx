@@ -33,22 +33,28 @@ export function ReportPageFrame({
   const productsQ = useQuery({
     queryKey: ['report-product-options', search.depotId, search.category],
     queryFn: async () => {
-      let q = supabase.from('products').select('id, name').eq('is_active', true).order('name').limit(500)
+      let q = supabase.from('products').select('id, name').eq('is_active', true)
       if (search.depotId) q = q.eq('depot_id', search.depotId)
       if (search.category) q = q.eq('category_id', search.category)
-      const { data, error } = await q
+      const { data, error } = await q.order('name').limit(500)
       if (error) throw error
-      return (data ?? []).map((row) => ({ value: row.id, label: row.name }))
+      const rows = (data ?? []) as Array<{ id: string; name: string }>
+      return rows.map((row) => ({ value: row.id, label: row.name }))
     },
   })
   const shiftsQ = useQuery({
     queryKey: ['report-shift-options', search.depotId, search.range.startDate, search.range.endDate],
     queryFn: async () => {
-      let q = supabase.from('shifts').select('id, opened_at, cashier_id').gte('opened_at', `${search.range.startDate}T00:00:00.000Z`).lte('opened_at', `${search.range.endDate}T23:59:59.999Z`).order('opened_at', { ascending: false }).limit(100)
+      let q = supabase
+        .from('shifts')
+        .select('id, opened_at, cashier_id')
+        .gte('opened_at', `${search.range.startDate}T00:00:00.000Z`)
+        .lte('opened_at', `${search.range.endDate}T23:59:59.999Z`)
       if (search.depotId) q = q.eq('depot_id', search.depotId)
-      const { data, error } = await q
+      const { data, error } = await q.order('opened_at', { ascending: false }).limit(100)
       if (error) throw error
-      return (data ?? []).map((row) => ({
+      const rows = (data ?? []) as Array<{ id: string; opened_at: string | null }>
+      return rows.map((row) => ({
         value: row.id,
         label: String(row.opened_at ?? row.id).slice(0, 16).replace('T', ' '),
       }))

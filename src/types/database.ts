@@ -435,6 +435,10 @@ export interface Database {
         Args: { p_customer_id: string }
         Returns: unknown
       }
+      staff_display_names: {
+        Args: { p_ids: string[] }
+        Returns: { id: string; full_name: string | null }[]
+      }
     }
     Enums: Record<string, never>
   }
