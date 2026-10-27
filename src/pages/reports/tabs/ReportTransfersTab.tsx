@@ -3,7 +3,7 @@ import { BiEmptyTitle, BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui
 import { REPORTS } from '@/lib/bilingual/reports'
 import { TRANSFERS } from '@/lib/bilingual/transfers'
 import { EmptyState, Skeleton } from '@/components/ui'
-import { formatDateTime } from '@/lib/formatters'
+import { formatReportDateTime } from '@/lib/formatters'
 import { useTransfersList } from '@/hooks/useTransfers'
 import { TransferDetailDrawer } from '@/pages/transfers/components/TransferDetailDrawer'
 import { ReportSection } from '../components/ReportSection'
@@ -68,7 +68,7 @@ export function ReportTransfersTab({ depotId }: ReportTransfersTabProps) {
                 >
                   <span className="capitalize font-medium">{t.status}</span>
                   <span>{t.from_depot_name} → {t.to_depot_name}</span>
-                  <span className="text-text-muted">{formatDateTime(t.created_at)}</span>
+                  <span className="text-text-muted">{formatReportDateTime(t.created_at)}</span>
                   <span className="text-text-muted">{t.item_count} items</span>
                 </button>
               </li>

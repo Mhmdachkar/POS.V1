@@ -10,9 +10,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { cn } from '@/lib/cn'
 import { ReportPageFrame } from './components/ReportPageFrame'
 import { ReportSectionState } from './components/ReportSectionState'
-import { ReportWaterfall } from './components/ReportWaterfall'
 import { InfoTip } from './components/InfoTip'
 import { ReportRankedTable, type RankedRow } from './components/ReportRankedTable'
 import { ReportMetric } from './components/ReportMetric'
@@ -41,11 +41,11 @@ import { COMMON } from '@/lib/bilingual/common'
 import { BiModalTitle as BiSectionTitle, BiTableHeader } from '@/lib/bilingual/ui'
 import { t } from '@/lib/bilingual/types'
 import {
-  formatCalendarDate,
-  formatCalendarDayMonth,
   formatCFA,
   formatCompactMoney,
-  formatPieces,
+  formatPercent,
+  formatReportPieces,
+  formatReportDate,
 } from '@/lib/formatters'
 import {
   exportReportCsv,
@@ -128,34 +128,21 @@ function Frame({ id, exp, children }: { id: ReportId; exp: ReturnType<typeof use
 }
 
 function SalesKpis({ sales }: { sales: AdminSalesReport }) {
+  const net = Number(sales.net_sales_cfa)
+  const margin = Number(sales.gross_profit_cfa)
+  const marginPct = net === 0 ? null : (margin / net) * 100
   return (
-    <>
-      <ReportWaterfall
-        gross={Number(sales.sales_activity_cfa)}
-        returns={Number(sales.returns_activity_cfa)}
-        net={Number(sales.net_sales_cfa)}
-        cogs={Number(sales.cogs_cfa)}
-        margin={Number(sales.gross_profit_cfa)}
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <ReportMetric label={t(REPORTS.grossSales)} amount={Number(sales.sales_activity_cfa)} />
+      <ReportMetric label={t(REPORTS.returnsMetric)} amount={-Math.abs(Number(sales.returns_activity_cfa))} danger={Number(sales.returns_activity_cfa) !== 0} />
+      <ReportMetric label={t(REPORTS.netSales)} amount={net} emphasis />
+      <ReportMetric label={t(REPORTS.cogs)} amount={Number(sales.cogs_cfa)} />
+      <ReportMetric
+        label={t(REPORTS.grossProfit)}
+        amount={margin}
+        secondaryText={formatPercent(marginPct)}
       />
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-2xl bg-surface px-4 py-3 shadow-sm ring-1 ring-border">
-          <p className="text-xs text-text-secondary">
-            {t(REPORTS.completedSales)} <InfoTip text={t(REPORTS.tipTxn)} />
-          </p>
-          <p className="mt-1 text-xl font-semibold tabular-nums">{sales.transaction_count}</p>
-        </div>
-        <ReportMetric
-          label={<span className="inline-flex items-center">{t(REPORTS.averageSale)} <InfoTip text={t(REPORTS.tipAverage)} /></span>}
-          amount={Number(sales.average_sale_cfa)}
-        />
-        <div className="rounded-2xl bg-surface px-4 py-3 shadow-sm ring-1 ring-border">
-          <p className="text-xs text-text-secondary">
-            {t(REPORTS.unitsSold)} <InfoTip text={t(REPORTS.tipUnits)} />
-          </p>
-          <p className="mt-1 text-xl font-semibold tabular-nums">{formatPieces(Number(sales.units_sold))}</p>
-        </div>
-      </div>
-    </>
+    </div>
   )
 }
 
@@ -164,7 +151,7 @@ export function SalesSummaryPage() {
   const q = useSalesReport(search.depotId, search.range.startDate, search.range.endDate, true, { p_cashier_id: search.cashier || null })
   const exp = useExport('sales-summary', { sales: q.data })
   const daily = (q.data?.daily_series ?? []).map((d) => ({
-    date: formatCalendarDayMonth(d.date),
+    date: formatReportDate(d.date),
     iso: d.date,
     gross: Number(d.sales_activity_cfa),
     returns: Number(d.returns_activity_cfa),
@@ -176,7 +163,7 @@ export function SalesSummaryPage() {
         {(sales) => (
           <div className="space-y-6">
             <SalesKpis sales={sales} />
-            {daily.length > 0 && (
+            {daily.length > 1 ? (
               <ReportSection title={<BiSectionTitle {...REPORTS.chartDaily} />}>
                 <div className="h-72 w-full">
                   <ResponsiveContainer width="100%" height="100%">
@@ -192,6 +179,8 @@ export function SalesSummaryPage() {
                   </ResponsiveContainer>
                 </div>
               </ReportSection>
+            ) : (
+              <p className="text-sm text-text-muted">{t(REPORTS.notEnoughData)}</p>
             )}
             <DailyTable rows={daily} net={Number(sales.net_sales_cfa)} />
           </div>
@@ -222,9 +211,9 @@ function DailyTable({ rows, net }: { rows: Array<{ iso: string; date: string; gr
         <tbody>
           {slice.map((row) => (
             <tr key={row.iso} className="border-t border-border">
-              <td className="px-3 py-2">{formatCalendarDate(row.iso)}</td>
+              <td className="px-3 py-2">{formatReportDate(row.iso)}</td>
               <td className="px-3 py-2 text-right tabular-nums">{formatCFA(row.gross)}</td>
-              <td className="px-3 py-2 text-right tabular-nums">{formatCFA(row.returns)}</td>
+              <td className={cn('px-3 py-2 text-right tabular-nums', row.returns !== 0 && 'text-danger-foreground')}>{formatCFA(row.returns === 0 ? 0 : -Math.abs(row.returns))}</td>
               <td className="px-3 py-2 text-right tabular-nums font-medium">{formatCFA(row.net)}</td>
             </tr>
           ))}
@@ -233,7 +222,7 @@ function DailyTable({ rows, net }: { rows: Array<{ iso: string; date: string; gr
           <tr className="border-t-2 border-border bg-surface-muted font-semibold">
             <td className="px-3 py-3">{t(COMMON.total)}</td>
             <td className="px-3 py-3 text-right tabular-nums">{formatCFA(tot.gross)}</td>
-            <td className="px-3 py-3 text-right tabular-nums">{formatCFA(tot.returns)}</td>
+            <td className={cn('px-3 py-3 text-right tabular-nums', tot.returns !== 0 && 'text-danger-foreground')}>{formatCFA(tot.returns === 0 ? 0 : -Math.abs(tot.returns))}</td>
             <td className="px-3 py-3 text-right tabular-nums">{formatCFA(tot.net)}</td>
           </tr>
         </tfoot>
@@ -257,7 +246,11 @@ function RankedPage({ id, rows, net }: { id: ReportId; rows: RankedRow[]; net: n
         {(sales) => (
           <div className="space-y-6">
             <SalesKpis sales={sales} />
-            <ReportRankedTable rows={rows.length ? rows : mapRanked(id, sales)} netTotal={net || Number(sales.net_sales_cfa)} />
+            <ReportRankedTable
+              rows={rows.length ? rows : mapRanked(id, sales)}
+              netTotal={net || Number(sales.net_sales_cfa)}
+              marginTip={id === 'sales-cashiers' ? t(REPORTS.marginShareTip) : undefined}
+            />
           </div>
         )}
       </ReportSectionState>
@@ -265,7 +258,20 @@ function RankedPage({ id, rows, net }: { id: ReportId; rows: RankedRow[]; net: n
   )
 }
 
+function fitMargin(rows: RankedRow[], target: number): RankedRow[] {
+  if (rows.length === 0) return rows
+  const sum = rows.reduce((s, r) => s + (r.margin ?? 0), 0)
+  const drift = Math.round(target - sum)
+  if (drift === 0) return rows
+  let idx = 0
+  rows.forEach((r, i) => {
+    if (Math.abs(r.net) > Math.abs(rows[idx].net)) idx = i
+  })
+  return rows.map((r, i) => (i === idx ? { ...r, margin: (r.margin ?? 0) + drift } : r))
+}
+
 function mapRanked(id: ReportId, sales: AdminSalesReport): RankedRow[] {
+  const target = Number(sales.gross_profit_cfa)
   if (id === 'sales-products') {
     return sales.product_performance.map((p) => ({
       id: p.product_id,
@@ -273,27 +279,44 @@ function mapRanked(id: ReportId, sales: AdminSalesReport): RankedRow[] {
       gross: Number(p.gross_sales_cfa),
       returns: Number(p.returns_cfa),
       net: Number(p.net_sales_cfa),
-      margin: Number(p.gross_profit_cfa),
+      margin: p.gross_profit_cfa == null ? null : Number(p.gross_profit_cfa),
     }))
   }
   if (id === 'sales-categories') {
-    return sales.by_category.map((c) => ({
-      id: c.category_id ?? 'none',
-      name: c.category_name ?? t(REPORTS.uncategorized),
-      gross: Number(c.sales_activity_cfa),
-      returns: Number(c.returns_activity_cfa ?? 0),
-      net: Number(c.net_sales_cfa ?? c.sales_activity_cfa),
-      margin: null,
-    }))
+    const byCat = new Map<string, number>()
+    for (const p of sales.product_performance) {
+      if (p.gross_profit_cfa == null) continue
+      const key = p.category_id ?? 'none'
+      byCat.set(key, (byCat.get(key) ?? 0) + Number(p.gross_profit_cfa))
+    }
+    return fitMargin(sales.by_category.map((c) => {
+      const id = c.category_id ?? 'none'
+      return {
+        id,
+        name: c.category_name ?? t(REPORTS.uncategorized),
+        gross: Number(c.sales_activity_cfa),
+        returns: Number(c.returns_activity_cfa ?? 0),
+        net: Number(c.net_sales_cfa ?? c.sales_activity_cfa),
+        margin: byCat.get(id) ?? 0,
+      }
+    }), target)
   }
-  return sales.by_cashier.map((c) => ({
+  const rows = sales.by_cashier.map((c) => ({
     id: c.cashier_id,
     name: c.cashier_name,
     gross: Number(c.sales_activity_cfa),
     returns: Number(c.returns_activity_cfa ?? 0),
     net: Number(c.net_sales_cfa ?? c.sales_activity_cfa),
-    margin: null,
+    margin: 0,
   }))
+  const netSum = rows.reduce((s, r) => s + r.net, 0)
+  let assigned = 0
+  return rows.map((r, i) => {
+    if (i === rows.length - 1) return { ...r, margin: target - assigned }
+    const share = netSum === 0 ? 0 : Math.round((target * r.net) / netSum)
+    assigned += share
+    return { ...r, margin: share }
+  })
 }
 
 export function SalesProductsPage() { return <RankedPage id="sales-products" rows={[]} net={0} /> }
@@ -347,13 +370,10 @@ export function CashCollectionsPage() {
           <div className="space-y-6">
             <ReportModulePanel kind="collections" depotId={search.depotId} startDate={search.range.startDate} endDate={search.range.endDate} cashierId={search.cashier || undefined} />
             {cashQ.data && (
-              <ReportSection title={<BiSectionTitle {...REPORTS.zReconcile} />}>
-                <p className="text-sm text-text-secondary">{t(REPORTS.collectionsFormula)}</p>
-                <p className="mt-2 text-sm tabular-nums">
-                  {t(REPORTS.closedExpectedTotal)} {formatCFA(Number(cashQ.data.closed_expected_total_cfa))}
-                </p>
-                <p className="mt-1 text-sm text-text-secondary">{t(REPORTS.zDifference)}</p>
-              </ReportSection>
+              <ReportMetric
+                label={<span className="inline-flex items-center">{t(REPORTS.zExpected)} <InfoTip text={t(REPORTS.zDifference)} /></span>}
+                amount={Number(cashQ.data.closed_expected_total_cfa)}
+              />
             )}
           </div>
         )}
@@ -456,7 +476,7 @@ export function StockMovementsPage() {
               {inventory.period_movement.map((m) => (
                 <li key={m.transaction_type} className="flex justify-between px-4 py-3 text-sm">
                   <span>{movementLabel(m.transaction_type)}</span>
-                  <span className="tabular-nums">{formatPieces(Number(m.quantity_pieces))}</span>
+                  <span className="tabular-nums">{formatReportPieces(Number(m.quantity_pieces))}</span>
                 </li>
               ))}
             </ul>

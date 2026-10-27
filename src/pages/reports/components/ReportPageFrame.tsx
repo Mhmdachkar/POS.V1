@@ -4,13 +4,17 @@ import * as Tooltip from '@radix-ui/react-tooltip'
 import { ReportToolbar } from './ReportToolbar'
 import { type ReportDef } from '../reportCatalog'
 import { useReportSearch } from '../useReportSearch'
-import { BiPageDescription, BiPageTitle } from '@/lib/bilingual/ui'
+import { BiPageTitle } from '@/lib/bilingual/ui'
 import { REPORTS } from '@/lib/bilingual/reports'
 import { t } from '@/lib/bilingual/types'
 import { supabase } from '@/lib/supabase'
 import { useCategories } from '@/hooks/useInventory'
 import { useStaffList } from '@/hooks/useStaff'
-import { formatCalendarDate } from '@/lib/formatters'
+import { formatReportDate, formatReportDateTime } from '@/lib/formatters'
+import { COMMON } from '@/lib/bilingual/common'
+import { useDepotStore } from '@/stores/depotStore'
+import { InfoTip } from './InfoTip'
+import { ReportSwitcher } from './ReportSubNav'
 
 export function ReportPageFrame({
   report,
@@ -28,6 +32,8 @@ export function ReportPageFrame({
   children: ReactNode
 }) {
   const search = useReportSearch()
+  const depotId = useDepotStore((s) => s.currentDepotId)
+  const depotName = useDepotStore((s) => s.currentDepotName)
   const { data: staffList } = useStaffList({ page: 0, pageSize: 200, search: '', status: 'active', role: 'all' })
   const { data: categories } = useCategories()
   const productsQ = useQuery({
@@ -56,7 +62,7 @@ export function ReportPageFrame({
       const rows = (data ?? []) as Array<{ id: string; opened_at: string | null }>
       return rows.map((row) => ({
         value: row.id,
-        label: String(row.opened_at ?? row.id).slice(0, 16).replace('T', ' '),
+        label: formatReportDateTime(row.opened_at),
       }))
     },
     enabled: report.filters.includes('service'),
@@ -64,19 +70,19 @@ export function ReportPageFrame({
 
   return (
     <Tooltip.Provider delayDuration={150}>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="sticky top-0 z-20 shrink-0 border-b border-border bg-surface px-4 py-3 sm:px-6">
-          <nav className="mb-2 text-xs text-text-muted">
-            {t(REPORTS.pageTitle)} / {t(report.group)} / {t(report.title)}
-          </nav>
-          <h1 className="text-title text-text-primary">
-            <BiPageTitle {...report.title} />
-          </h1>
-          <div className="mt-0.5 text-sm text-text-secondary">
-            <BiPageDescription {...report.description} />
+      <div className="min-w-0 space-y-4 p-4 sm:p-6">
+        <ReportSwitcher report={report} />
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-title text-text-primary">
+              <BiPageTitle {...report.title} />
+            </h1>
+            <InfoTip text={t(report.description)} />
           </div>
           <p className="mt-1 text-xs text-text-muted">
-            {formatCalendarDate(search.range.startDate)} → {formatCalendarDate(search.range.endDate)}
+            {formatReportDate(search.range.startDate)} → {formatReportDate(search.range.endDate)}
+            {' · '}
+            {depotId ? (depotName ?? t(REPORTS.selectedDepot)) : t(COMMON.allDepots)}
           </p>
           <div className="mt-3">
             <ReportToolbar
@@ -109,7 +115,7 @@ export function ReportPageFrame({
             />
           </div>
         </div>
-        <div className="min-w-0 flex-1 space-y-6 overflow-y-auto p-4 sm:p-6">
+        <div className="min-w-0 space-y-6">
           {children}
         </div>
       </div>

@@ -4,7 +4,7 @@ import { REPORTS } from '@/lib/bilingual/reports'
 import { Link } from 'react-router-dom'
 import { EmptyState, Skeleton } from '@/components/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
-import { formatDateTime } from '@/lib/formatters'
+import { formatReportDateTime } from '@/lib/formatters'
 import {
   auditActionCategory,
   auditActorLine,
@@ -13,6 +13,7 @@ import {
 import { useAuditLog, type AuditLogRow } from '@/hooks/useAuditLog'
 import { AuditDetailDrawer } from '@/pages/admin/components/AuditDetailDrawer'
 import { ReportSection } from '../components/ReportSection'
+import { InfoTip } from '../components/InfoTip'
 import { cn } from '@/lib/cn'
 import { t } from '@/lib/bilingual/types'
 
@@ -29,29 +30,30 @@ export function ReportAuditTab({ depotId, startDate, endDate }: ReportAuditTabPr
     startDate,
     endDate,
     page: 0,
-    pageSize: 40,
+    pageSize: 200,
   })
 
   const rows = data?.data ?? []
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-text-secondary">
-        {t(REPORTS.auditRecent)}{' '}
-        <Link to="/admin/audit" className="text-primary hover:underline">
-          {t(REPORTS.openFullAudit)}
-        </Link>
-      </p>
-
-      <ReportSection title={<BiSectionTitle {...REPORTS.recentActivity} />}>
+      <ReportSection
+        title={(
+          <span className="inline-flex items-center gap-2">
+            <BiSectionTitle {...REPORTS.recentActivity} />
+            <InfoTip text={t(REPORTS.auditRecent)} />
+            <Link to="/admin/audit" className="text-xs font-normal text-primary hover:underline">{t(REPORTS.openFullAudit)}</Link>
+          </span>
+        )}
+      >
         {isLoading ? (
           <Skeleton className="h-48 w-full" />
         ) : isError ? (
           <EmptyState title={<BiEmptyTitle {...REPORTS.failedAuditLog} />} />
         ) : rows.length === 0 ? (
-          <EmptyState title={<BiEmptyTitle {...REPORTS.noAuditInPeriod} />} />
+          <p className="text-sm text-text-muted">{t(REPORTS.noDataPeriod)}</p>
         ) : (
-          <ul className="divide-y divide-border border border-border rounded-md text-sm max-h-96 overflow-y-auto">
+          <ul className="divide-y divide-border border border-border rounded-md text-sm">
             {rows.map((r) => {
               const category = auditActionCategory(r.action)
               const borderClass =
@@ -76,7 +78,7 @@ export function ReportAuditTab({ depotId, startDate, endDate }: ReportAuditTabPr
                       <BilingualText {...auditEventSummary(r)} variant="body" layout="inline" />
                     </span>
                     <span className="text-xs text-text-secondary">
-                      {formatDateTime(r.occurred_at)}
+                      {formatReportDateTime(r.occurred_at)}
                       {' · '}
                       {t(auditActorLine(r))}
                     </span>

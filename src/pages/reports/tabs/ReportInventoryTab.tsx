@@ -4,7 +4,7 @@ import { REPORTS } from '@/lib/bilingual/reports'
 import { INVENTORY, STOCK_TXN_TYPE } from '@/lib/bilingual/inventory'
 import { cn } from '@/lib/cn'
 import { MoneyDisplay, StockStatusBadge } from '@/components/ui'
-import { formatPieces } from '@/lib/formatters'
+import { formatReportPieces } from '@/lib/formatters'
 import type { AdminInventoryReport, InventoryStockRow, InventoryStockStatus } from '@/types/rpc'
 import type { StockStatus } from '@/types'
 import { ProductDetailDrawer } from '@/pages/inventory/components/ProductDetailDrawer'
@@ -53,9 +53,9 @@ function StockTable({
               <span className="font-medium truncate block">{r.name}</span>
               <span className="text-xs text-text-muted">
                 {showDepotColumn && `${r.depot_name} · `}
-                {formatPieces(Number(r.current_stock_pieces))}
+                {formatReportPieces(Number(r.current_stock_pieces))}
                 {r.low_stock_threshold != null && r.track_low_stock && (
-                  <> · {t(INVENTORY.threshold)} {formatPieces(Number(r.low_stock_threshold))}</>
+                  <> · {t(INVENTORY.threshold)} {formatReportPieces(Number(r.low_stock_threshold))}</>
                 )}
                 {' · '}
                 {t(r.track_low_stock ? REPORTS.tracked : REPORTS.untracked)}
@@ -92,7 +92,7 @@ export function ReportInventoryTab({ inventory, showDepotColumn }: ReportInvento
         {inventory.current_stock.length === 0 ? (
           <p className="text-sm text-text-muted">{t(REPORTS.noStockRows)}</p>
         ) : (
-          <div className="max-h-80 overflow-x-auto overflow-y-auto rounded-xl bg-surface-muted">
+          <div className="overflow-x-auto rounded-xl bg-surface-muted">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-surface-muted text-xs text-text-secondary">
                 <tr>
@@ -112,7 +112,7 @@ export function ReportInventoryTab({ inventory, showDepotColumn }: ReportInvento
                   >
                     <td className="px-3 py-2">{r.name}</td>
                     {showDepotColumn && <td className="px-3 py-2 text-text-secondary">{r.depot_name}</td>}
-                    <td className="px-3 py-2 text-right tabular-nums">{formatPieces(Number(r.current_stock_pieces))}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatReportPieces(Number(r.current_stock_pieces))}</td>
                     <td className="px-3 py-2 text-right">
                       {missingCost(r) ? (
                         <span className="text-text-muted">—</span>
@@ -147,7 +147,7 @@ export function ReportInventoryTab({ inventory, showDepotColumn }: ReportInvento
               {inventory.period_movement.map((m) => (
                 <li key={m.transaction_type} className="flex justify-between">
                   <span>{t(STOCK_TXN_TYPE[m.transaction_type as keyof typeof STOCK_TXN_TYPE] ?? { fr: m.transaction_type, en: m.transaction_type })}</span>
-                  <span className="tabular-nums">{formatPieces(Number(m.quantity_pieces))}</span>
+                  <span className="tabular-nums">{formatReportPieces(Number(m.quantity_pieces))}</span>
                 </li>
               ))}
             </ul>
@@ -161,7 +161,7 @@ export function ReportInventoryTab({ inventory, showDepotColumn }: ReportInvento
               {inventory.adjustment_breakdown.map((a) => (
                 <li key={a.adjustment_type} className="flex justify-between">
                   <span>{a.adjustment_type}</span>
-                  <span className="tabular-nums">{formatPieces(Number(a.quantity_pieces))}</span>
+                  <span className="tabular-nums">{formatReportPieces(Number(a.quantity_pieces))}</span>
                 </li>
               ))}
             </ul>

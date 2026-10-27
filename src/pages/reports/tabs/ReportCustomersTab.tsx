@@ -6,6 +6,7 @@ import type { AdminCustomersReport } from '@/types/rpc'
 import { CustomerDetailDrawer } from '@/pages/customers/components/CustomerDetailDrawer'
 import { ReportMetric } from '../components/ReportMetric'
 import { ReportSection } from '../components/ReportSection'
+import { InfoTip } from '../components/InfoTip'
 import { t } from '@/lib/bilingual/types'
 
 
@@ -19,32 +20,25 @@ export function ReportCustomersTab({ customers, depotScoped }: ReportCustomersTa
 
   return (
     <div className="space-y-8">
-      <p className="text-sm text-text-secondary">
-        {t(REPORTS.balancesGlobalNote)}
-        {depotScoped && ' Les paiements de période ci-dessous sont attribués via le dépôt du service le cas échéant.'}
-      </p>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <ReportMetric
-          label="Solde global dû"
+          label={<span className="inline-flex items-center">{t(REPORTS.receivable)}{depotScoped ? <InfoTip text={t(REPORTS.balancesGlobalNote)} /> : null}</span>}
           amount={Number(customers.outstanding_total_cfa)}
-          secondaryText={`${customers.outstanding_count} clients`}
         />
-        <ReportMetric label="Activité crédit (période)" amount={Number(customers.credit_activity_cfa)} />
+        <ReportMetric label={t(REPORTS.creditPeriod)} amount={Number(customers.credit_activity_cfa)} />
         <ReportMetric
-          label={depotScoped ? 'Paiements attribués au dépôt (période)' : 'Paiements (période)'}
+          label={t(REPORTS.collected)}
           amount={Number(customers.payment_activity_cfa)}
         />
         <ReportMetric
-          label="Paiements non attribués (période)"
+          label={t(REPORTS.noShiftCash)}
           amount={Number(customers.unattributed_payment_activity_cfa)}
-          secondaryText="Sans service — non rattaché à un dépôt"
         />
       </div>
 
       <ReportSection title={<BiSectionTitle {...REPORTS.customersWithBalance} />}>
         {customers.customers_with_balance.length === 0 ? (
-          <p className="text-sm text-text-muted">Aucun client avec solde.</p>
+          <p className="text-sm text-text-muted">{t(REPORTS.noDataPeriod)}</p>
         ) : (
           <ul className="divide-y divide-border border border-border rounded-md">
             {customers.customers_with_balance.map((c) => (

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { PaginationBar } from '@/components/ui'
 import { formatMoney } from '@/lib/formatters'
+import { InfoTip } from './InfoTip'
 import { COMMON } from '@/lib/bilingual/common'
 import { REPORTS } from '@/lib/bilingual/reports'
 import { t } from '@/lib/bilingual/types'
@@ -23,12 +24,25 @@ export function assertKpiEqualsTable(label: string, kpi: number, table: number) 
   }
 }
 
+function MoneyCell({ value }: { value: number | null }) {
+  if (value == null) {
+    return <span title={t(REPORTS.missingValue)}>—</span>
+  }
+  return (
+    <span className={cn('tabular-nums', value < 0 && 'text-danger-foreground')}>
+      {formatMoney(value)}
+    </span>
+  )
+}
+
 export function ReportRankedTable({
   rows,
   netTotal,
+  marginTip,
 }: {
   rows: RankedRow[]
   netTotal: number
+  marginTip?: string
 }) {
   const [page, setPage] = useState(0)
   const totals = useMemo(() => ({
@@ -49,10 +63,13 @@ export function ReportRankedTable({
           <thead className="sticky top-0 bg-surface-muted text-xs text-text-secondary">
             <tr>
               <th className="px-3 py-3 text-left">{t(REPORTS.products)}</th>
-              <th className="px-3 py-3 text-right">{t(REPORTS.gross)}</th>
-              <th className="px-3 py-3 text-right">{t(REPORTS.returnsMetric)}</th>
-              <th className="px-3 py-3 text-right">{t(REPORTS.net)}</th>
-              <th className="px-3 py-3 text-right">{t(REPORTS.grossProfit)}</th>
+              <th className="min-w-[7.5rem] px-3 py-3 text-right">{t(REPORTS.gross)}</th>
+              <th className="min-w-[7.5rem] px-3 py-3 text-right">{t(REPORTS.returnsMetric)}</th>
+              <th className="min-w-[7.5rem] px-3 py-3 text-right">{t(REPORTS.net)}</th>
+              <th className="min-w-[7.5rem] px-3 py-3 text-right">
+                {t(REPORTS.grossProfit)}
+                {marginTip ? <InfoTip text={marginTip} /> : null}
+              </th>
               <th className="min-w-[8rem] px-3 py-3 text-left">{t(REPORTS.shareOfNet)}</th>
             </tr>
           </thead>
@@ -60,10 +77,10 @@ export function ReportRankedTable({
             {slice.map((row) => (
               <tr key={row.id} className="border-t border-border">
                 <td className="px-3 py-2">{row.name}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{formatMoney(row.gross)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{formatMoney(row.returns)}</td>
-                <td className="px-3 py-2 text-right tabular-nums font-medium">{formatMoney(row.net)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{row.margin == null ? '—' : formatMoney(row.margin)}</td>
+                <td className="px-3 py-2 text-right"><MoneyCell value={row.gross} /></td>
+                <td className="px-3 py-2 text-right"><MoneyCell value={row.returns === 0 ? 0 : -Math.abs(row.returns)} /></td>
+                <td className="px-3 py-2 text-right font-medium"><MoneyCell value={row.net} /></td>
+                <td className="px-3 py-2 text-right"><MoneyCell value={row.margin ?? null} /></td>
                 <td className="px-3 py-2">
                   <div className="h-2 rounded-full bg-surface-muted">
                     <div
@@ -78,10 +95,10 @@ export function ReportRankedTable({
           <tfoot>
             <tr className="border-t-2 border-border bg-surface-muted font-semibold">
               <td className="px-3 py-3">{t(COMMON.total)}</td>
-              <td className="px-3 py-3 text-right tabular-nums">{formatMoney(totals.gross)}</td>
-              <td className="px-3 py-3 text-right tabular-nums">{formatMoney(totals.returns)}</td>
-              <td className="px-3 py-3 text-right tabular-nums">{formatMoney(totals.net)}</td>
-              <td className="px-3 py-3 text-right tabular-nums">{formatMoney(totals.margin)}</td>
+              <td className="px-3 py-3 text-right"><MoneyCell value={totals.gross} /></td>
+              <td className="px-3 py-3 text-right"><MoneyCell value={totals.returns === 0 ? 0 : -Math.abs(totals.returns)} /></td>
+              <td className="px-3 py-3 text-right"><MoneyCell value={totals.net} /></td>
+              <td className="px-3 py-3 text-right"><MoneyCell value={totals.margin} /></td>
               <td />
             </tr>
           </tfoot>

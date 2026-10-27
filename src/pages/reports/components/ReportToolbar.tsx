@@ -3,8 +3,6 @@ import { ChevronDown, Download } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { Button, Select } from '@/components/ui'
 import { resolveReportDateRange, type ReportPreset } from '@/lib/reportDates'
-import { formatCalendarDate } from '@/lib/formatters'
-import { useDepotStore } from '@/stores/depotStore'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { COMMON } from '@/lib/bilingual/common'
 import { REPORTS } from '@/lib/bilingual/reports'
@@ -84,9 +82,6 @@ export function ReportToolbar({
   exportDisabled,
 }: ReportToolbarProps) {
   const [exportOpen, setExportOpen] = useState(false)
-  const depotId = useDepotStore((s) => s.currentDepotId)
-  const depotName = useDepotStore((s) => s.currentDepotName)
-  const range = resolveReportDateRange(preset, customStart, customEnd)
   const hasExport = onExportCsv || onExportXlsx || onExportPrint
 
   return (
@@ -257,11 +252,6 @@ export function ReportToolbar({
         </div>
       )}
 
-      <p className="text-xs text-text-muted">
-        {depotId ? (depotName ?? bilingualPlain(REPORTS.selectedDepot)) : bilingualPlain(COMMON.allDepots)} · {formatCalendarDate(range.startDate)} → {formatCalendarDate(range.endDate)}
-        {' · '}
-        {bilingualPlain(REPORTS.balancesGlobalNote)}
-      </p>
     </div>
   )
 }

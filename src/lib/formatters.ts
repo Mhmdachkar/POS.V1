@@ -94,6 +94,44 @@ export function formatDateTime(iso: string | null | undefined): string {
   return `${date}, ${hour}:${minute}`
 }
 
+/** Report dates: "27/10/2026". */
+export function formatReportDate(ymd: string | null | undefined): string {
+  if (!ymd) return '—'
+  const [y, m, d] = ymd.slice(0, 10).split('-')
+  if (!y || !m || !d) return ymd
+  return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`
+}
+
+/** Report timestamps: "27/10/2026 14:05" in Africa/Abidjan. */
+export function formatReportDateTime(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const parts = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: DISPLAY_TIME_ZONE,
+    hourCycle: 'h23',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).formatToParts(new Date(iso))
+  return `${part(parts, 'day')}/${part(parts, 'month')}/${part(parts, 'year')} ${part(parts, 'hour')}:${part(parts, 'minute')}`
+}
+
+/** "18,3 %". */
+export function formatPercent(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return '—'
+  return `${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value)} %`
+}
+
+/** "2 pièces" / "2 pieces". */
+export function formatReportPieces(pieces: number | null | undefined): string {
+  if (pieces == null) return '—'
+  const rounded = parseFloat(pieces.toFixed(3))
+  const one = Math.abs(rounded) === 1
+  const unit = currentLocale() === 'en' ? (one ? 'piece' : 'pieces') : (one ? 'pièce' : 'pièces')
+  return `${new Intl.NumberFormat('fr-FR').format(rounded)} ${unit}`
+}
+
 /** Calendar day from YYYY-MM-DD, not a UTC instant. "27 oct. 2026". */
 export function formatCalendarDate(ymd: string | null | undefined): string {
   if (!ymd) return '—'

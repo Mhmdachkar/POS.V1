@@ -1,7 +1,9 @@
 import { BiModalTitle as BiSectionTitle, BiEmptyTitle } from '@/lib/bilingual/ui'
 import { REPORTS } from '@/lib/bilingual/reports'
 import { MoneyDisplay } from '@/components/ui'
-import { formatPieces } from '@/lib/formatters'
+import { formatReportDateTime, formatReportPieces } from '@/lib/formatters'
+import { t } from '@/lib/bilingual/types'
+import { InfoTip } from '../components/InfoTip'
 import type { AdminCostReport, AdminCostInventoryRow, AdminCostRestockRow } from '@/lib/rpc'
 import { ReportMetric } from '../components/ReportMetric'
 import { ReportSection } from '../components/ReportSection'
@@ -22,7 +24,7 @@ function InventoryValueTable({
     return <p className="text-sm text-text-muted"><BiEmptyTitle {...REPORTS.noInventoryCostRows} /></p>
   }
   return (
-    <div className="overflow-x-auto border border-border rounded-md max-h-96 overflow-y-auto">
+    <div className="overflow-x-auto border border-border rounded-md">
       <table className="w-full text-sm">
         <thead className="sticky top-0 bg-surface-alt text-xs">
           <tr>
@@ -40,6 +42,9 @@ function InventoryValueTable({
             <tr key={`${r.product_id}-${r.depot_id}`} className="hover:bg-surface-alt">
               <td className="px-3 py-2">
                 <span className="font-medium">{r.product_name}</span>
+                {!Number(r.cost_price_cfa) && (
+                  <span className="ml-2 rounded-full bg-warning/15 px-2 py-0.5 text-xs text-warning">{t(REPORTS.uncostedStock)}</span>
+                )}
                 {r.serial_number && (
                   <span className="block text-xs text-text-muted">{r.serial_number}</span>
                 )}
@@ -49,7 +54,7 @@ function InventoryValueTable({
                 <td className="px-3 py-2 text-text-secondary">{r.depot_name}</td>
               )}
               <td className="px-3 py-2 text-right tabular-nums">
-                {formatPieces(Number(r.current_stock_pieces))}
+                {formatReportPieces(Number(r.current_stock_pieces))}
               </td>
               <td className="px-3 py-2 text-right">
                 <MoneyDisplay amount={Number(r.cost_price_cfa)} size="small" />
@@ -85,14 +90,13 @@ function RestockLogTable({
   if (rows.length === 0) {
     return (
       <div className="space-y-2">
-        <p className="text-sm text-text-muted"><BiEmptyTitle {...REPORTS.noRestockLog} /></p>
-        <p className="text-xs text-text-muted italic"><BiEmptyTitle {...REPORTS.historicalCostNote} /></p>
+        <p className="text-sm text-text-muted">{t(REPORTS.noDataPeriod)}</p>
       </div>
     )
   }
   return (
     <div className="space-y-2">
-      <div className="overflow-x-auto border border-border rounded-md max-h-96 overflow-y-auto">
+      <div className="overflow-x-auto border border-border rounded-md">
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-surface-alt text-xs">
             <tr>
@@ -111,7 +115,7 @@ function RestockLogTable({
             {rows.map((r) => (
               <tr key={r.stock_entry_id} className="hover:bg-surface-alt">
                 <td className="px-3 py-2 text-text-secondary whitespace-nowrap">
-                  {r.entered_at.slice(0, 10)}
+                  {formatReportDateTime(r.entered_at)}
                 </td>
                 <td className="px-3 py-2">
                   <span className="font-medium">{r.product_name}</span>
@@ -128,7 +132,7 @@ function RestockLogTable({
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums">{r.quantity_in_unit}</td>
                 <td className="px-3 py-2 text-right tabular-nums">
-                  {formatPieces(Number(r.quantity_pieces))}
+                  {formatReportPieces(Number(r.quantity_pieces))}
                 </td>
                 <td className="px-3 py-2 text-right">
                   <MoneyDisplay amount={Number(r.unit_cost_price_cfa)} size="small" />
@@ -142,7 +146,7 @@ function RestockLogTable({
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-text-muted italic"><BiEmptyTitle {...REPORTS.historicalCostNote} /></p>
+      <InfoTip text={t(REPORTS.historicalCostNote)} />
     </div>
   )
 }
@@ -150,6 +154,7 @@ function RestockLogTable({
 export function ReportCostTab({ cost, showDepotColumn }: ReportCostTabProps) {
   const inv = cost.inventory_totals
   const period = cost.period_totals
+  const missingCost = cost.inventory_cost.filter((row) => !Number(row.cost_price_cfa)).length
 
   return (
     <div className="space-y-8">
@@ -181,12 +186,16 @@ export function ReportCostTab({ cost, showDepotColumn }: ReportCostTabProps) {
             <BiSectionTitle {...REPORTS.totalRestockPieces} />
           </p>
           <p className="mt-2 text-2xl font-semibold tabular-nums">
-            {formatPieces(Number(period.total_restock_quantity_pieces))}
+            {formatReportPieces(Number(period.total_restock_quantity_pieces))}
           </p>
         </div>
       </div>
 
       {/* Current inventory cost valuation table */}
+      {missingCost > 0 && (
+        <p className="text-sm text-text-secondary">{t(REPORTS.partialValue(missingCost))}</p>
+      )}
+
       <ReportSection title={<BiSectionTitle {...REPORTS.currentInventoryCost} />}>
         <InventoryValueTable
           rows={cost.inventory_cost}
@@ -195,7 +204,7 @@ export function ReportCostTab({ cost, showDepotColumn }: ReportCostTabProps) {
       </ReportSection>
 
       {/* Restock log table */}
-      <ReportSection title={<BiSectionTitle {...REPORTS.restockLog} />}>
+      <ReportSection title={<span className="inline-flex items-center"><BiSectionTitle {...REPORTS.restockLog} /> <InfoTip text={t(REPORTS.historicalCostNote)} /></span>}>
         <RestockLogTable
           rows={cost.restock_log}
           showDepotColumn={showDepotColumn}

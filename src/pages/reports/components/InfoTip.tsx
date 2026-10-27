@@ -3,7 +3,8 @@ import * as Tooltip from '@radix-ui/react-tooltip'
 export function InfoTip({ text }: { text: string }) {
   if (!text) return null
   return (
-    <Tooltip.Root delayDuration={150}>
+    <Tooltip.Provider delayDuration={150}>
+    <Tooltip.Root>
       <Tooltip.Trigger asChild>
         <button
           type="button"
@@ -22,5 +23,6 @@ export function InfoTip({ text }: { text: string }) {
         </Tooltip.Content>
       </Tooltip.Portal>
     </Tooltip.Root>
+    </Tooltip.Provider>
   )
 }

@@ -1,7 +1,7 @@
 import { MoneyDisplay } from '@/components/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { REPORTS } from '@/lib/bilingual/reports'
-import { formatPieces } from '@/lib/formatters'
+import { formatReportPieces } from '@/lib/formatters'
 import { t } from '@/lib/bilingual/types'
 
 
@@ -44,7 +44,7 @@ export function BreakdownListPieces({
         <li key={row.key} className="flex items-center justify-between gap-3 px-3 py-2 text-sm bg-surface">
           <span className="truncate">{row.label}</span>
           <span className="shrink-0 text-right tabular-nums text-text-secondary">
-            {formatPieces(row.pieces)} · <MoneyDisplay amount={row.amount} size="small" className="inline" />
+            {formatReportPieces(row.pieces)} · <MoneyDisplay amount={row.amount} size="small" className="inline" />
           </span>
         </li>
       ))}

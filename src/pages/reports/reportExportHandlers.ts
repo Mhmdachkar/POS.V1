@@ -14,7 +14,7 @@ import type {
   AdminSalesReport,
 } from '@/types/rpc'
 import type { AdminCostReport } from '@/lib/rpc'
-import { formatPieces } from '@/lib/formatters'
+import { formatReportPieces } from '@/lib/formatters'
 import { REPORTS } from '@/lib/bilingual/reports'
 import { t } from '@/lib/bilingual/types'
 
@@ -302,7 +302,7 @@ export async function exportReportPrint(ctx: ReportExportContext): Promise<void>
       { label: t(REPORTS.cogs), value: cfaExportValue(sales.cogs_cfa) },
       { label: t(REPORTS.grossProfit), value: cfaExportValue(sales.gross_profit_cfa) },
       { label: t(REPORTS.transactionCount), value: String(sales.transaction_count) },
-      { label: t(REPORTS.unitsSold), value: formatPieces(Number(sales.units_sold)) },
+      { label: t(REPORTS.unitsSold), value: formatReportPieces(Number(sales.units_sold)) },
     ])
   } else if (tab === 'inventory' && inventory) {
     printReportSummary(title, [
@@ -327,7 +327,7 @@ export async function exportReportPrint(ctx: ReportExportContext): Promise<void>
       { label: t(REPORTS.inventoryValueAtSelling), value: cfaExportValue(cost.inventory_totals.total_inventory_value_at_selling) },
       { label: t(REPORTS.potentialProfit), value: cfaExportValue(cost.inventory_totals.total_potential_profit) },
       { label: t(REPORTS.totalRestockCost), value: cfaExportValue(cost.period_totals.total_restock_cost_cfa) },
-      { label: t(REPORTS.totalRestockPieces), value: formatPieces(Number(cost.period_totals.total_restock_quantity_pieces)) },
+      { label: t(REPORTS.totalRestockPieces), value: formatReportPieces(Number(cost.period_totals.total_restock_quantity_pieces)) },
     ])
   }
 }

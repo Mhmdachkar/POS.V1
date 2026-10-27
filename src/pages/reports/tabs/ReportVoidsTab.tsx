@@ -3,7 +3,7 @@ import { BiEmptyTitle, BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui
 import { REPORTS } from '@/lib/bilingual/reports'
 import { cn } from '@/lib/cn'
 import { EmptyState, MoneyDisplay, SaleStatusBadge, Skeleton } from '@/components/ui'
-import { formatDateTime } from '@/lib/formatters'
+import { formatReportDateTime } from '@/lib/formatters'
 import type { AdminSalesReport } from '@/types/rpc'
 import { useSalesList } from '@/hooks/useSales'
 import { SaleDetailDrawer } from '@/pages/sales/components/SaleDetailDrawer'
@@ -71,7 +71,7 @@ export function ReportVoidsTab({
                   )}
                 >
                   <span className="font-mono text-xs">{sale.receipt_number}</span>
-                  <span className="text-text-muted text-xs">{formatDateTime(sale.created_at)}</span>
+                  <span className="text-text-muted text-xs">{formatReportDateTime(sale.created_at)}</span>
                   <span>{sale.cashier_name ?? '—'}</span>
                   <MoneyDisplay amount={sale.total_cfa} size="small" />
                   <SaleStatusBadge status={sale.status} />

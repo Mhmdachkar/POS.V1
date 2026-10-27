@@ -112,7 +112,7 @@ describe('ProductCard', () => {
     const onAddItem = vi.fn()
     render(
       <ProductCard
-        product={makeProduct({ current_stock_pieces: 0 })}
+        product={makeProduct({ current_stock_pieces: 0, track_low_stock: true })}
         onAddItem={onAddItem}
       />,
     )

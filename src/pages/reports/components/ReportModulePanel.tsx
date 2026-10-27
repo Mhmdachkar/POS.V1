@@ -5,7 +5,6 @@ import { COMMON } from "@/lib/bilingual/common"
 import { BiButtonInline } from "@/lib/bilingual/ui"
 import { REPORTS } from "@/lib/bilingual/reports"
 import { t } from "@/lib/bilingual/types"
-import { formatCFA } from "@/lib/formatters"
 import { MoneyDisplay } from "@/components/ui"
 import { ReportMetric } from "./ReportMetric"
 import { ReportSection } from "./ReportSection"
@@ -19,18 +18,26 @@ interface ReportModulePanelProps {
   cashierId?: string
 }
 
-async function callReport(name: string, args: Record<string, unknown>) {
-  const map = {
-    admin_report_collections: rpc.adminReportCollections,
-    admin_report_sales_by_hour: rpc.adminReportSalesByHour,
-    admin_report_shift_lines: rpc.adminReportShiftLines,
-    admin_report_discounts: rpc.adminReportDiscounts,
-    admin_report_customer_ageing: rpc.adminReportCustomerAgeing,
-    admin_report_stock_movements: rpc.adminReportStockMovements,
-    admin_report_low_stock: rpc.adminReportLowStock,
-  } as const
-  const fn = map[name as keyof typeof map]
-  const result = await fn(args as never)
+async function callReport(
+  kind: ReportModulePanelProps["kind"],
+  depotId: string | null,
+  startDate: string,
+  endDate: string,
+  cashierId?: string,
+) {
+  const result = await (kind === "low"
+    ? rpc.adminReportLowStock({ p_depot_id: depotId })
+    : kind === "ageing"
+      ? rpc.adminReportCustomerAgeing({ p_depot_id: depotId, p_as_of: endDate })
+      : kind === "stock"
+        ? rpc.adminReportStockMovements({ p_depot_id: depotId, p_start_date: startDate, p_end_date: endDate })
+        : kind === "collections"
+          ? rpc.adminReportCollections({ p_depot_id: depotId, p_start_date: startDate, p_end_date: endDate, p_cashier_id: cashierId || null })
+          : kind === "hours"
+            ? rpc.adminReportSalesByHour({ p_depot_id: depotId, p_start_date: startDate, p_end_date: endDate, p_cashier_id: cashierId || null })
+            : kind === "shifts"
+              ? rpc.adminReportShiftLines({ p_depot_id: depotId, p_start_date: startDate, p_end_date: endDate, p_cashier_id: cashierId || null })
+              : rpc.adminReportDiscounts({ p_depot_id: depotId, p_start_date: startDate, p_end_date: endDate, p_cashier_id: cashierId || null }))
   if (result.error) throw result.error
   return result.data
 }
@@ -42,13 +49,6 @@ export function ReportModulePanel({
   endDate,
   cashierId,
 }: ReportModulePanelProps) {
-  const args = {
-    p_depot_id: depotId,
-    p_start_date: startDate,
-    p_end_date: endDate,
-    p_cashier_id: cashierId || null,
-    p_as_of: endDate,
-  }
   const name = {
     collections: "admin_report_collections",
     hours: "admin_report_sales_by_hour",
@@ -60,7 +60,7 @@ export function ReportModulePanel({
   }[kind]
   const query = useQuery({
     queryKey: ["report-module", name, depotId, startDate, endDate, cashierId ?? null],
-    queryFn: () => callReport(name, kind === "low" ? { p_depot_id: depotId } : kind === "ageing" ? { p_depot_id: depotId, p_as_of: endDate } : kind === "stock" ? { p_depot_id: depotId, p_start_date: startDate, p_end_date: endDate } : args),
+    queryFn: () => callReport(kind, depotId, startDate, endDate, cashierId),
   })
   if (query.isLoading) {
     return <div className="h-24 animate-pulse rounded-2xl bg-surface-muted" />
@@ -80,20 +80,16 @@ export function ReportModulePanel({
   if (kind === "collections" && rows && typeof rows === "object") {
     const data = rows as Record<string, number>
     return (
-      <ReportSection title={<BiSectionTitle {...REPORTS.collected} />}>
-        <div className="grid md:grid-cols-3 gap-3">
-          <ReportMetric label={t(REPORTS.collected)} amount={Number(data.collected_cfa ?? 0)} />
-          <ReportMetric label={t(REPORTS.shiftCash)} amount={Number(data.shift_cash_cfa ?? 0)} />
-          <ReportMetric label={t(REPORTS.noShiftCash)} amount={Number(data.no_shift_cash_cfa ?? 0)} />
-        </div>
-        <p className="mt-3 text-sm text-text-secondary">
-          {t(REPORTS.cashCollectedOnSales)} {formatCFA(Number(data.cash_on_sales_cfa ?? 0))}
-          {" · "}
-          {formatCFA(Number(data.customer_payments_cfa ?? 0))}
-          {" − "}
-          {formatCFA(Number(data.cash_refunds_cfa ?? 0))}
-        </p>
-      </ReportSection>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <ReportMetric label={t(REPORTS.cashOnSales)} amount={Number(data.cash_on_sales_cfa ?? 0)} />
+        <ReportMetric label={t(REPORTS.customerPaymentsShort)} amount={Number(data.customer_payments_cfa ?? 0)} />
+        <ReportMetric
+          label={t(REPORTS.cashRefunds)}
+          amount={Number(data.cash_refunds_cfa ?? 0) === 0 ? 0 : -Math.abs(Number(data.cash_refunds_cfa ?? 0))}
+          danger={Number(data.cash_refunds_cfa ?? 0) !== 0}
+        />
+        <ReportMetric label={t(REPORTS.collected)} amount={Number(data.collected_cfa ?? 0)} emphasis />
+      </div>
     )
   }
   if (!Array.isArray(rows) || rows.length === 0) return null

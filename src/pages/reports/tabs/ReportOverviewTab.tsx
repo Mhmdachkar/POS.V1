@@ -15,7 +15,7 @@ import { REPORTS } from '@/lib/bilingual/reports'
 import type { AdminCustomersReport, AdminInventoryReport, AdminSalesReport } from '@/types/rpc'
 import { ReportMetric } from '../components/ReportMetric'
 import { ReportSection } from '../components/ReportSection'
-import { formatCFA, formatCalendarDayMonth, formatCompactMoney, formatPieces } from '@/lib/formatters'
+import { formatCFA, formatCalendarDayMonth, formatCompactMoney, formatReportPieces } from '@/lib/formatters'
 import { t } from '@/lib/bilingual/types'
 
 
@@ -76,7 +76,7 @@ export function ReportOverviewTab({ sales, inventory, customers }: ReportOvervie
           <div className="text-xs font-medium text-text-secondary">
             <BiTableHeader {...REPORTS.unitsSold} />
           </div>
-          <p className="mt-2 text-2xl font-semibold tabular-nums">{formatPieces(Number(sales.units_sold))}</p>
+          <p className="mt-2 text-2xl font-semibold tabular-nums">{formatReportPieces(Number(sales.units_sold))}</p>
         </div>
         <ReportMetric label={<BiTableHeader {...REPORTS.averageSale} />} amount={Number(sales.average_sale_cfa)} />
         <ReportMetric

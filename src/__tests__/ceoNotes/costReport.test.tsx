@@ -10,7 +10,7 @@ import { reportsRouteTree } from '@/pages/reports/ReportsRoutes'
 import { MemoryRouter, Routes } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { REPORTS } from '@/lib/bilingual/reports'
-import { formatCFA, formatPieces } from '@/lib/formatters'
+import { formatCFA, formatReportDateTime, formatReportPieces } from '@/lib/formatters'
 import type { AdminCostReport } from '@/lib/rpc'
 import type {
   AdminCashReport,
@@ -245,14 +245,14 @@ describe('CEO Notes — ReportCostTab', () => {
 
     expect(screen.getByText(REPORTS.totalRestockCost.fr)).toBeInTheDocument()
     expect(screen.getAllByText(hasFormatted(formatCFA(5000))).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText(formatPieces(50)).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText(formatReportPieces(50)).length).toBeGreaterThanOrEqual(1)
 
     expect(screen.getByText(REPORTS.currentInventoryCost.fr)).toBeInTheDocument()
     expect(screen.getAllByText('Onion Sack').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('ON-PCE-001').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText(REPORTS.restockLog.fr)).toBeInTheDocument()
     expect(screen.getByText('Weekly restock')).toBeInTheDocument()
-    expect(screen.getByText('2026-09-10')).toBeInTheDocument()
+    expect(screen.getByText(formatReportDateTime('2026-09-10T08:00:00.000Z'))).toBeInTheDocument()
   })
 })
 
@@ -273,6 +273,7 @@ describe('CEO Notes — ReportsPage cost tab', () => {
       </MemoryRouter>,
     )
 
+    await user.click(screen.getByRole('tab', { name: REPORTS.groupStock.fr }))
     const costTab = screen.getByRole('tab', { name: new RegExp(REPORTS.cost.fr, 'i') })
     expect(costTab).toBeInTheDocument()
     await user.click(costTab)

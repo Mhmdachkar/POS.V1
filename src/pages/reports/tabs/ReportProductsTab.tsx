@@ -4,7 +4,7 @@ import { REPORTS } from '@/lib/bilingual/reports'
 import { COMMON } from '@/lib/bilingual/common'
 import { cn } from '@/lib/cn'
 import { MoneyDisplay } from '@/components/ui'
-import { formatPieces } from '@/lib/formatters'
+import { formatReportPieces } from '@/lib/formatters'
 import type { AdminSalesReport, SalesReportProductRow } from '@/types/rpc'
 import { ProductDetailDrawer } from '@/pages/inventory/components/ProductDetailDrawer'
 import { ReportSection } from '../components/ReportSection'
@@ -79,7 +79,7 @@ export function ReportProductsTab({ sales, showDepotColumn }: ReportProductsTabP
                     {showDepotColumn && (
                       <td className="px-3 py-2 text-text-secondary">{p.depot_name}</td>
                     )}
-                    <td className="px-3 py-2 text-right tabular-nums">{formatPieces(Number(p.net_pieces))}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatReportPieces(Number(p.net_pieces))}</td>
                     <td className="px-3 py-2 text-right">
                       <MoneyDisplay amount={p.net_sales_cfa} size="small" />
                     </td>

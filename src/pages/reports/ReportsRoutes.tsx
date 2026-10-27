@@ -1,4 +1,5 @@
 import { Navigate, Route } from 'react-router-dom'
+import { lastReportPath } from './lastReport'
 import { ReportsLayout } from './ReportsLayout'
 import {
   CashCollectionsPage,
@@ -21,7 +22,7 @@ import {
 export function reportsRouteTree() {
   return (
     <Route path="/reports" element={<ReportsLayout />}>
-      <Route index element={<Navigate to="sales/summary" replace />} />
+      <Route index element={<Navigate to={lastReportPath()} replace />} />
       <Route path="sales/summary" element={<SalesSummaryPage />} />
       <Route path="sales/products" element={<SalesProductsPage />} />
       <Route path="sales/categories" element={<SalesCategoriesPage />} />

@@ -2,7 +2,7 @@ import { MoneyDisplay } from '@/components/ui'
 import { BiModalTitle as BiSectionTitle, BiTableHeader } from '@/lib/bilingual/ui'
 import { REPORTS } from '@/lib/bilingual/reports'
 import { COMMON } from '@/lib/bilingual/common'
-import { formatDateTime, formatPieces } from '@/lib/formatters'
+import { formatReportDateTime, formatReportPieces } from '@/lib/formatters'
 import type { AdminSalesReport } from '@/types/rpc'
 import { ReportMetric } from '../components/ReportMetric'
 import { ReportSection } from '../components/ReportSection'
@@ -44,7 +44,7 @@ export function ReportReturnsTab({ sales }: ReportReturnsTabProps) {
               <tbody className="divide-y divide-border">
                 {sales.returns.map((r) => (
                   <tr key={r.return_id}>
-                    <td className="px-3 py-2 text-text-muted">{formatDateTime(r.created_at)}</td>
+                    <td className="px-3 py-2 text-text-muted">{formatReportDateTime(r.created_at)}</td>
                     <td className="px-3 py-2 font-mono text-xs">{r.receipt_number}</td>
                     <td className="px-3 py-2">{r.cashier_name}</td>
                     <td className="px-3 py-2 text-right">
@@ -72,7 +72,7 @@ export function ReportReturnsTab({ sales }: ReportReturnsTabProps) {
                 <li key={`${r.return_id}-${item.product_id}`} className="flex justify-between gap-2">
                   <span>{item.product_name}</span>
                   <span className="tabular-nums text-text-secondary">
-                    {formatPieces(Number(item.quantity_pieces))} ·{' '}
+                    {formatReportPieces(Number(item.quantity_pieces))} ·{' '}
                     <MoneyDisplay amount={item.refund_amount_cfa} size="small" className="inline" />
                   </span>
                 </li>

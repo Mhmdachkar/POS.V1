@@ -5,7 +5,7 @@ import { COMMON } from '@/lib/bilingual/common'
 import { POS } from '@/lib/bilingual/pos'
 import { cn } from '@/lib/cn'
 import { EmptyState, MoneyDisplay, PaginationBar, SaleStatusBadge, Skeleton } from '@/components/ui'
-import { formatCFA, formatDateTime } from '@/lib/formatters'
+import { formatCFA, formatReportDateTime } from '@/lib/formatters'
 import type { AdminSalesReport } from '@/types/rpc'
 import { useSalesList } from '@/hooks/useSales'
 import { useDepotOptions } from '@/hooks/useInventory'
@@ -182,7 +182,7 @@ export function ReportSalesTab({
                   )}
                 >
                   <span className="font-mono text-xs truncate">{sale.receipt_number}</span>
-                  <span className="text-xs text-text-muted truncate">{formatDateTime(sale.created_at)}</span>
+                  <span className="text-xs text-text-muted truncate">{formatReportDateTime(sale.created_at)}</span>
                   <span className="truncate">{sale.cashier_name ?? '—'}</span>
                   {showDepotColumn && (
                     <span className="truncate text-xs">{depotNameById.get(sale.depot_id) ?? sale.depot_id}</span>

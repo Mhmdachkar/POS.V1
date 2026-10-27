@@ -4,10 +4,11 @@ import { REPORTS } from '@/lib/bilingual/reports'
 import { COMMON } from '@/lib/bilingual/common'
 import { SHIFT_STATUS } from '@/lib/bilingual/status'
 import { Button, MoneyDisplay } from '@/components/ui'
-import { formatCFA, formatDateTime } from '@/lib/formatters'
+import { formatCFA, formatReportDateTime } from '@/lib/formatters'
 import { printHtmlDocument } from '@/lib/reportExport'
 import type { AdminCashReport, AdminSalesReport, CashShiftReportRow } from '@/types/rpc'
 import { ShiftDetailDrawer } from '@/pages/shifts/components/ShiftDetailDrawer'
+import { InfoTip } from '../components/InfoTip'
 import { ReportMetric } from '../components/ReportMetric'
 import { ReportSection } from '../components/ReportSection'
 import { t } from '@/lib/bilingual/types'
@@ -27,8 +28,8 @@ function printShiftReport(shift: CashShiftReportRow, kind: '80' | '58' | 'A4' | 
 <h1>${title}</h1>
 <p>${t(COMMON.cashier)}: ${shift.cashier_name}</p>
 <p>${t(COMMON.depot)}: ${shift.depot_name}</p>
-<p>${t(REPORTS.openShifts)}: ${formatDateTime(shift.opened_at)}</p>
-<p>${t(SHIFT_STATUS.closed)}: ${shift.closed_at ? formatDateTime(shift.closed_at) : '—'}</p>
+<p>${t(REPORTS.openShifts)}: ${formatReportDateTime(shift.opened_at)}</p>
+<p>${t(SHIFT_STATUS.closed)}: ${shift.closed_at ? formatReportDateTime(shift.closed_at) : '—'}</p>
 <p>${t(REPORTS.colExpected)}: ${formatCFA(Number(shift.expected_cash_cfa ?? 0))}</p>
 <p>${t(REPORTS.colActual)}: ${formatCFA(Number(shift.actual_cash_cfa ?? 0))}</p>
 <p>${t(COMMON.discrepancy)}: ${formatCFA(Number(shift.discrepancy_cfa ?? 0))}</p>
@@ -48,11 +49,10 @@ export function ReportShiftsTab({ cash, sales }: ReportShiftsTabProps) {
       </div>
 
       {sales && (sales.no_shift_count > 0 || sales.no_shift_amount_cfa > 0) && (
-        <ReportSection title={<BiSectionTitle {...REPORTS.salesWithoutShiftPeriod} />}>
-          <p className="text-sm text-text-secondary">
-            {t(REPORTS.noShiftCompletedLine(sales.no_shift_count, formatCFA(Number(sales.no_shift_amount_cfa))))}
-          </p>
-        </ReportSection>
+        <ReportMetric
+          label={<span className="inline-flex items-center">{t(REPORTS.salesWithoutShiftPeriod)} <InfoTip text={t(REPORTS.noShiftCompletedLine(sales.no_shift_count, formatCFA(Number(sales.no_shift_amount_cfa))))} /></span>}
+          amount={Number(sales.no_shift_amount_cfa)}
+        />
       )}
 
       <ReportSection title={<BiSectionTitle {...REPORTS.openShifts} />}>
@@ -69,7 +69,7 @@ export function ReportShiftsTab({ cash, sales }: ReportShiftsTabProps) {
                 >
                   <span>{s.cashier_name} · {s.depot_name}</span>
                   <span className="ml-2 text-text-muted">
-                    {t(REPORTS.openShiftMeta(formatDateTime(s.opened_at), formatCFA(Number(s.opening_float_cfa))))}
+                    {t(REPORTS.openShiftMeta(formatReportDateTime(s.opened_at), formatCFA(Number(s.opening_float_cfa))))}
                   </span>
                 </button>
                 <Button type="button" size="sm" variant="ghost" onClick={() => printShiftReport(s, 'X')}>
@@ -105,7 +105,7 @@ export function ReportShiftsTab({ cash, sales }: ReportShiftsTabProps) {
                     className="hover:bg-surface-alt cursor-pointer"
                     onClick={() => setShiftId(s.shift_id)}
                   >
-                    <td className="px-3 py-2">{formatDateTime(s.closed_at ?? s.opened_at)}</td>
+                    <td className="px-3 py-2">{formatReportDateTime(s.closed_at ?? s.opened_at)}</td>
                     <td className="px-3 py-2">{s.cashier_name}</td>
                     <td className="px-3 py-2">{s.depot_name}</td>
                     <td className="px-3 py-2 text-right">
