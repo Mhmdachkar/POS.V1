@@ -39,6 +39,7 @@ const ADMIN_GROUPS: NavGroup[] = [
     title: NAV_GROUP.operations,
     items: [
       { label: NAV.sales, path: '/sales' },
+      { label: NAV.proformas, path: '/proformas' },
       { label: NAV.inventory, path: '/inventory' },
       { label: NAV.customers, path: '/customers' },
       { label: NAV.payments, path: '/payments' },
@@ -66,6 +67,7 @@ const NAV_ITEMS: Record<Exclude<StaffRole, 'admin'>, NavItem[]> = {
   cashier: [
     { label: NAV.pos, path: '/pos' },
     { label: NAV.sales, path: '/sales' },
+    { label: NAV.proformas, path: '/proformas' },
     { label: NAV.customers, path: '/customers' },
     { label: NAV.payments, path: '/payments' },
     { label: NAV.shift, path: '/shifts' },

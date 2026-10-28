@@ -63,6 +63,9 @@ vi.mock('@/components/pos/PaymentPanel', () => ({
 vi.mock('@/pages/sales/SalesPage', () => ({
   SalesPage: () => <div>sales-page</div>,
 }))
+vi.mock('@/pages/proformas/ProformasPage', () => ({
+  ProformasPage: () => <div>proformas-page</div>,
+}))
 vi.mock('@/pages/customers/CustomersPage', () => ({
   CustomersPage: () => <div>customers-page</div>,
 }))

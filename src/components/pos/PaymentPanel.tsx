@@ -8,7 +8,7 @@
  * Admin can supply p_override_total_cfa; Cashier cannot (server-enforced).
  */
 
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/cn'
 import { useShallow } from 'zustand/react/shallow'
 import { effectiveFinalTotal, usePOSStore } from '@/stores/posStore'
@@ -32,7 +32,7 @@ import { Textarea } from '@/components/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { POS } from '@/lib/bilingual/pos'
 import { bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
-import { toastErrorBi, toastErrorFromCode } from '@/lib/bilingual/toast'
+import { toastErrorBi, toastErrorFromCode, toastSuccessMessage } from '@/lib/bilingual/toast'
 import { CustomerChip } from './CustomerChip'
 import { DiscountRow } from './DiscountRow'
 import { CashSection } from './CashSection'
@@ -41,6 +41,10 @@ import { CommitButton } from './CommitButton'
 import { authorizedOpenShifts, useOpenShifts } from '@/hooks/useShifts'
 import { resolveRequiredShiftId } from '@/lib/posShiftContext'
 import { SHIFT_COPY } from '@/lib/bilingual/shift'
+import { PROFORMAS } from '@/lib/bilingual/proformas'
+import { useCreateProforma } from '@/hooks/useProformas'
+import { LoadingButton } from '@/components/ui'
+import { BiButtonStack } from '@/lib/bilingual/ui'
 
 interface PaymentPanelProps {
   depotId: string | null
@@ -62,6 +66,9 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
   const hasOpenShift = !!processingShiftId
   const shiftGateReady = !openShiftsLoading
 
+  const createProforma = useCreateProforma()
+  const [creatingProforma, setCreatingProforma] = useState(false)
+
   const {
     items,
     customer,
@@ -74,6 +81,9 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
     isSubmitting,
     overrideTotalCfa,
     priceExceptionReason,
+    pendingProformaId,
+    documentDateYmd,
+    externalRef,
     ensureIdempotencyKey,
     setSubmitting,
     setSaleResult,
@@ -90,6 +100,9 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
     isSubmitting:         s.isSubmitting,
     overrideTotalCfa:     s.overrideTotalCfa,
     priceExceptionReason: s.priceExceptionReason,
+    pendingProformaId:    s.pendingProformaId,
+    documentDateYmd:      s.documentDateYmd,
+    externalRef:          s.externalRef,
     ensureIdempotencyKey: s.ensureIdempotencyKey,
     setSubmitting:        s.setSubmitting,
     setSaleResult:        s.setSaleResult,
@@ -127,6 +140,52 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
     !exceedsKnownStock &&
     shiftGateReady &&
     hasOpenShift
+
+  const handleCreateProforma = useCallback(async () => {
+    if (!depotId) {
+      toastErrorBi(PROFORMAS.needDepot)
+      return
+    }
+    if (items.length === 0) {
+      toastErrorBi(PROFORMAS.needItems)
+      return
+    }
+    setCreatingProforma(true)
+    try {
+      const result = await createProforma.mutateAsync({
+        p_depot_id: depotId,
+        p_customer_id: customer?.id ?? null,
+        p_document_date: isAdmin ? (documentDateYmd || null) : null,
+        p_external_ref: isAdmin ? (externalRef.trim() || null) : null,
+        p_discount_type: discountType,
+        p_discount_value: discountType ? discountValue : null,
+        p_items: items.map((item) => ({
+          product_id: item.product_id,
+          unit_level: item.unit_level,
+          quantity_in_unit: item.quantity_in_unit,
+          ...(isAdmin
+            ? {
+                unit_price_cfa: item.unit_price_cfa,
+                line_discount_cfa: item.line_discount_cfa ?? 0,
+              }
+            : {}),
+        })),
+      })
+      const num = result?.number ?? ''
+      toastSuccessMessage(
+        `${PROFORMAS.created.fr} ${num}`.trim(),
+        `${PROFORMAS.created.en} ${num}`.trim(),
+      )
+    } catch (err) {
+      const parsed = parseError(err)
+      toastErrorFromCode(parsed.code, parsed.details)
+    } finally {
+      setCreatingProforma(false)
+    }
+  }, [
+    depotId, items, customer, isAdmin, documentDateYmd, externalRef,
+    discountType, discountValue, createProforma,
+  ])
 
   const handleCompleteSale = useCallback(async () => {
     if (inFlight.current) return
@@ -186,6 +245,9 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
               p_document_date: usePOSStore.getState().documentDateYmd || null,
               p_external_ref: usePOSStore.getState().externalRef.trim() || null,
             }
+          : {}),
+        ...(usePOSStore.getState().pendingProformaId
+          ? { p_proforma_id: usePOSStore.getState().pendingProformaId }
           : {}),
       })
 
@@ -297,6 +359,30 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
             <BilingualText {...POS.zeroTotalNeedsAdmin} variant="caption" />
           </p>
         )
+      )}
+
+      {pendingProformaId && showCheckout && (
+        <p role="status" className="text-xs text-info-foreground">
+          <BilingualText {...PROFORMAS.pendingConvert} variant="caption" />
+        </p>
+      )}
+
+      {showCheckout && !pendingProformaId && (
+        <LoadingButton
+          type="button"
+          variant="secondary"
+          size="lg"
+          className="w-full"
+          loading={creatingProforma}
+          disabled={creatingProforma || isSubmitting || items.length === 0}
+          onClick={() => { void handleCreateProforma() }}
+        >
+          {creatingProforma ? (
+            <BiButtonStack {...PROFORMAS.creating} />
+          ) : (
+            <BiButtonStack {...PROFORMAS.createFromCart} />
+          )}
+        </LoadingButton>
       )}
 
       <CommitButton

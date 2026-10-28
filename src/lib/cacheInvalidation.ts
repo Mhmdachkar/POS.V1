@@ -47,6 +47,7 @@ export function invalidateAfterSaleSettled(
     queryClient.invalidateQueries({ queryKey: ['shifts', 'detail', opts.shiftId] })
   }
   markReportsAndDashboardStale(queryClient)
+  queryClient.invalidateQueries({ queryKey: ['proformas'] })
 }
 
 export function invalidateAfterFulfillmentRelease(

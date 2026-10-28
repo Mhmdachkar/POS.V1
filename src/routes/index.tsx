@@ -13,6 +13,7 @@ import { NotFoundPage } from '@/pages/NotFoundPage'
 // Cashier + Admin pages
 import { POSPage } from '@/pages/pos/POSPage'
 import { SalesPage } from '@/pages/sales/SalesPage'
+import { ProformasPage } from '@/pages/proformas/ProformasPage'
 import { CustomersPage } from '@/pages/customers/CustomersPage'
 import { CustomerActivityPage } from '@/pages/customers/CustomerActivityPage'
 import { PaymentsPage } from '@/pages/payments/PaymentsPage'
@@ -83,6 +84,10 @@ export function AppRoutes() {
             <Route path="/customers/:customerId/activity" element={<CustomerActivityPage />} />
             <Route path="/payments"  element={<PaymentsPage />} />
             <Route path="/shifts"    element={<ShiftsPage />} />
+          </Route>
+
+          <Route element={<RoleGuard roles={['cashier', 'admin']} redirectTo="/inventory" />}>
+            <Route path="/proformas" element={<ProformasPage />} />
           </Route>
 
           <Route element={<RoleGuard roles={['admin']} redirectTo="/pos" />}>
