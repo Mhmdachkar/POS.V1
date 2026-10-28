@@ -2,12 +2,13 @@
  * PaymentsPage — Customer payment history list.
  */
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Banknote } from 'lucide-react'
 import { NavPictogram } from '@/components/layout/NavPictogram'
 import { cn } from '@/lib/cn'
 import {
   Badge,
+  DatePresetFilter,
   EmptyState,
   FilterBar,
   MoneyDisplay,
@@ -15,8 +16,10 @@ import {
   PaginationBar,
   Skeleton,
   type FilterBarChip,
+  type ListDatePreset,
 } from '@/components/ui'
 import { formatDateTime } from '@/lib/formatters'
+import { resolveReportDateRange } from '@/lib/reportDates'
 import { COMMON } from '@/lib/bilingual/common'
 import { PAYMENTS } from '@/lib/bilingual/payments'
 import {
@@ -71,15 +74,25 @@ export function PaymentsPage() {
   const [page, setPage] = useState(0)
   const [customerSearch, setCustomerSearch] = useState('')
   const [showReversed, setShowReversed] = useState(false)
+  const [datePreset, setDatePreset] = useState<ListDatePreset>('today')
+  const [customStart, setCustomStart] = useState('')
+  const [customEnd, setCustomEnd] = useState('')
   const isCashier = useAuthStore((s) => s.staff?.role === 'cashier')
 
   const pageSize = 30
+
+  const dateRange = useMemo(
+    () => resolveReportDateRange(datePreset, customStart, customEnd),
+    [datePreset, customStart, customEnd],
+  )
 
   const { data, isLoading, isError } = usePaymentList({
     page,
     pageSize,
     customerSearch,
     showReversed,
+    startDate: dateRange.startDate,
+    endDate: dateRange.endDate,
   })
 
   const payments = data?.data ?? []
@@ -114,6 +127,28 @@ export function PaymentsPage() {
               setPage(0)
             }}
             count={totalCount}
+          />
+          <DatePresetFilter
+            className="mt-3"
+            preset={datePreset}
+            onPresetChange={(p) => {
+              setDatePreset(p)
+              setPage(0)
+              if (p === 'custom' && !customStart && !customEnd) {
+                setCustomStart(dateRange.startDate)
+                setCustomEnd(dateRange.endDate)
+              }
+            }}
+            customStart={customStart || dateRange.startDate}
+            customEnd={customEnd || dateRange.endDate}
+            onCustomStartChange={(v) => {
+              setCustomStart(v)
+              setPage(0)
+            }}
+            onCustomEndChange={(v) => {
+              setCustomEnd(v)
+              setPage(0)
+            }}
           />
         </div>
       </div>

@@ -155,12 +155,16 @@ interface PaymentListParams {
   pageSize: number
   customerSearch: string
   showReversed: boolean
+  /** Inclusive YMD (Abidjan / UTC+0) */
+  startDate?: string
+  /** Inclusive YMD (Abidjan / UTC+0) */
+  endDate?: string
 }
 
 async function fetchPaymentList(
   params: PaymentListParams,
 ): Promise<{ data: Array<Payment & { customer_name: string | null; recorded_by_name: string | null }>; count: number }> {
-  const { page, pageSize, customerSearch, showReversed } = params
+  const { page, pageSize, customerSearch, showReversed, startDate, endDate } = params
   const from = page * pageSize
   const to = from + pageSize - 1
 
@@ -184,8 +188,6 @@ async function fetchPaymentList(
     .from('payments')
     .select('*, customers(name)', { count: 'exact' })
     .eq('payment_type', 'customer_payment')
-    .order('recorded_at', { ascending: false })
-    .range(from, to)
 
   if (!showReversed) {
     q = q.eq('is_reversed', false)
@@ -195,7 +197,17 @@ async function fetchPaymentList(
     q = q.in('customer_id', customerIdFilter)
   }
 
+  if (startDate) {
+    q = q.gte('recorded_at', `${startDate}T00:00:00.000Z`)
+  }
+
+  if (endDate) {
+    q = q.lte('recorded_at', `${endDate}T23:59:59.999Z`)
+  }
+
   const { data, error, count } = await q
+    .order('recorded_at', { ascending: false })
+    .range(from, to)
   if (error) throw error
 
   // Flatten join
