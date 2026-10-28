@@ -25,6 +25,7 @@ export type ReportTabId =
   | 'products'
   | 'inventory'
   | 'customers'
+  | 'purchases'
   | 'payments'
   | 'shifts'
   | 'returns'

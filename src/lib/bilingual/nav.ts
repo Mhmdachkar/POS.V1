@@ -21,6 +21,7 @@ export const NAV = {
   products: bi('Produits', 'Products'),
   dashboard: bi("Vue d'ensemble", 'Overview'),
   proformas: bi('Proformas', 'Quotes'),
+  achats: bi('Achats', 'Purchases'),
 } as const satisfies Record<string, BilingualPair>
 
 export const NAV_GROUP = {

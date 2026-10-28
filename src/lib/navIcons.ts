@@ -14,6 +14,7 @@ import {
   ShoppingCart,
   Tags,
   TrendingUp,
+  Truck,
   UserCog,
   Users,
   Warehouse,
@@ -33,6 +34,7 @@ export const NAV_ICONS: Record<string, LucideIcon> = {
   '/depot': Warehouse,
   '/sales': Receipt,
   '/proformas': FileText,
+  '/achats': Truck,
   '/inventory': Package,
   '/inventory/activity': TrendingUp,
   '/customers': Users,
@@ -53,6 +55,7 @@ const PAGE_TITLES: Record<string, BilingualPair> = {
   '/depot': NAV.overview,
   '/sales': NAV.sales,
   '/proformas': NAV.proformas,
+  '/achats': NAV.achats,
   '/inventory': NAV.inventory,
   '/inventory/activity': NAV.stockActivity,
   '/customers': NAV.customers,
@@ -74,6 +77,9 @@ export function getNavIcon(path: string): LucideIcon {
 export function pageTitleForPath(pathname: string): BilingualPair | null {
   if (pathname.startsWith('/customers/') && pathname.includes('/activity')) {
     return NAV.customers
+  }
+  if (pathname.startsWith('/achats')) {
+    return NAV.achats
   }
   return PAGE_TITLES[pathname] ?? null
 }

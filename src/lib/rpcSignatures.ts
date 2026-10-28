@@ -61,6 +61,17 @@ export const RPC_SIGNATURES = {
   create_delivery_note: ['p_sale_id', 'p_items'],
   get_delivery_note: ['p_delivery_note_id'],
   list_delivery_notes_for_sale: ['p_sale_id'],
+  create_supplier: ['p_name'],
+  update_supplier: ['p_supplier_id'],
+  list_suppliers: [],
+  upsert_purchase_receipt: ['p_depot_id', 'p_supplier_id', 'p_items'],
+  validate_purchase_receipt: ['p_purchase_receipt_id', 'p_payment_mode'],
+  cancel_purchase_receipt: ['p_purchase_receipt_id'],
+  get_purchase_receipt: ['p_purchase_receipt_id'],
+  list_purchase_receipts: [],
+  record_supplier_payment: ['p_supplier_id', 'p_amount_cfa', 'p_method'],
+  list_supplier_payments: [],
+  admin_report_purchases: ['p_depot_id', 'p_start_date', 'p_end_date', 'p_supplier_id'],
 } as const
 
 export type RpcName = keyof typeof RPC_SIGNATURES

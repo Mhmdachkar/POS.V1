@@ -28,6 +28,8 @@ import {
 import { ReportReturnsTab } from './tabs/ReportReturnsTab'
 import { ReportVoidsTab } from './tabs/ReportVoidsTab'
 import { ReportCustomersTab } from './tabs/ReportCustomersTab'
+import { ReportPurchasesTab } from './tabs/ReportPurchasesTab'
+import { usePurchasesReport } from '@/hooks/useAchats'
 import { ReportShiftsTab } from './tabs/ReportShiftsTab'
 import { ReportInventoryTab } from './tabs/ReportInventoryTab'
 import { ReportCostTab } from './tabs/ReportCostTab'
@@ -66,6 +68,7 @@ const LEGACY_TAB: Record<ReportId, ReportTabId> = {
   'cash-collections': 'payments',
   'cash-z': 'shifts',
   'customers-receivables': 'customers',
+  'purchases-suppliers': 'purchases',
   'stock-inventory': 'inventory',
   'stock-movements': 'inventory',
   'stock-low': 'inventory',
@@ -93,7 +96,7 @@ function useExport(id: ReportId, extra: Record<string, unknown>) {
     ...extra,
   }
   return {
-    disabled: extra.sales == null && extra.inventory == null && extra.customers == null && extra.cash == null && extra.cost == null && id !== 'stock-transfers' && id !== 'control-audit' && id !== 'stock-movements' && id !== 'cash-collections',
+    disabled: extra.sales == null && extra.inventory == null && extra.customers == null && extra.cash == null && extra.cost == null && extra.purchases == null && id !== 'stock-transfers' && id !== 'control-audit' && id !== 'stock-movements' && id !== 'cash-collections',
     csv: () => { void exportReportCsv(ctx as never) },
     xlsx: () => { void exportReportXlsx(ctx as never) },
     print: () => { void exportReportPrint(ctx as never) },
@@ -399,6 +402,29 @@ export function CustomersReceivablesPage() {
               endDate={search.range.endDate}
             />
           </div>
+        )}
+      </ReportSectionState>
+    </Frame>
+  )
+}
+
+export function PurchasesSuppliersPage() {
+  const search = useReportSearch()
+  const q = usePurchasesReport(search.depotId, search.range.startDate, search.range.endDate)
+  const exp = useExport('purchases-suppliers', { purchases: q.data })
+  return (
+    <Frame id="purchases-suppliers" exp={exp}>
+      <ReportSectionState isLoading={q.isLoading} isError={q.isError} data={q.data} onRetry={() => { void q.refetch() }}>
+        {(purchases) => (
+          <ReportPurchasesTab
+            rows={purchases.rows ?? []}
+            totals={purchases.totals ?? {
+              purchased_cfa: 0,
+              credit_cfa: 0,
+              paid_at_validate_cfa: 0,
+              receipt_count: 0,
+            }}
+          />
         )}
       </ReportSectionState>
     </Frame>

@@ -14,6 +14,10 @@ import { NotFoundPage } from '@/pages/NotFoundPage'
 import { POSPage } from '@/pages/pos/POSPage'
 import { SalesPage } from '@/pages/sales/SalesPage'
 import { ProformasPage } from '@/pages/proformas/ProformasPage'
+import { AchatsLayout } from '@/pages/achats/AchatsLayout'
+import { SuppliersPage } from '@/pages/achats/SuppliersPage'
+import { PurchaseReceiptsPage } from '@/pages/achats/PurchaseReceiptsPage'
+import { SupplierPaymentsPage } from '@/pages/achats/SupplierPaymentsPage'
 import { CustomersPage } from '@/pages/customers/CustomersPage'
 import { CustomerActivityPage } from '@/pages/customers/CustomerActivityPage'
 import { PaymentsPage } from '@/pages/payments/PaymentsPage'
@@ -93,6 +97,12 @@ export function AppRoutes() {
           <Route element={<RoleGuard roles={['admin']} redirectTo="/pos" />}>
             <Route path="/dashboard"         element={<DashboardPage />} />
             {reportsRouteTree()}
+            <Route path="/achats" element={<AchatsLayout />}>
+              <Route index element={<Navigate to="fournisseurs" replace />} />
+              <Route path="fournisseurs" element={<SuppliersPage />} />
+              <Route path="receptions" element={<PurchaseReceiptsPage />} />
+              <Route path="reglements" element={<SupplierPaymentsPage />} />
+            </Route>
             <Route path="/admin/staff"       element={<StaffPage />} />
             <Route path="/admin/depots"      element={<DepotsPage />} />
             <Route path="/admin/categories"  element={<CategoriesPage />} />

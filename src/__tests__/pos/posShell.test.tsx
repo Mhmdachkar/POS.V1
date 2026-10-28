@@ -66,6 +66,9 @@ vi.mock('@/pages/sales/SalesPage', () => ({
 vi.mock('@/pages/proformas/ProformasPage', () => ({
   ProformasPage: () => <div>proformas-page</div>,
 }))
+vi.mock('@/pages/achats/AchatsLayout', () => ({
+  AchatsLayout: () => <div>achats-page</div>,
+}))
 vi.mock('@/pages/customers/CustomersPage', () => ({
   CustomersPage: () => <div>customers-page</div>,
 }))

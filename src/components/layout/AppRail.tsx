@@ -40,6 +40,7 @@ const ADMIN_GROUPS: NavGroup[] = [
     items: [
       { label: NAV.sales, path: '/sales' },
       { label: NAV.proformas, path: '/proformas' },
+      { label: NAV.achats, path: '/achats' },
       { label: NAV.inventory, path: '/inventory' },
       { label: NAV.customers, path: '/customers' },
       { label: NAV.payments, path: '/payments' },
