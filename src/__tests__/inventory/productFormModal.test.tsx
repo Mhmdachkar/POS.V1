@@ -124,6 +124,19 @@ describe('ProductFormModal low-stock settings', () => {
     expect(screen.getByLabelText(/Min\. stock|Stock minimum/i)).toHaveValue(10)
   })
 
+  it('shows Taux de marge next to cost/sell ((sell−cost)/cost)', async () => {
+    const user = userEvent.setup()
+    wrap(<ProductFormModal open onClose={() => undefined} depotId="depot-a" />)
+
+    const rateEl = screen.getByTestId('unit-0-margin-rate')
+    expect(rateEl).toHaveTextContent(INVENTORY.marginRate.fr)
+    expect(rateEl).toHaveTextContent(INVENTORY.unavailableMargin.fr)
+
+    await user.type(unitCostInput(0), '100')
+    await user.type(unitPriceInput(0), '135')
+    expect(screen.getByTestId('unit-0-margin-rate')).toHaveTextContent('35 %')
+  })
+
   it('sends tracking fields on create', async () => {
     const user = userEvent.setup()
     createProduct.mockResolvedValue({})
