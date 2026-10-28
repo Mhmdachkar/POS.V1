@@ -13,7 +13,7 @@ import { CUSTOMERS } from '@/lib/bilingual/customers'
 import { ADMIN } from '@/lib/bilingual/admin'
 import { BiButtonInline, BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
 import { Link } from 'react-router-dom'
-import { Edit, Banknote, UserX, UserCheck, Download, FileText } from 'lucide-react'
+import { Edit, Banknote, UserX, UserCheck, Download, FileText, MessageCircle } from 'lucide-react'
 import { Drawer, Button, LoadingButton, MoneyDisplay, Skeleton } from '@/components/ui'
 import { formatDate } from '@/lib/formatters'
 import { parseError } from '@/lib/errors'
@@ -33,8 +33,8 @@ import {
 import {
   downloadCustomerAccountXlsx,
   fetchCustomerAccountExport,
-  printCustomerAccountPdf,
 } from '@/lib/customerAccountExport'
+import { exportCustomerStatement } from '@/lib/loadCustomerStatement'
 import { authorizedOpenShifts, useOpenShifts } from '@/hooks/useShifts'
 import { resolveRequiredShiftId } from '@/lib/posShiftContext'
 import { SHIFT_COPY } from '@/lib/bilingual/shift'
@@ -145,14 +145,30 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
     }
   }
 
-  const handleExport = async (kind: 'xlsx' | 'pdf') => {
+  const handleExport = async (kind: 'xlsx') => {
     if (!customer) return
     setActionError('')
     setExporting(true)
     try {
       const dataset = await fetchCustomerAccountExport(customer.id)
-      if (kind === 'xlsx') downloadCustomerAccountXlsx(dataset)
-      else printCustomerAccountPdf(dataset)
+      downloadCustomerAccountXlsx(dataset)
+    } catch (err) {
+      setActionError(parseError(err).message || t(CUSTOMERS.exportAccountFailed))
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const handleStatement = async (mode: 'pdf' | 'whatsapp') => {
+    if (!customer) return
+    setActionError('')
+    setExporting(true)
+    try {
+      await exportCustomerStatement({
+        customer,
+        depotId: currentDepotId,
+        mode,
+      })
     } catch (err) {
       setActionError(parseError(err).message || t(CUSTOMERS.exportAccountFailed))
     } finally {
@@ -341,10 +357,20 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
                     className="w-full gap-2"
                     loading={exporting}
                     disabled={exporting}
-                    onClick={() => { void handleExport('pdf') }}
+                    onClick={() => { void handleStatement('pdf') }}
                   >
                     <FileText className="h-4 w-4" />
-                    <BiButtonInline {...CUSTOMERS.exportAccountPdf} />
+                    <BiButtonInline {...CUSTOMERS.statementPdf} />
+                  </LoadingButton>
+                  <LoadingButton
+                    variant="secondary"
+                    className="w-full gap-2"
+                    loading={exporting}
+                    disabled={exporting}
+                    onClick={() => { void handleStatement('whatsapp') }}
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    <BiButtonInline {...CUSTOMERS.statementWhatsApp} />
                   </LoadingButton>
                 </>
               )}

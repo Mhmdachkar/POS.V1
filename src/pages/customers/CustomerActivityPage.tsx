@@ -7,7 +7,7 @@
 
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Download, FileText, ScrollText } from 'lucide-react'
+import { ArrowLeft, Download, FileText, MessageCircle, ScrollText } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import {
   Badge,
@@ -42,9 +42,11 @@ import {
 import {
   downloadCustomerAccountXlsx,
   fetchCustomerAccountExport,
-  printCustomerAccountPdf,
 } from '@/lib/customerAccountExport'
+import { exportCustomerStatement } from '@/lib/loadCustomerStatement'
+import { LEDGER_PERIOD_SQL_NOTE_THRESHOLD } from '@/lib/customerStatement'
 import { useAuthStore } from '@/stores/authStore'
+import { useDepotStore } from '@/stores/depotStore'
 import { SaleDetailDrawer } from '@/pages/sales/components/SaleDetailDrawer'
 import { CustomerFinancialSummary } from './components/CustomerFinancialSummary'
 import { CustomerAvatar } from '@/components/customers/CustomerAvatar'
@@ -84,7 +86,10 @@ export function CustomerActivityPage() {
   const [saleDetailId, setSaleDetailId] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState('')
+  const [periodFrom, setPeriodFrom] = useState('')
+  const [periodTo, setPeriodTo] = useState('')
   const isAdmin = useAuthStore((s) => s.staff?.role === 'admin')
+  const depotId = useDepotStore((s) => s.currentDepotId)
 
   const { data: customer, isLoading: loadingCustomer } = useCustomer(customerId ?? null)
   const {
@@ -114,14 +119,32 @@ export function CustomerActivityPage() {
     setPage(0)
   }
 
-  const handleExport = async (kind: 'xlsx' | 'pdf') => {
+  const handleExport = async (kind: 'xlsx') => {
     if (!customer) return
     setExportError('')
     setExporting(true)
     try {
       const dataset = await fetchCustomerAccountExport(customer.id)
-      if (kind === 'xlsx') downloadCustomerAccountXlsx(dataset)
-      else printCustomerAccountPdf(dataset)
+      downloadCustomerAccountXlsx(dataset)
+    } catch (err) {
+      setExportError(parseError(err).message || t(CUSTOMERS.exportAccountFailed))
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const handleStatement = async (mode: 'pdf' | 'whatsapp') => {
+    if (!customer) return
+    setExportError('')
+    setExporting(true)
+    try {
+      await exportCustomerStatement({
+        customer,
+        depotId,
+        periodFromYmd: periodFrom || null,
+        periodToYmd: periodTo || null,
+        mode,
+      })
     } catch (err) {
       setExportError(parseError(err).message || t(CUSTOMERS.exportAccountFailed))
     } finally {
@@ -170,29 +193,67 @@ export function CustomerActivityPage() {
                   />
                 </div>
                 {isAdmin && (
-                  <div className="flex gap-2">
-                    <LoadingButton
-                      variant="secondary"
-                      size="sm"
-                      className="gap-1.5"
-                      loading={exporting}
-                      disabled={exporting}
-                      onClick={() => { void handleExport('xlsx') }}
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                      <BiButtonInline {...CUSTOMERS.exportAccountExcel} />
-                    </LoadingButton>
-                    <LoadingButton
-                      variant="secondary"
-                      size="sm"
-                      className="gap-1.5"
-                      loading={exporting}
-                      disabled={exporting}
-                      onClick={() => { void handleExport('pdf') }}
-                    >
-                      <FileText className="h-3.5 w-3.5" />
-                      <BiButtonInline {...CUSTOMERS.exportAccountPdf} />
-                    </LoadingButton>
+                  <div className="flex flex-col items-end gap-2">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <label className="text-xs text-text-secondary flex items-center gap-1">
+                        <span>{t(CUSTOMERS.statementPeriodFrom)}</span>
+                        <input
+                          type="date"
+                          value={periodFrom}
+                          onChange={(e) => setPeriodFrom(e.target.value)}
+                          className="h-9 rounded-md border border-border bg-surface px-2 text-sm"
+                        />
+                      </label>
+                      <label className="text-xs text-text-secondary flex items-center gap-1">
+                        <span>{t(CUSTOMERS.statementPeriodTo)}</span>
+                        <input
+                          type="date"
+                          value={periodTo}
+                          onChange={(e) => setPeriodTo(e.target.value)}
+                          className="h-9 rounded-md border border-border bg-surface px-2 text-sm"
+                        />
+                      </label>
+                    </div>
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <LoadingButton
+                        variant="secondary"
+                        size="sm"
+                        className="gap-1.5"
+                        loading={exporting}
+                        disabled={exporting}
+                        onClick={() => { void handleExport('xlsx') }}
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        <BiButtonInline {...CUSTOMERS.exportAccountExcel} />
+                      </LoadingButton>
+                      <LoadingButton
+                        variant="secondary"
+                        size="sm"
+                        className="gap-1.5"
+                        loading={exporting}
+                        disabled={exporting}
+                        onClick={() => { void handleStatement('pdf') }}
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                        <BiButtonInline {...CUSTOMERS.statementPdf} />
+                      </LoadingButton>
+                      <LoadingButton
+                        variant="secondary"
+                        size="sm"
+                        className="gap-1.5"
+                        loading={exporting}
+                        disabled={exporting}
+                        onClick={() => { void handleStatement('whatsapp') }}
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" />
+                        <BiButtonInline {...CUSTOMERS.statementWhatsApp} />
+                      </LoadingButton>
+                    </div>
+                    {totalCount > LEDGER_PERIOD_SQL_NOTE_THRESHOLD && (
+                      <p className="text-xs text-text-muted max-w-xs text-right">
+                        {t(CUSTOMERS.statementLargeLedgerNote)}
+                      </p>
+                    )}
                   </div>
                 )}
                 {exportError && (
