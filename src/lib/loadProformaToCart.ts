@@ -21,6 +21,21 @@ export interface CatalogUnitPrice {
   product_photo_url: string
 }
 
+type CatalogUnitRow = {
+  product_id: string
+  unit_level: number
+  selling_price_cfa: number
+  cost_price_cfa: number
+  conversion_to_base: number
+  unit_name: string
+}
+
+type CatalogProductRow = {
+  id: string
+  name: string
+  photo_url: string | null
+}
+
 async function fetchCatalogUnits(
   items: ProformaItemRow[],
 ): Promise<Map<string, CatalogUnitPrice>> {
@@ -28,7 +43,7 @@ async function fetchCatalogUnits(
   const map = new Map<string, CatalogUnitPrice>()
   if (productIds.length === 0) return map
 
-  const [{ data: units, error: uErr }, { data: products, error: pErr }] = await Promise.all([
+  const [{ data: unitsRaw, error: uErr }, { data: productsRaw, error: pErr }] = await Promise.all([
     supabase
       .from('product_units')
       .select('product_id, unit_level, selling_price_cfa, cost_price_cfa, conversion_to_base, unit_name')
@@ -38,13 +53,17 @@ async function fetchCatalogUnits(
   if (uErr) throw uErr
   if (pErr) throw pErr
 
-  const productById = new Map((products ?? []).map((p) => [p.id as string, p]))
-  for (const u of units ?? []) {
-    const product = productById.get(u.product_id as string)
+  // Generated Database types omit these selects → supabase client infers `never`.
+  const units = (unitsRaw ?? []) as CatalogUnitRow[]
+  const products = (productsRaw ?? []) as CatalogProductRow[]
+
+  const productById = new Map(products.map((p) => [p.id, p]))
+  for (const u of units) {
+    const product = productById.get(u.product_id)
     const key = `${u.product_id}:${u.unit_level}`
     map.set(key, {
-      product_id: u.product_id as string,
-      unit_level: u.unit_level as number,
+      product_id: u.product_id,
+      unit_level: u.unit_level,
       selling_price_cfa: Number(u.selling_price_cfa),
       cost_price_cfa: Number(u.cost_price_cfa),
       conversion_to_base: Number(u.conversion_to_base),

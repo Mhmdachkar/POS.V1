@@ -255,3 +255,49 @@ export function buildProformaDocumentHtml(opts: {
   `
   return wrapCommercialDocument({ title: `Proforma ${opts.number}`, bodyHtml: body })
 }
+
+export function buildDeliveryNoteDocumentHtml(opts: {
+  header: CommercialHeaderContext
+  client: CommercialClientBlock
+  number: string
+  date: string
+  showPrices: boolean
+  receiptNumber: string
+  receivedByName?: string | null
+  rows: Array<{
+    code: string
+    designation: string
+    unit: string
+    qty: string
+    unitPrice?: string
+    discount?: string
+    amount?: string
+  }>
+}): string {
+  const lineRows = opts.rows.map((r, i) => ({ index: i + 1, ...r }))
+  const received = opts.receivedByName?.trim()
+    ? `<p>Re\u00e7u par : <strong>${escapeDocHtml(opts.receivedByName.trim())}</strong></p>`
+    : ''
+  const body = `
+    ${renderCommercialHeader(opts.header, {
+      title: 'Bon de livraison',
+      numberLabel: 'N\u00b0',
+      number: opts.number,
+      dateLabel: 'Date',
+      date: opts.date,
+      extraLines: [{ label: 'Vente', value: opts.receiptNumber }],
+    })}
+    <div class="parties">
+      ${renderClientBlock(opts.client)}
+      <div class="party">
+        <h3>Livraison</h3>
+        <p class="muted">Document sans mouvement de stock (pr\u00e9paration d\u00e9p\u00f4t s\u00e9par\u00e9e).</p>
+        ${received}
+      </div>
+    </div>
+    ${renderLineTable({ showPrices: opts.showPrices, rows: lineRows })}
+    ${renderSignatureBoxes('Cachet / Signature', 'Client / Re\u00e7u')}
+  `
+  return wrapCommercialDocument({ title: `BL ${opts.number}`, bodyHtml: body })
+}
+

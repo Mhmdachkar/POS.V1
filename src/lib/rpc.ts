@@ -162,6 +162,23 @@ export const rpc = {
   }): Promise<RpcResult<unknown>> =>
     callRpc('list_proformas', params),
 
+  saleDeliveryRemaining: (saleId: string): Promise<RpcResult<unknown>> =>
+    callRpc('sale_delivery_remaining', { p_sale_id: saleId }),
+
+  createDeliveryNote: (params: {
+    p_sale_id: string
+    p_show_prices?: boolean
+    p_received_by_name?: string | null
+    p_items: Array<{ sale_item_id: string; quantity_in_unit: number }>
+  }): Promise<RpcResult<{ id: string; number: string; sale_id: string }>> =>
+    callRpc('create_delivery_note', params),
+
+  getDeliveryNote: (deliveryNoteId: string): Promise<RpcResult<unknown>> =>
+    callRpc('get_delivery_note', { p_delivery_note_id: deliveryNoteId }),
+
+  listDeliveryNotesForSale: (saleId: string): Promise<RpcResult<unknown>> =>
+    callRpc('list_delivery_notes_for_sale', { p_sale_id: saleId }),
+
   /**
    * Record a standalone customer debt payment.
    * Reduces customer.balance_owed_cfa.
