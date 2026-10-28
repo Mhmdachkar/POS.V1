@@ -418,17 +418,19 @@ describe('SalesPage', () => {
     })
   })
 
-  it('defaults to today and applies created_at date bounds', async () => {
+  it('shows date chips unselected with no created_at bounds by default', async () => {
     const { builder, calls } = createFilterAwareFrom(catalog)
     vi.mocked(supabase.from).mockReturnValue(builder as never)
     renderSales()
     await screen.findByText('DKR-00000000')
-    expect(screen.getByRole('button', { name: COMMON.today.fr })).toHaveAttribute('aria-pressed', 'true')
-    expect(calls.some((c) => c.startsWith('gte:created_at:'))).toBe(true)
-    expect(calls.some((c) => c.startsWith('lte:created_at:'))).toBe(true)
+    expect(screen.getByRole('button', { name: COMMON.today.fr })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: COMMON.yesterday.fr })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: COMMON.custom.fr })).toHaveAttribute('aria-pressed', 'false')
+    expect(calls.some((c) => c.startsWith('gte:created_at:'))).toBe(false)
+    expect(calls.some((c) => c.startsWith('lte:created_at:'))).toBe(false)
   })
 
-  it('switches to yesterday date bounds', async () => {
+  it('applies yesterday date bounds when selected', async () => {
     const user = userEvent.setup()
     const { builder, calls } = createFilterAwareFrom(catalog)
     vi.mocked(supabase.from).mockReturnValue(builder as never)
@@ -440,6 +442,7 @@ describe('SalesPage', () => {
       expect(calls.some((c) => c.startsWith('gte:created_at:'))).toBe(true)
       expect(calls.some((c) => c.startsWith('lte:created_at:'))).toBe(true)
     })
+    expect(screen.getByRole('button', { name: COMMON.yesterday.fr })).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('row click opens the sale drawer (sets sale id)', async () => {

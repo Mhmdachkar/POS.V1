@@ -261,24 +261,25 @@ describe('PaymentsPage (13E-C)', () => {
     expect(calls).toContain('payments:eq:payment_type:customer_payment')
     expect(calls).toContain('payments:eq:is_reversed:false')
     expect(calls.some((c) => c.includes('sale_payment'))).toBe(false)
-    expect(calls.some((c) => c.startsWith('payments:gte:recorded_at:'))).toBe(true)
-    expect(calls.some((c) => c.startsWith('payments:lte:recorded_at:'))).toBe(true)
+    expect(calls.some((c) => c.startsWith('payments:gte:recorded_at:'))).toBe(false)
+    expect(calls.some((c) => c.startsWith('payments:lte:recorded_at:'))).toBe(false)
   })
 
-  it('defaults to today date chips and switches to yesterday', async () => {
+  it('shows date chips unselected by default and applies yesterday when chosen', async () => {
     const user = userEvent.setup()
     const { from, calls } = createPaymentsFrom(catalog)
     vi.mocked(supabase.from).mockImplementation(from as never)
     renderPayments()
 
     await screen.findByText('John Doe')
-    expect(screen.getByRole('button', { name: COMMON.today.fr })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: COMMON.today.fr })).toHaveAttribute('aria-pressed', 'false')
     calls.length = 0
     await user.click(screen.getByRole('button', { name: COMMON.yesterday.fr }))
     await waitFor(() => {
       expect(calls.some((c) => c.startsWith('payments:gte:recorded_at:'))).toBe(true)
       expect(calls.some((c) => c.startsWith('payments:lte:recorded_at:'))).toBe(true)
     })
+    expect(screen.getByRole('button', { name: COMMON.yesterday.fr })).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('Showing reversed removes the is_reversed filter while keeping customer_payment', async () => {

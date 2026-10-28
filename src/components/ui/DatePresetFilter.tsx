@@ -1,14 +1,16 @@
 ﻿/**
- * Compact date preset chips for list pages (Sales, Payments).
- * Presets: today / yesterday / custom (Abidjan calendar via resolveReportDateRange).
+ * Date range chips for list pages (Sales, Payments).
+ * Distinct from FilterBar status pills — outline + calendar, none selected by default.
+ * Presets: today / yesterday / custom (Abidjan via resolveReportDateRange).
  */
 
+import { CalendarDays } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { COMMON } from '@/lib/bilingual/common'
 import { REPORTS } from '@/lib/bilingual/reports'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { ReportDateInput } from '@/pages/reports/components/ReportDateInput'
-import { t } from '@/lib/bilingual/types'
+import { bilingualAriaLabel, t } from '@/lib/bilingual/types'
 import type { ReportPreset } from '@/lib/reportDates'
 
 export type ListDatePreset = Extract<ReportPreset, 'today' | 'yesterday' | 'custom'>
@@ -22,8 +24,9 @@ const PRESET_LABELS = {
 } as const
 
 export interface DatePresetFilterProps {
-  preset: ListDatePreset
-  onPresetChange: (preset: ListDatePreset) => void
+  /** null = no date filter applied (chips visible, none pressed). */
+  preset: ListDatePreset | null
+  onPresetChange: (preset: ListDatePreset | null) => void
   customStart: string
   customEnd: string
   onCustomStartChange: (ymd: string) => void
@@ -41,25 +44,40 @@ export function DatePresetFilter({
   className,
 }: DatePresetFilterProps) {
   return (
-    <div className={cn('flex flex-wrap items-center gap-2', className)}>
-      {PRESETS.map((p) => (
-        <button
-          key={p}
-          type="button"
-          aria-pressed={preset === p}
-          onClick={() => onPresetChange(p)}
-          className={cn(
-            'px-3 min-h-[44px] h-11 rounded-full text-sm font-medium flex-shrink-0 transition-colors',
-            preset === p
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-surface-muted text-text-secondary border border-border hover:bg-surface',
-          )}
-        >
-          <BilingualText {...PRESET_LABELS[p]} variant="filter" layout="inline" />
-        </button>
-      ))}
+    <div
+      className={cn(
+        'flex flex-wrap items-center gap-2 rounded-lg border border-border/80 bg-surface-muted/40 px-2.5 py-2',
+        className,
+      )}
+      role="group"
+      aria-label={bilingualAriaLabel(COMMON.date)}
+    >
+      <span className="inline-flex items-center gap-1.5 text-text-muted mr-0.5 flex-shrink-0">
+        <CalendarDays className="size-4" aria-hidden />
+        <BilingualText {...COMMON.date} variant="caption" layout="inline" className="uppercase tracking-wide" />
+      </span>
+      {PRESETS.map((p) => {
+        const selected = preset === p
+        return (
+          <button
+            key={p}
+            type="button"
+            aria-pressed={selected}
+            onClick={() => onPresetChange(selected ? null : p)}
+            className={cn(
+              // Squared outline — not the rounded-full primary pills used by FilterBar status chips
+              'px-2.5 min-h-[40px] h-10 rounded-md text-sm font-medium flex-shrink-0 transition-colors border',
+              selected
+                ? 'border-primary bg-primary-subtle text-primary shadow-none'
+                : 'border-border border-dashed bg-surface text-text-secondary hover:border-primary/40 hover:text-text-primary',
+            )}
+          >
+            <BilingualText {...PRESET_LABELS[p]} variant="filter" layout="inline" />
+          </button>
+        )
+      })}
       {preset === 'custom' && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:ml-1">
           <ReportDateInput
             label={t(REPORTS.dateFrom)}
             value={customStart}
