@@ -134,7 +134,7 @@ export function SalesPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<SaleStatus | null>(null)
   const [fulfillmentFilter, setFulfillmentFilter] = useState<FulfillmentStatus | null>(null)
-  const [datePreset, setDatePreset] = useState<ListDatePreset>('today')
+  const [datePreset, setDatePreset] = useState<ListDatePreset | null>(null)
   const [customStart, setCustomStart] = useState('')
   const [customEnd, setCustomEnd] = useState('')
   const [page, setPage] = useState(0)
@@ -151,9 +151,13 @@ export function SalesPage() {
   const showDepotColumn = staff?.role === 'admin' && depotId === null
 
   const dateRange = useMemo(
-    () => resolveReportDateRange(datePreset, customStart, customEnd),
+    () =>
+      datePreset
+        ? resolveReportDateRange(datePreset, customStart, customEnd)
+        : null,
     [datePreset, customStart, customEnd],
   )
+  const dateSeed = useMemo(() => resolveReportDateRange('today'), [])
 
   useEffect(() => {
     if (isDepotStaff && fulfillmentFilter === null) {
@@ -175,8 +179,8 @@ export function SalesPage() {
     status:  statusFilter,
     fulfillmentStatus: fulfillmentFilter,
     search:  debouncedSearch,
-    startDate: dateRange.startDate,
-    endDate: dateRange.endDate,
+    startDate: dateRange?.startDate,
+    endDate: dateRange?.endDate,
     page,
     pageSize: 30,
   })
@@ -245,12 +249,12 @@ export function SalesPage() {
             onPresetChange={(p) => {
               setDatePreset(p)
               if (p === 'custom' && !customStart && !customEnd) {
-                setCustomStart(dateRange.startDate)
-                setCustomEnd(dateRange.endDate)
+                setCustomStart(dateSeed.startDate)
+                setCustomEnd(dateSeed.endDate)
               }
             }}
-            customStart={customStart || dateRange.startDate}
-            customEnd={customEnd || dateRange.endDate}
+            customStart={customStart || dateSeed.startDate}
+            customEnd={customEnd || dateSeed.endDate}
             onCustomStartChange={setCustomStart}
             onCustomEndChange={setCustomEnd}
           />

@@ -74,7 +74,7 @@ export function PaymentsPage() {
   const [page, setPage] = useState(0)
   const [customerSearch, setCustomerSearch] = useState('')
   const [showReversed, setShowReversed] = useState(false)
-  const [datePreset, setDatePreset] = useState<ListDatePreset>('today')
+  const [datePreset, setDatePreset] = useState<ListDatePreset | null>(null)
   const [customStart, setCustomStart] = useState('')
   const [customEnd, setCustomEnd] = useState('')
   const isCashier = useAuthStore((s) => s.staff?.role === 'cashier')
@@ -82,17 +82,21 @@ export function PaymentsPage() {
   const pageSize = 30
 
   const dateRange = useMemo(
-    () => resolveReportDateRange(datePreset, customStart, customEnd),
+    () =>
+      datePreset
+        ? resolveReportDateRange(datePreset, customStart, customEnd)
+        : null,
     [datePreset, customStart, customEnd],
   )
+  const dateSeed = useMemo(() => resolveReportDateRange('today'), [])
 
   const { data, isLoading, isError } = usePaymentList({
     page,
     pageSize,
     customerSearch,
     showReversed,
-    startDate: dateRange.startDate,
-    endDate: dateRange.endDate,
+    startDate: dateRange?.startDate,
+    endDate: dateRange?.endDate,
   })
 
   const payments = data?.data ?? []
@@ -135,12 +139,12 @@ export function PaymentsPage() {
               setDatePreset(p)
               setPage(0)
               if (p === 'custom' && !customStart && !customEnd) {
-                setCustomStart(dateRange.startDate)
-                setCustomEnd(dateRange.endDate)
+                setCustomStart(dateSeed.startDate)
+                setCustomEnd(dateSeed.endDate)
               }
             }}
-            customStart={customStart || dateRange.startDate}
-            customEnd={customEnd || dateRange.endDate}
+            customStart={customStart || dateSeed.startDate}
+            customEnd={customEnd || dateSeed.endDate}
             onCustomStartChange={(v) => {
               setCustomStart(v)
               setPage(0)
