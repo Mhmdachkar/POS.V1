@@ -389,7 +389,7 @@ describe('TransfersPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'En attente' })).toHaveClass('bg-primary')
       expect(screen.getAllByText('En attente').length).toBeGreaterThan(1)
-      expect(screen.getAllByText('Terminée')).toHaveLength(1)
+      expect(screen.getAllByText('Terminé')).toHaveLength(1)
     })
   })
 })

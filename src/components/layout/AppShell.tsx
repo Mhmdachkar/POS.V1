@@ -1,12 +1,24 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 import { useDepotContextSync } from '@/hooks/useDepotContextSync'
 import { COMMON } from '@/lib/bilingual/common'
 import { t } from '@/lib/bilingual/types'
+import { useAuthStore } from '@/stores/authStore'
 import { useLocaleStore } from '@/stores/localeStore'
 import { AppRail } from './AppRail'
 import { TopBar } from './TopBar'
+
+function cashierForbidden(pathname: string): boolean {
+  return (
+    pathname.startsWith('/inventory')
+    || pathname.startsWith('/depot')
+    || pathname.startsWith('/transfers')
+    || pathname.startsWith('/dashboard')
+    || pathname.startsWith('/reports')
+    || pathname.startsWith('/admin')
+  )
+}
 
 /**
  * AppShell — the persistent authenticated application frame for every authed route.
@@ -26,6 +38,7 @@ import { TopBar } from './TopBar'
  */
 export function AppShell() {
   const locale = useLocaleStore((s) => s.locale)
+  const staff = useAuthStore((s) => s.staff)
   const [railExpanded, setRailExpanded] = useState(true)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const location = useLocation()
@@ -59,6 +72,10 @@ export function AppShell() {
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [mobileNavOpen])
+
+  if (staff?.role === 'cashier' && cashierForbidden(location.pathname)) {
+    return <Navigate to="/pos" replace />
+  }
 
   return (
     <div className="flex h-dvh max-h-dvh w-full bg-background overflow-hidden">

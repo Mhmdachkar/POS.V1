@@ -549,6 +549,8 @@ export interface SalesReportCashierRow {
   returns_activity_cfa?: number
   net_sales_cfa?: number
   transaction_count: number
+  /** Sale-line GP (same COGS rules as product_performance); null if any line missing cost. */
+  gross_profit_cfa?: number | null
 }
 
 export interface SalesReportCategoryRow {
@@ -696,6 +698,8 @@ export interface AdminCustomersReport {
   outstanding_count: number
   credit_activity_cfa: number
   credit_activity_count: number
+  /** Period SUM(sale_returns.balance_adjustment_cfa) — credit notes / avoir. */
+  credit_note_activity_cfa?: number
   payment_activity_cfa: number
   payment_activity_count: number
   unattributed_payment_activity_cfa: number

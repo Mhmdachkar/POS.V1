@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { REPORTS } from '@/lib/bilingual/reports'
 import { COMMON } from '@/lib/bilingual/common'
 import { MoneyDisplay } from '@/components/ui'
-import { formatReportDate } from '@/lib/formatters'
+import { formatCFA, formatReportDate } from '@/lib/formatters'
 import { rpc } from '@/lib/rpc'
 import type { AdminCustomersReport } from '@/types/rpc'
 import { CustomerDetailDrawer } from '@/pages/customers/components/CustomerDetailDrawer'
@@ -107,7 +107,15 @@ export function ReportCustomersTab({ customers, depotScoped, depotId, endDate }:
           label={<span className="inline-flex items-center">{t(REPORTS.receivable)}</span>}
           amount={Number(customers.outstanding_total_cfa)}
         />
-        <ReportMetric label={t(REPORTS.creditGranted)} amount={Number(customers.credit_activity_cfa)} />
+        <ReportMetric
+          label={t(REPORTS.creditGranted)}
+          amount={Number(customers.credit_activity_cfa)}
+          secondaryText={
+            Number(customers.credit_note_activity_cfa ?? 0) > 0
+              ? t(REPORTS.creditNoteOfWhich(formatCFA(Number(customers.credit_note_activity_cfa))))
+              : undefined
+          }
+        />
         <ReportMetric label={t(REPORTS.collectedOnReceivables)} amount={Number(customers.payment_activity_cfa)} />
       </div>
 

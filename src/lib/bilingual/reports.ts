@@ -19,10 +19,12 @@ export const REPORTS = {
   colNet: bi('Net', 'Net'),
   byPaymentMode: bi('Par mode de paiement', 'By payment method'),
   modeCash: bi('Espèces', 'Cash'),
-  modeMobile: bi('Mobile Money', 'Mobile money'),
+  modeMobile: bi('Paiement mobile', 'Mobile money'),
   modeCard: bi('Carte', 'Card'),
   modeCredit: bi('Crédit', 'Credit'),
   creditGranted: bi('Crédit accordé', 'Credit granted'),
+  creditNoteOfWhich: (amount: string) =>
+    bi(`dont ${amount} remboursé en avoir`, `of which ${amount} refunded as credit note`),
   collectedOnReceivables: bi('Encaissé sur créances', 'Collected on receivables'),
   lastPayment: bi('Dernier paiement', 'Last payment'),
   colPaid: bi('Payé', 'Paid'),

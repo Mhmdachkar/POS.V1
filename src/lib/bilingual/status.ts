@@ -11,7 +11,7 @@ export const SALE_STATUS: Record<SaleStatus, BilingualPair> = {
 
 export const TRANSFER_STATUS: Record<TransferStatus, BilingualPair> = {
   pending: bi('En attente', 'Pending'),
-  completed: bi('Terminée', 'Completed'),
+  completed: bi('Terminé', 'Completed'),
   cancelled: bi('Annulé', 'Cancelled'),
 }
 

@@ -52,9 +52,10 @@ export function ProductCard({ product, onAddItem }: ProductCardProps) {
         : { kind: 'multi' as const, tooltip: presenceKey.slice(6) }
 
   const status = getProductStockStatus(product)
-  const outOfStock = status === 'out_of_stock'
-  const lowStock = status === 'low_stock'
   const available = Number(product.current_stock_pieces)
+  // POS: zero on-hand is always Rupture + not sellable (alerts/reports still use track_low_stock).
+  const outOfStock = available <= 0 || status === 'out_of_stock'
+  const lowStock = !outOfStock && status === 'low_stock'
   const remaining = remainingPieces(available, cartItems, product.id)
   const primaryUnit = product.units[0]
   const serial = primarySerial(product)
@@ -80,7 +81,7 @@ export function ProductCard({ product, onAddItem }: ProductCardProps) {
   const addDisabled = outOfStock || atStockLimit || units.length === 0
 
   function handleTap() {
-    if (outOfStock || units.length === 0) return
+    if (outOfStock || atStockLimit || units.length === 0) return
     if (units.length === 1) {
       if (!canAddPrimary) return
       onAddItem(product, units[0], 1)
@@ -96,7 +97,7 @@ export function ProductCard({ product, onAddItem }: ProductCardProps) {
           ref={buttonRef}
           type="button"
           aria-label={serial ? `${product.name} (${serial})` : product.name}
-          disabled={addDisabled && units.length <= 1}
+          disabled={outOfStock || (addDisabled && units.length <= 1)}
           onClick={handleTap}
           className={cn(
             'relative w-full h-full min-h-full text-left overflow-hidden rounded-xl flex flex-col',

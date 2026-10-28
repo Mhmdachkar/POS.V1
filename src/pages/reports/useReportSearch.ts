@@ -42,10 +42,17 @@ export function useReportSearch() {
   }, [params, setParams, depotId])
 
   useEffect(() => {
+    // All Depots selected: drop stale ?depot= so reload keeps Tous les dépôts
+    if (depotId == null && depotParam) {
+      const merged = new URLSearchParams(params)
+      merged.delete('depot')
+      setParams(merged, { replace: true })
+      return
+    }
     if (!depotParam || depotParam === depotId || !setCurrentDepot) return
     const match = (availableDepots ?? []).find((d) => d.id === depotParam)
     if (match) setCurrentDepot(match.id, match.name)
-  }, [availableDepots, depotId, depotParam, setCurrentDepot])
+  }, [availableDepots, depotId, depotParam, params, setCurrentDepot, setParams])
 
   return {
     preset,

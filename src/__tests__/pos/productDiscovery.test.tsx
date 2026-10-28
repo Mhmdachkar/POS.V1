@@ -123,6 +123,26 @@ describe('ProductCard', () => {
     expect(screen.getByText(POS.outOfStock.fr)).toBeInTheDocument()
   })
 
+  it('shows Rupture and blocks add when stock is 0 even if untracked', async () => {
+    const user = userEvent.setup()
+    const onAddItem = vi.fn()
+    render(
+      <ProductCard
+        product={makeProduct({
+          current_stock_pieces: 0,
+          track_low_stock: false,
+          units: [makeUnit(), packUnit()],
+        })}
+        onAddItem={onAddItem}
+      />,
+    )
+    expect(screen.getByRole('button', { name: /Water/ })).toBeDisabled()
+    expect(screen.getByText(POS.outOfStock.fr)).toBeInTheDocument()
+    expect(screen.queryByText(POS.atMax.fr)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Water/ }))
+    expect(onAddItem).not.toHaveBeenCalled()
+  })
+
   it('does not add when cart already at available stock', async () => {
     const user = userEvent.setup()
     const onAddItem = vi.fn()
