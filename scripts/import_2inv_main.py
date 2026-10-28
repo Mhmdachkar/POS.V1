@@ -282,15 +282,11 @@ def parse_elecrtro(ws, imgs: dict[int, list]) -> list[ProductRow]:
     return rows
 
 
-# ELECTRO 2 FX: foreign unit → CFA. Confirm before re-import / correction run.
-ELECTRO2_FX_CFA = 156
-
-
 def parse_electro2(ws, imgs: dict[int, list]) -> list[ProductRow]:
-    """ELECTRO 2 columns (1-based): C4=CTN, C5=PCS/CTN, C6=TQTY pieces,
-    C11=foreign piece-group amount, C14=sell CFA.
+    """ELECTRO 2 columns (1-based): C4=CTN, C5=PCS/CTN, C6=TQTY pieces, C14=sell CFA.
     C7/C8 are not piece qty; C13 (=126×C7) is not a cost.
-    L0 cost CFA = (C11 / C5) × ELECTRO2_FX_CFA.
+    Purchase cost is not taken from the sheet (C11×FX/C5 is unrealistic) —
+    cost=None → 0 placeholder until the client supplies real L0 costs.
     """
     rows: list[ProductRow] = []
     for r in range(1, ws.max_row + 1):
@@ -300,12 +296,6 @@ def parse_electro2(ws, imgs: dict[int, list]) -> list[ProductRow]:
         name = clean_name(ws.cell(r, 3).value, serial)
         pcs = max(1, int(as_float(ws.cell(r, 5).value) or 1))
         tqty = as_float(ws.cell(r, 6).value) or 0
-        c11 = as_float(ws.cell(r, 11).value)
-        cost = (
-            round((c11 / pcs) * ELECTRO2_FX_CFA, 2)
-            if c11 is not None
-            else None
-        )
         sell = as_float(ws.cell(r, 14).value)
         cat = classify("ELECTRO 2", serial, name)
         rows.append(
@@ -315,7 +305,7 @@ def parse_electro2(ws, imgs: dict[int, list]) -> list[ProductRow]:
                 serial=serial,
                 name=name or serial,
                 category=cat,
-                cost=cost,
+                cost=None,
                 sell=sell,
                 tqty=tqty,
                 pcs_ctn=pcs,
