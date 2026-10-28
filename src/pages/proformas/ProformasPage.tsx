@@ -203,7 +203,9 @@ export function ProformasPage() {
                   {formatReportDate(row.document_date)}
                 </span>
                 <span className="text-sm text-text-secondary truncate">
-                  {row.customer_id ? '\u2014' : t(PROFORMAS.walkIn)}
+                  {row.customer_id
+                    ? (row.customer_name?.trim() || '\u2014')
+                    : t(PROFORMAS.walkIn)}
                 </span>
                 <MoneyDisplay amount={row.total_cfa} className="justify-self-end text-sm font-medium" />
                 <RowChevron />
