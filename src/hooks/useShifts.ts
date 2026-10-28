@@ -46,6 +46,15 @@ export interface ShiftListItem {
   depot_name: string
   cashier_name: string | null
   closed_by_name: string | null
+  /**
+   * Cash activity on the shift (sales + customer payments − cash refunds), no float.
+   * Filled for list rows when running totals are loaded (always for open; optional for closed).
+   */
+  shift_cash_activity_cfa?: number | null
+  /**
+   * Expected drawer cash: frozen expected_cash for closed, live estimate for open.
+   */
+  expected_display_cfa?: number | null
 }
 
 export interface ShiftRunningTotals {
@@ -167,38 +176,100 @@ function mapListRow(row: Record<string, unknown>): ShiftListItem {
 }
 
 export async function fetchShiftRunningTotals(shiftId: string): Promise<ShiftRunningTotals> {
+  const map = await fetchShiftRunningTotalsBatch([shiftId])
+  return map.get(shiftId) ?? { sales_cash_cfa: 0, customer_pmts_cfa: 0, return_cash_cfa: 0 }
+}
+
+/** Batch running cash activity for many shifts (list enrichment). */
+export async function fetchShiftRunningTotalsBatch(
+  shiftIds: string[],
+): Promise<Map<string, ShiftRunningTotals>> {
+  const empty = (): ShiftRunningTotals => ({
+    sales_cash_cfa: 0,
+    customer_pmts_cfa: 0,
+    return_cash_cfa: 0,
+  })
+  const out = new Map<string, ShiftRunningTotals>()
+  for (const id of shiftIds) out.set(id, empty())
+  if (shiftIds.length === 0) return out
+
   const [salesRes, paymentsRes, returnsRes] = await Promise.all([
-    supabase.from('sales').select('amount_applied_cfa, status').eq('shift_id', shiftId),
-    supabase.from('payments').select('amount_cfa, payment_type, is_reversed').eq('shift_id', shiftId),
-    supabase.from('sale_returns').select('cash_refunded_cfa').eq('shift_id', shiftId),
+    supabase.from('sales').select('shift_id, amount_applied_cfa, status').in('shift_id', shiftIds),
+    supabase
+      .from('payments')
+      .select('shift_id, amount_cfa, payment_type, is_reversed')
+      .in('shift_id', shiftIds),
+    supabase.from('sale_returns').select('shift_id, cash_refunded_cfa').in('shift_id', shiftIds),
   ])
 
   if (salesRes.error) throw salesRes.error
   if (paymentsRes.error) throw paymentsRes.error
   if (returnsRes.error) throw returnsRes.error
 
-  const sales_cash_cfa = ((salesRes.data ?? []) as Array<{
+  for (const row of (salesRes.data ?? []) as Array<{
+    shift_id: string
     amount_applied_cfa: number
     status: string
-  }>).reduce((sum, row) => (
-    row.status === 'voided' ? sum : sum + Number(row.amount_applied_cfa ?? 0)
-  ), 0)
+  }>) {
+    if (row.status === 'voided' || !row.shift_id) continue
+    const cur = out.get(row.shift_id) ?? empty()
+    cur.sales_cash_cfa += Number(row.amount_applied_cfa ?? 0)
+    out.set(row.shift_id, cur)
+  }
 
-  const customer_pmts_cfa = ((paymentsRes.data ?? []) as Array<{
+  for (const row of (paymentsRes.data ?? []) as Array<{
+    shift_id: string
     amount_cfa: number
     payment_type: string
     is_reversed: boolean
-  }>).reduce((sum, row) => (
-    row.payment_type === 'customer_payment' && row.is_reversed === false
-      ? sum + Number(row.amount_cfa ?? 0)
-      : sum
-  ), 0)
+  }>) {
+    if (row.payment_type !== 'customer_payment' || row.is_reversed || !row.shift_id) continue
+    const cur = out.get(row.shift_id) ?? empty()
+    cur.customer_pmts_cfa += Number(row.amount_cfa ?? 0)
+    out.set(row.shift_id, cur)
+  }
 
-  const return_cash_cfa = ((returnsRes.data ?? []) as Array<{
+  for (const row of (returnsRes.data ?? []) as Array<{
+    shift_id: string
     cash_refunded_cfa: number
-  }>).reduce((sum, row) => sum + Number(row.cash_refunded_cfa ?? 0), 0)
+  }>) {
+    if (!row.shift_id) continue
+    const cur = out.get(row.shift_id) ?? empty()
+    cur.return_cash_cfa += Number(row.cash_refunded_cfa ?? 0)
+    out.set(row.shift_id, cur)
+  }
 
-  return { sales_cash_cfa, customer_pmts_cfa, return_cash_cfa }
+  return out
+}
+
+function enrichListWithExpected(
+  rows: ShiftListItem[],
+  runningById: Map<string, ShiftRunningTotals>,
+): ShiftListItem[] {
+  return rows.map((row) => {
+    if (row.status === 'closed' && row.expected_cash_cfa != null) {
+      const running = runningById.get(row.id)
+      const activity = running
+        ? running.sales_cash_cfa + running.customer_pmts_cfa - running.return_cash_cfa
+        : null
+      return {
+        ...row,
+        expected_display_cfa: Number(row.expected_cash_cfa),
+        shift_cash_activity_cfa: activity,
+      }
+    }
+    const running = runningById.get(row.id) ?? {
+      sales_cash_cfa: 0,
+      customer_pmts_cfa: 0,
+      return_cash_cfa: 0,
+    }
+    const activity = running.sales_cash_cfa + running.customer_pmts_cfa - running.return_cash_cfa
+    return {
+      ...row,
+      shift_cash_activity_cfa: activity,
+      expected_display_cfa: estimateExpectedCash(row.opening_float_cfa, running),
+    }
+  })
 }
 
 export async function fetchShiftsList(
@@ -225,8 +296,13 @@ export async function fetchShiftsList(
 
   if (error) throw error
 
+  const mapped = await fillCashierNames(
+    ((data ?? []) as Record<string, unknown>[]).map(mapListRow),
+  )
+  // Always load activity for the page so open rows show live Attendu / ventes.
+  const runningById = await fetchShiftRunningTotalsBatch(mapped.map((r) => r.id))
   return {
-    data: await fillCashierNames(((data ?? []) as Record<string, unknown>[]).map(mapListRow)),
+    data: enrichListWithExpected(mapped, runningById),
     count: count ?? 0,
   }
 }

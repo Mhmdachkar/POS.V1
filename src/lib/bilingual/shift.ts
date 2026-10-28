@@ -7,6 +7,9 @@ export const SHIFT_COPY = {
   expectedCash: bi('Attendu', 'Expected'),
   actualCash: bi('Compté', 'Counted'),
   discrepancy: bi('Écart', 'Difference'),
+  /** Sub-line under Attendu for open shifts: cash activity without float. */
+  shiftSalesActivity: (amount: string) =>
+    bi(`dont ventes ${amount}`, `sales ${amount}`),
   salesWithoutShift: bi('Ventes sans service', 'Sales without shift'),
   shiftDetailFallback: bi('Détail du service', 'Shift detail'),
   shiftShortTitle: (id: string) => bi(`Service ${id}`, `Shift ${id}`),

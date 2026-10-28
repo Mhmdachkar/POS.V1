@@ -25,7 +25,7 @@ import {
   type FilterBarChip,
 } from '@/components/ui'
 import { SHIFT_STATUS } from '@/lib/bilingual/status'
-import { formatDate, formatTime } from '@/lib/formatters'
+import { formatDate, formatMoney, formatTime } from '@/lib/formatters'
 import {
   SHIFT_PAGE_SIZE,
   canAccessShifts,
@@ -104,13 +104,14 @@ export function ShiftsPage() {
   }
 
   const showCashier = isLoading || shifts.some((s) => Boolean(s.cashier_name))
+  // status | [depot] | [cashier] | opened | float | expected | discrepancy | chevron
   const gridCols = showDepot
     ? showCashier
-      ? 'grid-cols-[5.5rem_minmax(5rem,0.9fr)_minmax(7rem,1.1fr)_4.5rem_5.75rem_6.5rem_1.25rem]'
-      : 'grid-cols-[5.5rem_minmax(5rem,0.9fr)_4.5rem_5.75rem_6.5rem_1.25rem]'
+      ? 'grid-cols-[5.5rem_minmax(5rem,0.9fr)_minmax(7rem,1.1fr)_4.5rem_5.5rem_5.75rem_5.75rem_1.25rem]'
+      : 'grid-cols-[5.5rem_minmax(5rem,0.9fr)_4.5rem_5.5rem_5.75rem_5.75rem_1.25rem]'
     : showCashier
-      ? 'grid-cols-[5.5rem_minmax(7rem,1fr)_4.5rem_5.75rem_6.5rem_1.25rem]'
-      : 'grid-cols-[5.5rem_4.5rem_5.75rem_6.5rem_1.25rem]'
+      ? 'grid-cols-[5.5rem_minmax(7rem,1fr)_4.5rem_5.5rem_5.75rem_5.75rem_1.25rem]'
+      : 'grid-cols-[5.5rem_4.5rem_5.5rem_5.75rem_5.75rem_1.25rem]'
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -179,6 +180,9 @@ export function ShiftsPage() {
                   <BiTableHeader {...COMMON.float} />
                 </span>
                 <span className="text-right">
+                  <BiTableHeader {...SHIFT_COPY.expectedCash} />
+                </span>
+                <span className="text-right">
                   <BiTableHeader {...COMMON.discrepancy} />
                 </span>
                 <span aria-hidden="true" />
@@ -220,6 +224,17 @@ export function ShiftsPage() {
                 </span>
                 <span className="text-right">
                   <MoneyDisplay amount={shift.opening_float_cfa} size="small" />
+                </span>
+                <span className="text-right flex flex-col items-end leading-tight">
+                  <MoneyDisplay
+                    amount={shift.expected_display_cfa ?? shift.expected_cash_cfa ?? 0}
+                    size="small"
+                  />
+                  {shift.status === 'open' && shift.shift_cash_activity_cfa != null && (
+                    <span className="text-[10px] text-text-muted tabular-nums">
+                      {t(SHIFT_COPY.shiftSalesActivity(formatMoney(shift.shift_cash_activity_cfa)))}
+                    </span>
+                  )}
                 </span>
                 <span className="text-right">
                   {shift.status === 'closed' ? (
