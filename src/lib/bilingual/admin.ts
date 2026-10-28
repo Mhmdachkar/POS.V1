@@ -138,7 +138,7 @@ export const ADMIN = {
   noSalesToday: bi('Aucune vente aujourd\'hui.', 'No sales yet today.'),
   noNetSalesToday: bi('Aucune vente nette aujourd\'hui.', 'No net sales yet today.'),
   noLowStock: bi('Aucun produit en stock faible.', 'No low-stock products.'),
-  noOutOfStock: bi('Aucun produit en rupture.', 'No products out of stock.'),
+  noOutOfStock: bi('Aucun produit en rupture (suivis).', 'No tracked products out of stock.'),
   trackedOutOfStock: bi('En rupture', 'Out of stock'),
   untrackedZeroStock: (n: number) =>
     bi(`Stock à 0 sans alerte : ${n}`, `At 0, no alert: ${n}`),

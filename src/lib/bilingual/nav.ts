@@ -17,7 +17,7 @@ export const NAV = {
   auditLog: bi("Journal d'audit", 'Audit log'),
   settings: bi('Paramètres', 'Settings'),
   pos: bi('Caisse', 'Register'),
-  shift: bi('Service', 'Shift'),
+  shift: bi('Services', 'Shifts'),
   products: bi('Produits', 'Products'),
   dashboard: bi("Vue d'ensemble", 'Overview'),
 } as const satisfies Record<string, BilingualPair>

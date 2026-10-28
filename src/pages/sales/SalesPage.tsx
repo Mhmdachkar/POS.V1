@@ -39,7 +39,7 @@ import {
   SaleStatusBadge,
   Skeleton,
 } from '@/components/ui'
-import { formatDateTime } from '@/lib/formatters'
+import { formatReportDateTime } from '@/lib/formatters'
 import { useSalesList } from '@/hooks/useSales'
 import { useDepotOptions } from '@/hooks/useInventory'
 import { useAuthStore } from '@/stores/authStore'
@@ -348,7 +348,7 @@ export function SalesPage() {
                   />
                 </span>
                 <span className="text-sm text-text-secondary text-right whitespace-nowrap">
-                  {formatDateTime(sale.created_at)}
+                  {formatReportDateTime(sale.created_at)}
                 </span>
                 <RowChevron />
               </button>

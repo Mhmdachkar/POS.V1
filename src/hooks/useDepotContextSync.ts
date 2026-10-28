@@ -65,12 +65,13 @@ export function useDepotContextSync() {
 
       const active = depots.filter((d) => d.is_active !== false)
       if (active.length === 0) return
+      const noPersist = { persist: false as const }
 
       if (currentDepotId) {
         const matched = active.find((d) => d.id === currentDepotId)
         if (matched) {
           if (currentDepotName !== matched.name) {
-            setCurrentDepot(matched.id, matched.name)
+            setCurrentDepot(matched.id, matched.name, noPersist)
           }
           return
         }
@@ -80,12 +81,12 @@ export function useDepotContextSync() {
       if (persisted?.id) {
         const fromPersist = active.find((d) => d.id === persisted.id)
         if (fromPersist) {
-          setCurrentDepot(fromPersist.id, fromPersist.name)
+          setCurrentDepot(fromPersist.id, fromPersist.name, noPersist)
           return
         }
       }
 
-      setCurrentDepot(active[0].id, active[0].name)
+      setCurrentDepot(active[0].id, active[0].name, noPersist)
       return
     }
 
@@ -100,7 +101,15 @@ export function useDepotContextSync() {
     }
 
     const persisted = readPersistedAdminDepot(staff.id)
-    if (!persisted?.id) return
+    // undefined = never saved; { id: null } = explicit All Depots
+    if (persisted === undefined) return
+    if (persisted.id == null) {
+      const label = allDepotsLabel()
+      if (currentDepotId != null || currentDepotName !== label) {
+        setCurrentDepot(null, label)
+      }
+      return
+    }
     const depot = depots.find((d) => d.id === persisted.id)
     if (!depot) return
     if (currentDepotId !== depot.id || currentDepotName !== depot.name) {

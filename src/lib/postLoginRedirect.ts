@@ -30,7 +30,16 @@ export function resolvePostLoginPath(staff: Staff, intendedPath: string | undefi
   }
 
   if (staff.role === 'cashier') {
-    if (from.startsWith('/admin') || from === '/dashboard' || from === '/reports') return home
+    if (
+      from.startsWith('/admin')
+      || from.startsWith('/inventory')
+      || from.startsWith('/depot')
+      || from.startsWith('/transfers')
+      || from === '/dashboard'
+      || from.startsWith('/reports')
+    ) {
+      return home
+    }
     return from
   }
 

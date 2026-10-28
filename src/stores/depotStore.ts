@@ -19,7 +19,7 @@ interface DepotState {
   availableDepots: DepotOption[]
 
   // Actions
-  setCurrentDepot: (id: string | null, name: string | null) => void
+  setCurrentDepot: (id: string | null, name: string | null, opts?: { persist?: boolean }) => void
   setAvailableDepots: (depots: DepotOption[]) => void
   /** Reset to unset state (called on sign-out) */
   clear: () => void
@@ -39,8 +39,9 @@ export const useDepotStore = create<DepotState>()((set) => ({
   currentDepotName: null,
   availableDepots: [],
 
-  setCurrentDepot: (id, name) => {
+  setCurrentDepot: (id, name, opts) => {
     set({ currentDepotId: id, currentDepotName: name })
+    if (opts?.persist === false) return
     persistAdminDepotSelection({ id, name })
   },
 

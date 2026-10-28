@@ -229,7 +229,7 @@ export function InventoryPage() {
             </div>
             {isFetching && isPlaceholderData && (
               <span className="text-xs text-text-muted" data-testid="inventory-list-updating">
-                Updating list…
+                {t(INVENTORY.updatingList)}
               </span>
             )}
           </div>

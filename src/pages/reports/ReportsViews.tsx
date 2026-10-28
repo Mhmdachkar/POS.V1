@@ -236,7 +236,7 @@ function RankedPage({ id, rows, net }: { id: ReportId; rows: RankedRow[]; net: n
             <ReportRankedTable
               rows={rows.length ? rows : mapRanked(id, sales)}
               netTotal={net || Number(sales.net_sales_cfa)}
-              marginTip={id === 'sales-cashiers' ? t(REPORTS.marginShareTip) : undefined}
+              marginTip={undefined}
               nameHeader={
                 id === 'sales-categories'
                   ? t(REPORTS.colCategory)
@@ -295,22 +295,17 @@ function mapRanked(id: ReportId, sales: AdminSalesReport): RankedRow[] {
       }
     }), target)
   }
-  const rows = sales.by_cashier.map((c) => ({
-    id: c.cashier_id,
-    name: c.cashier_name,
-    gross: Number(c.sales_activity_cfa),
-    returns: Number(c.returns_activity_cfa ?? 0),
-    net: Number(c.net_sales_cfa ?? c.sales_activity_cfa),
-    margin: 0,
-  }))
-  const netSum = rows.reduce((s, r) => s + r.net, 0)
-  let assigned = 0
-  return rows.map((r, i) => {
-    if (i === rows.length - 1) return { ...r, margin: target - assigned }
-    const share = netSum === 0 ? 0 : Math.round((target * r.net) / netSum)
-    assigned += share
-    return { ...r, margin: share }
-  })
+  return fitMargin(
+    sales.by_cashier.map((c) => ({
+      id: c.cashier_id,
+      name: c.cashier_name,
+      gross: Number(c.sales_activity_cfa),
+      returns: Number(c.returns_activity_cfa ?? 0),
+      net: Number(c.net_sales_cfa ?? c.sales_activity_cfa),
+      margin: c.gross_profit_cfa == null ? 0 : Number(c.gross_profit_cfa),
+    })),
+    target,
+  )
 }
 
 export function SalesProductsPage() { return <RankedPage id="sales-products" rows={[]} net={0} /> }
@@ -463,12 +458,13 @@ export function StockLowPage() {
         {(inventory) => {
           const low = splitTracked(inventory.low_stock)
           const oos = splitTracked(inventory.out_of_stock)
+          const untrackedZero = Number(inventory.untracked_zero_count ?? 0)
           return (
             <div className="grid gap-4 md:grid-cols-2">
               <ReportSection title={<span>{t(REPORTS.lowStock)} — {t(REPORTS.tracked)}</span>}>{low.tracked.length}</ReportSection>
               <ReportSection title={<span>{t(REPORTS.lowStock)} — {t(REPORTS.untracked)}</span>}>{low.untracked.length}</ReportSection>
               <ReportSection title={<span>{t(REPORTS.outOfStock)} — {t(REPORTS.tracked)}</span>}>{oos.tracked.length}</ReportSection>
-              <ReportSection title={<span>{t(REPORTS.outOfStock)} — {t(REPORTS.untracked)}</span>}>{oos.untracked.length}</ReportSection>
+              <ReportSection title={<span>{t(REPORTS.outOfStock)} — {t(REPORTS.untracked)}</span>}>{untrackedZero}</ReportSection>
               <ReportModulePanel kind="low" depotId={search.depotId} startDate={search.range.startDate} endDate={search.range.endDate} />
             </div>
           )

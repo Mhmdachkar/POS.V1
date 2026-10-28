@@ -24,6 +24,7 @@ export const INVENTORY = {
     'Choisissez un dépôt pour voir l\'activité du stock.',
     'Choose a depot to view stock activity.',
   ),
+  updatingList: bi('Mise à jour…', 'Updating…'),
   stockUpdated: bi('Stock mis à jour', 'Stock updated'),
   productSaved: bi('Produit enregistré', 'Product saved.'),
   productCreated: bi('Produit créé', 'Product created.'),
