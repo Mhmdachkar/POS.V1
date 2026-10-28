@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { isDiscountOutOfRange, isOverrideOutOfRange } from '@/lib/zeroTotalSale'
 import type { CartItem, CheckoutTotals } from '@/types'
+import { cartLineTotalCfa } from '@/lib/cartLineTotal'
 import type { Customer } from '@/types/database'
 import type { CompleteSaleResult } from '@/types/rpc'
 
@@ -106,6 +107,11 @@ interface POSState {
   // Admin reason when payable total is 0 (100% / full flat / override 0)
   priceExceptionReason: string
 
+  /** Admin saisie rapide — print/header date YYYY-MM-DD (empty = server today). */
+  documentDateYmd: string
+  /** Admin saisie rapide — optional Réf. */
+  externalRef: string
+
   // ─── Submission lifecycle ────────────────────────────────────
   /**
    * Idempotency key for the current sale attempt.
@@ -139,9 +145,11 @@ interface POSState {
    * (not replaced) to prevent accidental duplicate lines.
    * Different units of the same product remain as distinct lines.
    */
-  addItem: (item: Omit<CartItem, 'line_total_cfa'>) => void
+  addItem: (item: Omit<CartItem, 'line_total_cfa' | 'line_discount_cfa'> & { line_discount_cfa?: number }) => void
   removeItem: (product_id: string, unit_level: number) => void
   updateQuantity: (product_id: string, unit_level: number, qty: number) => void
+  updateLinePrice: (product_id: string, unit_level: number, unit_price_cfa: number) => void
+  updateLineDiscount: (product_id: string, unit_level: number, line_discount_cfa: number) => void
   /**
    * Atomic unit switch for one cart line. One set(). Never convert qty to pieces.
    * If a line already exists for the target unit, merge into that line and drop
@@ -165,6 +173,8 @@ interface POSState {
   setCashTendered: (amount: number) => void
   setOverrideTotalCfa: (amount: number | null) => void
   setPriceExceptionReason: (reason: string) => void
+  setDocumentDateYmd: (ymd: string) => void
+  setExternalRef: (ref: string) => void
   clearCart: () => void
   restoreCart: (items: CartItem[]) => void
 
@@ -216,6 +226,8 @@ export const usePOSStore = create<POSState>()((set, get) => ({
   cashTendered: 0,
   overrideTotalCfa: null,
   priceExceptionReason: '',
+  documentDateYmd: '',
+  externalRef: '',
   idempotencyKey: null,
   isSubmitting: false,
   saleResult: null,
@@ -226,6 +238,7 @@ export const usePOSStore = create<POSState>()((set, get) => ({
     const existingIdx = items.findIndex(
       (i) => i.product_id === newItem.product_id && i.unit_level === newItem.unit_level,
     )
+    const incomingDiscount = Math.max(0, Math.round(newItem.line_discount_cfa ?? 0))
 
     let updatedItems: CartItem[]
     if (existingIdx >= 0) {
@@ -236,18 +249,18 @@ export const usePOSStore = create<POSState>()((set, get) => ({
         return {
           ...item,
           quantity_in_unit: qty,
-          line_total_cfa: qty * item.unit_price_cfa,
+          line_total_cfa: cartLineTotalCfa(qty, item.unit_price_cfa, item.line_discount_cfa),
         }
       })
     } else {
-      // Add new line
       const qty = newItem.quantity_in_unit
       updatedItems = [
         ...items,
         {
           ...newItem,
+          line_discount_cfa: incomingDiscount,
           quantity_in_unit: qty,
-          line_total_cfa: qty * newItem.unit_price_cfa,
+          line_total_cfa: cartLineTotalCfa(qty, newItem.unit_price_cfa, incomingDiscount),
         },
       ]
     }
@@ -280,7 +293,44 @@ export const usePOSStore = create<POSState>()((set, get) => ({
       return {
         ...item,
         quantity_in_unit: qty,
-        line_total_cfa: qty * item.unit_price_cfa,
+        line_total_cfa: cartLineTotalCfa(qty, item.unit_price_cfa, item.line_discount_cfa),
+      }
+    })
+    set({
+      items: updatedItems,
+      totals: computeTotals(updatedItems, discountType, discountValue, cashTendered, overrideTotalCfa),
+    })
+  },
+
+  updateLinePrice: (product_id, unit_level, unit_price_cfa) => {
+    const { discountType, discountValue, cashTendered, overrideTotalCfa } = get()
+    const price = Math.max(0, Math.round(unit_price_cfa))
+    const updatedItems = get().items.map((item) => {
+      if (item.product_id !== product_id || item.unit_level !== unit_level) return item
+      const discount = Math.min(item.line_discount_cfa, cartLineTotalCfa(item.quantity_in_unit, price, 0))
+      return {
+        ...item,
+        unit_price_cfa: price,
+        line_discount_cfa: discount,
+        line_total_cfa: cartLineTotalCfa(item.quantity_in_unit, price, discount),
+      }
+    })
+    set({
+      items: updatedItems,
+      totals: computeTotals(updatedItems, discountType, discountValue, cashTendered, overrideTotalCfa),
+    })
+  },
+
+  updateLineDiscount: (product_id, unit_level, line_discount_cfa) => {
+    const { discountType, discountValue, cashTendered, overrideTotalCfa } = get()
+    const updatedItems = get().items.map((item) => {
+      if (item.product_id !== product_id || item.unit_level !== unit_level) return item
+      const gross = cartLineTotalCfa(item.quantity_in_unit, item.unit_price_cfa, 0)
+      const discount = Math.min(gross, Math.max(0, Math.round(line_discount_cfa)))
+      return {
+        ...item,
+        line_discount_cfa: discount,
+        line_total_cfa: cartLineTotalCfa(item.quantity_in_unit, item.unit_price_cfa, discount),
       }
     })
     set({
@@ -317,7 +367,8 @@ export const usePOSStore = create<POSState>()((set, get) => ({
             cost_price_cfa: toUnit.cost_price_cfa,
             conversion_to_base: toUnit.conversion_to_base,
             quantity_in_unit: mergedQty,
-            line_total_cfa: mergedQty * toUnit.unit_price_cfa,
+            line_discount_cfa: 0,
+            line_total_cfa: cartLineTotalCfa(mergedQty, toUnit.unit_price_cfa, 0),
           }
         })
         .filter((_, idx) => idx !== sourceIdx)
@@ -335,7 +386,8 @@ export const usePOSStore = create<POSState>()((set, get) => ({
           cost_price_cfa: toUnit.cost_price_cfa,
           conversion_to_base: toUnit.conversion_to_base,
           quantity_in_unit: qty,
-          line_total_cfa: qty * toUnit.unit_price_cfa,
+          line_discount_cfa: 0,
+          line_total_cfa: cartLineTotalCfa(qty, toUnit.unit_price_cfa, 0),
         }
       })
     }
@@ -394,6 +446,8 @@ export const usePOSStore = create<POSState>()((set, get) => ({
   },
 
   setPriceExceptionReason: (reason) => set({ priceExceptionReason: reason }),
+  setDocumentDateYmd: (ymd) => set({ documentDateYmd: ymd }),
+  setExternalRef: (ref) => set({ externalRef: ref }),
 
   clearCart: () => {
     const { discountType, discountValue, cashTendered, overrideTotalCfa } = get()
@@ -405,9 +459,21 @@ export const usePOSStore = create<POSState>()((set, get) => ({
 
   restoreCart: (items) => {
     const { discountType, discountValue, cashTendered, overrideTotalCfa } = get()
+    const normalized = items.map((item) => {
+      const line_discount_cfa = Math.max(0, Math.round(Number(item.line_discount_cfa ?? 0)))
+      return {
+        ...item,
+        line_discount_cfa,
+        line_total_cfa: cartLineTotalCfa(
+          item.quantity_in_unit,
+          item.unit_price_cfa,
+          line_discount_cfa,
+        ),
+      }
+    })
     set({
-      items,
-      totals: computeTotals(items, discountType, discountValue, cashTendered, overrideTotalCfa),
+      items: normalized,
+      totals: computeTotals(normalized, discountType, discountValue, cashTendered, overrideTotalCfa),
     })
   },
 
@@ -433,6 +499,8 @@ export const usePOSStore = create<POSState>()((set, get) => ({
       cashTendered: 0,
       overrideTotalCfa: null,
       priceExceptionReason: '',
+      documentDateYmd: '',
+      externalRef: '',
       idempotencyKey: null,
       isSubmitting: false,
       saleResult: null,

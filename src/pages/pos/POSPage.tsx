@@ -13,13 +13,22 @@ import { SearchInput } from '@/components/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { POS } from '@/lib/bilingual/pos'
 import { toastErrorBi } from '@/lib/bilingual/toast'
-import { bilingualAriaLabel } from '@/lib/bilingual/types'
+import { bilingualAriaLabel, t } from '@/lib/bilingual/types'
 import { APP_BUSINESS_FALLBACK } from '@/lib/formatters'
 import { CategoryRail } from '@/components/pos/CategoryRail'
 import { ProductGrid } from '@/components/pos/ProductGrid'
 import { CartPanel } from '@/components/pos/CartPanel'
 import { PaymentPanel } from '@/components/pos/PaymentPanel'
+import { FastEntryPanel } from '@/components/pos/FastEntryPanel'
 import { PosStockProvider } from '@/components/pos/PosStockProvider'
+import {
+  clearPosDraft,
+  loadPosDraft,
+  loadPosMode,
+  savePosDraft,
+  savePosMode,
+  type PosEntryMode,
+} from '@/lib/posDraft'
 import { SaleSuccessModal } from './components/SaleSuccessModal'
 import { useCategories } from '@/hooks/useInventory'
 import { fetchProductSearch, productKeys, usePOSProductCatalog } from '@/hooks/useProducts'
@@ -45,6 +54,7 @@ export function POSPage() {
   const [query, setQuery] = useState('')
   const [categoryId, setCategoryId] = useState<string | null>(null)
   const [mobilePane, setMobilePane] = useState<MobilePane>('catalog')
+  const [entryMode, setEntryMode] = useState<PosEntryMode>('grid')
   const { data: categories } = useCategories()
 
   const { saleResult, customer, items, totals, overrideTotalCfa } = usePOSStore(useShallow((s) => ({
@@ -59,6 +69,8 @@ export function POSPage() {
   // For admins, use the depot switcher's current depot.
   const effectiveDepotId =
     staff?.role === 'cashier' ? staff.depot_id : depotId
+  const isAdmin = staff?.role === 'admin'
+  const useFastEntry = isAdmin && entryMode === 'fast'
 
   const categoryName = categories?.find((c) => c.id === categoryId)?.name ?? null
 
@@ -70,26 +82,34 @@ export function POSPage() {
   )
 
   useEffect(() => {
+    if (!staff?.id || staff.role !== 'admin') {
+      setEntryMode('grid')
+      return
+    }
+    setEntryMode(loadPosMode(staff.id))
+  }, [staff?.id, staff?.role])
+
+  useEffect(() => {
     if (!staff?.id || !effectiveDepotId) return
-    const key = `vhm-pos-cart:${staff.id}:${effectiveDepotId}`
     const current = usePOSStore.getState()
     if (current.items.length === 0 && !current.saleResult) {
-      try {
-        const saved = sessionStorage.getItem(key)
-        const parsed = saved ? JSON.parse(saved) as unknown : null
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          usePOSStore.getState().restoreCart(parsed)
-        }
-      } catch {
-        sessionStorage.removeItem(key)
+      const draft = loadPosDraft(staff.id, effectiveDepotId)
+      if (draft?.items?.length) {
+        usePOSStore.getState().restoreCart(draft.items)
+        if (draft.documentDateYmd) usePOSStore.getState().setDocumentDateYmd(draft.documentDateYmd)
+        if (draft.externalRef) usePOSStore.getState().setExternalRef(draft.externalRef)
       }
     }
     return usePOSStore.subscribe((state) => {
       if (state.saleResult) {
-        sessionStorage.removeItem(key)
+        clearPosDraft(staff.id, effectiveDepotId)
         return
       }
-      sessionStorage.setItem(key, JSON.stringify(state.items))
+      savePosDraft(staff.id, effectiveDepotId, {
+        items: state.items,
+        documentDateYmd: state.documentDateYmd,
+        externalRef: state.externalRef,
+      })
     })
   }, [staff?.id, effectiveDepotId])
 
@@ -187,7 +207,55 @@ export function POSPage() {
           </button>
         </div>
 
+        {isAdmin && (
+          <div className="flex-shrink-0 flex gap-1 px-3 py-2 border-b border-border bg-surface">
+            <button
+              type="button"
+              className={cn(
+                'h-9 px-3 rounded-full text-sm font-medium',
+                entryMode === 'grid' ? 'bg-primary text-primary-foreground' : 'bg-surface-muted text-text-secondary',
+              )}
+              onClick={() => {
+                setEntryMode('grid')
+                if (staff?.id) savePosMode(staff.id, 'grid')
+              }}
+            >
+              {t(POS.grilleMode)}
+            </button>
+            <button
+              type="button"
+              className={cn(
+                'h-9 px-3 rounded-full text-sm font-medium',
+                entryMode === 'fast' ? 'bg-primary text-primary-foreground' : 'bg-surface-muted text-text-secondary',
+              )}
+              onClick={() => {
+                setEntryMode('fast')
+                if (staff?.id) savePosMode(staff.id, 'fast')
+              }}
+            >
+              {t(POS.saisieRapide)}
+            </button>
+          </div>
+        )}
+
         <div className="flex flex-1 min-h-0 flex-col min-[800px]:flex-row overflow-hidden">
+          {useFastEntry ? (
+            <div className="flex flex-1 min-h-0 flex-col min-[800px]:flex-row overflow-hidden">
+              <div className="flex-1 min-h-0 min-w-0 border-border min-[800px]:border-r">
+                <FastEntryPanel
+                  depotId={effectiveDepotId}
+                  onRequestPay={() => setMobilePane('cart')}
+                />
+              </div>
+              <div className="w-full min-[800px]:w-[320px] lg:w-[480px] xl:w-[520px] flex-shrink-0 flex flex-col min-h-0 overflow-hidden bg-background">
+                <PaymentPanel
+                  className="relative z-20 flex-1 flex flex-col border-t border-border overflow-auto pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+                  depotId={effectiveDepotId}
+                />
+              </div>
+            </div>
+          ) : (
+            <>
           {/* Discovery */}
           <div
             className={cn(
@@ -275,6 +343,8 @@ export function POSPage() {
               />
             </div>
           </div>
+            </>
+          )}
         </div>
 
         {saleResult && (

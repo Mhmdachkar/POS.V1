@@ -32,7 +32,9 @@ export interface CartItem {
   unit_price_cfa: number
   cost_price_cfa: number
   conversion_to_base: number
-  /** quantity_in_unit * unit_price_cfa — display only */
+  /** Admin line Remise (CFA). Default 0. */
+  line_discount_cfa: number
+  /** qty * unit_price − line_discount — display only; server re-computes */
   line_total_cfa: number
 }
 

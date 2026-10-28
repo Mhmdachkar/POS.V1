@@ -11,6 +11,10 @@ export interface CompleteSaleCartItem {
   product_id: string    // uuid
   unit_level: number    // 0=piece, 1=package, 2=carton
   quantity_in_unit: number
+  /** Admin-only charged P.U.; cashiers omit (server uses catalog). */
+  unit_price_cfa?: number
+  /** Admin-only line Remise (CFA). */
+  line_discount_cfa?: number
 }
 
 export interface CompleteSaleParams {
@@ -25,6 +29,10 @@ export interface CompleteSaleParams {
   p_idempotency_key?: string | null // uuid — optional dedup key
   p_override_total_cfa?: number | null // admin-only total override
   p_price_exception_reason?: string | null // required when payable total is 0
+  /** Admin-only print/header date (YYYY-MM-DD); not future; max 30d back. */
+  p_document_date?: string | null
+  /** Admin-only Réf. */
+  p_external_ref?: string | null
 }
 
 // ─── Phase 18C fulfillment + print jobs ─────────────────────────
