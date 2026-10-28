@@ -197,11 +197,11 @@ export function ReportCostTab({ cost, showDepotColumn }: ReportCostTabProps) {
   const inv = cost.inventory_totals
   const period = cost.period_totals
   const missingCost = cost.inventory_cost.filter((row) => !Number(row.cost_price_cfa)).length
-  const profits = cost.inventory_cost.map(displayPotentialProfit)
-  const hasPricedProfit = profits.some((p) => p != null)
-  const potentialProfitTotal = hasPricedProfit
-    ? profits.reduce<number>((s, p) => s + (p ?? 0), 0)
-    : null
+  // KPI must match SQL inventory_totals (sale − cost). Do not re-sum row
+  // potential_profit — that includes cost=0 rows as full sell value and drifts
+  // from Σ qty×(sell−cost) where cost>0 / from total_selling − total_cost.
+  const potentialProfitTotal =
+    Number(inv.total_inventory_value_at_selling) - Number(inv.total_inventory_value_at_cost)
 
   return (
     <div className="space-y-8">
@@ -217,7 +217,7 @@ export function ReportCostTab({ cost, showDepotColumn }: ReportCostTabProps) {
         <ReportMetric
           label={<BiSectionTitle {...REPORTS.potentialProfit} />}
           amount={potentialProfitTotal}
-          danger={potentialProfitTotal != null && potentialProfitTotal < 0}
+          danger={potentialProfitTotal < 0}
         />
       </div>
 
