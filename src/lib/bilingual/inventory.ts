@@ -146,6 +146,8 @@ export const INVENTORY = {
   // ── Profit ───────────────────────────────────────────────────
   profit: bi('Marge', 'Margin'),
   profitMargin: bi('Marge %', 'Margin %'),
+  /** Soft Gestion product form — markup on cost: (sell − cost) / cost */
+  marginRate: bi('Taux de marge', 'Margin rate'),
   costPrice: bi("Prix d'achat", 'Cost price'),
   sellingPrice: bi('Prix de vente', 'Sale price'),
   negativePriceError: bi(

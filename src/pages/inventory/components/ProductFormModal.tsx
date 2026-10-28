@@ -21,6 +21,7 @@ import { Button, FormActionGuide, LoadingButton } from '@/components/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { parseError } from '@/lib/errors'
 import { formatThousandsInput, isNegativeMoneyDraft, parseCFAInput } from '@/lib/formatters'
+import { unitMarginRatePercent } from '@/lib/unitMarginRate'
 import { isPlaceholderPhotoUrl, resolveProductPhotoUrl } from '@/lib/productPhotos'
 import {
   PRODUCT_PHOTO_ACCEPT,
@@ -568,6 +569,25 @@ export function ProductFormModal({ open, onClose, depotId, product }: ProductFor
                         )}
                       </div>
                     </div>
+                    {(() => {
+                      const costOk = !isNegativeMoneyDraft(u.cost_price_cfa)
+                      const sellOk = !isNegativeMoneyDraft(u.selling_price_cfa)
+                      const cost = costOk ? parseCFAInput(u.cost_price_cfa) : NaN
+                      const sell = sellOk ? parseCFAInput(u.selling_price_cfa) : NaN
+                      const rate = unitMarginRatePercent(cost, sell)
+                      return (
+                        <p
+                          data-testid={`unit-${level}-margin-rate`}
+                          className="text-sm text-text-secondary tabular-nums"
+                        >
+                          <BilingualText {...INVENTORY.marginRate} variant="caption" layout="inline" />
+                          {': '}
+                          <span className="font-medium text-text-primary">
+                            {rate != null ? `${rate} %` : t(INVENTORY.unavailableMargin)}
+                          </span>
+                        </p>
+                      )
+                    })()}
                   </div>
                 )}
               </div>
