@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Badge,
   Button,
@@ -15,7 +15,7 @@ import { COMMON } from '@/lib/bilingual/common'
 import { formatReportDate } from '@/lib/formatters'
 import { parseError } from '@/lib/errors'
 import { toastErrorBi, toastErrorFromCode, toastSuccessBi } from '@/lib/bilingual/toast'
-import { t } from '@/lib/bilingual/types'
+import { bilingualPlain, t } from '@/lib/bilingual/types'
 import { cn } from '@/lib/cn'
 import {
   useCancelPurchaseReceipt,
@@ -47,8 +47,14 @@ export function PurchaseReceiptDetailDrawer({ receiptId, onClose }: Props) {
   const validate = useValidatePurchaseReceipt()
   const cancel = useCancelPurchaseReceipt()
   const [cancelOpen, setCancelOpen] = useState(false)
-  const [method, setMethod] = useState<'cash' | 'mobile' | 'bank'>('cash')
+  const [method, setMethod] = useState<'cash' | 'mobile' | 'bank' | null>(null)
   const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    setMethod(null)
+    setCancelOpen(false)
+    setBusy(false)
+  }, [receiptId])
 
   const receipt = data?.receipt
   const items = data?.items ?? []
@@ -58,7 +64,7 @@ export function PurchaseReceiptDetailDrawer({ receiptId, onClose }: Props) {
   async function handleValidate(mode: 'paid' | 'credit') {
     if (!receipt) return
     if (mode === 'paid' && !method) {
-      toastErrorBi(ACHATS.needMethod)
+      toastErrorBi(ACHATS.choosePaymentMethod)
       return
     }
     setBusy(true)
@@ -166,7 +172,12 @@ export function PurchaseReceiptDetailDrawer({ receiptId, onClose }: Props) {
 
             {isDraft && (
               <div className="space-y-3 border-t border-border pt-4">
-                <p className="text-sm font-medium text-text-secondary">{t(ACHATS.method)}</p>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-text-secondary">
+                    {t(ACHATS.method)} — {t(ACHATS.paid)}
+                  </p>
+                  <p className="text-xs text-text-muted">{t(ACHATS.choosePaymentMethod)}</p>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {(['cash', 'mobile', 'bank'] as const).map((m) => (
                     <button
@@ -185,13 +196,19 @@ export function PurchaseReceiptDetailDrawer({ receiptId, onClose }: Props) {
                   ))}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <LoadingButton
-                    type="button"
-                    loading={busy}
-                    onClick={() => void handleValidate('paid')}
+                  <span
+                    title={!method ? bilingualPlain(ACHATS.choosePaymentMethod) : undefined}
+                    className="inline-flex"
                   >
-                    <BiButtonStack {...ACHATS.validatePaid} />
-                  </LoadingButton>
+                    <LoadingButton
+                      type="button"
+                      loading={busy}
+                      disabled={!method}
+                      onClick={() => void handleValidate('paid')}
+                    >
+                      <BiButtonStack {...ACHATS.validatePaid} />
+                    </LoadingButton>
+                  </span>
                   <LoadingButton
                     type="button"
                     variant="secondary"

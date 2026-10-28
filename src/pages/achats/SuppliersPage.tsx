@@ -24,10 +24,9 @@ import {
 } from '@/lib/bilingual/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { bilingualAriaLabel, t } from '@/lib/bilingual/types'
-import { useSupplierList, useUpdateSupplier, type SupplierRow } from '@/hooks/useAchats'
+import { useSupplierList, type SupplierRow } from '@/hooks/useAchats'
 import { SupplierFormModal } from './components/SupplierFormModal'
 import { RecordSupplierPaymentModal } from './components/RecordSupplierPaymentModal'
-import { parseError } from '@/lib/errors'
 
 const GRID = 'grid-cols-[minmax(10rem,1.4fr)_8rem_7.5rem_6.5rem_1.25rem]'
 
@@ -37,7 +36,6 @@ export function SuppliersPage() {
   const [editRow, setEditRow] = useState<SupplierRow | null>(null)
   const [payRow, setPayRow] = useState<SupplierRow | null>(null)
   const { data, isLoading, isError } = useSupplierList(activeOnly)
-  const update = useUpdateSupplier()
   const rows = data?.rows ?? []
 
   const chips: FilterBarChip[] = useMemo(
@@ -47,14 +45,6 @@ export function SuppliersPage() {
     ],
     [],
   )
-
-  async function toggleActive(row: SupplierRow) {
-    try {
-      await update.mutateAsync({ p_supplier_id: row.id, p_is_active: !row.is_active })
-    } catch (err) {
-      console.error(parseError(err).message)
-    }
-  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -170,15 +160,6 @@ export function SuppliersPage() {
                 {t(ACHATS.recordPayment)} — {r.name}
               </Button>
             ))}
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            disabled={!editRow}
-            onClick={() => editRow && toggleActive(editRow)}
-          >
-            {editRow && !editRow.is_active ? t(ACHATS.reactivate) : t(ACHATS.deactivate)}
-          </Button>
         </div>
       )}
 

@@ -30,6 +30,16 @@ export const ACHATS = {
   inactive: bi('Inactif', 'Inactive'),
   deactivate: bi('Désactiver', 'Deactivate'),
   reactivate: bi('Réactiver', 'Reactivate'),
+  deactivateBlockedBalance: bi(
+    'Impossible de désactiver tant que le solde dû est supérieur à 0. Enregistrez un règlement d’abord.',
+    'Cannot deactivate while balance owed is greater than 0. Record a payment first.',
+  ),
+  deactivatedOk: bi('Fournisseur désactivé', 'Supplier deactivated'),
+  reactivatedOk: bi('Fournisseur réactivé', 'Supplier reactivated'),
+  choosePaymentMethod: bi(
+    'Choisissez Espèces, Mobile ou Banque pour valider en Payé.',
+    'Choose Cash, Mobile, or Bank to validate as Paid.',
+  ),
   number: bi('N°', 'No.'),
   status: bi('Statut', 'Status'),
   draft: bi('Brouillon', 'Draft'),
