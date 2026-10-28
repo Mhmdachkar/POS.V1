@@ -4,8 +4,9 @@ import { Button, LoadingButton } from '@/components/ui'
 import { ACHATS } from '@/lib/bilingual/achats'
 import { COMMON } from '@/lib/bilingual/common'
 import { BiButtonStack, BiModalTitle, BiTableHeader } from '@/lib/bilingual/ui'
-import { t } from '@/lib/bilingual/types'
+import { bilingualPlain, t } from '@/lib/bilingual/types'
 import { parseError } from '@/lib/errors'
+import { toastErrorFromCode, toastSuccessBi } from '@/lib/bilingual/toast'
 import { useCreateSupplier, useUpdateSupplier, type SupplierRow } from '@/hooks/useAchats'
 
 interface Props {
@@ -35,6 +36,9 @@ export function SupplierFormModal({ open, onClose, supplier }: Props) {
     return () => clearTimeout(tmr)
   }, [open, supplier])
 
+  const balanceBlocksDeactivate =
+    !!supplier?.is_active && Number(supplier.balance_owed_cfa) > 0
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) {
@@ -59,6 +63,22 @@ export function SupplierFormModal({ open, onClose, supplier }: Props) {
       onClose()
     } catch (err) {
       setError(parseError(err).message)
+    }
+  }
+
+  async function toggleActive() {
+    if (!supplier) return
+    if (supplier.is_active && Number(supplier.balance_owed_cfa) > 0) return
+    try {
+      await update.mutateAsync({
+        p_supplier_id: supplier.id,
+        p_is_active: !supplier.is_active,
+      })
+      toastSuccessBi(supplier.is_active ? ACHATS.deactivatedOk : ACHATS.reactivatedOk)
+      onClose()
+    } catch (err) {
+      const parsed = parseError(err)
+      toastErrorFromCode(parsed.code, parsed.details)
     }
   }
 
@@ -101,13 +121,36 @@ export function SupplierFormModal({ open, onClose, supplier }: Props) {
           />
         </label>
         {error && <p className="text-sm text-danger-foreground">{error}</p>}
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="ghost" onClick={onClose}>
-            <BiButtonStack {...COMMON.cancel} />
-          </Button>
-          <LoadingButton type="submit" loading={pending}>
-            <BiButtonStack {...COMMON.save} />
-          </LoadingButton>
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+          {isEdit && supplier ? (
+            <span
+              title={
+                balanceBlocksDeactivate
+                  ? bilingualPlain(ACHATS.deactivateBlockedBalance)
+                  : undefined
+              }
+              className="inline-flex"
+            >
+              <Button
+                type="button"
+                variant={supplier.is_active ? 'danger' : 'secondary'}
+                disabled={pending || balanceBlocksDeactivate}
+                onClick={() => void toggleActive()}
+              >
+                <BiButtonStack {...(supplier.is_active ? ACHATS.deactivate : ACHATS.reactivate)} />
+              </Button>
+            </span>
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-2 ml-auto">
+            <Button type="button" variant="ghost" onClick={onClose}>
+              <BiButtonStack {...COMMON.cancel} />
+            </Button>
+            <LoadingButton type="submit" loading={pending}>
+              <BiButtonStack {...COMMON.save} />
+            </LoadingButton>
+          </div>
         </div>
       </form>
     </Modal>
