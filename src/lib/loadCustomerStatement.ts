@@ -34,8 +34,9 @@ export async function loadCustomerStatement(opts: {
       .select('name, location')
       .eq('id', opts.depotId)
       .maybeSingle()
-    depotName = data?.name ?? null
-    depotAddress = data?.location ?? null
+    const depot = data as { name: string; location: string } | null
+    depotName = depot?.name ?? null
+    depotAddress = depot?.location ?? null
   }
 
   return statementDatasetFromSources({
