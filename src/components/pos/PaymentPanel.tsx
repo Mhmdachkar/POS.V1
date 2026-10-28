@@ -162,6 +162,13 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
           product_id:       item.product_id,
           unit_level:       item.unit_level,
           quantity_in_unit: item.quantity_in_unit,
+          // Admin sends charged P.U. / Remise; cashier omits (catalog on server).
+          ...(isAdmin
+            ? {
+                unit_price_cfa: item.unit_price_cfa,
+                line_discount_cfa: item.line_discount_cfa ?? 0,
+              }
+            : {}),
         })),
         p_amount_tendered_cfa: cashTendered,
         p_display_currency:    'CFA',
@@ -173,6 +180,12 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
         ...(isAdmin ? { p_override_total_cfa: overrideTotalCfa } : {}),
         ...(isAdmin && priceExceptionReason.trim()
           ? { p_price_exception_reason: priceExceptionReason.trim() }
+          : {}),
+        ...(isAdmin
+          ? {
+              p_document_date: usePOSStore.getState().documentDateYmd || null,
+              p_external_ref: usePOSStore.getState().externalRef.trim() || null,
+            }
           : {}),
       })
 

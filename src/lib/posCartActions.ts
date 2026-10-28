@@ -40,7 +40,7 @@ function fail(availablePieces: number, items: CartItem[], productId: string): Po
 }
 
 export function tryAddCartItem(
-  item: Omit<CartItem, 'line_total_cfa'>,
+  item: Omit<CartItem, 'line_total_cfa' | 'line_discount_cfa'> & { line_discount_cfa?: number },
   availablePieces: number | null | undefined,
 ): PosCartGuardResult {
   const items = usePOSStore.getState().items
