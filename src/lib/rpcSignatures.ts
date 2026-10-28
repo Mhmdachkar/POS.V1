@@ -57,6 +57,10 @@ export const RPC_SIGNATURES = {
   duplicate_proforma: ['p_proforma_id'],
   get_proforma: ['p_proforma_id'],
   list_proformas: [],
+  sale_delivery_remaining: ['p_sale_id'],
+  create_delivery_note: ['p_sale_id', 'p_items'],
+  get_delivery_note: ['p_delivery_note_id'],
+  list_delivery_notes_for_sale: ['p_sale_id'],
 } as const
 
 export type RpcName = keyof typeof RPC_SIGNATURES

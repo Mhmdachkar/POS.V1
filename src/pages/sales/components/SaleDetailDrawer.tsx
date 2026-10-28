@@ -24,7 +24,7 @@ import { CUSTOMERS } from '@/lib/bilingual/customers'
 import { REPORTS } from '@/lib/bilingual/reports'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { BiModalTitle as BiSectionTitle, BiTableHeader } from '@/lib/bilingual/ui'
-import { PackageCheck, Printer, RotateCcw, XCircle } from 'lucide-react'
+import { FileText, PackageCheck, Printer, RotateCcw, Truck, XCircle } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { Drawer, Button, MoneyDisplay, Skeleton, SaleStatusBadge } from '@/components/ui'
 import { formatDateTime } from '@/lib/formatters'
@@ -38,11 +38,17 @@ import { printJobStatusLabel } from '@/lib/printJobStatus'
 import { useDepotStore } from '@/stores/depotStore'
 import { useAuthStore } from '@/stores/authStore'
 import { releaseSaleFulfillment, requeuePrintJob, usePrintJobsForSale } from '@/hooks/usePrintJobs'
-import { getErrorMessage } from '@/lib/errors'
+import { getErrorMessage, parseError } from '@/lib/errors'
 import type { BusinessSettings } from '@/types/database'
 import type { SaleDetailData } from '@/hooks/useSales'
 import { ReturnModal } from './ReturnModal'
 import { VoidModal } from './VoidModal'
+import { DeliveryNoteModal } from './DeliveryNoteModal'
+import {
+  fetchDeliveryNoteDetail,
+  useDeliveryNotesForSale,
+} from '@/hooks/useDeliveryNotes'
+import { printDeliveryNotePdf } from '@/lib/deliveryNoteDocument'
 import { t } from '@/lib/bilingual/types'
 import { APP_BUSINESS_FALLBACK } from '@/lib/formatters'
 import { formatSoldQuantityDetail } from '@/lib/saleQuantityDisplay'
@@ -245,6 +251,7 @@ interface SaleDetailDrawerProps {
 export function SaleDetailDrawer({ saleId, shiftId, isOverRefund = false, onClose }: SaleDetailDrawerProps) {
   const [showReturn, setShowReturn] = useState(false)
   const [showVoid, setShowVoid] = useState(false)
+  const [showDelivery, setShowDelivery] = useState(false)
   const queryClient = useQueryClient()
   const staffRole = useAuthStore((s) => s.staff?.role)
   const canMutateSale = staffRole === 'cashier' || staffRole === 'admin'
@@ -253,6 +260,9 @@ export function SaleDetailDrawer({ saleId, shiftId, isOverRefund = false, onClos
     queryClient.getQueryData<BusinessSettings>(settingsKeys.current)?.business_name ?? APP_BUSINESS_FALLBACK
 
   const { data: sale, isLoading, isError } = useSaleDetail(saleId)
+  const { data: deliveryNotes } = useDeliveryNotesForSale(
+    saleId && sale && sale.status !== 'voided' ? saleId : null,
+  )
 
   const handleMutationSuccess = () => {
     if (!saleId) return
@@ -279,6 +289,39 @@ export function SaleDetailDrawer({ saleId, shiftId, isOverRefund = false, onClos
     })
 
   const canVoid = sale && sale.status === 'completed'
+  const canCreateDelivery =
+    canMutateSale &&
+    sale &&
+    (sale.status === 'completed' || sale.status === 'partially_returned')
+
+  async function handlePrintDeliveryNote(noteId: string) {
+    try {
+      const detail = await fetchDeliveryNoteDetail(noteId)
+      printDeliveryNotePdf({
+        number: detail.note.number,
+        documentDate: detail.note.document_date,
+        showPrices: detail.note.show_prices,
+        receivedByName: detail.note.received_by_name,
+        receiptNumber: detail.receipt_number,
+        client: {
+          name: detail.customer?.name ?? (sale?.customer_name ?? t(SALES.saleInfo)),
+          phone: detail.customer?.phone ?? sale?.customer_phone ?? null,
+          address: detail.customer?.address ?? null,
+        },
+        items: detail.items,
+        header: {
+          businessName,
+          depotName:
+            queryClient.getQueryData<Array<{ id: string; name: string }>>(depotOptionKeys.all)
+              ?.find((d) => d.id === sale?.depot_id)?.name
+            ?? depotName,
+        },
+      })
+    } catch (err) {
+      const parsed = parseError(err)
+      toastErrorFromCode(parsed.code, parsed.details)
+    }
+  }
 
   return (
     <>
@@ -561,6 +604,38 @@ export function SaleDetailDrawer({ saleId, shiftId, isOverRefund = false, onClos
 
             {sale.status !== 'voided' && <SaleFulfillmentPanel sale={sale} />}
 
+            {(deliveryNotes?.rows?.length ?? 0) > 0 && (
+              <>
+                <SectionHeader title={<BiSectionTitle {...SALES.deliveryNotes} />} />
+                <div className="space-y-2">
+                  {deliveryNotes!.rows.map((note) => (
+                    <div
+                      key={note.id}
+                      className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-mono text-sm truncate">{note.number}</p>
+                        <p className="text-xs text-text-muted">
+                          {note.show_prices ? t(SALES.deliveryWithPrices) : t(SALES.deliveryWithoutPrices)}
+                          {note.received_by_name ? ` · ${note.received_by_name}` : ''}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        className="gap-1 flex-shrink-0"
+                        onClick={() => { void handlePrintDeliveryNote(note.id) }}
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                        {t(SALES.printDeliveryNote)}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
             <SectionHeader title={<BiSectionTitle {...COMMON.actions} />} />
             <div className="flex flex-col gap-3">
               {(staffRole === 'cashier' || staffRole === 'admin') && (
@@ -573,6 +648,16 @@ export function SaleDetailDrawer({ saleId, shiftId, isOverRefund = false, onClos
                   ?? depotName
                 }
               />
+              )}
+              {canCreateDelivery && (
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => setShowDelivery(true)}
+                >
+                  <Truck className="h-4 w-4" />
+                  {t(SALES.createDeliveryNote)}
+                </Button>
               )}
               {canMutateSale && canReturn && (
                 <Button
@@ -614,6 +699,15 @@ export function SaleDetailDrawer({ saleId, shiftId, isOverRefund = false, onClos
           open={showVoid}
           onClose={() => setShowVoid(false)}
           sale={sale}
+          onSuccess={handleMutationSuccess}
+        />
+      )}
+      {sale && showDelivery && (
+        <DeliveryNoteModal
+          open={showDelivery}
+          onClose={() => setShowDelivery(false)}
+          saleId={sale.id}
+          receiptNumber={sale.receipt_number}
           onSuccess={handleMutationSuccess}
         />
       )}

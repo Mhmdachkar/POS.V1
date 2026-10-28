@@ -139,4 +139,27 @@ export const SALES = {
   calculatedTotal: bi('Total calculé', 'Calculated total'),
   adjustedTotal: bi('Total ajusté', 'Adjusted total'),
   adminOverrideNote: bi("Total modifié par l'admin", 'Total changed by admin'),
+
+  // ── Bon de livraison ────────────────────────────────────────
+  deliveryNote: bi('Bon de livraison', 'Delivery note'),
+  deliveryNotes: bi('Bons de livraison', 'Delivery notes'),
+  createDeliveryNote: bi('Créer un BL', 'Create delivery note'),
+  deliveryWithPrices: bi('Avec prix', 'With prices'),
+  deliveryWithoutPrices: bi('Sans prix', 'Without prices'),
+  receivedBy: bi('Reçu par', 'Received by'),
+  receivedByPlaceholder: bi('Nom du destinataire…', 'Recipient name…'),
+  qtyToDeliver: bi('Qté à livrer', 'Qty to deliver'),
+  remainingToDeliver: bi('Restant', 'Remaining'),
+  alreadyDelivered: bi('Déjà livré', 'Already delivered'),
+  noRemainingLines: bi(
+    'Rien à livrer (tout livré ou retourné).',
+    'Nothing left to deliver (all delivered or returned).',
+  ),
+  deliveryCreated: bi('Bon de livraison créé', 'Delivery note created'),
+  printDeliveryNote: bi('Imprimer le BL', 'Print delivery note'),
+  deliveryNoStock: bi(
+    'Aucun mouvement de stock. La préparation dépôt reste séparée.',
+    'No stock movement. Depot picking stays separate.',
+  ),
+  fillAllRemaining: bi('Tout le restant', 'Fill remaining'),
 } as const
