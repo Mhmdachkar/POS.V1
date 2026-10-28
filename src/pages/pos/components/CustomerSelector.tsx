@@ -117,6 +117,8 @@ export interface CustomerDropdownProps {
   onClose: () => void
   isWalkIn: boolean
   selectedCustomerId: string | null
+  /** Extra classes for the panel shell (portal host sets position). */
+  className?: string
 }
 
 const WALK_IN_ID = 'pos-customer-opt-walkin'
@@ -128,6 +130,7 @@ export function CustomerDropdown({
   onClose,
   isWalkIn,
   selectedCustomerId,
+  className,
 }: CustomerDropdownProps) {
   const [query, setQuery] = useState('')
   const [showCreate, setShowCreate] = useState(false)
@@ -210,9 +213,9 @@ export function CustomerDropdown({
       data-testid="pos-customer-picker"
       data-state="open"
       className={cn(
-        'absolute z-30 left-0 right-0 bottom-full mb-1',
-        'flex flex-col max-h-64',
+        'flex flex-col max-h-64 min-h-0',
         'bg-surface border border-border rounded-lg shadow-lg overflow-hidden',
+        className,
       )}
     >
       {showCreate ? (

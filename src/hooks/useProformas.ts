@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { rpc } from '@/lib/rpc'
+import { supabase } from '@/lib/supabase'
 import { CACHE_STALE } from '@/lib/cachePolicy'
 
 export const proformaKeys = {
@@ -27,6 +28,8 @@ export interface ProformaRow {
   created_by: string
   created_at: string
   updated_at: string
+  /** Client-enriched from customers table (list RPC returns id only). */
+  customer_name?: string | null
 }
 
 export interface ProformaItemRow {
@@ -53,7 +56,30 @@ export async function fetchProformaList(depotId: string | null, status: string |
     p_offset: 0,
   })
   if (result.error) throw result.error
-  return result.data as { rows: ProformaRow[]; count: number }
+  const payload = result.data as { rows: ProformaRow[]; count: number }
+  const rows = payload.rows ?? []
+  const customerIds = [
+    ...new Set(rows.map((r) => r.customer_id).filter((id): id is string => !!id)),
+  ]
+  if (customerIds.length === 0) {
+    return { rows, count: payload.count }
+  }
+
+  const { data: customers, error } = await supabase
+    .from('customers')
+    .select('id, name')
+    .in('id', customerIds)
+  if (error) throw error
+  const nameById = new Map(
+    ((customers ?? []) as Array<{ id: string; name: string }>).map((c) => [c.id, c.name]),
+  )
+  return {
+    count: payload.count,
+    rows: rows.map((row) => ({
+      ...row,
+      customer_name: row.customer_id ? (nameById.get(row.customer_id) ?? null) : null,
+    })),
+  }
 }
 
 export async function fetchProformaDetail(id: string) {

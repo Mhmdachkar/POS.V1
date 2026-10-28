@@ -4,7 +4,7 @@
  * Built for a receipt printer, not a browser page: no URLs, no app chrome.
  */
 
-import { formatCFA, formatDateTime } from '@/lib/formatters'
+import { formatCFA, formatDateTime, formatReportDate } from '@/lib/formatters'
 import { APP_BUSINESS_FALLBACK } from '@/lib/formatters'
 import type { DiscountType, SaleStatus } from '@/types/database'
 import type { SaleDetailData } from '@/hooks/useSales'
@@ -23,6 +23,9 @@ export interface ReceiptData {
   depotName: string | null
   receiptNumber: string
   createdAt: string
+  /** Document date YYYY-MM-DD when set; print Date prefers this over createdAt. */
+  documentDateYmd: string | null
+  externalRef: string | null
   cashierName: string | null
   customerName: string | null
   status: SaleStatus
@@ -40,6 +43,12 @@ export interface ReceiptData {
   change_given_cfa: number
   balance_added_cfa: number
   refund_amount_cfa?: number
+}
+
+/** Date shown on receipt / sale header: document_date when set, else created_at. */
+export function receiptDisplayDate(data: Pick<ReceiptData, 'documentDateYmd' | 'createdAt'>): string {
+  if (data.documentDateYmd) return formatReportDate(data.documentDateYmd)
+  return formatDateTime(data.createdAt)
 }
 
 const STATUS_STAMP: Record<SaleStatus, string> = {
@@ -91,6 +100,8 @@ export function receiptDataFromSaleDetail(
     depotName,
     receiptNumber: sale.receipt_number,
     createdAt: sale.created_at,
+    documentDateYmd: sale.document_date?.slice(0, 10) || null,
+    externalRef: sale.external_ref?.trim() || null,
     cashierName: sale.cashier_name,
     customerName: sale.customer_name,
     status: sale.status,
@@ -174,7 +185,8 @@ export function buildReceiptHtml(data: ReceiptData): string {
       </div>
       <div class="receipt-rule"></div>
       <div class="receipt-meta">
-        ${kv('Date', escapeReceiptText(formatDateTime(data.createdAt)))}
+        ${kv('Date', escapeReceiptText(receiptDisplayDate(data)))}
+        ${data.externalRef ? kv('R\u00e9f.', escapeReceiptText(data.externalRef)) : ''}
         ${cashier ? kv('Caissier', cashier) : ''}
         ${kv('Client', customer)}
       </div>

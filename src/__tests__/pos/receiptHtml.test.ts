@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { buildReceiptHtml, printReceiptHtml, escapeReceiptText, receiptDataFromSaleDetail } from '@/lib/receiptHtml'
-import { formatCFA, formatDateTime } from '@/lib/formatters'
+import { formatCFA, formatDateTime, formatReportDate } from '@/lib/formatters'
 import type { ReceiptData } from '@/lib/receiptHtml'
 import type { SaleDetailData } from '@/hooks/useSales'
 
@@ -10,6 +10,8 @@ function sample(overrides: Partial<ReceiptData> = {}): ReceiptData {
     depotName: 'Depot Dakar',
     receiptNumber: 'DKR-00000010',
     createdAt: '2026-09-16T01:45:00Z',
+    documentDateYmd: null,
+    externalRef: null,
     cashierName: 'Cashier Dakar',
     customerName: 'Fatou Diallo',
     status: 'completed',
@@ -211,6 +213,52 @@ describe('receiptDataFromSaleDetail', () => {
     expect(data.customerName).toBe('Fatou Diallo')
     expect(data.payable_total_cfa).toBe(700)
     expect(data.adjustment_cfa).toBe(0)
+    expect(data.documentDateYmd).toBeNull()
+    expect(data.externalRef).toBeNull()
+  })
+
+  it('prefers document_date and shows Réf. on the printed ticket', () => {
+    const sale: SaleDetailData = {
+      id: 'sale-doc',
+      depot_id: 'depot-a',
+      cashier_id: 'c1',
+      customer_id: null,
+      shift_id: null,
+      receipt_number: 'MAIN-00000013',
+      status: 'completed',
+      display_currency: 'CFA',
+      cfa_to_usd_rate_used: 1,
+      subtotal_cfa: 1000,
+      discount_type: null,
+      discount_value: null,
+      discount_amount_cfa: 0,
+      total_cfa: 1000,
+      admin_override_total_cfa: null,
+      amount_tendered_cfa: 1000,
+      amount_applied_cfa: 1000,
+      change_given_cfa: 0,
+      balance_added_cfa: 0,
+      document_date: '2026-10-20',
+      external_ref: 'PO-42',
+      created_at: '2026-10-28T12:00:00Z',
+      customer_name: null,
+      customer_phone: null,
+      customer_balance_owed_cfa: null,
+      cashier_name: 'Admin',
+      cashier_role: 'admin',
+      fulfillment: null,
+      items: [],
+      returns: [],
+      payments: [],
+    }
+    const data = receiptDataFromSaleDetail(sale, 'Aquilux', 'Main')
+    expect(data.documentDateYmd).toBe('2026-10-20')
+    expect(data.externalRef).toBe('PO-42')
+    const html = buildReceiptHtml(data)
+    expect(html).toContain(formatReportDate('2026-10-20'))
+    expect(html).not.toContain(formatDateTime(sale.created_at))
+    expect(html).toContain('PO-42')
+    expect(html).toContain('R\u00e9f.')
   })
 
   it('maps payable total and adjustment from admin override', () => {

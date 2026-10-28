@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import { X, User, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { formatCFA } from '@/lib/formatters'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { POS } from '@/lib/bilingual/pos'
-import { t, bilingualAriaLabel } from '@/lib/bilingual/types'
+import { bilingualAriaLabel } from '@/lib/bilingual/types'
 import { useShallow } from 'zustand/react/shallow'
 import { usePOSStore } from '@/stores/posStore'
 import { CustomerDropdown } from '@/pages/pos/components/CustomerSelector'
@@ -13,10 +14,15 @@ import type { Customer } from '@/types/database'
 /**
  * Compact POS customer picker. Store updates happen only on Walk-in /
  * customer selection — opening the overlay does not change checkout state.
+ *
+ * Dropdown is portaled + fixed so it is not clipped by POS overflow or
+ * buried under TopBar (z-20).
  */
 export function CustomerChip() {
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [panelStyle, setPanelStyle] = useState<CSSProperties>({})
   const wrapperRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   const { customer, isWalkIn, setCustomer, setWalkIn } = usePOSStore(useShallow((s) => ({
     customer: s.customer,
@@ -25,11 +31,50 @@ export function CustomerChip() {
     setWalkIn: s.setWalkIn,
   })))
 
+  useLayoutEffect(() => {
+    if (!dropdownOpen || !wrapperRef.current) return
+
+    function place() {
+      const anchor = wrapperRef.current?.getBoundingClientRect()
+      if (!anchor) return
+      const gap = 4
+      const maxH = 256
+      const spaceBelow = window.innerHeight - anchor.bottom - gap
+      const spaceAbove = anchor.top - gap
+      const openDown = spaceBelow >= 160 || spaceBelow >= spaceAbove
+      const height = Math.min(maxH, Math.max(120, openDown ? spaceBelow : spaceAbove))
+      const width = Math.max(anchor.width, 280)
+      let left = anchor.left
+      if (left + width > window.innerWidth - 8) {
+        left = Math.max(8, window.innerWidth - width - 8)
+      }
+      setPanelStyle({
+        position: 'fixed',
+        zIndex: 80,
+        left,
+        width,
+        maxHeight: height,
+        ...(openDown
+          ? { top: anchor.bottom + gap }
+          : { bottom: window.innerHeight - anchor.top + gap }),
+      })
+    }
+
+    place()
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    return () => {
+      window.removeEventListener('resize', place)
+      window.removeEventListener('scroll', place, true)
+    }
+  }, [dropdownOpen])
+
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false)
-      }
+      const target = e.target as Node
+      if (wrapperRef.current?.contains(target)) return
+      if (panelRef.current?.contains(target)) return
+      setDropdownOpen(false)
     }
     if (dropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside)
@@ -48,7 +93,7 @@ export function CustomerChip() {
   }
 
   return (
-    <div ref={wrapperRef} className="relative z-30">
+    <div ref={wrapperRef} className="relative min-w-0 flex-1 sm:flex-none sm:min-w-[14rem]">
       <div className="flex items-center gap-1">
         <button
           type="button"
@@ -99,15 +144,20 @@ export function CustomerChip() {
         )}
       </div>
 
-      {dropdownOpen && (
-        <CustomerDropdown
-          onSelect={handleSelectCustomer}
-          onSelectWalkIn={handleSelectWalkIn}
-          onClose={() => setDropdownOpen(false)}
-          isWalkIn={isWalkIn}
-          selectedCustomerId={customer?.id ?? null}
-        />
-      )}
+      {dropdownOpen &&
+        createPortal(
+          <div ref={panelRef} style={panelStyle} className="flex flex-col min-h-0">
+            <CustomerDropdown
+              onSelect={handleSelectCustomer}
+              onSelectWalkIn={handleSelectWalkIn}
+              onClose={() => setDropdownOpen(false)}
+              isWalkIn={isWalkIn}
+              selectedCustomerId={customer?.id ?? null}
+              className="max-h-full h-full w-full"
+            />
+          </div>,
+          document.body,
+        )}
     </div>
   )
 }

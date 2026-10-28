@@ -246,6 +246,10 @@ export interface Sale {
   amount_applied_cfa: number
   change_given_cfa: number
   balance_added_cfa: number
+  /** Print/header date (YYYY-MM-DD, Africa/Abidjan). Reports/Z/shifts still use created_at. */
+  document_date?: string | null
+  /** Optional commercial reference (print/header only). */
+  external_ref?: string | null
   created_at: string
 }
 

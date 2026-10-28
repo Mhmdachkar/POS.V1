@@ -27,7 +27,7 @@ import { BiModalTitle as BiSectionTitle, BiTableHeader } from '@/lib/bilingual/u
 import { FileText, PackageCheck, Printer, RotateCcw, Truck, XCircle } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { Drawer, Button, MoneyDisplay, Skeleton, SaleStatusBadge } from '@/components/ui'
-import { formatDateTime } from '@/lib/formatters'
+import { formatDateTime, formatReportDate, APP_BUSINESS_FALLBACK } from '@/lib/formatters'
 import { buildReceiptHtml, printReceiptHtml, receiptDataFromSaleDetail } from '@/lib/receiptHtml'
 import { useSaleDetail } from '@/hooks/useSales'
 import { useQueryClient } from '@tanstack/react-query'
@@ -50,7 +50,6 @@ import {
 } from '@/hooks/useDeliveryNotes'
 import { printDeliveryNotePdf } from '@/lib/deliveryNoteDocument'
 import { t } from '@/lib/bilingual/types'
-import { APP_BUSINESS_FALLBACK } from '@/lib/formatters'
 import { formatSoldQuantityDetail } from '@/lib/saleQuantityDisplay'
 import { SaleUnitBadge } from '@/components/sales/SaleUnitBadge'
 
@@ -329,7 +328,13 @@ export function SaleDetailDrawer({ saleId, shiftId, isOverRefund = false, onClos
         open={!!saleId}
         onClose={onClose}
         title={sale ? sale.receipt_number : t(SALES.saleDetails)}
-        description={sale ? `${formatDateTime(sale.created_at)}` : undefined}
+        description={
+          sale
+            ? sale.document_date
+              ? formatReportDate(sale.document_date.slice(0, 10))
+              : formatDateTime(sale.created_at)
+            : undefined
+        }
         width="lg"
       >
         {isLoading ? (
@@ -355,7 +360,17 @@ export function SaleDetailDrawer({ saleId, shiftId, isOverRefund = false, onClos
             {/* Sale info */}
             <SectionHeader title={<BiSectionTitle {...SALES.saleInfo} />} />
             <DetailRow label={t(SALES.receiptNumber)} value={<span className="font-mono">{sale.receipt_number}</span>} />
-            <DetailRow label={t(COMMON.date)} value={formatDateTime(sale.created_at)} />
+            <DetailRow
+              label={t(COMMON.date)}
+              value={
+                sale.document_date
+                  ? formatReportDate(sale.document_date.slice(0, 10))
+                  : formatDateTime(sale.created_at)
+              }
+            />
+            {sale.external_ref?.trim() ? (
+              <DetailRow label={t(POS.externalRef)} value={sale.external_ref.trim()} />
+            ) : null}
             <DetailRow
               label={t(SALES.soldBy)}
               value={
