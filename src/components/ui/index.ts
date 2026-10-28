@@ -54,6 +54,9 @@ export type { SelectProps } from './Select'
 export { FilterBar } from './FilterBar'
 export type { FilterBarProps, FilterBarChip } from './FilterBar'
 
+export { DatePresetFilter } from './DatePresetFilter'
+export type { DatePresetFilterProps, ListDatePreset } from './DatePresetFilter'
+
 export { Tabs } from './Tabs'
 export type { TabsProps, TabItem } from './Tabs'
 
