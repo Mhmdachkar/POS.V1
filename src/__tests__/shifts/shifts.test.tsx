@@ -103,6 +103,14 @@ function createFilterAwareFrom(allRows: ShiftRow[]) {
     range = [Number(from), Number(to)]
     return builder
   }
+  // Running-totals batch: sales/payments/returns use .in('shift_id', …)
+  builder.in = (col: unknown) => {
+    calls.push(`in:${String(col)}`)
+    return {
+      then: (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) =>
+        Promise.resolve({ data: [], error: null }).then(resolve, reject),
+    }
+  }
   const execute = () => {
     const count = filtered.length
     const page = range ? filtered.slice(range[0], range[1] + 1) : filtered
