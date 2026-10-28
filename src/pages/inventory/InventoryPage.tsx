@@ -80,6 +80,7 @@ function TableSkeleton({
           {showDepotColumn && <Skeleton className="h-4 w-full" />}
           <Skeleton className="h-4 w-full max-w-[4rem] justify-self-end" />
           <Skeleton className="h-4 w-full max-w-[4rem] justify-self-end" />
+          <Skeleton className="h-4 w-full max-w-[4rem] justify-self-end" />
           <Skeleton className="h-5 w-full max-w-[5rem] rounded-full" />
           <Skeleton className="h-4 w-full max-w-[3rem]" />
           <Skeleton className="h-4 w-full" />
@@ -159,9 +160,10 @@ export function InventoryPage() {
     setPage(0)
   }
 
+  // photo | product | category | [depot] | coût | prix | stock | status | monitoring | updated
   const gridCols = showDepotColumn
-    ? 'grid-cols-[4rem_minmax(7rem,1.3fr)_minmax(5rem,0.8fr)_minmax(5rem,0.7fr)_minmax(5.5rem,0.7fr)_4.75rem_6.5rem_4.25rem_6.5rem]'
-    : 'grid-cols-[4rem_minmax(7rem,1.3fr)_minmax(5rem,0.8fr)_minmax(5.5rem,0.7fr)_4.75rem_6.5rem_4.25rem_6.5rem]'
+    ? 'grid-cols-[4rem_minmax(7rem,1.3fr)_minmax(5rem,0.8fr)_minmax(5rem,0.7fr)_minmax(5.25rem,0.65fr)_minmax(5.25rem,0.65fr)_4.75rem_6.5rem_4.25rem_6.5rem]'
+    : 'grid-cols-[4rem_minmax(7rem,1.3fr)_minmax(5rem,0.8fr)_minmax(5.25rem,0.65fr)_minmax(5.25rem,0.65fr)_4.75rem_6.5rem_4.25rem_6.5rem]'
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -269,6 +271,7 @@ export function InventoryPage() {
                 {showDepotColumn && (
                   <span className="text-xs font-semibold text-text-secondary uppercase">{t(COMMON.depot)}</span>
                 )}
+                <span className="text-xs font-semibold text-text-secondary uppercase text-right">{t(INVENTORY.costPrice)}</span>
                 <span className="text-xs font-semibold text-text-secondary uppercase text-right">{t(COMMON.price)}</span>
                 <span className="text-xs font-semibold text-text-secondary uppercase text-right">{t(INVENTORY.stockSection)}</span>
                 <span className="text-xs font-semibold text-text-secondary uppercase">{t(COMMON.status)}</span>
@@ -333,6 +336,14 @@ export function InventoryPage() {
                     {depotName(product.depot_id)}
                   </span>
                 )}
+                <span className="text-sm tabular-nums text-right text-text-primary min-w-0">
+                  {(() => {
+                    const unit = primarySellingUnit(product.units)
+                    const cost =
+                      unit && 'cost_price_cfa' in unit ? Number(unit.cost_price_cfa) : null
+                    return cost != null && Number.isFinite(cost) ? formatCFA(cost) : '—'
+                  })()}
+                </span>
                 <span className="text-sm tabular-nums text-right text-text-primary min-w-0">
                   {(() => {
                     const unit = primarySellingUnit(product.units)

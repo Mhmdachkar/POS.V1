@@ -283,16 +283,20 @@ def parse_elecrtro(ws, imgs: dict[int, list]) -> list[ProductRow]:
 
 
 def parse_electro2(ws, imgs: dict[int, list]) -> list[ProductRow]:
+    """ELECTRO 2 columns (1-based): C4=CTN, C5=PCS/CTN, C6=TQTY pieces, C14=sell CFA.
+    C7/C8 are not piece qty; C13 (=126×C7) is not a cost.
+    Purchase cost is not taken from the sheet (C11×FX/C5 is unrealistic) —
+    cost=None → 0 placeholder until the client supplies real L0 costs.
+    """
     rows: list[ProductRow] = []
     for r in range(1, ws.max_row + 1):
         serial = norm_serial(ws.cell(r, 1).value)
         if not serial:
             continue
         name = clean_name(ws.cell(r, 3).value, serial)
-        tqty = as_float(ws.cell(r, 8).value) or 0
-        cost = as_float(ws.cell(r, 13).value)
+        pcs = max(1, int(as_float(ws.cell(r, 5).value) or 1))
+        tqty = as_float(ws.cell(r, 6).value) or 0
         sell = as_float(ws.cell(r, 14).value)
-        pcs = int(as_float(ws.cell(r, 7).value) or 1)
         cat = classify("ELECTRO 2", serial, name)
         rows.append(
             ProductRow(
@@ -301,10 +305,10 @@ def parse_electro2(ws, imgs: dict[int, list]) -> list[ProductRow]:
                 serial=serial,
                 name=name or serial,
                 category=cat,
-                cost=cost,
+                cost=None,
                 sell=sell,
                 tqty=tqty,
-                pcs_ctn=max(1, pcs),
+                pcs_ctn=pcs,
                 photos=list(imgs.get(r, [])),
             )
         )
