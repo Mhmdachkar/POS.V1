@@ -33,6 +33,8 @@ export interface CompleteSaleParams {
   p_document_date?: string | null
   /** Admin-only Réf. */
   p_external_ref?: string | null
+  /** Convert this proforma once; links sales.proforma_id. */
+  p_proforma_id?: string | null
 }
 
 // ─── Phase 18C fulfillment + print jobs ─────────────────────────

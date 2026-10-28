@@ -105,6 +105,63 @@ export const rpc = {
   completeSale: (params: CompleteSaleParams): Promise<RpcResult<CompleteSaleResult>> =>
     callRpc<CompleteSaleResult>('complete_sale', params),
 
+  createProforma: (params: {
+    p_depot_id: string
+    p_customer_id?: string | null
+    p_document_date?: string | null
+    p_external_ref?: string | null
+    p_notes?: string | null
+    p_discount_type?: 'flat' | 'percent' | null
+    p_discount_value?: number | null
+    p_items: Array<{
+      product_id: string
+      unit_level: number
+      quantity_in_unit: number
+      unit_price_cfa?: number
+      line_discount_cfa?: number
+    }>
+  }): Promise<RpcResult<{ id: string; number: string; total_cfa: number; status: string }>> =>
+    callRpc('create_proforma', params),
+
+  updateProforma: (params: {
+    p_proforma_id: string
+    p_customer_id?: string | null
+    p_document_date?: string | null
+    p_external_ref?: string | null
+    p_notes?: string | null
+    p_discount_type?: 'flat' | 'percent' | null
+    p_discount_value?: number | null
+    p_items?: Array<{
+      product_id: string
+      unit_level: number
+      quantity_in_unit: number
+      unit_price_cfa?: number
+      line_discount_cfa?: number
+    }> | null
+    p_clear_customer?: boolean
+  }): Promise<RpcResult<{ id: string; number: string; ok: boolean }>> =>
+    callRpc('update_proforma', params),
+
+  setProformaStatus: (params: {
+    p_proforma_id: string
+    p_status: 'sent' | 'cancelled'
+  }): Promise<RpcResult<{ id: string; status: string }>> =>
+    callRpc('set_proforma_status', params),
+
+  duplicateProforma: (proformaId: string): Promise<RpcResult<{ id: string; number: string; status: string }>> =>
+    callRpc('duplicate_proforma', { p_proforma_id: proformaId }),
+
+  getProforma: (proformaId: string): Promise<RpcResult<unknown>> =>
+    callRpc('get_proforma', { p_proforma_id: proformaId }),
+
+  listProformas: (params: {
+    p_depot_id?: string | null
+    p_status?: string | null
+    p_limit?: number
+    p_offset?: number
+  }): Promise<RpcResult<unknown>> =>
+    callRpc('list_proformas', params),
+
   /**
    * Record a standalone customer debt payment.
    * Reduces customer.balance_owed_cfa.

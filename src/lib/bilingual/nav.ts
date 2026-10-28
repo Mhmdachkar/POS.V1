@@ -20,6 +20,7 @@ export const NAV = {
   shift: bi('Services', 'Shifts'),
   products: bi('Produits', 'Products'),
   dashboard: bi("Vue d'ensemble", 'Overview'),
+  proformas: bi('Proformas', 'Quotes'),
 } as const satisfies Record<string, BilingualPair>
 
 export const NAV_GROUP = {

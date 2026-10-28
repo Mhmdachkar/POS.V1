@@ -111,6 +111,8 @@ interface POSState {
   documentDateYmd: string
   /** Admin saisie rapide — optional Réf. */
   externalRef: string
+  /** When set, next complete_sale links/converts this proforma. */
+  pendingProformaId: string | null
 
   // ─── Submission lifecycle ────────────────────────────────────
   /**
@@ -175,6 +177,7 @@ interface POSState {
   setPriceExceptionReason: (reason: string) => void
   setDocumentDateYmd: (ymd: string) => void
   setExternalRef: (ref: string) => void
+  setPendingProformaId: (id: string | null) => void
   clearCart: () => void
   restoreCart: (items: CartItem[]) => void
 
@@ -228,6 +231,7 @@ export const usePOSStore = create<POSState>()((set, get) => ({
   priceExceptionReason: '',
   documentDateYmd: '',
   externalRef: '',
+  pendingProformaId: null,
   idempotencyKey: null,
   isSubmitting: false,
   saleResult: null,
@@ -448,6 +452,7 @@ export const usePOSStore = create<POSState>()((set, get) => ({
   setPriceExceptionReason: (reason) => set({ priceExceptionReason: reason }),
   setDocumentDateYmd: (ymd) => set({ documentDateYmd: ymd }),
   setExternalRef: (ref) => set({ externalRef: ref }),
+  setPendingProformaId: (id) => set({ pendingProformaId: id }),
 
   clearCart: () => {
     const { discountType, discountValue, cashTendered, overrideTotalCfa } = get()
@@ -501,6 +506,7 @@ export const usePOSStore = create<POSState>()((set, get) => ({
       priceExceptionReason: '',
       documentDateYmd: '',
       externalRef: '',
+      pendingProformaId: null,
       idempotencyKey: null,
       isSubmitting: false,
       saleResult: null,

@@ -1,0 +1,222 @@
+/**
+ * Proformas list — depot-scoped quotes (admin + cashier).
+ */
+
+import { useMemo, useState } from 'react'
+import { FileText } from 'lucide-react'
+import { NavPictogram } from '@/components/layout/NavPictogram'
+import { cn } from '@/lib/cn'
+import {
+  Badge,
+  EmptyState,
+  FilterBar,
+  MoneyDisplay,
+  PageHeader,
+  RowChevron,
+  Skeleton,
+  CLICKABLE_ROW,
+  type FilterBarChip,
+} from '@/components/ui'
+import { formatReportDate } from '@/lib/formatters'
+import { COMMON } from '@/lib/bilingual/common'
+import { PROFORMAS } from '@/lib/bilingual/proformas'
+import {
+  BiEmptyDescription,
+  BiEmptyTitle,
+  BiPageDescription,
+  BiPageTitle,
+  BiTabLabel,
+  BiTableHeader,
+} from '@/lib/bilingual/ui'
+import { BilingualText } from '@/components/ui/BilingualText'
+import { bilingualAriaLabel, t } from '@/lib/bilingual/types'
+import { useProformaList, type ProformaRow } from '@/hooks/useProformas'
+import { useAuthStore } from '@/stores/authStore'
+import { useDepotStore } from '@/stores/depotStore'
+import { ProformaDetailDrawer } from './components/ProformaDetailDrawer'
+
+const GRID =
+  'grid-cols-[minmax(9rem,11rem)_minmax(5.5rem,6.5rem)_minmax(5rem,7rem)_minmax(6rem,1fr)_minmax(6rem,7.5rem)_1.25rem]'
+
+function statusLabel(status: ProformaRow['status']) {
+  switch (status) {
+    case 'draft':
+      return PROFORMAS.draft
+    case 'sent':
+      return PROFORMAS.sent
+    case 'converted':
+      return PROFORMAS.converted
+    case 'cancelled':
+      return PROFORMAS.cancelled
+  }
+}
+
+function statusVariant(status: ProformaRow['status']): 'neutral' | 'info' | 'success' | 'danger' {
+  switch (status) {
+    case 'draft':
+      return 'neutral'
+    case 'sent':
+      return 'info'
+    case 'converted':
+      return 'success'
+    case 'cancelled':
+      return 'danger'
+  }
+}
+
+function TableSkeleton() {
+  return (
+    <div className="space-y-px">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div
+          key={i}
+          className={cn('grid gap-4 px-4 py-3 bg-surface border-b border-border items-center', GRID)}
+        >
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-5 w-full max-w-[5rem] rounded-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full max-w-[5rem] justify-self-end" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export function ProformasPage() {
+  const [statusFilter, setStatusFilter] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+
+  const staff = useAuthStore((s) => s.staff)
+  const depotId = useDepotStore((s) => s.currentDepotId)
+  const effectiveDepotId = staff?.role === 'cashier' ? staff.depot_id : depotId
+
+  const { data, isLoading, isError } = useProformaList(effectiveDepotId, statusFilter)
+
+  const rows = data?.rows ?? []
+  const totalCount = data?.count ?? 0
+
+  const chips: FilterBarChip[] = useMemo(
+    () => [
+      {
+        value: 'all',
+        label: <BiTabLabel {...COMMON.all} />,
+        ariaLabel: bilingualAriaLabel(COMMON.all),
+      },
+      {
+        value: 'draft',
+        label: <BiTabLabel {...PROFORMAS.draft} />,
+        ariaLabel: bilingualAriaLabel(PROFORMAS.draft),
+      },
+      {
+        value: 'sent',
+        label: <BiTabLabel {...PROFORMAS.sent} />,
+        ariaLabel: bilingualAriaLabel(PROFORMAS.sent),
+      },
+      {
+        value: 'converted',
+        label: <BiTabLabel {...PROFORMAS.converted} />,
+        ariaLabel: bilingualAriaLabel(PROFORMAS.converted),
+      },
+      {
+        value: 'cancelled',
+        label: <BiTabLabel {...PROFORMAS.cancelled} />,
+        ariaLabel: bilingualAriaLabel(PROFORMAS.cancelled),
+      },
+    ],
+    [],
+  )
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex-shrink-0 border-b border-border bg-surface">
+        <PageHeader
+          title={<BiPageTitle {...PROFORMAS.title} />}
+          description={<BiPageDescription {...PROFORMAS.pageDesc} />}
+          icon={<NavPictogram path="/proformas" size="header" />}
+          className="border-b-0"
+        />
+        <div className="px-3 sm:px-6 pb-3 sm:pb-4">
+          <FilterBar
+            chips={chips}
+            activeChip={statusFilter ?? 'all'}
+            onChipChange={(value) => {
+              setStatusFilter(value === 'all' ? null : value)
+            }}
+            count={totalCount}
+          />
+        </div>
+      </div>
+
+      <div className="flex-1 min-w-0 overflow-x-auto overflow-y-auto">
+        {isLoading ? (
+          <TableSkeleton />
+        ) : isError ? (
+          <div className="p-8">
+            <EmptyState
+              icon={<FileText className="h-8 w-8" />}
+              title={<BiEmptyTitle {...PROFORMAS.failedToLoad} />}
+              description={<BiEmptyDescription {...COMMON.checkConnection} />}
+            />
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="p-8">
+            <EmptyState
+              icon={<FileText className="h-8 w-8" />}
+              title={<BiEmptyTitle {...PROFORMAS.empty} />}
+              description={<BiEmptyDescription {...PROFORMAS.noStockMovement} />}
+            />
+          </div>
+        ) : (
+          <>
+            <div
+              className={cn(
+                'sticky top-0 z-10 grid gap-4 px-4 py-2 bg-surface-muted border-b border-border text-xs font-semibold text-text-secondary',
+                GRID,
+              )}
+            >
+              <BiTableHeader {...PROFORMAS.number} />
+              <BiTableHeader {...PROFORMAS.status} />
+              <BiTableHeader {...PROFORMAS.date} />
+              <BiTableHeader {...PROFORMAS.customer} />
+              <span className="text-right">
+                <BiTableHeader {...PROFORMAS.total} />
+              </span>
+              <span />
+            </div>
+            {rows.map((row) => (
+              <button
+                key={row.id}
+                type="button"
+                className={cn(
+                  'w-full grid gap-4 px-4 py-3 bg-surface border-b border-border items-center text-left',
+                  GRID,
+                  CLICKABLE_ROW,
+                )}
+                onClick={() => setSelectedId(row.id)}
+              >
+                <span className="font-mono text-sm tabular-nums truncate">{row.number}</span>
+                <Badge variant={statusVariant(row.status)}>
+                  <BilingualText {...statusLabel(row.status)} variant="caption" layout="inline" />
+                </Badge>
+                <span className="text-sm text-text-secondary tabular-nums">
+                  {formatReportDate(row.document_date)}
+                </span>
+                <span className="text-sm text-text-secondary truncate">
+                  {row.customer_id ? '\u2014' : t(PROFORMAS.walkIn)}
+                </span>
+                <MoneyDisplay amount={row.total_cfa} className="justify-self-end text-sm font-medium" />
+                <RowChevron />
+              </button>
+            ))}
+          </>
+        )}
+      </div>
+
+      <ProformaDetailDrawer
+        proformaId={selectedId}
+        onClose={() => setSelectedId(null)}
+      />
+    </div>
+  )
+}

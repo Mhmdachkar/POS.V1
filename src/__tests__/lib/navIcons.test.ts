@@ -25,6 +25,7 @@ describe('navIcons', () => {
   it('resolves page titles for exact and nested customer activity paths', () => {
     expect(pageTitleForPath('/pos')).toEqual(NAV.pos)
     expect(pageTitleForPath('/sales')).toEqual(NAV.sales)
+    expect(pageTitleForPath('/proformas')).toEqual(NAV.proformas)
     expect(pageTitleForPath('/customers/cust-1/activity')).toEqual(NAV.customers)
     expect(pageTitleForPath('/unknown')).toBeNull()
   })
