@@ -162,6 +162,91 @@ export const rpc = {
   }): Promise<RpcResult<unknown>> =>
     callRpc('list_proformas', params),
 
+  createSupplier: (params: {
+    p_name: string
+    p_phone?: string | null
+    p_address?: string | null
+  }): Promise<RpcResult<{ id: string }>> =>
+    callRpc('create_supplier', params),
+
+  updateSupplier: (params: {
+    p_supplier_id: string
+    p_name?: string | null
+    p_phone?: string | null
+    p_address?: string | null
+    p_is_active?: boolean | null
+  }): Promise<RpcResult<unknown>> =>
+    callRpc('update_supplier', params),
+
+  listSuppliers: (params: {
+    p_active_only?: boolean
+    p_limit?: number
+    p_offset?: number
+  }): Promise<RpcResult<unknown>> =>
+    callRpc('list_suppliers', params),
+
+  upsertPurchaseReceipt: (params: {
+    p_depot_id: string
+    p_supplier_id: string
+    p_items: Array<{
+      product_id: string
+      unit_level: number
+      quantity_in_unit: number
+      unit_cost_cfa: number
+    }>
+    p_purchase_receipt_id?: string | null
+    p_document_date?: string | null
+    p_external_ref?: string | null
+    p_notes?: string | null
+  }): Promise<RpcResult<{ id: string; number: string; total_cfa: number; status: string }>> =>
+    callRpc('upsert_purchase_receipt', params),
+
+  validatePurchaseReceipt: (params: {
+    p_purchase_receipt_id: string
+    p_payment_mode: 'paid' | 'credit'
+    p_payment_method?: 'cash' | 'mobile' | 'bank' | null
+  }): Promise<RpcResult<unknown>> =>
+    callRpc('validate_purchase_receipt', params),
+
+  cancelPurchaseReceipt: (id: string): Promise<RpcResult<unknown>> =>
+    callRpc('cancel_purchase_receipt', { p_purchase_receipt_id: id }),
+
+  getPurchaseReceipt: (id: string): Promise<RpcResult<unknown>> =>
+    callRpc('get_purchase_receipt', { p_purchase_receipt_id: id }),
+
+  listPurchaseReceipts: (params: {
+    p_depot_id?: string | null
+    p_supplier_id?: string | null
+    p_status?: string | null
+    p_limit?: number
+    p_offset?: number
+  }): Promise<RpcResult<unknown>> =>
+    callRpc('list_purchase_receipts', params),
+
+  recordSupplierPayment: (params: {
+    p_supplier_id: string
+    p_amount_cfa: number
+    p_method: 'cash' | 'mobile' | 'bank'
+    p_note?: string | null
+    p_depot_id?: string | null
+  }): Promise<RpcResult<unknown>> =>
+    callRpc('record_supplier_payment', params),
+
+  listSupplierPayments: (params: {
+    p_supplier_id?: string | null
+    p_limit?: number
+    p_offset?: number
+  }): Promise<RpcResult<unknown>> =>
+    callRpc('list_supplier_payments', params),
+
+  adminReportPurchases: (params: {
+    p_depot_id?: string | null
+    p_start_date?: string | null
+    p_end_date?: string | null
+    p_supplier_id?: string | null
+  }): Promise<RpcResult<unknown>> =>
+    callRpc('admin_report_purchases', params),
+
   saleDeliveryRemaining: (saleId: string): Promise<RpcResult<unknown>> =>
     callRpc('sale_delivery_remaining', { p_sale_id: saleId }),
 

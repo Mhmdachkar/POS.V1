@@ -10,6 +10,7 @@ import {
   CashZPage,
   ControlAuditPage,
   CustomersReceivablesPage,
+  PurchasesSuppliersPage,
   SalesCashiersPage,
   SalesCategoriesPage,
   SalesProductsPage,
@@ -36,6 +37,7 @@ export function reportsRouteTree() {
       <Route path="cash/collections" element={<CashCollectionsPage />} />
       <Route path="cash/z" element={<CashZPage />} />
       <Route path="customers/receivables" element={<CustomersReceivablesPage />} />
+      <Route path="purchases/suppliers" element={<PurchasesSuppliersPage />} />
       <Route path="stock/inventory" element={<StockInventoryPage />} />
       <Route path="stock/movements" element={<StockMovementsPage />} />
       <Route path="stock/low" element={<StockLowPage />} />

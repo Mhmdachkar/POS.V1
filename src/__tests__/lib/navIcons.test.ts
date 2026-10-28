@@ -26,6 +26,8 @@ describe('navIcons', () => {
     expect(pageTitleForPath('/pos')).toEqual(NAV.pos)
     expect(pageTitleForPath('/sales')).toEqual(NAV.sales)
     expect(pageTitleForPath('/proformas')).toEqual(NAV.proformas)
+    expect(pageTitleForPath('/achats')).toEqual(NAV.achats)
+    expect(pageTitleForPath('/achats/receptions')).toEqual(NAV.achats)
     expect(pageTitleForPath('/customers/cust-1/activity')).toEqual(NAV.customers)
     expect(pageTitleForPath('/unknown')).toBeNull()
   })

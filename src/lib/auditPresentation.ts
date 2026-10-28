@@ -76,6 +76,10 @@ export const AUDIT_ACTION_LABELS: Record<string, BilingualPair> = {
   deactivate_product: bi('Produit désactivé', 'Product deactivated'),
   reactivate_product: bi('Produit réactivé', 'Product reactivated'),
   update_business_settings: bi('Paramètres entreprise', 'Business settings updated'),
+  validate_purchase_receipt: bi('BR validé', 'Purchase receipt validated'),
+  cancel_purchase_receipt: bi('BR annulé', 'Purchase receipt cancelled'),
+  record_supplier_payment: bi('Règlement fournisseur', 'Supplier payment recorded'),
+  create_supplier: bi('Fournisseur créé', 'Supplier created'),
 }
 
 export const AUDIT_ENTITY_LABELS: Record<string, BilingualPair> = {
@@ -93,6 +97,9 @@ export const AUDIT_ENTITY_LABELS: Record<string, BilingualPair> = {
   product: bi('Produit', 'Product'),
   business_settings: bi('Paramètres', 'Settings'),
   sale_fulfillment: bi('Préparation dépôt', 'Depot picking'),
+  purchase_receipt: bi('Bon de réception', 'Purchase receipt'),
+  supplier: bi('Fournisseur', 'Supplier'),
+  supplier_payment: bi('Règlement fournisseur', 'Supplier payment'),
 }
 
 export function auditActionLabel(action: string): BilingualPair {

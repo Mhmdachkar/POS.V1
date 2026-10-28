@@ -39,6 +39,10 @@ export const AUDIT_ACTIONS = [
   'deactivate_product',
   'reactivate_product',
   'update_business_settings',
+  'validate_purchase_receipt',
+  'cancel_purchase_receipt',
+  'record_supplier_payment',
+  'create_supplier',
 ] as const
 
 export const AUDIT_ENTITY_TYPES = [
@@ -55,6 +59,9 @@ export const AUDIT_ENTITY_TYPES = [
   'category',
   'product',
   'business_settings',
+  'purchase_receipt',
+  'supplier',
+  'supplier_payment',
 ] as const
 
 export interface AuditLogRow extends AuditLog {
