@@ -484,6 +484,7 @@ export interface CustomerLedgerRpcRow {
   running_balance_cfa: number
   sale_id: string | null
   adds_credit: boolean
+  cash_refunded_cfa?: number | null
 }
 
 // ─── Cost report types (CEO Notes) ─────────────────────────────

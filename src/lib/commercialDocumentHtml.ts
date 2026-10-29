@@ -43,8 +43,10 @@ export interface CommercialHeaderContext {
   depotName?: string | null
   /** Depot location / address line */
   depotAddress?: string | null
-  /** Full business phone when known (optional until settings gain a phone field) */
+  /** Business phone (Parametres). Shown only when non-empty. */
   phone?: string | null
+  /** Business address (Parametres). Shown only when non-empty. */
+  businessAddress?: string | null
 }
 
 export interface CommercialClientBlock {
@@ -114,6 +116,9 @@ export function renderCommercialHeader(
   const phone = header.phone?.trim()
     ? `<p>T\u00e9l. : ${escapeDocHtml(header.phone.trim())}</p>`
     : ''
+  const businessAddress = header.businessAddress?.trim()
+    ? `<p>${escapeDocHtml(header.businessAddress.trim())}</p>`
+    : ''
   const depot = header.depotName
     ? `<p>${escapeDocHtml(header.depotName)}${header.depotAddress ? ` \u2014 ${escapeDocHtml(header.depotAddress)}` : ''}</p>`
     : header.depotAddress
@@ -132,7 +137,7 @@ export function renderCommercialHeader(
   return `<div class="header">
   <div class="brand">${logo}<div class="brand-text">
     <h1>${escapeDocHtml(header.businessName)}</h1>
-    ${depot}${phone}
+    ${businessAddress}${depot}${phone}
   </div></div>
   <div class="meta">
     <h2>${escapeDocHtml(meta.title)}</h2>

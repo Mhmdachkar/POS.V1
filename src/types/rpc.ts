@@ -91,6 +91,7 @@ export interface RecordPaymentResult {
   customer_id: string
   amount_cfa: number
   new_balance_owed_cfa: number
+  receipt_number?: string
 }
 
 // ─── process_return ─────────────────────────────────────────────
@@ -418,6 +419,8 @@ export interface UpdateBusinessSettingsParams {
   p_business_name: string
   p_logo_url: string | null
   p_cfa_to_usd_rate: number
+  p_phone?: string | null
+  p_address?: string | null
 }
 
 export interface DashboardTopProduct {

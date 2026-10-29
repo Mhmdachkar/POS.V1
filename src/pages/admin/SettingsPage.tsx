@@ -21,6 +21,8 @@ export function SettingsPage() {
   const { data, isLoading, isError } = useBusinessSettings()
   const { mutateAsync: updateSettings, isPending } = useUpdateBusinessSettings()
   const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [address, setAddress] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
   const [rate, setRate] = useState('')
   const [error, setError] = useState('')
@@ -29,9 +31,11 @@ export function SettingsPage() {
   useEffect(() => {
     if (!data) return
     setName(data.business_name)
+    setPhone(data.phone ?? '')
+    setAddress(data.address ?? '')
     setLogoUrl(data.logo_url ?? '')
     setRate(String(data.cfa_to_usd_rate))
-  }, [data?.business_name, data?.logo_url, data?.cfa_to_usd_rate, data?.rate_updated_at])
+  }, [data?.business_name, data?.phone, data?.address, data?.logo_url, data?.cfa_to_usd_rate, data?.rate_updated_at])
 
   const rateNumber = Number(rate)
   const rateChanged = !!data && Number(data.cfa_to_usd_rate) !== rateNumber
@@ -52,6 +56,8 @@ export function SettingsPage() {
         p_business_name: name.trim(),
         p_logo_url: logo || null,
         p_cfa_to_usd_rate: rateNumber,
+        p_phone: phone.trim() || null,
+        p_address: address.trim() || null,
       })
       setConfirmRate(false)
     } catch (err) {
@@ -95,6 +101,17 @@ export function SettingsPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
+          />
+          <Input
+            label={t(ADMIN.businessPhone)}
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="+225 …"
+          />
+          <Input
+            label={t(ADMIN.businessAddress)}
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
           />
           <Input
             label={t(ADMIN.logoUrl)}

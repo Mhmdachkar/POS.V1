@@ -88,3 +88,9 @@ export function arreteeProformaSentence(amount: number): string {
     `Arr\u00eat\u00e9e la pr\u00e9sente proforma \u00e0 la somme de : ${amountInWordsFrCfa(amount)}.`
   )
 }
+
+/** Releve de compte closing line for the final balance. */
+export function releveSoldeSentence(amount: number): string {
+  const abs = Math.abs(Math.round(amount))
+  return `Arr\u00eat\u00e9 le pr\u00e9sent relev\u00e9 \u00e0 la somme de : ${amountInWordsFrCfa(abs)}.`
+}

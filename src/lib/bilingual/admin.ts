@@ -64,6 +64,8 @@ export const ADMIN = {
   filterInactive: bi('Inactifs', 'Inactive'),
   settingsDesc: bi('Nom, logo et taux CFA/USD. Les ventes passées gardent leur taux.', 'Name, logo and CFA/USD rate. Past sales keep their rate.'),
   businessName: bi('Nom de l\'entreprise', 'Business name'),
+  businessPhone: bi('Téléphone', 'Phone'),
+  businessAddress: bi('Adresse', 'Address'),
   logoUrl: bi('URL du logo', 'Logo URL'),
   cfaPerUsd: bi('CFA pour 1 USD', 'CFA per 1 USD'),
   lastUpdated: bi('Dernière mise à jour', 'Last updated'),
