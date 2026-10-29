@@ -9,7 +9,7 @@ import { parseError } from '@/lib/errors'
 import { formatCfaIntInput, formatThousandsInput, parseCFAInput, roundCfaInt } from '@/lib/formatters'
 import { useUpsertPurchaseReceipt, useSupplierList } from '@/hooks/useAchats'
 import { useDepotStore } from '@/stores/depotStore'
-import { useProductSearch } from '@/hooks/useProducts'
+import { usePOSProductCatalog } from '@/hooks/useProducts'
 import type { ProductWithUnits } from '@/types'
 
 interface LineDraft {
@@ -44,7 +44,8 @@ export function PurchaseReceiptEditorModal({ open, onClose, onCreated }: Props) 
   const [lines, setLines] = useState<LineDraft[]>([])
   const [productQuery, setProductQuery] = useState('')
   const [error, setError] = useState('')
-  const { data: products = [] } = useProductSearch(productQuery, depotId)
+  // Same in-memory name + serial_number filter as POS Saisie rapide (instant, case-insensitive).
+  const { data: products = [] } = usePOSProductCatalog(productQuery, depotId, !!depotId)
 
   useEffect(() => {
     if (!open) return
@@ -194,18 +195,29 @@ export function PurchaseReceiptEditorModal({ open, onClose, onCreated }: Props) 
               placeholder={t(ACHATS.searchProduct)}
             />
           </label>
-          {productQuery.trim() && products.length > 0 && (
+          {productQuery.trim() && (
             <div className="max-h-40 overflow-auto rounded-md border border-border divide-y divide-border">
-              {products.slice(0, 8).map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-surface-muted"
-                  onClick={() => addProduct(p)}
-                >
-                  {p.name}
-                </button>
-              ))}
+              {products.length === 0 ? (
+                <p className="px-3 py-2 text-sm text-text-muted">{t(COMMON.noResults)}</p>
+              ) : (
+                products.slice(0, 12).map((p) => {
+                  const code =
+                    p.units.find((u) => u.serial_number?.trim())?.serial_number?.trim() ?? null
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-surface-muted"
+                      onClick={() => addProduct(p)}
+                    >
+                      <span className="font-medium">{p.name}</span>
+                      {code && (
+                        <span className="ml-2 text-xs text-text-muted font-mono">{code}</span>
+                      )}
+                    </button>
+                  )
+                })
+              )}
             </div>
           )}
         </div>
