@@ -132,7 +132,7 @@ describe('CEO Notes — product profit / margin', () => {
   it('shows margin as 55.56% for cost 20 / selling 45', () => {
     renderDrawer(productWithUnits([{ unit_name: 'Piece', cost_price_cfa: 20, selling_price_cfa: 45 }]))
     expect(screen.getAllByText(INVENTORY.profitMargin.fr)[0]).toBeInTheDocument()
-    expect(screen.getByText('55.56%')).toBeInTheDocument()
+    expect(screen.getByText('55,6 %')).toBeInTheDocument()
   })
 
   it('selling=0 is safe (shows — , no NaN/Infinity)', () => {
@@ -157,8 +157,8 @@ describe('CEO Notes — product profit / margin', () => {
         if (node?.tagName !== 'P') return false
         return (node.textContent ?? '').replace(/\s+/g, ' ').trim() === expected
       })
-    expect(matchRow('2 cartons')).toBeInTheDocument()
-    expect(matchRow('2 paquets')).toBeInTheDocument()
-    expect(matchRow('10 pièces')).toBeInTheDocument()
+    expect(matchRow('2 Cartons')).toBeInTheDocument()
+    expect(matchRow('2 Paquets')).toBeInTheDocument()
+    expect(matchRow('10 Pièces')).toBeInTheDocument()
   })
 })

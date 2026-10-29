@@ -178,8 +178,9 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
   }
 
   const events = activity?.data ?? []
-  const soldeLoading = loadingActivity && activity?.accountBalanceCfa === undefined
-  const accountBalanceCfa = activity?.accountBalanceCfa ?? customer?.balance_owed_cfa ?? 0
+  const ledgerBalanceCfa = activity?.accountBalanceCfa
+  const soldeLoading = loadingActivity && ledgerBalanceCfa === undefined
+  const accountBalanceCfa = ledgerBalanceCfa ?? customer?.balance_owed_cfa ?? 0
   const tone = customer
     ? customerAccountTone({
         balanceOwedCfa: soldeLoading

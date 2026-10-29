@@ -110,8 +110,9 @@ export function CustomerActivityPage() {
   const totalCount = activity?.count ?? 0
   const totalPages = Math.max(1, Math.ceil(totalCount / CUSTOMER_ACTIVITY_PAGE_SIZE))
   const isLoading = loadingCustomer || loadingActivity
-  const soldeLoading = loadingActivity && activity?.accountBalanceCfa === undefined
-  const accountBalanceCfa = activity?.accountBalanceCfa ?? customer?.balance_owed_cfa ?? 0
+  const ledgerBalanceCfa = activity?.accountBalanceCfa
+  const soldeLoading = loadingActivity && ledgerBalanceCfa === undefined
+  const accountBalanceCfa = ledgerBalanceCfa ?? customer?.balance_owed_cfa ?? 0
 
   const handleFilterChange = (next: CustomerActivityTypeFilter) => {
     setFilter(next)

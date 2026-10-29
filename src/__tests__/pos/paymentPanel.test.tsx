@@ -275,6 +275,10 @@ describe('PaymentPanel', () => {
       isLoading: false,
       authLoadState: 'authorized',
     })
+    vi.mocked(useOpenShifts).mockReturnValue({
+      data: [{ ...openShift(), cashier_id: 'admin-1', cashier_name: 'Admin User' }],
+      isLoading: false,
+    } as never)
     addLine()
     usePOSStore.getState().setDiscountType('percent')
     usePOSStore.getState().setDiscountValue(100)
@@ -375,7 +379,7 @@ describe('PaymentPanel', () => {
     expect(usePOSStore.getState().customer).toBeNull()
     expect(screen.getByText(POS.creditNeedsCustomer.fr)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: bilingualAriaLabel(POS.completeSaleAria) })).toBeDisabled()
-    expect(screen.getByTestId('pos-customer-picker')).toHaveClass('absolute', 'max-h-64')
+    expect(screen.getByTestId('pos-customer-picker')).toHaveClass('max-h-full')
     expect(screen.getByTestId('payment-panel')).not.toHaveClass('overflow-y-auto')
   })
 
@@ -408,6 +412,10 @@ describe('PaymentPanel', () => {
       isLoading: false,
       authLoadState: 'authorized',
     })
+    vi.mocked(useOpenShifts).mockReturnValue({
+      data: [{ ...openShift(), cashier_id: 'admin-1', cashier_name: 'Admin User' }],
+      isLoading: false,
+    } as never)
     addLine()
     usePOSStore.getState().setCashTendered(1000)
     renderPanel('depot-a')
