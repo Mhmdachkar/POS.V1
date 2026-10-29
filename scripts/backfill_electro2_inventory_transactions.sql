@@ -1,6 +1,12 @@
--- GATED backfill: inventory_transactions for products that have
--- audit_log.action = 'correct_electro2_stock_cost' AND entity_type = 'product'.
+-- GATED backfill: inventory_transactions for products that have an audit_log row
+-- with action IN ('correct_electro2_stock','correct_electro2_stock_cost')
+-- and entity_type = 'product'.
+-- Prod has correct_electro2_stock (56 rows); generator historically wrote
+-- correct_electro2_stock_cost. Accept both.
 -- Scope is audit only (Main Depot exists; there is no ELECTRO2 depot).
+--
+-- Audit before_value / after_value stock key: generator writes 'stock'
+-- (see scripts/_gen_electro2_correction.py v_before / v_after). Confirmed.
 --
 -- set_config(..., true) is transaction-local — gate + DO must share one BEGIN.
 -- Never run from Cursor / CI against production.
@@ -19,7 +25,7 @@ LEFT JOIN public.inventory_transactions it ON it.product_id = p.id
 WHERE EXISTS (
   SELECT 1
   FROM public.audit_log a
-  WHERE a.action = 'correct_electro2_stock_cost'
+  WHERE a.action IN ('correct_electro2_stock', 'correct_electro2_stock_cost')
     AND a.entity_type = 'product'
     AND a.entity_id = p.id
 )
@@ -82,7 +88,7 @@ BEGIN
     JOIN public.audit_log a
       ON a.entity_id = p.id
      AND a.entity_type = 'product'
-     AND a.action = 'correct_electro2_stock_cost'
+     AND a.action IN ('correct_electro2_stock', 'correct_electro2_stock_cost')
     ORDER BY p.id, a.occurred_at DESC
   LOOP
     SELECT COALESCE(SUM(it.quantity_pieces), 0)
@@ -98,8 +104,17 @@ BEGIN
       CONTINUE;
     END IF;
 
-    v_audit_before := NULLIF((r.before_value->>'stock'), '')::numeric;
-    v_audit_after := NULLIF((r.after_value->>'stock'), '')::numeric;
+    -- Key is 'stock' (generator); coalesce alt keys only as safety.
+    v_audit_before := COALESCE(
+      NULLIF(r.before_value->>'stock', '')::numeric,
+      NULLIF(r.before_value->>'stock_before', '')::numeric,
+      NULLIF(r.before_value->>'current_stock_pieces', '')::numeric
+    );
+    v_audit_after := COALESCE(
+      NULLIF(r.after_value->>'stock', '')::numeric,
+      NULLIF(r.after_value->>'stock_after', '')::numeric,
+      NULLIF(r.after_value->>'current_stock_pieces', '')::numeric
+    );
     IF v_audit_before IS NOT NULL AND v_audit_after IS NOT NULL THEN
       IF (v_audit_after - v_audit_before) IS DISTINCT FROM v_delta THEN
         RAISE NOTICE 'delta mismatch product=% ledger_delta=% audit_delta=% — inserting ledger_delta',
@@ -137,7 +152,7 @@ BEGIN
     WHERE EXISTS (
       SELECT 1
       FROM public.audit_log a
-      WHERE a.action = 'correct_electro2_stock_cost'
+      WHERE a.action IN ('correct_electro2_stock', 'correct_electro2_stock_cost')
         AND a.entity_type = 'product'
         AND a.entity_id = p.id
     )
