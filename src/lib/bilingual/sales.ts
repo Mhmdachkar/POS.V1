@@ -43,6 +43,15 @@ export const SALES = {
   paymentMixed: bi('Mixte', 'Mixed'),
   documentDate: bi('Date document', 'Document date'),
   filteredTotals: bi('Totaux (filtre)', 'Totals (filter)'),
+  filteredTotalsExclVoided: bi(
+    'Totaux (filtre, hors annulées)',
+    'Totals (filter, excl. voided)',
+  ),
+  voidedExcludedFromTotals: (n: number, amount: string) =>
+    bi(
+      `${n} annulée${n !== 1 ? 's' : ''} exclue${n !== 1 ? 's' : ''} · ${amount}`,
+      `${n} voided excluded · ${amount}`,
+    ),
   exportTruncated: bi(
     'Export limité aux 2 000 premières lignes du filtre.',
     'Export limited to the first 2,000 filtered rows.',

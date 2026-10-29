@@ -118,10 +118,14 @@ export interface SalesListFilters {
 }
 
 export interface SalesListTotals {
+  /** Count included in money totals (voided excluded unless status filter is voided). */
   count: number
   total_cfa: number
   amount_applied_cfa: number
   balance_added_cfa: number
+  /** Voided rows in the same filter window (Rapports-style; excluded from money totals). */
+  voided_count: number
+  voided_total_cfa: number
 }
 
 export interface UnshiftedSalesSummaryFilters {
@@ -341,7 +345,7 @@ export async function fetchSalesList(filters: SalesListFilters): Promise<{
   return { data: await fillCashierNames(items), count: count ?? 0 }
 }
 
-/** Totals for the full filtered set (not just the current page). */
+/** Totals for the full filtered set (not just the current page). Matches Rapports: voided excluded. */
 export async function fetchSalesListTotals(
   filters: SalesListFilters,
 ): Promise<SalesListTotals> {
@@ -349,42 +353,56 @@ export async function fetchSalesListTotals(
     filters.fulfillmentStatus != null
       ? 'sale_fulfillments!inner(status)'
       : undefined
+  /** When the status chip is Annulée, totals are the voided set itself. */
+  const voidedOnly = filters.status === 'voided'
 
   const searchOr = await resolveSearchOr(filters)
   let q = supabase
     .from('sales')
     .select(
       fulfillmentEmbed
-        ? `total_cfa, admin_override_total_cfa, amount_applied_cfa, balance_added_cfa, ${fulfillmentEmbed}`
-        : 'total_cfa, admin_override_total_cfa, amount_applied_cfa, balance_added_cfa',
-      { count: 'exact' },
+        ? `status, total_cfa, admin_override_total_cfa, amount_applied_cfa, balance_added_cfa, ${fulfillmentEmbed}`
+        : 'status, total_cfa, admin_override_total_cfa, amount_applied_cfa, balance_added_cfa',
     )
 
   q = applySalesListFilters(q, filters, searchOr)
 
-  const { data, error, count } = await q.limit(EXPORT_ROW_CAP)
+  const { data, error } = await q.limit(EXPORT_ROW_CAP)
   if (error) throw error
 
+  let count = 0
   let total_cfa = 0
   let amount_applied_cfa = 0
   let balance_added_cfa = 0
+  let voided_count = 0
+  let voided_total_cfa = 0
   for (const row of data ?? []) {
     const r = row as {
+      status: string
       total_cfa: number
       admin_override_total_cfa: number | null
       amount_applied_cfa: number
       balance_added_cfa: number
     }
-    total_cfa += r.admin_override_total_cfa ?? r.total_cfa
+    const payable = r.admin_override_total_cfa ?? r.total_cfa
+    if (r.status === 'voided') {
+      voided_count += 1
+      voided_total_cfa += payable
+      if (!voidedOnly) continue
+    }
+    count += 1
+    total_cfa += payable
     amount_applied_cfa += r.amount_applied_cfa
     balance_added_cfa += r.balance_added_cfa
   }
 
   return {
-    count: count ?? 0,
+    count,
     total_cfa,
     amount_applied_cfa,
     balance_added_cfa,
+    voided_count: voidedOnly ? 0 : voided_count,
+    voided_total_cfa: voidedOnly ? 0 : voided_total_cfa,
   }
 }
 
