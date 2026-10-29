@@ -31,6 +31,7 @@ export type CollectionsPayload = {
   open_shift_cash_cfa?: number
   closed_shift_cash_cfa?: number
   no_shift_cash_cfa?: number
+  z_closed_activity_cfa?: number
 }
 
 async function callReport(
@@ -169,6 +170,10 @@ export function ReportModulePanel({
         <p className="text-sm text-text-secondary">
           {t(REPORTS.collectionsReconcile(formatCFA(collected), formatCFA(closed), formatCFA(open), formatCFA(noShift)))}
         </p>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <ReportMetric label={t(REPORTS.zClosedActivity)} amount={Number((data as CollectionsPayload).z_closed_activity_cfa ?? 0)} />
+          <p className="text-xs text-text-muted self-center">{t(REPORTS.collectionsVsZ)}</p>
+        </div>
         <PaymentModeTable data={data} />
       </div>
     )

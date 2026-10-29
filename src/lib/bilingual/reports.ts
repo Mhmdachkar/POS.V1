@@ -245,6 +245,11 @@ export const REPORTS = {
   customerPaymentsShort: bi('Paiements clients', 'Customer payments'),
   cashRefunds: bi('Remboursements espèces', 'Cash refunds'),
   zExpected: bi('Attendu (rapport Z)', 'Expected (Z report)'),
+  zClosedActivity: bi('Activité Z hors fond', 'Z activity excl. float'),
+  collectionsVsZ: bi(
+    'Services fermés (période) vs activité Z hors fond — même formule hors ventes annulées.',
+    'Closed-shift period cash vs Z activity excl. float — same formula excluding voided sales.',
+  ),
   notEnoughData: bi('Pas assez de données', 'Not enough data'),
   missingValue: bi('Non disponible', 'Not available'),
   marginShareTip: bi('Marge répartie selon les ventes nettes.', 'Margin split by net sales.'),

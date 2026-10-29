@@ -83,6 +83,7 @@ export function ShiftsPage() {
 
   const { data, isLoading, isError } = useShiftsList({
     depotId,
+    cashierId: staff?.role === 'cashier' ? staff.id : null,
     status: statusFilter,
     page,
     pageSize: SHIFT_PAGE_SIZE,
@@ -230,9 +231,9 @@ export function ShiftsPage() {
                     amount={shift.expected_display_cfa ?? shift.expected_cash_cfa ?? 0}
                     size="small"
                   />
-                  {shift.status === 'open' && shift.shift_cash_activity_cfa != null && (
+                  {shift.shift_sales_cash_cfa != null && (
                     <span className="text-[10px] text-text-muted tabular-nums">
-                      {t(SHIFT_COPY.shiftSalesActivity(formatMoney(shift.shift_cash_activity_cfa)))}
+                      {t(SHIFT_COPY.shiftSalesActivity(formatMoney(shift.shift_sales_cash_cfa)))}
                     </span>
                   )}
                 </span>

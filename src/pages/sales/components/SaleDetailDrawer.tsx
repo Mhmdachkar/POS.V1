@@ -428,6 +428,9 @@ export function SaleDetailDrawer({ saleId, shiftId, isOverRefund = false, onClos
                       <BiTableHeader {...SALES.unitPrice} />
                     </th>
                     <th className="text-right px-3 py-2 text-xs font-semibold text-text-secondary">
+                      <BiTableHeader {...SALES.lineDiscount} />
+                    </th>
+                    <th className="text-right px-3 py-2 text-xs font-semibold text-text-secondary">
                       <BiTableHeader {...SALES.lineTotal} />
                     </th>
                   </tr>
@@ -456,6 +459,13 @@ export function SaleDetailDrawer({ saleId, shiftId, isOverRefund = false, onClos
                       <td className="px-3 py-2 text-right">
                         <MoneyDisplay
                           amount={item.unit_price_cfa}
+                          size="small"
+                          className="text-text-secondary"
+                        />
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <MoneyDisplay
+                          amount={item.line_discount_cfa > 0 ? -item.line_discount_cfa : 0}
                           size="small"
                           className="text-text-secondary"
                         />

@@ -54,6 +54,7 @@ export interface SaleReturnDetail {
 }
 
 export interface SaleItemDetail {
+  line_discount_cfa: number
   id: string
   sale_id: string
   product_id: string
@@ -320,6 +321,7 @@ export async function fetchSaleDetail(id: string): Promise<SaleDetailData> {
       quantity_pieces: item.quantity_pieces,
       unit_price_cfa: item.unit_price_cfa,
       cost_price_cfa: item.cost_price_cfa,
+      line_discount_cfa: Number(item.line_discount_cfa ?? 0),
       line_total_cfa: item.line_total_cfa,
       net_line_total_cfa: item.net_line_total_cfa,
       product_name: product?.name ?? '',

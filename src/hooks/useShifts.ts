@@ -26,6 +26,8 @@ export const SHIFT_LIST_SELECT = `
 
 export interface ShiftListFilters {
   depotId: string | null
+  /** When set (cashiers), list only this cashier's shifts. */
+  cashierId?: string | null
   status?: ShiftStatus | null
   page: number
   pageSize: number
@@ -52,9 +54,11 @@ export interface ShiftListItem {
    */
   shift_cash_activity_cfa?: number | null
   /**
-   * Expected drawer cash: frozen expected_cash for closed, live estimate for open.
+   * Expected drawer cash: always live estimate excluding voided sales.
    */
   expected_display_cfa?: number | null
+  /** Cash from non-voided sales only (for « dont ventes »). */
+  shift_sales_cash_cfa?: number | null
 }
 
 export interface ShiftRunningTotals {
@@ -80,30 +84,34 @@ export function canAccessShifts(role: Staff['role'] | null | undefined): boolean
 }
 
 export function canCloseShift(
-  staff: Pick<Staff, 'role' | 'depot_id'> | null | undefined,
-  shift: Pick<ShiftListItem, 'depot_id' | 'status'> | null | undefined,
+  staff: Pick<Staff, 'role' | 'depot_id' | 'id'> | null | undefined,
+  shift: Pick<ShiftListItem, 'depot_id' | 'status' | 'cashier_id'> | null | undefined,
 ): boolean {
   if (!staff || !shift) return false
   if (shift.status !== 'open') return false
   if (staff.role === 'admin') return true
-  if (staff.role === 'cashier') return staff.depot_id === shift.depot_id
+  if (staff.role === 'cashier') {
+    return staff.depot_id === shift.depot_id && shift.cashier_id === staff.id
+  }
   return false
 }
 
 /** Cashier: own-depot open shifts only. Admin: any accessible open shift. Never auto-select. */
 export function canSelectShiftForPos(
-  staff: Pick<Staff, 'role' | 'depot_id'> | null | undefined,
-  shift: Pick<ShiftListItem, 'depot_id' | 'status'> | null | undefined,
+  staff: Pick<Staff, 'role' | 'depot_id' | 'id'> | null | undefined,
+  shift: Pick<ShiftListItem, 'depot_id' | 'status' | 'cashier_id'> | null | undefined,
 ): boolean {
   if (!staff || !shift) return false
   if (shift.status !== 'open') return false
   if (staff.role === 'admin') return true
-  if (staff.role === 'cashier') return staff.depot_id === shift.depot_id
+  if (staff.role === 'cashier') {
+    return staff.depot_id === shift.depot_id && shift.cashier_id === staff.id
+  }
   return false
 }
 
 export function authorizedOpenShifts(
-  staff: Pick<Staff, 'role' | 'depot_id'> | null | undefined,
+  staff: Pick<Staff, 'role' | 'depot_id' | 'id'> | null | undefined,
   shifts: ShiftListItem[] | null | undefined,
 ): ShiftListItem[] {
   return (shifts ?? []).filter((shift) => canSelectShiftForPos(staff, shift))
@@ -247,27 +255,23 @@ function enrichListWithExpected(
   runningById: Map<string, ShiftRunningTotals>,
 ): ShiftListItem[] {
   return rows.map((row) => {
-    if (row.status === 'closed' && row.expected_cash_cfa != null) {
-      const running = runningById.get(row.id)
-      const activity = running
-        ? running.sales_cash_cfa + running.customer_pmts_cfa - running.return_cash_cfa
-        : null
-      return {
-        ...row,
-        expected_display_cfa: Number(row.expected_cash_cfa),
-        shift_cash_activity_cfa: activity,
-      }
-    }
     const running = runningById.get(row.id) ?? {
       sales_cash_cfa: 0,
       customer_pmts_cfa: 0,
       return_cash_cfa: 0,
     }
     const activity = running.sales_cash_cfa + running.customer_pmts_cfa - running.return_cash_cfa
+    const expectedLive = estimateExpectedCash(row.opening_float_cfa, running)
     return {
       ...row,
       shift_cash_activity_cfa: activity,
-      expected_display_cfa: estimateExpectedCash(row.opening_float_cfa, running),
+      shift_sales_cash_cfa: running.sales_cash_cfa,
+      // Always exclude voided sales (live), including closed shifts.
+      expected_display_cfa: expectedLive,
+      discrepancy_cfa:
+        row.status === 'closed' && row.actual_cash_cfa != null
+          ? row.actual_cash_cfa - expectedLive
+          : row.discrepancy_cfa,
     }
   })
 }
@@ -284,6 +288,10 @@ export async function fetchShiftsList(
 
   if (filters.depotId) {
     q = q.eq('depot_id', filters.depotId)
+  }
+
+  if (filters.cashierId) {
+    q = q.eq('cashier_id', filters.cashierId)
   }
 
   if (filters.status) {

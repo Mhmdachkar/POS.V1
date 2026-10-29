@@ -15,7 +15,7 @@ import { BiModalTitle as BiSectionTitle, BiModalTitle } from '@/lib/bilingual/ui
 import { BilingualText } from '@/components/ui/BilingualText'
 import { PackagePlus, Pencil, SlidersHorizontal, UserCheck, UserX } from 'lucide-react'
 import { ActiveBadge, Button, ConfirmDialog, Drawer, LoadingButton, Skeleton, StockStatusBadge } from '@/components/ui'
-import { formatCFA, formatDateTime, formatPieces } from '@/lib/formatters'
+import {formatCFA, formatDateTime, formatPieces, formatPercent} from '@/lib/formatters'
 import { getProductStockStatus } from '@/types'
 import { useProductDetail } from '@/hooks/useProducts'
 import {
@@ -276,7 +276,7 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
                           {profit >= 0 ? '+' : ''}{formatCFA(profit)}
                         </td>
                         <td className={`px-3 py-2 text-right tabular-nums ${margin != null && margin >= 0 ? 'text-success-foreground' : 'text-danger-foreground'}`}>
-                          {margin != null ? `${margin}%` : '—'}
+                          {margin != null ? formatPercent(margin) : '—'}
                         </td>
                       </tr>
                     )

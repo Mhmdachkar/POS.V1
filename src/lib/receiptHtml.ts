@@ -15,6 +15,7 @@ export interface ReceiptLineItem {
   unit_name: string
   quantity_in_unit: number
   unit_price_cfa: number
+  line_discount_cfa: number
   line_total_cfa: number
 }
 
@@ -110,6 +111,7 @@ export function receiptDataFromSaleDetail(
       unit_name: item.unit_name,
       quantity_in_unit: item.quantity_in_unit,
       unit_price_cfa: item.unit_price_cfa,
+      line_discount_cfa: item.line_discount_cfa ?? 0,
       line_total_cfa: item.line_total_cfa,
     })),
     subtotal_cfa: sale.subtotal_cfa,
@@ -143,7 +145,7 @@ export function buildReceiptHtml(data: ReceiptData): string {
       <div class="receipt-item">
         <div class="receipt-item-name">${name}</div>
         <div class="receipt-item-meta">
-          <span>${qty} ${unit} × ${formatCFA(item.unit_price_cfa)}</span>
+          <span>${qty} ${unit} × ${formatCFA(item.unit_price_cfa)}${(item.line_discount_cfa ?? 0) > 0 ? ` (−${formatCFA(item.line_discount_cfa)})` : ''}</span>
           <span>${formatCFA(item.line_total_cfa)}</span>
         </div>
       </div>`
