@@ -59,7 +59,8 @@ export function pickOpenShiftId(
   const own = staffId
     ? matches.filter((shift) => shift.cashier_id === staffId)
     : []
-  const pool = own.length > 0 ? own : matches
+  // When staff is known, never adopt another cashier's open shift.
+  const pool = staffId ? own : matches
   const sorted = [...pool].sort((a, b) =>
     (b.opened_at ?? '').localeCompare(a.opened_at ?? ''),
   )

@@ -61,6 +61,7 @@ export const SALES = {
   soldAs: bi('Unité vendue', 'Unit'),
   qtySold: bi('Qté vendue', 'Qty sold'),
   unitPrice: bi('Prix unitaire', 'Unit price'),
+  lineDiscount: bi('Remise ligne', 'Line discount'),
   lineTotal: bi('Total ligne', 'Line total'),
   soldOnReceipt: (qty: number, unit: string) =>
     bi(`Vendu : ${qty} ${unit}`, `Sold: ${qty} ${unit}`),

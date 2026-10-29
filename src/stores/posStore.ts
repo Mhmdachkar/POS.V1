@@ -359,7 +359,12 @@ export const usePOSStore = create<POSState>()((set, get) => ({
 
     let updatedItems: CartItem[]
     if (targetIdx >= 0) {
-      const mergedQty = items[targetIdx].quantity_in_unit + qty
+      const target = items[targetIdx]
+      const mergedQty = target.quantity_in_unit + qty
+      const mergedDiscount = Math.min(
+        (source.line_discount_cfa ?? 0) + (target.line_discount_cfa ?? 0),
+        cartLineTotalCfa(mergedQty, toUnit.unit_price_cfa, 0),
+      )
       updatedItems = items
         .map((item, idx) => {
           if (idx !== targetIdx) return item
@@ -371,12 +376,16 @@ export const usePOSStore = create<POSState>()((set, get) => ({
             cost_price_cfa: toUnit.cost_price_cfa,
             conversion_to_base: toUnit.conversion_to_base,
             quantity_in_unit: mergedQty,
-            line_discount_cfa: 0,
-            line_total_cfa: cartLineTotalCfa(mergedQty, toUnit.unit_price_cfa, 0),
+            line_discount_cfa: mergedDiscount,
+            line_total_cfa: cartLineTotalCfa(mergedQty, toUnit.unit_price_cfa, mergedDiscount),
           }
         })
         .filter((_, idx) => idx !== sourceIdx)
     } else {
+      const keptDiscount = Math.min(
+        source.line_discount_cfa ?? 0,
+        cartLineTotalCfa(qty, toUnit.unit_price_cfa, 0),
+      )
       updatedItems = items.map((item, idx) => {
         if (idx !== sourceIdx) return item
         return {
@@ -390,8 +399,8 @@ export const usePOSStore = create<POSState>()((set, get) => ({
           cost_price_cfa: toUnit.cost_price_cfa,
           conversion_to_base: toUnit.conversion_to_base,
           quantity_in_unit: qty,
-          line_discount_cfa: 0,
-          line_total_cfa: cartLineTotalCfa(qty, toUnit.unit_price_cfa, 0),
+          line_discount_cfa: keptDiscount,
+          line_total_cfa: cartLineTotalCfa(qty, toUnit.unit_price_cfa, keptDiscount),
         }
       })
     }

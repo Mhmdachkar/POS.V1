@@ -59,6 +59,8 @@ export function ShiftChip({ posDepotId }: { posDepotId?: string | null }) {
   }
 
   if (!hasOpen) {
+    // Cashiers: badge only when a shift is open (open from Services page).
+    if (staff?.role === 'cashier') return null
     return (
       <>
         <button

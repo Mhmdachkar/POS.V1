@@ -95,9 +95,9 @@ export function AuditPage() {
       `audit-log-${range.startDate}_${range.endDate}.csv`,
       [t(ADMIN.auditHeaders.occurred), t(ADMIN.auditHeaders.actor), t(ADMIN.auditHeaders.action), t(ADMIN.auditHeaders.entityType), t(ADMIN.auditHeaders.entityId), t(ADMIN.auditHeaders.depotId)],
       rows.map((r) => [
-        r.occurred_at,
+        formatDateTime(r.occurred_at),
         r.actor_name ?? '',
-        r.action,
+        bilingualPlain(auditEventSummary(r)),
         r.entity_type,
         r.entity_id ?? '',
         r.depot_id ?? '',

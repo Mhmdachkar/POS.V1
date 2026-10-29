@@ -12,6 +12,7 @@ export interface PrintPayloadLine {
   quantity_in_unit: number
   quantity_pieces: number
   unit_price_cfa: number
+  line_discount_cfa?: number
   line_total_cfa: number
   net_line_total_cfa: number
 }

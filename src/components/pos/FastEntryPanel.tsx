@@ -106,6 +106,12 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
     () => items.reduce((n, i) => n + (i.line_discount_cfa ?? 0), 0),
     [items],
   )
+  /** Gross before any remise (qty × P.U.). */
+  const grossTotal = useMemo(
+    () => items.reduce((n, i) => n + Math.round(i.quantity_in_unit * i.unit_price_cfa), 0),
+    [items],
+  )
+  const totalRemise = lineRemise + totals.discount_amount_cfa
   const benefit = useMemo(
     () =>
       items.reduce(
@@ -114,7 +120,8 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
       ),
     [items],
   )
-  const net = effectiveFinalTotal(totals.total_cfa, isAdmin ? overrideTotalCfa : null)
+  const netBeforeOverride = Math.max(0, grossTotal - totalRemise)
+  const net = effectiveFinalTotal(netBeforeOverride, isAdmin ? overrideTotalCfa : null)
 
   useEffect(() => {
     if (!focusQtyToken) return
@@ -435,10 +442,10 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
           <span className="text-text-secondary">{t(POS.articlesCount(articles))}</span>
         </div>
         <div className="tabular-nums">
-          {t(POS.total)}: <strong>{formatCFA(totals.subtotal_cfa)}</strong>
+          {t(POS.total)}: <strong>{formatCFA(grossTotal)}</strong>
         </div>
         <div className="tabular-nums">
-          {t(POS.discount)}: <strong>{formatCFA(lineRemise + totals.discount_amount_cfa)}</strong>
+          {t(POS.discount)}: <strong>{formatCFA(totalRemise)}</strong>
         </div>
         <div className="tabular-nums">
           {t(POS.netToPay)}: <strong>{formatCFA(net)}</strong>
