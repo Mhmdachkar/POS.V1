@@ -43,6 +43,13 @@ export const AUDIT_ACTIONS = [
   'cancel_purchase_receipt',
   'record_supplier_payment',
   'create_supplier',
+  'correct_electro2_stock_cost',
+  'upsert_purchase_receipt',
+  'create_delivery_note',
+  'set_proforma_status',
+  'duplicate_proforma',
+  'update_proforma',
+  'create_proforma',
 ] as const
 
 export const AUDIT_ENTITY_TYPES = [
@@ -62,6 +69,8 @@ export const AUDIT_ENTITY_TYPES = [
   'purchase_receipt',
   'supplier',
   'supplier_payment',
+  'proforma',
+  'delivery_note',
 ] as const
 
 export interface AuditLogRow extends AuditLog {

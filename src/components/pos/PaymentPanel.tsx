@@ -49,9 +49,11 @@ import { BiButtonStack } from '@/lib/bilingual/ui'
 interface PaymentPanelProps {
   depotId: string | null
   className?: string
+  /** When true (Saisie rapide), customer is chosen in the entry header only. */
+  hideCustomerChip?: boolean
 }
 
-export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
+export function PaymentPanel({ depotId, className, hideCustomerChip = false }: PaymentPanelProps) {
   const queryClient = useQueryClient()
   const inFlight = useRef(false)
   const staff = useAuthStore((s) => s.staff)
@@ -306,7 +308,7 @@ export function PaymentPanel({ depotId, className }: PaymentPanelProps) {
     >
       {showCheckout && (
         <>
-          <CustomerChip />
+          {!hideCustomerChip && <CustomerChip />}
           <DiscountRow />
           <CashSection />
           <CheckoutSummary />

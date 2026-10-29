@@ -251,6 +251,7 @@ export function POSPage() {
                 <PaymentPanel
                   className="relative z-20 flex-1 flex flex-col border-t border-border overflow-auto pb-[max(0.5rem,env(safe-area-inset-bottom))]"
                   depotId={effectiveDepotId}
+                  hideCustomerChip
                 />
               </div>
             </div>

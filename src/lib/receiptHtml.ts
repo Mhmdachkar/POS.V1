@@ -9,6 +9,7 @@ import { APP_BUSINESS_FALLBACK } from '@/lib/formatters'
 import type { DiscountType, SaleStatus } from '@/types/database'
 import type { SaleDetailData } from '@/hooks/useSales'
 import { authoritativeFinalSaleTotal } from '@/lib/saleTotals'
+import { localizedUnitLabel } from '@/lib/localizedUnits'
 
 export interface ReceiptLineItem {
   product_name: string
@@ -139,7 +140,7 @@ export function buildReceiptHtml(data: ReceiptData): string {
 
   const itemRows = data.items.map((item) => {
     const name = escapeReceiptText(item.product_name)
-    const unit = escapeReceiptText(item.unit_name)
+    const unit = escapeReceiptText(localizedUnitLabel(item.unit_name))
     const qty = item.quantity_in_unit
     return `
       <div class="receipt-item">

@@ -1,16 +1,16 @@
 import { bi, t } from '@/lib/bilingual/types'
 
 const UNIT_ALIASES: Record<string, { fr: string; en: string }> = {
-  piece: bi('pièce', 'piece'),
-  pieces: bi('pièces', 'pieces'),
-  pièce: bi('pièce', 'piece'),
-  pièces: bi('pièces', 'pieces'),
-  package: bi('paquet', 'package'),
-  packages: bi('paquets', 'packages'),
-  paquet: bi('paquet', 'package'),
-  paquets: bi('paquets', 'packages'),
-  carton: bi('carton', 'carton'),
-  cartons: bi('cartons', 'cartons'),
+  piece: bi('Pièce', 'Piece'),
+  pieces: bi('Pièces', 'Pieces'),
+  pièce: bi('Pièce', 'Piece'),
+  pièces: bi('Pièces', 'Pieces'),
+  package: bi('Paquet', 'Package'),
+  packages: bi('Paquets', 'Packages'),
+  paquet: bi('Paquet', 'Package'),
+  paquets: bi('Paquets', 'Packages'),
+  carton: bi('Carton', 'Carton'),
+  cartons: bi('Cartons', 'Cartons'),
 }
 
 const LEVEL_FALLBACK = [

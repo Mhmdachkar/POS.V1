@@ -6,6 +6,7 @@ import { BilingualText } from '@/components/ui/BilingualText'
 import { formatCFA, formatPieces } from '@/lib/formatters'
 import { resolveProductPhotoUrl } from '@/lib/productPhotos'
 import { tryUpdateCartQuantity } from '@/lib/posCartActions'
+import { localizedUnitLabel } from '@/lib/localizedUnits'
 import { maxQuantityInUnit, remainingPieces } from '@/lib/posCartStock'
 import { POS } from '@/lib/bilingual/pos'
 import { toastErrorBi } from '@/lib/bilingual/toast'
@@ -87,7 +88,7 @@ export function CartItem({ item }: CartItemProps) {
 
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-text-primary truncate">{item.product_name}</p>
-          <p className="text-xs text-text-secondary truncate">{item.unit_name}</p>
+          <p className="text-xs text-text-secondary truncate">{localizedUnitLabel(item.unit_name, item.unit_level)}</p>
           {available != null && rem != null && (
             <p className="text-[10px] text-text-muted tabular-nums">
               <BilingualText {...POS.available} variant="caption" layout="inline" />{' '}

@@ -80,6 +80,15 @@ export const AUDIT_ACTION_LABELS: Record<string, BilingualPair> = {
   cancel_purchase_receipt: bi('BR annulé', 'Purchase receipt cancelled'),
   record_supplier_payment: bi('Règlement fournisseur', 'Supplier payment recorded'),
   create_supplier: bi('Fournisseur créé', 'Supplier created'),
+  update_supplier: bi('Fournisseur modifié', 'Supplier updated'),
+  create_proforma: bi('Proforma créé', 'Quote created'),
+  update_proforma: bi('Proforma modifié', 'Quote updated'),
+  duplicate_proforma: bi('Proforma dupliqué', 'Quote duplicated'),
+  set_proforma_status: bi('Statut proforma', 'Quote status changed'),
+  create_delivery_note: bi('Bon de livraison créé', 'Delivery note created'),
+  upsert_purchase_receipt: bi('BR enregistré', 'Purchase receipt saved'),
+  correct_electro2_stock_cost: bi('Correction stock ELECTRO 2', 'ELECTRO 2 stock correction'),
+  correct_electro2_stock: bi('Correction stock ELECTRO 2', 'ELECTRO 2 stock correction'),
 }
 
 export const AUDIT_ENTITY_LABELS: Record<string, BilingualPair> = {
@@ -100,6 +109,8 @@ export const AUDIT_ENTITY_LABELS: Record<string, BilingualPair> = {
   purchase_receipt: bi('Bon de réception', 'Purchase receipt'),
   supplier: bi('Fournisseur', 'Supplier'),
   supplier_payment: bi('Règlement fournisseur', 'Supplier payment'),
+  proforma: bi('Proforma', 'Quote'),
+  delivery_note: bi('Bon de livraison', 'Delivery note'),
 }
 
 export function auditActionLabel(action: string): BilingualPair {

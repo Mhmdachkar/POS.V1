@@ -1,3 +1,4 @@
+import { localizedUnitLabel } from '@/lib/localizedUnits'
 /**
  * Proforma detail drawer — print, WhatsApp, status, convert to POS cart.
  */
@@ -270,7 +271,7 @@ export function ProformaDetailDrawer({ proformaId, onClose }: ProformaDetailDraw
                 <thead className="bg-surface-muted text-left text-xs text-text-secondary">
                   <tr>
                     <th className="px-3 py-2">Article</th>
-                    <th className="px-3 py-2 text-right">Qte</th>
+                    <th className="px-3 py-2 text-right">Qté</th>
                     <th className="px-3 py-2 text-right">P.U.</th>
                     <th className="px-3 py-2 text-right">Total</th>
                   </tr>
@@ -280,7 +281,7 @@ export function ProformaDetailDrawer({ proformaId, onClose }: ProformaDetailDraw
                     <tr key={it.id} className="border-t border-border">
                       <td className="px-3 py-2">
                         <div className="font-medium">{it.product_name}</div>
-                        <div className="text-xs text-text-muted">{it.unit_name}</div>
+                        <div className="text-xs text-text-muted">{localizedUnitLabel(it.unit_name, it.unit_level)}</div>
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums">{it.quantity_in_unit}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{formatCFA(it.unit_price_cfa)}</td>
