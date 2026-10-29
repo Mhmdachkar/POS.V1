@@ -2,8 +2,9 @@
  * Report export helpers — XLSX workbook download and print-friendly documents.
  */
 
-import * as XLSX from 'xlsx'
+import * as XLSX from 'xlsx-js-style'
 import { formatCFA } from '@/lib/formatters'
+import { exportCfaInt } from '@/lib/tableExport'
 
 export interface XlsxSheet {
   name: string
@@ -19,6 +20,9 @@ export interface XlsxSheet {
   boldFirstColLabels?: boolean
 }
 
+const HEADER_FILL = { patternType: 'solid' as const, fgColor: { rgb: 'D9E2F3' } }
+const HEADER_FONT = { bold: true, color: { rgb: '1F2937' } }
+
 function applyNumberFormats(ws: XLSX.WorkSheet): void {
   if (!ws['!ref'] || typeof XLSX.utils.decode_range !== 'function') return
   const range = XLSX.utils.decode_range(ws['!ref'])
@@ -27,10 +31,37 @@ function applyNumberFormats(ws: XLSX.WorkSheet): void {
       const addr = XLSX.utils.encode_cell({ r: R, c: C })
       const cell = ws[addr] as XLSX.CellObject | undefined
       if (!cell || typeof cell.v !== 'number' || !Number.isFinite(cell.v)) continue
+      // Whole CFA integers in exports
+      if (!Number.isInteger(cell.v)) {
+        cell.v = Math.round(cell.v)
+      }
       cell.t = 'n'
       cell.z = '#,##0'
     }
   }
+}
+
+function applyHeaderRow(ws: XLSX.WorkSheet, headerRowIndex: number, colCount: number): void {
+  for (let C = 0; C < colCount; C++) {
+    const addr = XLSX.utils.encode_cell({ r: headerRowIndex, c: C })
+    const cell = ws[addr] as (XLSX.CellObject & { s?: Record<string, unknown> }) | undefined
+    if (!cell) continue
+    cell.s = {
+      ...(cell.s ?? {}),
+      font: HEADER_FONT,
+      fill: HEADER_FILL,
+      alignment: { vertical: 'center', wrapText: true },
+    }
+  }
+}
+
+function contentWidth(values: unknown[], min = 10, max = 42): number {
+  let w = min
+  for (const v of values) {
+    const s = String(v ?? '')
+    w = Math.max(w, Math.min(max, s.length + 2))
+  }
+  return w
 }
 
 function applyWrapAndBold(
@@ -89,6 +120,7 @@ export function downloadXlsx(filename: string, sheets: XlsxSheet[]): void {
       : [sheet.headers, ...sheet.rows]
     const ws = XLSX.utils.aoa_to_sheet(aoa)
     const colCount = Math.max(0, ...aoa.map((r) => (Array.isArray(r) ? r.length : 0)))
+    const headerRowIndex = sheet.rawAoa ? -1 : 0
 
     if (colCount > 0) {
       if (sheet.colWidths && sheet.colWidths.length > 0) {
@@ -96,9 +128,10 @@ export function downloadXlsx(filename: string, sheets: XlsxSheet[]): void {
           wch: sheet.colWidths![i] ?? sheet.colWidths![sheet.colWidths!.length - 1] ?? 14,
         }))
       } else {
-        ws['!cols'] = Array.from({ length: colCount }, (_, i) => ({
-          wch: i === 1 ? 28 : i === 0 ? 18 : 14,
-        }))
+        ws['!cols'] = Array.from({ length: colCount }, (_, i) => {
+          const vals = aoa.map((row) => (Array.isArray(row) ? row[i] : ''))
+          return { wch: contentWidth(vals, i === 1 ? 18 : 10) }
+        })
       }
     }
 
@@ -114,6 +147,15 @@ export function downloadXlsx(filename: string, sheets: XlsxSheet[]): void {
     applyNumberFormats(ws)
     if (sheet.wrapText || sheet.boldFirstColLabels) {
       applyWrapAndBold(ws, sheet)
+    }
+
+    if (headerRowIndex >= 0 && colCount > 0) {
+      applyHeaderRow(ws, headerRowIndex, colCount)
+      ws['!views'] = [{ state: 'frozen', ySplit: 1, topLeftCell: 'A2' }]
+      if (aoa.length > 1) {
+        const endCol = XLSX.utils.encode_col(colCount - 1)
+        ws['!autofilter'] = { ref: `A1:${endCol}${aoa.length}` }
+      }
     }
 
     const safeName = sheet.name.slice(0, 31).replace(/[\\/?*[\]:]/g, '_') || 'Feuille'
@@ -199,8 +241,9 @@ export function printHtmlDocument(html: string): void {
   }, 300)
 }
 
+/** Print/summary CFA label; always rounds to a whole integer first. */
 export function cfaExportValue(amount: number | null | undefined): string {
-  return formatCFA(Number(amount ?? 0))
+  return formatCFA(exportCfaInt(amount))
 }
 
 function escapeHtml(s: string): string {

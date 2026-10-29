@@ -1,5 +1,6 @@
 import { downloadCsv } from '@/lib/csvExport'
 import { cfaExportValue, downloadXlsx, printReportSummary } from '@/lib/reportExport'
+import { exportCfaInt } from '@/lib/tableExport'
 import {
   buildSalesExportDataset,
   downloadSalesExportXlsx,
@@ -59,16 +60,16 @@ export interface ReportExportContext {
 
 function salesSummaryRows(d: AdminSalesReport): unknown[][] {
   return [
-    ['Ventes brutes (CFA)', d.sales_activity_cfa],
-    ['Retours (CFA)', d.returns_activity_cfa],
-    ['Ventes nettes (CFA)', d.net_sales_cfa],
-    ['CMV (CFA)', d.cogs_cfa],
-    ['Marge brute (CFA)', d.gross_profit_cfa],
+    ['Ventes brutes (CFA)', exportCfaInt(d.sales_activity_cfa)],
+    ['Retours (CFA)', exportCfaInt(d.returns_activity_cfa)],
+    ['Ventes nettes (CFA)', exportCfaInt(d.net_sales_cfa)],
+    ['CMV (CFA)', exportCfaInt(d.cogs_cfa)],
+    ['Marge brute (CFA)', exportCfaInt(d.gross_profit_cfa)],
     ['Transactions', d.transaction_count],
-    ['Vente moyenne (CFA)', d.average_sale_cfa],
+    ['Vente moyenne (CFA)', exportCfaInt(d.average_sale_cfa)],
     ['Unités vendues', d.units_sold],
     ['Annulations (nombre)', d.voided_count],
-    ['Montant annulé (CFA)', d.voided_amount_cfa],
+    ['Montant annulé (CFA)', exportCfaInt(d.voided_amount_cfa)],
   ]
 }
 
@@ -107,10 +108,10 @@ export async function exportReportCsv(ctx: ReportExportContext): Promise<void> {
           l.productName,
           l.unitName,
           l.quantity,
-          l.unitPriceCfa,
-          l.lineTotalCfa,
+          exportCfaInt(l.unitPriceCfa),
+          exportCfaInt(l.lineTotalCfa),
         ]),
-        ['Total des ventes (période sélectionnée)', '', '', '', '', '', '', dataset.authoritativeTotalCfa],
+        ['Total des ventes (période sélectionnée)', '', '', '', '', '', '', exportCfaInt(dataset.authoritativeTotalCfa)],
       ],
     )
     return
@@ -126,20 +127,20 @@ export async function exportReportCsv(ctx: ReportExportContext): Promise<void> {
         p.name,
         p.depot_name,
         p.net_pieces,
-        p.net_sales_cfa,
-        p.gross_profit_cfa,
-        p.cogs_cfa,
+        exportCfaInt(p.net_sales_cfa),
+        exportCfaInt(p.gross_profit_cfa),
+        exportCfaInt(p.cogs_cfa),
       ]),
     )
   } else if (tab === 'inventory' && inventory) {
     downloadCsv(
       `inventaire-${stamp}.csv`,
-      ['Produit', 'Dépôt', 'Stock pièces', 'Valeur CFA', 'Statut'],
+      ['Produit', 'Dépôt', 'Stock (pièces)', 'Valeur CFA', 'Statut'],
       inventory.current_stock.map((r) => [
         r.name,
         r.depot_name,
         r.current_stock_pieces,
-        r.stock_value_cost_cfa ?? r.value_cfa ?? 0,
+        exportCfaInt(r.stock_value_cost_cfa ?? r.value_cfa ?? 0),
         r.stock_status,
       ]),
     )
@@ -148,10 +149,10 @@ export async function exportReportCsv(ctx: ReportExportContext): Promise<void> {
       `clients-${stamp}.csv`,
       ['Métrique', 'Valeur'],
       [
-        ['Solde dû (CFA)', customers.outstanding_total_cfa],
-        ['Activité crédit (CFA)', customers.credit_activity_cfa],
-        ['Paiements (CFA)', customers.payment_activity_cfa],
-        ['Non rattachés (CFA)', customers.unattributed_payment_activity_cfa],
+        ['Solde dû (CFA)', exportCfaInt(customers.outstanding_total_cfa)],
+        ['Activité crédit (CFA)', exportCfaInt(customers.credit_activity_cfa)],
+        ['Paiements (CFA)', exportCfaInt(customers.payment_activity_cfa)],
+        ['Non rattachés (CFA)', exportCfaInt(customers.unattributed_payment_activity_cfa)],
       ],
     )
   } else if (tab === 'shifts' && cash) {
@@ -161,24 +162,24 @@ export async function exportReportCsv(ctx: ReportExportContext): Promise<void> {
       cash.closed_shifts.map((s) => [
         s.shift_id,
         s.closed_at ?? '',
-        s.expected_cash_cfa ?? '',
-        s.actual_cash_cfa ?? '',
-        s.discrepancy_cfa ?? '',
+        s.expected_cash_cfa != null ? exportCfaInt(s.expected_cash_cfa) : '',
+        s.actual_cash_cfa != null ? exportCfaInt(s.actual_cash_cfa) : '',
+        s.discrepancy_cfa != null ? exportCfaInt(s.discrepancy_cfa) : '',
       ]),
     )
   } else if (tab === 'cost' && cost) {
     downloadCsv(
       `cout-inventaire-${stamp}.csv`,
-      ['Produit', 'Dépôt', 'Catégorie', 'Stock pièces', 'Prix coût CFA', 'Valeur au coût', 'Valeur vente', 'Bénéfice potentiel'],
+      ['Produit', 'Dépôt', 'Catégorie', 'Stock (pièces)', 'Prix coût CFA', 'Valeur au coût', 'Valeur vente', 'Bénéfice potentiel'],
       cost.inventory_cost.map((r) => [
         r.product_name,
         r.depot_name,
         r.category_name,
         r.current_stock_pieces,
-        r.cost_price_cfa,
-        r.inventory_value_at_cost,
-        r.inventory_value_at_selling,
-        r.potential_profit,
+        exportCfaInt(r.cost_price_cfa),
+        exportCfaInt(r.inventory_value_at_cost),
+        exportCfaInt(r.inventory_value_at_selling),
+        exportCfaInt(r.potential_profit),
       ]),
     )
   } else if (tab === 'purchases' && purchases) {
@@ -187,11 +188,11 @@ export async function exportReportCsv(ctx: ReportExportContext): Promise<void> {
       ['Fournisseur', 'Acheté', 'À crédit', 'Payé à validation', 'BR', 'Solde dû'],
       purchases.rows.map((r) => [
         r.supplier_name,
-        r.purchased_cfa,
-        r.credit_cfa,
-        r.paid_at_validate_cfa,
+        exportCfaInt(Number(r.purchased_cfa)),
+        exportCfaInt(Number(r.credit_cfa)),
+        exportCfaInt(Number(r.paid_at_validate_cfa)),
         r.receipt_count,
-        r.balance_owed_cfa,
+        exportCfaInt(Number(r.balance_owed_cfa)),
       ]),
     )
   } else if (tab === 'purchases-products' && purchasesProducts) {
@@ -201,7 +202,7 @@ export async function exportReportCsv(ctx: ReportExportContext): Promise<void> {
       purchasesProducts.rows.map((r) => [
         r.product_name,
         r.quantity_pieces,
-        r.purchased_cfa,
+        exportCfaInt(Number(r.purchased_cfa)),
         r.receipt_count,
       ]),
     )
@@ -211,9 +212,9 @@ export async function exportReportCsv(ctx: ReportExportContext): Promise<void> {
       ['Date', 'Acheté', 'À crédit', 'Payé à validation', 'BR'],
       purchasesPeriod.rows.map((r) => [
         r.document_date,
-        r.purchased_cfa,
-        r.credit_cfa,
-        r.paid_at_validate_cfa,
+        exportCfaInt(Number(r.purchased_cfa)),
+        exportCfaInt(Number(r.credit_cfa)),
+        exportCfaInt(Number(r.paid_at_validate_cfa)),
         r.receipt_count,
       ]),
     )
@@ -237,9 +238,9 @@ export async function exportReportXlsx(ctx: ReportExportContext): Promise<void> 
         rows: sales.product_performance.map((p) => [
           p.name,
           p.net_pieces,
-          p.net_sales_cfa,
-          p.gross_profit_cfa,
-          p.cogs_cfa,
+          exportCfaInt(p.net_sales_cfa),
+          exportCfaInt(p.gross_profit_cfa),
+          exportCfaInt(p.cogs_cfa),
         ]),
       },
     ])
@@ -248,7 +249,7 @@ export async function exportReportXlsx(ctx: ReportExportContext): Promise<void> 
       name: 'Produits',
       headers: ['Produit', 'Dépôt', 'Qté', 'Ventes nettes', 'MB', 'CMV'],
       rows: sales.product_performance.map((p) => [
-        p.name, p.depot_name, p.net_pieces, p.net_sales_cfa, p.gross_profit_cfa, p.cogs_cfa,
+        p.name, p.depot_name, p.net_pieces, exportCfaInt(p.net_sales_cfa), exportCfaInt(p.gross_profit_cfa), exportCfaInt(p.cogs_cfa),
       ]),
     }])
   } else if (tab === 'inventory' && inventory) {
@@ -259,7 +260,7 @@ export async function exportReportXlsx(ctx: ReportExportContext): Promise<void> 
         r.name,
         r.depot_name,
         r.current_stock_pieces,
-        r.stock_value_cost_cfa ?? r.value_cfa ?? 0,
+        exportCfaInt(r.stock_value_cost_cfa ?? r.value_cfa ?? 0),
         r.stock_status,
       ]),
     }])
@@ -268,9 +269,9 @@ export async function exportReportXlsx(ctx: ReportExportContext): Promise<void> 
       name: 'Résumé',
       headers: ['Métrique', 'Valeur'],
       rows: [
-        ['Solde dû', customers.outstanding_total_cfa],
-        ['Paiements', customers.payment_activity_cfa],
-        ['Non rattachés', customers.unattributed_payment_activity_cfa],
+        ['Solde dû', exportCfaInt(customers.outstanding_total_cfa)],
+        ['Paiements', exportCfaInt(customers.payment_activity_cfa)],
+        ['Non rattachés', exportCfaInt(customers.unattributed_payment_activity_cfa)],
       ],
     }])
   } else if (tab === 'shifts' && cash) {
@@ -280,9 +281,9 @@ export async function exportReportXlsx(ctx: ReportExportContext): Promise<void> 
       rows: cash.closed_shifts.map((s) => [
         s.shift_id,
         s.cashier_name,
-        s.expected_cash_cfa,
-        s.actual_cash_cfa,
-        s.discrepancy_cfa,
+        exportCfaInt(s.expected_cash_cfa),
+        exportCfaInt(s.actual_cash_cfa),
+        exportCfaInt(s.discrepancy_cfa),
       ]),
     }])
   } else if (tab === 'returns' && sales) {
@@ -292,25 +293,25 @@ export async function exportReportXlsx(ctx: ReportExportContext): Promise<void> 
       rows: sales.returns.map((r) => [
         r.created_at,
         r.receipt_number,
-        r.refund_amount_cfa,
-        r.cash_refunded_cfa,
-        r.balance_adjustment_cfa,
+        exportCfaInt(r.refund_amount_cfa),
+        exportCfaInt(r.cash_refunded_cfa),
+        exportCfaInt(r.balance_adjustment_cfa),
       ]),
     }])
   } else if (tab === 'cost' && cost) {
     downloadXlsx(`cout-${stamp}.xlsx`, [
       {
         name: 'Valorisation inventaire',
-        headers: ['Produit', 'Dépôt', 'Catégorie', 'Stock', 'Prix coût', 'Valeur@coût', 'Valeur@vente', 'Bénéfice potentiel'],
+        headers: ['Produit', 'Dépôt', 'Catégorie', 'Stock (pièces)', 'Prix coût', 'Valeur@coût', 'Valeur@vente', 'Bénéfice potentiel'],
         rows: cost.inventory_cost.map((r) => [
           r.product_name,
           r.depot_name,
           r.category_name,
           r.current_stock_pieces,
-          r.cost_price_cfa,
-          r.inventory_value_at_cost,
-          r.inventory_value_at_selling,
-          r.potential_profit,
+          exportCfaInt(r.cost_price_cfa),
+          exportCfaInt(r.inventory_value_at_cost),
+          exportCfaInt(r.inventory_value_at_selling),
+          exportCfaInt(r.potential_profit),
         ]),
       },
       {
@@ -323,8 +324,8 @@ export async function exportReportXlsx(ctx: ReportExportContext): Promise<void> 
           r.unit_name ?? `N${r.unit_level}`,
           r.quantity_in_unit,
           r.quantity_pieces,
-          r.unit_cost_price_cfa,
-          r.total_cost_cfa,
+          exportCfaInt(r.unit_cost_price_cfa),
+          exportCfaInt(r.total_cost_cfa),
           r.note ?? '',
         ]),
       },
@@ -335,11 +336,11 @@ export async function exportReportXlsx(ctx: ReportExportContext): Promise<void> 
       headers: ['Fournisseur', 'Acheté', 'À crédit', 'Payé à validation', 'BR', 'Solde dû'],
       rows: purchases.rows.map((r) => [
         r.supplier_name,
-        r.purchased_cfa,
-        r.credit_cfa,
-        r.paid_at_validate_cfa,
+        exportCfaInt(Number(r.purchased_cfa)),
+        exportCfaInt(Number(r.credit_cfa)),
+        exportCfaInt(Number(r.paid_at_validate_cfa)),
         r.receipt_count,
-        r.balance_owed_cfa,
+        exportCfaInt(Number(r.balance_owed_cfa)),
       ]),
     }])
   } else if (tab === 'purchases-products' && purchasesProducts) {
@@ -349,7 +350,7 @@ export async function exportReportXlsx(ctx: ReportExportContext): Promise<void> 
       rows: purchasesProducts.rows.map((r) => [
         r.product_name,
         r.quantity_pieces,
-        r.purchased_cfa,
+        exportCfaInt(Number(r.purchased_cfa)),
         r.receipt_count,
       ]),
     }])
@@ -359,9 +360,9 @@ export async function exportReportXlsx(ctx: ReportExportContext): Promise<void> 
       headers: ['Date', 'Acheté', 'À crédit', 'Payé à validation', 'BR'],
       rows: purchasesPeriod.rows.map((r) => [
         r.document_date,
-        r.purchased_cfa,
-        r.credit_cfa,
-        r.paid_at_validate_cfa,
+        exportCfaInt(Number(r.purchased_cfa)),
+        exportCfaInt(Number(r.credit_cfa)),
+        exportCfaInt(Number(r.paid_at_validate_cfa)),
         r.receipt_count,
       ]),
     }])

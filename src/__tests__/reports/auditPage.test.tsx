@@ -8,7 +8,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AuditPage } from '@/pages/admin/AuditPage'
-import { downloadCsv } from '@/lib/csvExport'
+import { exportTable } from '@/lib/listExport'
 import { formatDateTime } from '@/lib/formatters'
 import { auditEventSummary } from '@/lib/auditPresentation'
 import { bilingualPlain } from '@/lib/bilingual/types'
@@ -94,8 +94,8 @@ vi.mock('@/hooks/useAuditEventUnits', () => ({
   useAuditEventUnits: () => ({ data: null, isLoading: false }),
 }))
 
-vi.mock('@/lib/csvExport', () => ({
-  downloadCsv: vi.fn(),
+vi.mock('@/lib/listExport', () => ({
+  exportTable: vi.fn(async () => undefined),
 }))
 
 describe('AuditPage', () => {
@@ -106,7 +106,7 @@ describe('AuditPage', () => {
     auditState.isError = false
     depotState.currentDepotId = null
     depotState.currentDepotName = null
-    vi.mocked(downloadCsv).mockClear()
+    vi.mocked(exportTable).mockClear()
   })
 
   it('renders filter controls including actions and entity types', () => {
@@ -179,11 +179,12 @@ describe('AuditPage', () => {
     const user = userEvent.setup()
     render(<AuditPage />)
     await user.click(screen.getByRole('button', { name: COMMON.exportCsv.fr }))
-    expect(downloadCsv).toHaveBeenCalledTimes(1)
-    const call = vi.mocked(downloadCsv).mock.calls[0]
-    expect(call[0]).toMatch(/^audit-log-/)
-    expect(call[2][0]).toEqual(expect.arrayContaining([
-      formatDateTime(rowA.occurred_at),
+    expect(exportTable).toHaveBeenCalledTimes(1)
+    const call = vi.mocked(exportTable).mock.calls[0][0]
+    expect(call.kind).toBe('csv')
+    expect(call.meta.basename).toMatch(/^audit-log-/)
+    expect(call.rows[0].cells).toEqual(expect.arrayContaining([
+      rowA.occurred_at,
       'Admin User',
       bilingualPlain(auditEventSummary(rowA)),
       'sale',

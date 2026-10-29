@@ -10,16 +10,25 @@ const aoaToSheet = vi.fn((aoa: unknown[][]) => {
 })
 const bookAppendSheet = vi.fn()
 
-vi.mock('xlsx', () => ({
+vi.mock('xlsx-js-style', () => ({
   utils: {
     book_new: (...args: unknown[]) => bookNew(...args),
     aoa_to_sheet: (...args: unknown[]) => aoaToSheet(...args),
     book_append_sheet: (...args: unknown[]) => bookAppendSheet(...args),
     decode_range: () => ({ s: { r: 0, c: 0 }, e: { r: 0, c: 0 } }),
     encode_cell: ({ r, c }: { r: number; c: number }) => `${String.fromCharCode(65 + c)}${r + 1}`,
+    encode_col: (c: number) => String.fromCharCode(65 + c),
   },
   writeFile: (...args: unknown[]) => writeFile(...args),
 }))
+
+vi.mock('@/lib/tableExport', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/tableExport')>()
+  return {
+    ...actual,
+    exportCfaInt: (n: number | null | undefined) => Math.round(Number(n ?? 0) || 0),
+  }
+})
 
 import { cfaExportValue, downloadXlsx, printReportSummary } from '@/lib/reportExport'
 

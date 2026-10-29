@@ -32,11 +32,19 @@ import { bilingualAriaLabel, bilingualPlain, t } from '@/lib/bilingual/types'
 import { isCreditOverdue } from '@/lib/supplierDueDate'
 import { usePurchaseReceiptList, type PurchaseReceiptRow } from '@/hooks/useAchats'
 import { useDepotStore } from '@/stores/depotStore'
-import { exportFilteredList } from '@/lib/listExport'
+import { exportTable, type ExportColumn } from '@/lib/listExport'
+import { exportPurchaseReceiptStatus } from '@/lib/exportLabels'
+import { exportCfaInt } from '@/lib/tableExport'
 import { PurchaseReceiptDetailDrawer } from './components/PurchaseReceiptDetailDrawer'
 import { PurchaseReceiptEditorModal } from './components/PurchaseReceiptEditorModal'
 
-const RECEIPT_EXPORT_HEADERS = ['Numero', 'Statut', 'Date', 'Fournisseur', 'Total CFA']
+const RECEIPT_EXPORT_COLUMNS: ExportColumn[] = [
+  { header: 'Numéro' },
+  { header: 'Statut', kind: 'enum' },
+  { header: 'Date', kind: 'date' },
+  { header: 'Fournisseur' },
+  { header: 'Total CFA', kind: 'money', total: true },
+]
 const SEARCH_DEBOUNCE_MS = 300
 
 const GRID =
@@ -64,6 +72,7 @@ export function PurchaseReceiptsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [editorOpen, setEditorOpen] = useState(false)
   const depotId = useDepotStore((s) => s.currentDepotId)
+  const depotName = useDepotStore((s) => s.currentDepotName)
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS)
@@ -98,19 +107,30 @@ export function PurchaseReceiptsPage() {
   )
 
   function exportRows(kind: 'csv' | 'xlsx') {
-    const body = rows.map((row) => [
-      row.number,
-      row.status,
-      row.document_date,
-      row.supplier_name ?? '',
-      row.total_cfa,
-    ])
-    exportFilteredList({
+    const filterLines: string[] = []
+    if (dateRange) filterLines.push(`Période : ${dateRange.startDate} → ${dateRange.endDate}`)
+    if (statusFilter) filterLines.push(`Statut : ${exportPurchaseReceiptStatus(statusFilter)}`)
+    if (debouncedSearch.trim()) filterLines.push(`Recherche : ${debouncedSearch.trim()}`)
+    void exportTable({
       kind,
-      basename: 'receptions',
-      sheetName: 'Receptions',
-      headers: RECEIPT_EXPORT_HEADERS,
-      rows: body,
+      columns: RECEIPT_EXPORT_COLUMNS,
+      rows: rows.map((row) => ({
+        cells: [
+          row.number,
+          exportPurchaseReceiptStatus(row.status),
+          row.document_date,
+          row.supplier_name ?? '',
+          exportCfaInt(row.total_cfa),
+        ],
+        excludeFromTotals: row.status === 'cancelled',
+      })),
+      meta: {
+        title: 'Réceptions',
+        sheetName: 'Réceptions',
+        basename: 'receptions',
+        depotName,
+        filterLines,
+      },
     })
   }
 

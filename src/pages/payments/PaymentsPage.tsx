@@ -20,6 +20,8 @@ import {
   type ListDatePreset,
 } from '@/components/ui'
 import { formatDateTime } from '@/lib/formatters'
+import { exportOuiNon } from '@/lib/exportLabels'
+import { exportCfaInt } from '@/lib/tableExport'
 import { resolveReportDateRange } from '@/lib/reportDates'
 import { COMMON } from '@/lib/bilingual/common'
 import { PAYMENTS } from '@/lib/bilingual/payments'
@@ -36,10 +38,17 @@ import { BilingualText } from '@/components/ui/BilingualText'
 import { bilingualAriaLabel, bilingualPlain, t } from '@/lib/bilingual/types'
 import { fetchPaymentList, usePaymentList } from '@/hooks/useCustomers'
 import { useAuthStore } from '@/stores/authStore'
-import { exportFilteredList, LIST_EXPORT_MAX_ROWS } from '@/lib/listExport'
+import { exportTable, LIST_EXPORT_MAX_ROWS, type ExportColumn } from '@/lib/listExport'
 import { toastErrorBi } from '@/lib/bilingual/toast'
 
-const PAYMENT_EXPORT_HEADERS = ['Date', 'Client', 'Enregistre par', 'Montant CFA', 'Inverse', 'Note']
+const PAYMENT_EXPORT_COLUMNS: ExportColumn[] = [
+  { header: 'Date', kind: 'date' },
+  { header: 'Client' },
+  { header: 'Enregistré par' },
+  { header: 'Montant CFA', kind: 'money', total: true },
+  { header: 'Inversé', kind: 'bool' },
+  { header: 'Note' },
+]
 
 const REVERSED_CHIPS: FilterBarChip[] = [
   {
@@ -119,20 +128,30 @@ export function PaymentsPage() {
         startDate: dateRange?.startDate,
         endDate: dateRange?.endDate,
       })
-      const body = result.data.map((p) => [
-        p.recorded_at,
-        p.customer_name ?? '',
-        p.recorded_by_name ?? '',
-        p.amount_cfa,
-        p.is_reversed ? '1' : '0',
-        p.note ?? '',
-      ])
-      exportFilteredList({
+      const filterLines: string[] = []
+      if (dateRange) filterLines.push(`Période : ${dateRange.startDate} → ${dateRange.endDate}`)
+      filterLines.push(showReversed ? 'Inclut inversés' : 'Hors inversés')
+      if (customerSearch.trim()) filterLines.push(`Recherche : ${customerSearch.trim()}`)
+      await exportTable({
         kind,
-        basename: 'paiements',
-        sheetName: 'Paiements',
-        headers: PAYMENT_EXPORT_HEADERS,
-        rows: body,
+        columns: PAYMENT_EXPORT_COLUMNS,
+        rows: result.data.map((p) => ({
+          cells: [
+            p.recorded_at,
+            p.customer_name ?? '',
+            p.recorded_by_name ?? '',
+            exportCfaInt(p.amount_cfa),
+            exportOuiNon(p.is_reversed),
+            p.note ?? '',
+          ],
+          excludeFromTotals: p.is_reversed,
+        })),
+        meta: {
+          title: 'Paiements clients',
+          sheetName: 'Paiements',
+          basename: 'paiements',
+          filterLines,
+        },
       })
       if (result.count > LIST_EXPORT_MAX_ROWS) {
         toastErrorBi(COMMON.exportTruncated)

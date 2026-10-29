@@ -29,10 +29,21 @@ import { parseError } from '@/lib/errors'
 import { toastErrorFromCode } from '@/lib/bilingual/toast'
 import { reprintSupplierPaymentSlip } from '@/lib/supplierPaymentDocument'
 import { useSupplierList, useSupplierPaymentList, type SupplierPaymentRow, type SupplierRow } from '@/hooks/useAchats'
-import { exportFilteredList } from '@/lib/listExport'
+import { exportTable, type ExportColumn } from '@/lib/listExport'
+import { exportPaymentMethod } from '@/lib/exportLabels'
+import { exportCfaInt } from '@/lib/tableExport'
+import { useDepotStore } from '@/stores/depotStore'
+
 import { RecordSupplierPaymentModal } from './components/RecordSupplierPaymentModal'
 
-const PAYMENT_EXPORT_HEADERS = ['Fournisseur', 'Numero', 'Date', 'Montant CFA', 'Methode', 'Note']
+const PAYMENT_EXPORT_COLUMNS: ExportColumn[] = [
+  { header: 'Fournisseur' },
+  { header: 'Numéro' },
+  { header: 'Date', kind: 'date' },
+  { header: 'Montant CFA', kind: 'money', total: true },
+  { header: 'Méthode', kind: 'enum' },
+  { header: 'Note' },
+]
 const SEARCH_DEBOUNCE_MS = 300
 
 const GRID =
@@ -45,6 +56,7 @@ function methodLabel(m: string) {
 }
 
 export function SupplierPaymentsPage() {
+  const depotName = useDepotStore((s) => s.currentDepotName)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [datePreset, setDatePreset] = useState<ListDatePreset | null>(null)
@@ -82,20 +94,30 @@ export function SupplierPaymentsPage() {
   )
 
   function exportRows(kind: 'csv' | 'xlsx') {
-    const body = rows.map((row) => [
-      row.supplier_name ?? row.supplier_id,
-      row.receipt_number ?? '',
-      row.recorded_at,
-      row.amount_cfa,
-      row.method,
-      row.note ?? '',
-    ])
-    exportFilteredList({
+    const filterLines: string[] = []
+    if (dateRange) filterLines.push(`Période : ${dateRange.startDate} → ${dateRange.endDate}`)
+    if (selectedSupplier) filterLines.push(`Fournisseur : ${selectedSupplier.name}`)
+    if (debouncedSearch.trim()) filterLines.push(`Recherche : ${debouncedSearch.trim()}`)
+    void exportTable({
       kind,
-      basename: 'reglements-fournisseurs',
-      sheetName: 'Reglements',
-      headers: PAYMENT_EXPORT_HEADERS,
-      rows: body,
+      columns: PAYMENT_EXPORT_COLUMNS,
+      rows: rows.map((row) => ({
+        cells: [
+          row.supplier_name ?? row.supplier_id,
+          row.receipt_number ?? '',
+          row.recorded_at,
+          exportCfaInt(row.amount_cfa),
+          exportPaymentMethod(row.method),
+          row.note ?? '',
+        ],
+      })),
+      meta: {
+        title: 'Règlements fournisseurs',
+        sheetName: 'Règlements',
+        basename: 'reglements-fournisseurs',
+        depotName,
+        filterLines,
+      },
     })
   }
 
