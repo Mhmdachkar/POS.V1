@@ -1,8 +1,15 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "vhm-pos",
+  "name": "aquilux-pos",
   "compatibility_date": "2026-09-18",
+  "workers_dev": true,
+  "preview_urls": true,
   "assets": {
     "not_found_handling": "single-page-application"
-  }
+  },
+  "routes": [
+    { "pattern": "aquilux-pos.online", "custom_domain": true },
+    { "pattern": "www.aquilux-pos.online", "custom_domain": true },
+    { "pattern": "vhm-pos.com", "custom_domain": true }
+  ]
 }

@@ -1,6 +1,6 @@
-# Cloudflare deployment (VHM POS)
+# Cloudflare deployment (Aquilux POS / POS.V1)
 
-VHM is a **client-side React + Vite SPA**. Supabase is the backend. The local Windows print agent is separate and is **not** deployed to Cloudflare.
+Aquilux POS (repo **POS.V1**) is a **client-side React + Vite SPA**. Supabase is the backend. The local Windows print agent is separate and is **not** deployed to Cloudflare. This is not the VHM product.
 
 ## Architecture
 
@@ -30,11 +30,18 @@ Depot PC  → local print agent → depot printer
 
 ```jsonc
 {
-  "name": "vhm-pos",
+  "name": "aquilux-pos",
   "compatibility_date": "2026-09-18",
+  "workers_dev": true,
+  "preview_urls": true,
   "assets": {
     "not_found_handling": "single-page-application"
-  }
+  },
+  "routes": [
+    { "pattern": "aquilux-pos.online", "custom_domain": true },
+    { "pattern": "www.aquilux-pos.online", "custom_domain": true },
+    { "pattern": "vhm-pos.com", "custom_domain": true }
+  ]
 }
 ```
 
@@ -49,6 +56,23 @@ npm run deploy     # build + wrangler deploy (requires Cloudflare auth — do no
 `vite preview` uses the Cloudflare Vite plugin Workers runtime (not a plain static file server).
 
 Wrangler deploy uses the **generated** output config from the Vite build.
+
+## Automatic deploy (GitHub → Cloudflare)
+
+Repo **POS.V1**, workflow `.github/workflows/deploy-cloudflare.yml`:
+
+- Triggers on **push to `main`** (and manual `workflow_dispatch`)
+- Builds with `VITE_*` secrets, then `wrangler deploy` to Worker `aquilux-pos`
+
+Required GitHub Actions secrets on `Mhmdachkar/POS.V1`:
+
+| Secret | Purpose |
+|--------|---------|
+| `CLOUDFLARE_API_TOKEN` | API token with Workers edit (and account read) |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account id |
+| `VITE_SUPABASE_URL` | Production Supabase URL |
+| `VITE_SUPABASE_ANON_KEY` | Production anon key |
+| `VITE_APP_NAME` | e.g. `Aquilux POS` |
 
 ## Build-time environment variables
 
