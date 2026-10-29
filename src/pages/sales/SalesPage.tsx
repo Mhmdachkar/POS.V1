@@ -39,7 +39,7 @@ import {
   Skeleton,
   type ListDatePreset,
 } from '@/components/ui'
-import { formatCFA } from '@/lib/formatters'
+import { formatCFA, formatReportDateTime } from '@/lib/formatters'
 import { resolveReportDateRange } from '@/lib/reportDates'
 import {
   fetchSalesListForExport,
