@@ -6,6 +6,7 @@ import { COMMON } from '@/lib/bilingual/common'
 import { BiButtonStack, BiModalTitle, BiTableHeader } from '@/lib/bilingual/ui'
 import { t } from '@/lib/bilingual/types'
 import { parseError } from '@/lib/errors'
+import { formatCfaIntInput, formatThousandsInput, parseCFAInput, roundCfaInt } from '@/lib/formatters'
 import { useUpsertPurchaseReceipt, useSupplierList } from '@/hooks/useAchats'
 import { useDepotStore } from '@/stores/depotStore'
 import { useProductSearch } from '@/hooks/useProducts'
@@ -60,7 +61,7 @@ export function PurchaseReceiptEditorModal({ open, onClose, onCreated }: Props) 
     () =>
       lines.reduce((sum, line) => {
         const q = Number(line.quantity_in_unit)
-        const c = Number(line.unit_cost_cfa)
+        const c = roundCfaInt(parseCFAInput(line.unit_cost_cfa))
         if (!Number.isFinite(q) || !Number.isFinite(c)) return sum
         return sum + q * c
       }, 0),
@@ -79,7 +80,8 @@ export function PurchaseReceiptEditorModal({ open, onClose, onCreated }: Props) 
         unit_level: unit.unit_level,
         unit_name: unit.unit_name,
         quantity_in_unit: '1',
-        unit_cost_cfa: String(unit.cost_price_cfa ?? 0),
+        // Match inventory formatCFA / formatMoney (whole francs).
+        unit_cost_cfa: formatCfaIntInput(unit.cost_price_cfa),
       },
     ])
     setProductQuery('')
@@ -110,7 +112,7 @@ export function PurchaseReceiptEditorModal({ open, onClose, onCreated }: Props) 
           product_id: l.product_id,
           unit_level: l.unit_level,
           quantity_in_unit: Number(l.quantity_in_unit),
-          unit_cost_cfa: Number(l.unit_cost_cfa),
+          unit_cost_cfa: roundCfaInt(parseCFAInput(l.unit_cost_cfa)),
         })),
       })
       onCreated?.(result.id)
@@ -236,18 +238,33 @@ export function PurchaseReceiptEditorModal({ open, onClose, onCreated }: Props) 
                 <span className="text-[11px] text-text-muted">{t(ACHATS.unitCost)}</span>
                 <input
                   className="w-full h-9 px-2 rounded-md border border-border text-sm tabular-nums"
+                  inputMode="numeric"
                   value={line.unit_cost_cfa}
                   onChange={(e) =>
                     setLines((prev) =>
                       prev.map((l) =>
-                        l.key === line.key ? { ...l, unit_cost_cfa: e.target.value } : l,
+                        l.key === line.key
+                          ? { ...l, unit_cost_cfa: formatThousandsInput(e.target.value) }
+                          : l,
+                      ),
+                    )
+                  }
+                  onBlur={() =>
+                    setLines((prev) =>
+                      prev.map((l) =>
+                        l.key === line.key
+                          ? { ...l, unit_cost_cfa: formatCfaIntInput(parseCFAInput(l.unit_cost_cfa)) }
+                          : l,
                       ),
                     )
                   }
                 />
               </label>
               <MoneyDisplay
-                amount={Number(line.quantity_in_unit || 0) * Number(line.unit_cost_cfa || 0)}
+                amount={
+                  Number(line.quantity_in_unit || 0) *
+                  roundCfaInt(parseCFAInput(line.unit_cost_cfa || '0'))
+                }
                 className="text-sm"
               />
               <Button

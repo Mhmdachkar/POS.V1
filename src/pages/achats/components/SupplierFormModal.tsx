@@ -123,23 +123,35 @@ export function SupplierFormModal({ open, onClose, supplier }: Props) {
         {error && <p className="text-sm text-danger-foreground">{error}</p>}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
           {isEdit && supplier ? (
-            <span
-              title={
-                balanceBlocksDeactivate
-                  ? bilingualPlain(ACHATS.deactivateBlockedBalance)
-                  : undefined
-              }
-              className="inline-flex"
-            >
-              <Button
-                type="button"
-                variant={supplier.is_active ? 'danger' : 'secondary'}
-                disabled={pending || balanceBlocksDeactivate}
-                onClick={() => void toggleActive()}
+            <div className="space-y-1">
+              {/* Disabled buttons ignore hover — keep pointer events on the wrapper. */}
+              <span
+                title={
+                  balanceBlocksDeactivate
+                    ? bilingualPlain(ACHATS.deactivateBlockedBalance)
+                    : undefined
+                }
+                className="inline-flex"
               >
-                <BiButtonStack {...(supplier.is_active ? ACHATS.deactivate : ACHATS.reactivate)} />
-              </Button>
-            </span>
+                <Button
+                  type="button"
+                  variant={supplier.is_active ? 'danger' : 'secondary'}
+                  disabled={pending || balanceBlocksDeactivate}
+                  className={balanceBlocksDeactivate ? 'pointer-events-none' : undefined}
+                  onClick={() => void toggleActive()}
+                  aria-describedby={
+                    balanceBlocksDeactivate ? 'supplier-deactivate-blocked' : undefined
+                  }
+                >
+                  <BiButtonStack {...(supplier.is_active ? ACHATS.deactivate : ACHATS.reactivate)} />
+                </Button>
+              </span>
+              {balanceBlocksDeactivate && (
+                <p id="supplier-deactivate-blocked" className="text-xs text-text-muted max-w-[16rem]">
+                  {t(ACHATS.deactivateBlockedBalance)}
+                </p>
+              )}
+            </div>
           ) : (
             <span />
           )}
