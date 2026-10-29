@@ -1,4 +1,4 @@
-import { localizedUnitLabelForCount } from '@/lib/localizedUnits'
+import { localizedUnitLabel, localizedUnitLabelForCount } from '@/lib/localizedUnits'
 /**
  * ProductDetailDrawer — product identity, stock, units, activity, and actions.
  *
@@ -145,7 +145,7 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
               {sellingUnit && (
                 <p className="mt-2 text-sm text-text-primary">
                   {formatCFA(sellingUnit.selling_price_cfa)}
-                  <span className="text-text-secondary font-normal"> / {sellingUnit.unit_name}</span>
+                  <span className="text-text-secondary font-normal"> / {localizedUnitLabel(sellingUnit.unit_name, sellingUnit.unit_level)}</span>
                 </p>
               )}
               <p className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
@@ -224,7 +224,7 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
               {product.units.map((unit) => (
                 <DetailRow
                   key={unit.id}
-                  label={unit.unit_name}
+                  label={localizedUnitLabel(unit.unit_name, unit.unit_level)}
                   value={
                     unit.serial_number ? (
                       <span className="font-mono text-xs bg-surface-muted px-2 py-0.5 rounded border border-border">
@@ -269,7 +269,7 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
                       : null
                     return (
                       <tr key={unit.id} className="border-t border-border">
-                        <td className="px-3 py-2 font-medium text-text-primary">{unit.unit_name}</td>
+                        <td className="px-3 py-2 font-medium text-text-primary">{localizedUnitLabel(unit.unit_name, unit.unit_level)}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-text-secondary">{formatCFA(unit.cost_price_cfa)}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{formatCFA(unit.selling_price_cfa)}</td>
                         <td className={`px-3 py-2 text-right tabular-nums font-medium ${profit >= 0 ? 'text-success-foreground' : 'text-danger-foreground'}`}>

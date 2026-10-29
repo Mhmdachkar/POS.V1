@@ -173,8 +173,8 @@ BEGIN
         created_by, metadata
       ) VALUES (
         r.depot_id, r.product_id, (v_stock_after - r.stock_before),
-        'ADJUSTMENT', 'electro2_correction', r.product_id,
-        NULL,
+        'ADJUSTMENT', 'inventory_adjustment', r.product_id,
+        (SELECT id FROM public.staff WHERE role = 'admin' AND is_active = true ORDER BY created_at LIMIT 1),
         jsonb_build_object(
           'source', 'correct_electro2_stock',
           'stock_before', r.stock_before,

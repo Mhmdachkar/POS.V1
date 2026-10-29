@@ -19,6 +19,7 @@ import {
   type AchatsResolveHit,
 } from '@/lib/achatsProductResolve'
 import { preventQtyEmptyOnDelete, sanitizeQtyInput } from '@/lib/qtyInput'
+import { localizedUnitLabel } from '@/lib/localizedUnits'
 import { tryAddCartItem, tryUpdateCartQuantity } from '@/lib/posCartActions'
 import { usePosCatalogStock } from '@/hooks/usePosCatalogStock'
 import { usePOSProductCatalog } from '@/hooks/useProducts'
@@ -303,7 +304,7 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
             <div className="min-w-0">
               <p className="font-medium text-text-primary truncate">{activeHit.product.name}</p>
               <p className="text-xs truncate font-mono">
-                {unitCode(activeHit)} · {activeHit.unit.unit_name}
+                {unitCode(activeHit)} · {localizedUnitLabel(activeHit.unit.unit_name, activeHit.unit.unit_level)}
                 <span className="ml-2 text-[10px] font-sans text-text-muted">Tab</span>
               </p>
             </div>
@@ -329,7 +330,7 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
                   <span className="min-w-0 truncate">
                     <span className="font-mono text-xs text-text-secondary">{unitCode(hit)}</span>
                     <span className="ml-2 font-medium">{hit.product.name}</span>
-                    <span className="ml-2 text-xs text-text-muted">{hit.unit.unit_name}</span>
+                    <span className="ml-2 text-xs text-text-muted">{localizedUnitLabel(hit.unit.unit_name, hit.unit.unit_level)}</span>
                   </span>
                 </button>
               </li>
@@ -367,7 +368,7 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
                   </td>
                   <td className="px-2 py-1.5 font-mono text-xs text-text-secondary">{serialForCartLine(row.product_id, row.unit_level, catalogHits)}</td>
                   <td className="px-2 py-1.5 font-medium">{row.product_name}</td>
-                  <td className="px-2 py-1.5">{row.unit_name}</td>
+                  <td className="px-2 py-1.5">{localizedUnitLabel(row.unit_name, row.unit_level)}</td>
                   <td className="px-2 py-1.5 text-right">
                     <input
                       inputMode="decimal"

@@ -190,7 +190,7 @@ export function renderLineTable(opts: {
         <td class="num">${r.index}</td>
         <td>${escapeDocHtml(r.code)}</td>
         <td>${escapeDocHtml(r.designation)}</td>
-        <td>${escapeDocHtml((() => { const u = localizedUnitLabel(r.unit); return u ? u.charAt(0).toUpperCase() + u.slice(1) : u })())}</td>
+        <td>${escapeDocHtml(localizedUnitLabel(r.unit))}</td>
         <td class="num">${escapeDocHtml(r.qty)}</td>
         ${prices}
       </tr>`

@@ -41,7 +41,10 @@ export const POS = {
   loadingReceipt: bi('Chargement du ticket…', 'Loading receipt…'),
   noOpenShift: bi('Sans service', 'No shift'),
   cartLines: (n: number) =>
-    bi(`Panier (${n} ligne${n !== 1 ? 's' : ''})`, `Cart (${n} ${n === 1 ? 'line' : 'lines'})`),
+    bi(
+      n <= 1 ? `Panier (${n} ligne)` : `Panier (${n} lignes)`,
+      n === 1 ? 'Cart (1 line)' : `Cart (${n} lines)`,
+    ),
   clearCart: bi('Vider', 'Clear'),
   emptyCartTitle: bi('Panier vide', 'Your cart is empty'),
   emptyCartHint: bi('Touchez un produit pour l\'ajouter.', 'Tap a product to add it.'),
@@ -123,7 +126,7 @@ export const POS = {
   leftCount: (n: number) => bi(`${n} restant${n !== 1 ? 's' : ''}`, `${n} left`),
   chooseUnit: bi('Choisir l\'unité', 'Choose unit'),
   footerLines: (n: number) =>
-    bi(`${n} ligne${n !== 1 ? 's' : ''}`, `${n} ${n === 1 ? 'line' : 'lines'}`),
+    bi(n <= 1 ? `${n} ligne` : `${n} lignes`, n === 1 ? '1 line' : `${n} lines`),
   percentPlaceholder: bi('0–100', '0–100'),
   decreaseQtyAria: (name: string) =>
     bi(`Diminuer la quantité de ${name}`, `Decrease quantity of ${name}`),
@@ -178,7 +181,8 @@ export const POS = {
   lineDiscountCol: bi('Remise', 'Discount'),
   lineAmountCol: bi('Montant', 'Amount'),
   stockAvailableCol: bi('Stock dispo', 'Avail. stock'),
-  linesCount: (n: number) => bi(`Lignes : ${n}`, `Lines: ${n}`),
+  linesCount: (n: number) =>
+    bi(n <= 1 ? `${n} ligne` : `${n} lignes`, n === 1 ? '1 line' : `${n} lines`),
   articlesCount: (n: number) => bi(`Articles : ${n}`, `Items: ${n}`),
   netToPay: bi('Net à payer', 'Amount due'),
   lineBenefit: bi('Bénéfice', 'Profit'),
