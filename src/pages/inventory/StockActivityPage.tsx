@@ -30,7 +30,7 @@ import {
 } from '@/hooks/useInventory'
 import type { InventoryTransactionType } from '@/types/database'
 import { INVENTORY, STOCK_TXN_TYPE } from '@/lib/bilingual/inventory'
-import { adjustmentTypeLabel } from '@/lib/auditPresentation'
+import { adjustmentTypeLabel, stockMovementReasonLabel } from '@/lib/auditPresentation'
 import { COMMON, commonPageOf } from '@/lib/bilingual/common'
 import {
   BiEmptyDescription,
@@ -102,7 +102,7 @@ export function stockActivityDetail(metadata: Record<string, unknown> | null): s
   if (unitName) {
     parts.push(qtyInUnit != null ? `${qtyInUnit} ${unitName}` : unitName)
   }
-  if (reason) parts.push(reason)
+  if (reason) parts.push(stockMovementReasonLabel(reason))
   return parts.length > 0 ? parts.join(' · ') : null
 }
 

@@ -177,6 +177,43 @@ export function adjustmentTypeLabel(type: string): string {
   return bilingualPlain(ADJUSTMENT_TYPE[type] ?? bi(type, type))
 }
 
+/** Machine codes stored in inventory_transactions.metadata.reason (and similar). */
+const STOCK_MOVEMENT_REASON: Record<string, BilingualPair> = {
+  cancel_purchase_receipt: bi('BR annulé', 'Purchase receipt cancelled'),
+  validate_purchase_receipt: bi('BR validé', 'Purchase receipt validated'),
+  purchase_receipt: bi('Bon de réception', 'Purchase receipt'),
+  inventory_adjustment: bi('Ajustement de stock', 'Stock adjustment'),
+  stock_entry: bi('Entrée de stock', 'Stock in'),
+  stock_transfer: bi('Transfert de stock', 'Stock transfer'),
+  sale_return: bi('Retour vente', 'Sale return'),
+  correct_electro2_stock: bi('Correction stock ELECTRO 2', 'ELECTRO 2 stock correction'),
+  correct_electro2_stock_cost: bi('Correction stock ELECTRO 2', 'ELECTRO 2 stock correction'),
+  backfill_electro2_inventory_transactions: bi(
+    'Rattrapage mouvements ELECTRO 2',
+    'ELECTRO 2 ledger backfill',
+  ),
+}
+
+/**
+ * Label for a stock-movement metadata reason / type key.
+ * Known codes → French; free-text reasons pass through unchanged.
+ */
+export function stockMovementReasonLabel(reason: string): string {
+  const key = reason.trim()
+  if (!key) return key
+  const mapped =
+    STOCK_MOVEMENT_REASON[key] ??
+    ADJUSTMENT_TYPE[key] ??
+    AUDIT_ACTION_LABELS[key]
+  if (mapped) return bilingualPlain(mapped)
+  // snake_case / SCREAMING_SNAKE machine keys: fall back to audit-style raw key only
+  // if it looks like free text (spaces / accents), show as written.
+  if (/^[a-z][a-z0-9_]*$/.test(key) || /^[A-Z][A-Z0-9_]*$/.test(key)) {
+    return key.replace(/_/g, ' ')
+  }
+  return key
+}
+
 const L = {
   stock: bi('Stock', 'Stock'),
   stockChange: bi('Variation', 'Change'),

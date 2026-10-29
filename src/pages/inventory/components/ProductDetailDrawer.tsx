@@ -34,7 +34,7 @@ import { useDeactivateProduct, useReactivateProduct } from '@/hooks/useAdminProd
 import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
 import { STOCK_TXN_TYPE } from '@/lib/bilingual/inventory'
-import { adjustmentTypeLabel } from '@/lib/auditPresentation'
+import { adjustmentTypeLabel, stockMovementReasonLabel } from '@/lib/auditPresentation'
 import { RestockModal } from './RestockModal'
 import { AdjustmentModal } from './AdjustmentModal'
 import { ProductFormModal } from './ProductFormModal'
@@ -336,7 +336,9 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
                           {formatDateTime(row.created_at)} · {row.staff_name ?? '—'}
                         </p>
                         {metaReason && (
-                          <p className="text-xs text-text-secondary italic mt-0.5">{metaReason}</p>
+                          <p className="text-xs text-text-secondary italic mt-0.5">
+                            {stockMovementReasonLabel(metaReason)}
+                          </p>
                         )}
                       </div>
                       <span
