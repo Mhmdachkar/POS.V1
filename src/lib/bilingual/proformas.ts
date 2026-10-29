@@ -25,7 +25,7 @@ export const PROFORMAS = {
     'Autorisez les fenêtres pop-up pour ouvrir le PDF.',
     'Allow pop-ups to open the PDF.',
   ),
-  whatsapp: bi('WhatsApp', 'WhatsApp'),
+  whatsapp: bi('Partager WhatsApp', 'WhatsApp'),
   empty: bi('Aucun proforma.', 'No quotes yet.'),
   failedToLoad: bi('Impossible de charger les proformas.', 'Could not load quotes.'),
   save: bi('Enregistrer', 'Save'),

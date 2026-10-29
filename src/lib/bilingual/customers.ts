@@ -98,7 +98,7 @@ export const CUSTOMERS = {
   exportAccountExcel: bi('Exporter Excel', 'Export Excel'),
   exportAccountPdf: bi('Exporter PDF', 'Export PDF'),
   statementPdf: bi('Relevé PDF', 'Statement PDF'),
-  statementWhatsApp: bi('WhatsApp', 'WhatsApp'),
+  statementWhatsApp: bi('Partager WhatsApp', 'WhatsApp'),
   statementPeriodFrom: bi('Du', 'From'),
   statementPeriodTo: bi('Au', 'To'),
   statementLargeLedgerNote: bi(
