@@ -2,6 +2,7 @@ import { tryChangeCartUnit } from '@/lib/posCartActions'
 import { POS } from '@/lib/bilingual/pos'
 import { toastErrorBi } from '@/lib/bilingual/toast'
 import { t, bilingualAriaLabel } from '@/lib/bilingual/types'
+import { localizedUnitLabel } from '@/lib/localizedUnits'
 import { useProductDetail } from '@/hooks/useProducts'
 import type { ProductUnit } from '@/types/database'
 
@@ -56,7 +57,7 @@ export function UnitChangeSelect({
     >
       {units.map((unit) => (
         <option key={unit.id} value={unit.unit_level}>
-          {unit.unit_name}
+          {localizedUnitLabel(unit.unit_name, unit.unit_level)}
         </option>
       ))}
     </select>
