@@ -9,6 +9,10 @@ import {
   type CommercialClientBlock,
   type CommercialHeaderContext,
 } from '@/lib/commercialDocumentHtml'
+import {
+  deliveryNoteLineTotalCfa,
+  proratedLineDiscountCfa,
+} from '@/lib/deliveryNoteAmounts'
 import { printHtmlDocument } from '@/lib/reportExport'
 import { APP_BUSINESS_FALLBACK } from '@/lib/formatters'
 
@@ -20,6 +24,10 @@ export interface DeliveryNotePrintItem {
   unit_price_cfa: number
   line_discount_cfa: number
   line_total_cfa: number
+  /** Sale line qty when BL is partial; defaults to quantity_in_unit. */
+  sale_quantity_in_unit?: number
+  /** Full sale line discount (when joined from sale_items). */
+  sale_line_discount_cfa?: number
 }
 
 export interface DeliveryNotePrintContext {
@@ -42,15 +50,32 @@ export function buildDeliveryNotePrintHtml(ctx: DeliveryNotePrintContext): strin
     phone: ctx.header?.phone ?? null,
   }
   const dateIso = `${ctx.documentDate}T12:00:00+00:00`
-  const rows = ctx.items.map((it) => ({
-    code: it.serial_number?.trim() || '\u2014',
-    designation: it.product_name,
-    unit: it.unit_name,
-    qty: String(it.quantity_in_unit),
-    unitPrice: formatDocCfa(it.unit_price_cfa),
-    discount: formatDocCfa(it.line_discount_cfa),
-    amount: formatDocCfa(it.line_total_cfa),
-  }))
+  let totalCfa = 0
+  const rows = ctx.items.map((it) => {
+    const saleQty = it.sale_quantity_in_unit ?? it.quantity_in_unit
+    const fullLineDiscount = it.sale_line_discount_cfa ?? it.line_discount_cfa
+    const lineTotal = deliveryNoteLineTotalCfa({
+      quantityInUnit: it.quantity_in_unit,
+      unitPriceCfa: it.unit_price_cfa,
+      lineDiscountCfa: fullLineDiscount,
+      saleQuantityInUnit: saleQty,
+    })
+    if (ctx.showPrices) totalCfa += lineTotal
+    const discountDisplay = proratedLineDiscountCfa(
+      fullLineDiscount,
+      it.quantity_in_unit,
+      saleQty,
+    )
+    return {
+      code: it.serial_number?.trim() || '\u2014',
+      designation: it.product_name,
+      unit: it.unit_name,
+      qty: String(it.quantity_in_unit),
+      unitPrice: formatDocCfa(it.unit_price_cfa),
+      discount: formatDocCfa(discountDisplay),
+      amount: formatDocCfa(lineTotal),
+    }
+  })
   return buildDeliveryNoteDocumentHtml({
     header,
     client: ctx.client,
@@ -60,6 +85,7 @@ export function buildDeliveryNotePrintHtml(ctx: DeliveryNotePrintContext): strin
     receiptNumber: ctx.receiptNumber,
     receivedByName: ctx.receivedByName,
     rows,
+    totalAmount: ctx.showPrices ? formatDocCfa(totalCfa) : undefined,
   })
 }
 

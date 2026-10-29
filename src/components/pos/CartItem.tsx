@@ -14,6 +14,7 @@ import { t, bilingualAriaLabel } from '@/lib/bilingual/types'
 import { usePosCatalogStock } from '@/hooks/usePosCatalogStock'
 import { useProductDetail } from '@/hooks/useProducts'
 import { usePOSStore } from '@/stores/posStore'
+import { useAuthStore } from '@/stores/authStore'
 import { UnitChangeSelect } from './UnitChangeSelect'
 import type { CartItem as CartItemType } from '@/types'
 
@@ -22,7 +23,9 @@ export interface CartItemProps {
 }
 
 export function CartItem({ item }: CartItemProps) {
+  const isAdmin = useAuthStore((s) => s.staff?.role === 'admin')
   const removeItem = usePOSStore((s) => s.removeItem)
+  const updateLineDiscount = usePOSStore((s) => s.updateLineDiscount)
   const cartItems = usePOSStore((s) => s.items)
   const { getAvailablePieces } = usePosCatalogStock()
   const { data: productDetail } = useProductDetail(item.product_id)
@@ -185,6 +188,20 @@ export function CartItem({ item }: CartItemProps) {
           <p role="status" className="text-[10px] text-danger-foreground">
             {t(POS.qtyInvalid)}
           </p>
+        )}
+        {isAdmin && (
+          <label className="flex items-center justify-between gap-2 text-[10px] text-text-secondary sm:justify-end">
+            <span className="truncate">{t(POS.lineDiscountCol)}</span>
+            <input
+              type="number"
+              min={0}
+              className="w-20 h-8 rounded-md border border-border px-1 text-right tabular-nums text-xs bg-surface"
+              value={item.line_discount_cfa ?? 0}
+              onChange={(e) =>
+                updateLineDiscount(item.product_id, item.unit_level, Number(e.target.value))
+              }
+            />
+          </label>
         )}
       </div>
     </div>

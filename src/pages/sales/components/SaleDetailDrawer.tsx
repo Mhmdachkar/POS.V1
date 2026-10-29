@@ -253,6 +253,7 @@ export function SaleDetailDrawer({ saleId, shiftId, isOverRefund = false, onClos
   const [showDelivery, setShowDelivery] = useState(false)
   const queryClient = useQueryClient()
   const staffRole = useAuthStore((s) => s.staff?.role)
+  /** Cashier or admin at same depot (RPC enforces depot); no restriction to sale creator. */
   const canMutateSale = staffRole === 'cashier' || staffRole === 'admin'
   const depotName = useDepotStore((s) => s.currentDepotName)
   const businessName =
@@ -485,6 +486,17 @@ export function SaleDetailDrawer({ saleId, shiftId, isOverRefund = false, onClos
               label={t(POS.subtotal)}
               value={<MoneyDisplay amount={sale.subtotal_cfa} size="small" />}
             />
+            {sale.items.reduce((sum, item) => sum + item.line_discount_cfa, 0) > 0 && (
+              <DetailRow
+                label={t(SALES.lineDiscount)}
+                value={
+                  <MoneyDisplay
+                    amount={-sale.items.reduce((sum, item) => sum + item.line_discount_cfa, 0)}
+                    size="small"
+                  />
+                }
+              />
+            )}
             {sale.discount_amount_cfa > 0 && (
               <DetailRow
                 label={

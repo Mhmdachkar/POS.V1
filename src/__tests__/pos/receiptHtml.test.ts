@@ -107,7 +107,8 @@ describe('buildReceiptHtml', () => {
       refund_amount_cfa: 100,
     }))
     expect(html).toContain('Remise (10%)')
-    expect(html).toContain('Ajouté au solde')
+    expect(html).toContain('Reste à payer')
+    expect(html).toContain('Payé')
     expect(html).toContain('Remboursé')
     expect(html).toContain('ANNULÉ')
     expect(html).not.toContain('PAYÉ')

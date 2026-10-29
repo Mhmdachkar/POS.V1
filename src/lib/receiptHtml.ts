@@ -170,8 +170,16 @@ export function buildReceiptHtml(data: ReceiptData): string {
     ? kv('Monnaie', formatCFA(data.change_given_cfa))
     : ''
 
-  const balanceRow = data.balance_added_cfa > 0
-    ? kv('Ajouté au solde', formatCFA(data.balance_added_cfa))
+  const paidOnSaleCfa = Math.max(
+    0,
+    Math.round((data.payable_total_cfa - data.balance_added_cfa) * 100) / 100,
+  )
+  const paidRow =
+    paidOnSaleCfa > 0 || data.balance_added_cfa > 0
+      ? kv('Payé', formatCFA(paidOnSaleCfa))
+      : ''
+  const resteRow = data.balance_added_cfa > 0
+    ? kv('Reste à payer', formatCFA(data.balance_added_cfa))
     : ''
 
   const refundRow = (data.refund_amount_cfa ?? 0) > 0
@@ -204,7 +212,8 @@ export function buildReceiptHtml(data: ReceiptData): string {
         ${kv('TOTAL', formatCFA(data.payable_total_cfa), 'receipt-total')}
         ${kv('Espèces', formatCFA(data.amount_tendered_cfa))}
         ${changeRow}
-        ${balanceRow}
+        ${paidRow}
+        ${resteRow}
         ${refundRow}
       </div>
       <div class="receipt-rule"></div>

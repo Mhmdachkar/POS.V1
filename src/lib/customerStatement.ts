@@ -124,8 +124,12 @@ export function buildCustomerStatementDataset(opts: {
   )
   const totalDebitCfa = lines.reduce((s, l) => s + l.debitCfa, 0)
   const totalCreditCfa = lines.reduce((s, l) => s + l.creditCfa, 0)
-  const soldeFinalCfa =
+  const soldeFinalFromLedger =
     lines.length > 0 ? lines[lines.length - 1]!.soldeCfa : soldeInitialCfa
+  const fullAccount =
+    periodFromYmd == null && periodToYmd == null
+  /** Full-period PDF solde matches customers.balance_owed_cfa (screen). */
+  const soldeFinalCfa = fullAccount ? opts.balanceOwedCfa : soldeFinalFromLedger
   const asOfIso = opts.asOfIso ?? new Date().toISOString()
 
   return {
