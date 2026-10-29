@@ -66,7 +66,7 @@ export type { PageHeaderProps } from './PageHeader'
 export { PaginationBar } from './PaginationBar'
 export type { PaginationBarProps } from './PaginationBar'
 
-export { RowChevron, CLICKABLE_ROW } from './RowChevron'
+export { RowChevron, CLICKABLE_ROW, tableRowZebra } from './RowChevron'
 
 export { BilingualText } from './BilingualText'
 export type { BilingualTextProps, BilingualVariant } from './BilingualText'

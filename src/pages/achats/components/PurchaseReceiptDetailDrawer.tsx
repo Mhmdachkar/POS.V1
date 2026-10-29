@@ -64,6 +64,7 @@ export function PurchaseReceiptDetailDrawer({ receiptId, onClose }: Props) {
   const items = data?.items ?? []
   const isDraft = receipt?.status === 'draft'
   const isValidated = receipt?.status === 'validated'
+  const isCancelled = receipt?.status === 'cancelled'
 
   async function handleValidate(mode: 'paid' | 'credit') {
     if (!receipt) return
@@ -274,15 +275,17 @@ export function PurchaseReceiptDetailDrawer({ receiptId, onClose }: Props) {
               </div>
             )}
 
-            {isValidated && (
+            {(isValidated || isCancelled) && (
               <div className="border-t border-border pt-4 flex flex-wrap gap-2">
                 <Button type="button" variant="secondary" onClick={() => void handlePrintBr()}>
                   <FileText className="h-4 w-4 mr-1.5" />
                   <BiButtonStack {...ACHATS.printBrA4} />
                 </Button>
-                <Button type="button" variant="danger" onClick={() => setCancelOpen(true)}>
-                  <BiButtonStack {...ACHATS.cancel} />
-                </Button>
+                {isValidated && (
+                  <Button type="button" variant="danger" onClick={() => setCancelOpen(true)}>
+                    <BiButtonStack {...ACHATS.cancel} />
+                  </Button>
+                )}
               </div>
             )}
           </div>

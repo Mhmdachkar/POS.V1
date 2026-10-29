@@ -241,6 +241,16 @@ describe('CustomersPage', () => {
     expect(screen.queryByRole('button', { name: bilingualAriaLabel(CUSTOMERS.filterInactive) })).not.toBeInTheDocument()
   })
 
+  it('applies zebra striping on list rows', async () => {
+    const { builder } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    renderCustomers()
+    const first = (await screen.findByText('John Doe')).closest('button')
+    const second = screen.getByText('Customer 1').closest('button')
+    expect(first?.className.split(/\s+/)).toContain('bg-surface')
+    expect(second?.className.split(/\s+/)).toContain('bg-surface-muted/50')
+  })
+
   it('uses MoneyDisplay small + danger for owed balances', async () => {
     const { builder } = createFilterAwareFrom(catalog)
     vi.mocked(supabase.from).mockReturnValue(builder as never)

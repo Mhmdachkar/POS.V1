@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Banknote, Plus } from 'lucide-react'
+import { Banknote, FileText, Plus } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import {
   Badge,
@@ -19,10 +19,15 @@ import {
   BiTableHeader,
 } from '@/lib/bilingual/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
-import { useSupplierList, useSupplierPaymentList, type SupplierRow } from '@/hooks/useAchats'
+import { t } from '@/lib/bilingual/types'
+import { parseError } from '@/lib/errors'
+import { toastErrorFromCode } from '@/lib/bilingual/toast'
+import { reprintSupplierPaymentSlip } from '@/lib/supplierPaymentDocument'
+import { useSupplierList, useSupplierPaymentList, type SupplierPaymentRow, type SupplierRow } from '@/hooks/useAchats'
 import { RecordSupplierPaymentModal } from './components/RecordSupplierPaymentModal'
 
-const GRID = 'grid-cols-[minmax(8rem,1fr)_minmax(7rem,10rem)_minmax(7rem,9rem)_6.5rem_5.5rem_minmax(6rem,1fr)]'
+const GRID =
+  'grid-cols-[minmax(8rem,1fr)_minmax(7rem,10rem)_minmax(7rem,9rem)_6.5rem_5.5rem_minmax(6rem,1fr)_2.75rem]'
 
 function methodLabel(m: string) {
   if (m === 'mobile') return ACHATS.mobile
@@ -32,15 +37,36 @@ function methodLabel(m: string) {
 
 export function SupplierPaymentsPage() {
   const { data, isLoading, isError } = useSupplierPaymentList(null)
-  const suppliersQ = useSupplierList(true)
+  const suppliersQ = useSupplierList(false)
   const [payOpen, setPayOpen] = useState(false)
   const [supplierId, setSupplierId] = useState<string>('')
   const rows = data?.rows ?? []
+  const suppliers = suppliersQ.data?.rows ?? []
 
-  const selectedSupplier: SupplierRow | null = useMemo(() => {
-    const list = suppliersQ.data?.rows ?? []
-    return list.find((s) => s.id === supplierId) ?? list.find((s) => s.balance_owed_cfa > 0) ?? null
-  }, [suppliersQ.data, supplierId])
+  const selectedSupplier: SupplierRow | null = useMemo(
+    () => suppliers.find((s) => s.id === supplierId) ?? null,
+    [suppliers, supplierId],
+  )
+
+  async function handlePrint(row: SupplierPaymentRow) {
+    try {
+      await reprintSupplierPaymentSlip({
+        receiptNumber: row.receipt_number || '\u2014',
+        amountCfa: row.amount_cfa,
+        methodLabel: t(methodLabel(row.method)),
+        recordedAt: row.recorded_at,
+        note: row.note,
+        supplier: {
+          name: row.supplier_name ?? row.supplier_id,
+          phone: null,
+          address: null,
+        },
+      })
+    } catch (err) {
+      const parsed = parseError(err)
+      toastErrorFromCode(parsed.code, parsed.details)
+    }
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -55,15 +81,17 @@ export function SupplierPaymentsPage() {
             onChange={(e) => setSupplierId(e.target.value)}
           >
             <option value="">—</option>
-            {(suppliersQ.data?.rows ?? [])
-              .filter((s) => s.balance_owed_cfa > 0)
-              .map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
+            {suppliers.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
           </select>
-          <Button type="button" disabled={!selectedSupplier} onClick={() => setPayOpen(true)}>
+          <Button
+            type="button"
+            disabled={!selectedSupplier || selectedSupplier.balance_owed_cfa <= 0}
+            onClick={() => setPayOpen(true)}
+          >
             <Plus className="h-4 w-4 mr-1.5" />
             <BiButtonStack {...ACHATS.recordPayment} />
           </Button>
@@ -108,6 +136,7 @@ export function SupplierPaymentsPage() {
               </span>
               <BiTableHeader {...ACHATS.method} />
               <BiTableHeader {...ACHATS.note} />
+              <span />
             </div>
             {rows.map((row) => (
               <div
@@ -126,6 +155,17 @@ export function SupplierPaymentsPage() {
                   <BilingualText {...methodLabel(row.method)} variant="caption" layout="inline" />
                 </Badge>
                 <span className="text-sm text-text-secondary truncate">{row.note || '\u2014'}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="justify-self-end px-2"
+                  onClick={() => void handlePrint(row)}
+                  title={t(ACHATS.printPaymentSlip)}
+                >
+                  <FileText className="h-4 w-4" />
+                  <span className="sr-only">{t(ACHATS.printPaymentSlip)}</span>
+                </Button>
               </div>
             ))}
           </>

@@ -50,3 +50,19 @@ export function supplierLedgerMatchesOwed(
 ): boolean {
   return Math.round(lastRunningCfa) === Math.round(balanceOwedCfa)
 }
+
+function isLedgerRow(value: unknown): value is SupplierLedgerRpcRow {
+  if (!value || typeof value !== 'object') return false
+  const row = value as Partial<SupplierLedgerRpcRow>
+  return typeof row.id === 'string' && typeof row.kind === 'string'
+}
+
+/** Accepts RETURNS TABLE (array) or RETURNS jsonb `{ rows }`. */
+export function asSupplierLedgerRows(data: unknown): SupplierLedgerRpcRow[] {
+  if (Array.isArray(data)) return data.filter(isLedgerRow)
+  if (data && typeof data === 'object') {
+    const rows = (data as { rows?: unknown }).rows
+    if (Array.isArray(rows)) return rows.filter(isLedgerRow)
+  }
+  return []
+}

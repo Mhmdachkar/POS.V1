@@ -62,4 +62,16 @@ describe('purchaseReceiptDocument', () => {
     expect(html).toContain(formatCFA(50000))
     expect(html).toContain('Ciment')
   })
+
+  it('prints a cancelled BR with ANNULÉ watermark', () => {
+    const html = buildPurchaseReceiptDocumentHtml({
+      receipt: { ...receipt, status: 'cancelled', cancelled_at: '2026-01-11T12:00:00Z' },
+      items,
+      supplier: { name: 'Fournisseur Test' },
+      header: { businessName: 'Aquilux' },
+    })
+    expect(html).toContain('doc-watermark')
+    expect(html).toContain('ANNULÉ')
+    expect(html).toContain('Annulé')
+  })
 })

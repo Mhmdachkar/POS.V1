@@ -130,7 +130,9 @@ export async function fetchAuditLog(filters: AuditLogFilters): Promise<{
     .order('occurred_at', { ascending: false })
 
   if (filters.depotId) {
-    q = q.eq('depot_id', filters.depotId)
+    // Include tenant-wide rows (null depot) so supplier create/edit stay visible
+    // when an admin has a depot selected.
+    q = q.or(`depot_id.eq.${filters.depotId},depot_id.is.null`)
   }
   if (filters.action) {
     q = q.eq('action', filters.action)
