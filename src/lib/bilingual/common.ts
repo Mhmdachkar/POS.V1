@@ -56,6 +56,10 @@ export const COMMON = {
   exportCsv: bi('CSV', 'CSV'),
   exportXlsx: bi('Excel', 'Excel'),
   exportPrint: bi('Imprimer', 'Print'),
+  exportTruncated: bi(
+    'Export limité aux 2 000 premières lignes du filtre.',
+    'Export limited to the first 2,000 filtered rows.',
+  ),
   closeMenu: bi('Fermer le menu', 'Close menu'),
   actions: bi('Actions', 'Actions'),
   details: bi('Détails', 'Details'),

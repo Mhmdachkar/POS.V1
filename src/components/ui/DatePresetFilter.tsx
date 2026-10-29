@@ -1,7 +1,7 @@
 ﻿/**
  * Date range chips for list pages (Sales, Payments).
  * Distinct from FilterBar status pills — outline + calendar, none selected by default.
- * Presets: today / yesterday / custom (Abidjan via resolveReportDateRange).
+ * Presets: today / yesterday / this week / this month / custom (Abidjan via resolveReportDateRange).
  */
 
 import { CalendarDays } from 'lucide-react'
@@ -13,13 +13,18 @@ import { ReportDateInput } from '@/pages/reports/components/ReportDateInput'
 import { bilingualAriaLabel, t } from '@/lib/bilingual/types'
 import type { ReportPreset } from '@/lib/reportDates'
 
-export type ListDatePreset = Extract<ReportPreset, 'today' | 'yesterday' | 'custom'>
+export type ListDatePreset = Extract<
+  ReportPreset,
+  'today' | 'yesterday' | 'this_week' | 'this_month' | 'custom'
+>
 
-const PRESETS: ListDatePreset[] = ['today', 'yesterday', 'custom']
+const PRESETS: ListDatePreset[] = ['today', 'yesterday', 'this_week', 'this_month', 'custom']
 
 const PRESET_LABELS = {
   today: COMMON.today,
   yesterday: COMMON.yesterday,
+  this_week: COMMON.thisWeek,
+  this_month: COMMON.thisMonth,
   custom: COMMON.custom,
 } as const
 

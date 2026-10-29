@@ -1,17 +1,22 @@
-import { AlertTriangle, LayoutDashboard, Package, Users, Wallet } from 'lucide-react'
+import { AlertTriangle, Clock, LayoutDashboard, Package, Users, Wallet } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { NavPictogram } from '@/components/layout/NavPictogram'
 import { BiEmptyTitle, BiPageTitle, BiTableHeader } from '@/lib/bilingual/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { ADMIN } from '@/lib/bilingual/admin'
 import { COMMON } from '@/lib/bilingual/common'
+import { SHIFT_COPY } from '@/lib/bilingual/shift'
 import { STOCK_STATUS } from '@/lib/bilingual/status'
 import { Card, EmptyState, PageHeader, Skeleton, StatCard, StockStatusBadge } from '@/components/ui'
 import { formatCFA, formatDateTime, formatPieces } from '@/lib/formatters'
 import { useDashboardSummary } from '@/hooks/useDashboard'
 import { useStockAlerts, type StockAlertItem } from '@/hooks/useStockAlerts'
+import { useOpenShifts } from '@/hooks/useShifts'
+import { isOvernightOpenShift } from '@/lib/overnightShift'
 import { useDepotStore } from '@/stores/depotStore'
 import { bilingualPlain, t } from '@/lib/bilingual/types'
 import { SalesTodayChart } from './components/SalesTodayChart'
+import { useMemo } from 'react'
 
 function formatAlertLine(item: StockAlertItem) {
   const remaining = `${formatPieces(item.currentStockPieces)} ${t(ADMIN.pcsRemaining)}`
@@ -75,6 +80,12 @@ export function DashboardPage() {
   const depotId = useDepotStore((s) => s.currentDepotId)
   const depotName = useDepotStore((s) => s.currentDepotName)
   const { data, isLoading, isError } = useDashboardSummary(depotId)
+  const { data: openShifts } = useOpenShifts()
+  const overnightOpenCount = useMemo(() => {
+    const rows = openShifts ?? []
+    const scoped = depotId ? rows.filter((s) => s.depot_id === depotId) : rows
+    return scoped.filter((s) => isOvernightOpenShift(s.opened_at)).length
+  }, [openShifts, depotId])
   const {
     data: alerts,
     isLoading: loadingAlerts,
@@ -184,6 +195,21 @@ export function DashboardPage() {
             )}
           </div>
           <div className="space-y-3">
+            {overnightOpenCount > 0 && (
+              <div className="rounded-md border border-warning/30 bg-warning-bg/40 px-3 py-2 space-y-1">
+                <p className="text-sm font-medium text-warning-foreground flex items-center gap-2">
+                  <Clock className="h-4 w-4 flex-shrink-0" />
+                  <BilingualText {...ADMIN.overnightOpenShifts(overnightOpenCount)} variant="body" />
+                </p>
+                <p className="text-xs text-text-secondary">
+                  <BilingualText {...ADMIN.overnightOpenShiftsHint} variant="caption" />
+                  {' '}
+                  <Link to="/shifts" className="text-primary underline underline-offset-2">
+                    {t(SHIFT_COPY.viewShifts)}
+                  </Link>
+                </p>
+              </div>
+            )}
             <p
               className={`text-sm flex items-center gap-2 ${
                 data.action_required.outstanding_balances_count > 0

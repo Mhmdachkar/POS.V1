@@ -156,6 +156,15 @@ export const ADMIN = {
   exchangeRateLine: (rate: number) =>
     bi(`Taux ${rate} CFA / USD`, `Rate ${rate} CFA / USD`),
   shiftDiscrepanciesToday: bi('Écarts de caisse aujourd\'hui', 'Shift discrepancies today'),
+  overnightOpenShifts: (n: number) =>
+    bi(
+      `${n} service${n !== 1 ? 's' : ''} ouvert${n !== 1 ? 's' : ''} depuis la veille`,
+      `${n} shift${n !== 1 ? 's' : ''} open since yesterday`,
+    ),
+  overnightOpenShiftsHint: bi(
+    'Fermez ou vérifiez ces services sur la page Services.',
+    'Close or review these shifts on the Shifts page.',
+  ),
   allActions: bi('Toutes les actions', 'All actions'),
   allEntityTypes: bi('Tous les types', 'All types'),
   allActors: bi('Tous les utilisateurs', 'All users'),

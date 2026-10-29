@@ -8,6 +8,7 @@ import { NavPictogram } from '@/components/layout/NavPictogram'
 import { cn } from '@/lib/cn'
 import {
   Badge,
+  Button,
   DatePresetFilter,
   EmptyState,
   FilterBar,
@@ -23,6 +24,7 @@ import { resolveReportDateRange } from '@/lib/reportDates'
 import { COMMON } from '@/lib/bilingual/common'
 import { PAYMENTS } from '@/lib/bilingual/payments'
 import {
+  BiButtonInline,
   BiEmptyDescription,
   BiEmptyTitle,
   BiPageDescription,
@@ -32,8 +34,12 @@ import {
 } from '@/lib/bilingual/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { bilingualAriaLabel, bilingualPlain, t } from '@/lib/bilingual/types'
-import { usePaymentList } from '@/hooks/useCustomers'
+import { fetchPaymentList, usePaymentList } from '@/hooks/useCustomers'
 import { useAuthStore } from '@/stores/authStore'
+import { exportFilteredList, LIST_EXPORT_MAX_ROWS } from '@/lib/listExport'
+import { toastErrorBi } from '@/lib/bilingual/toast'
+
+const PAYMENT_EXPORT_HEADERS = ['Date', 'Client', 'Enregistre par', 'Montant CFA', 'Inverse', 'Note']
 
 const REVERSED_CHIPS: FilterBarChip[] = [
   {
@@ -103,6 +109,39 @@ export function PaymentsPage() {
   const totalCount = data?.count ?? 0
   const totalPages = Math.ceil(totalCount / pageSize)
 
+  async function handleExport(kind: 'csv' | 'xlsx') {
+    try {
+      const result = await fetchPaymentList({
+        page: 0,
+        pageSize: LIST_EXPORT_MAX_ROWS,
+        customerSearch,
+        showReversed,
+        startDate: dateRange?.startDate,
+        endDate: dateRange?.endDate,
+      })
+      const body = result.data.map((p) => [
+        p.recorded_at,
+        p.customer_name ?? '',
+        p.recorded_by_name ?? '',
+        p.amount_cfa,
+        p.is_reversed ? '1' : '0',
+        p.note ?? '',
+      ])
+      exportFilteredList({
+        kind,
+        basename: 'paiements',
+        sheetName: 'Paiements',
+        headers: PAYMENT_EXPORT_HEADERS,
+        rows: body,
+      })
+      if (result.count > LIST_EXPORT_MAX_ROWS) {
+        toastErrorBi(COMMON.exportTruncated)
+      }
+    } catch {
+      toastErrorBi(COMMON.failedToLoadData)
+    }
+  }
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="flex-shrink-0 border-b border-border bg-surface">
@@ -115,6 +154,28 @@ export function PaymentsPage() {
           }
           icon={<NavPictogram path="/payments" size="header" />}
           className="border-b-0"
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={totalCount === 0}
+                onClick={() => void handleExport('csv')}
+              >
+                <BiButtonInline {...COMMON.exportCsv} />
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={totalCount === 0}
+                onClick={() => void handleExport('xlsx')}
+              >
+                <BiButtonInline {...COMMON.exportXlsx} />
+              </Button>
+            </div>
+          }
         />
         <div className="px-3 sm:px-6 pb-3 sm:pb-4">
           <FilterBar

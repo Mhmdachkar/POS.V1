@@ -1,6 +1,27 @@
 import type { PrintJobStatus } from '@/lib/printPayload'
 
-export function printJobStatusLabel(status: PrintJobStatus): string {
+/** Queued jobs older than this are shown as not printed (agent never claimed). */
+export const STALE_QUEUED_PRINT_MS = 60 * 60 * 1000
+
+export function isStaleQueuedPrintJob(
+  status: PrintJobStatus,
+  createdAt: string | null | undefined,
+  now: Date = new Date(),
+): boolean {
+  if (status !== 'queued' || !createdAt) return false
+  const created = new Date(createdAt).getTime()
+  if (Number.isNaN(created)) return false
+  return now.getTime() - created >= STALE_QUEUED_PRINT_MS
+}
+
+export function printJobStatusLabel(
+  status: PrintJobStatus,
+  createdAt?: string | null,
+  now: Date = new Date(),
+): string {
+  if (isStaleQueuedPrintJob(status, createdAt, now)) {
+    return 'Non imprimé'
+  }
   switch (status) {
     case 'queued':
       return 'En file'

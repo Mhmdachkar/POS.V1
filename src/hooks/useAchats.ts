@@ -15,10 +15,20 @@ export const achatsKeys = {
   supplier: (id: string) => ['achats', 'supplier', id] as const,
   ledger: (id: string) => ['achats', 'ledger', id] as const,
   supplierReceipts: (id: string) => ['achats', 'supplier-receipts', id] as const,
-  receipts: (depotId: string | null, status: string | null) =>
-    ['achats', 'receipts', depotId, status] as const,
+  receipts: (
+    depotId: string | null,
+    status: string | null,
+    search = '',
+    startAt: string | null = null,
+    endAt: string | null = null,
+  ) => ['achats', 'receipts', depotId, status, search, startAt, endAt] as const,
   receipt: (id: string) => ['achats', 'receipt', id] as const,
-  payments: (supplierId: string | null) => ['achats', 'payments', supplierId] as const,
+  payments: (
+    supplierId: string | null,
+    search = '',
+    startAt: string | null = null,
+    endAt: string | null = null,
+  ) => ['achats', 'payments', supplierId, search, startAt, endAt] as const,
   report: (depotId: string | null, start: string, end: string, includeZero = false) =>
     ['achats', 'report', depotId, start, end, includeZero] as const,
   reportByProduct: (depotId: string | null, start: string, end: string) =>
@@ -163,15 +173,25 @@ export function useSupplierList(
   })
 }
 
-export function usePurchaseReceiptList(depotId: string | null, status: string | null) {
+export function usePurchaseReceiptList(
+  depotId: string | null,
+  status: string | null,
+  search = '',
+  startAt: string | null = null,
+  endAt: string | null = null,
+  limit = 100,
+) {
   return useQuery({
-    queryKey: achatsKeys.receipts(depotId, status),
+    queryKey: achatsKeys.receipts(depotId, status, search, startAt, endAt),
     queryFn: async () => {
       const result = await rpc.listPurchaseReceipts({
         p_depot_id: depotId,
         p_status: status,
-        p_limit: 100,
+        p_limit: limit,
         p_offset: 0,
+        p_search: search.trim() || null,
+        p_start_at: startAt,
+        p_end_at: endAt,
       })
       if (result.error) throw result.error
       return result.data as { rows: PurchaseReceiptRow[]; count: number }
@@ -204,14 +224,23 @@ export function usePurchaseReceiptDetail(id: string | null) {
   })
 }
 
-export function useSupplierPaymentList(supplierId: string | null = null) {
+export function useSupplierPaymentList(
+  supplierId: string | null = null,
+  search = '',
+  startAt: string | null = null,
+  endAt: string | null = null,
+  limit = 100,
+) {
   return useQuery({
-    queryKey: achatsKeys.payments(supplierId),
+    queryKey: achatsKeys.payments(supplierId, search, startAt, endAt),
     queryFn: async () => {
       const result = await rpc.listSupplierPayments({
         ...(supplierId ? { p_supplier_id: supplierId } : {}),
-        p_limit: 100,
+        p_limit: limit,
         p_offset: 0,
+        p_search: search.trim() || null,
+        p_start_at: startAt,
+        p_end_at: endAt,
       })
       if (result.error) throw result.error
       return result.data as { rows: SupplierPaymentRow[]; count: number }

@@ -2,12 +2,14 @@
  * Proformas list — depot-scoped quotes (admin + cashier).
  */
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { FileText } from 'lucide-react'
 import { NavPictogram } from '@/components/layout/NavPictogram'
 import { cn } from '@/lib/cn'
 import {
   Badge,
+  Button,
+  DatePresetFilter,
   EmptyState,
   FilterBar,
   MoneyDisplay,
@@ -16,11 +18,14 @@ import {
   Skeleton,
   CLICKABLE_ROW,
   type FilterBarChip,
+  type ListDatePreset,
 } from '@/components/ui'
 import { formatReportDate } from '@/lib/formatters'
+import { listDateBounds, resolveReportDateRange } from '@/lib/reportDates'
 import { COMMON } from '@/lib/bilingual/common'
 import { PROFORMAS } from '@/lib/bilingual/proformas'
 import {
+  BiButtonInline,
   BiEmptyDescription,
   BiEmptyTitle,
   BiPageDescription,
@@ -29,11 +34,15 @@ import {
   BiTableHeader,
 } from '@/lib/bilingual/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
-import { bilingualAriaLabel, t } from '@/lib/bilingual/types'
+import { bilingualAriaLabel, bilingualPlain, t } from '@/lib/bilingual/types'
 import { useProformaList, type ProformaRow } from '@/hooks/useProformas'
 import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
+import { exportFilteredList } from '@/lib/listExport'
 import { ProformaDetailDrawer } from './components/ProformaDetailDrawer'
+
+const PROFORMA_EXPORT_HEADERS = ['Numero', 'Statut', 'Date', 'Client', 'Total CFA']
+const SEARCH_DEBOUNCE_MS = 300
 
 const GRID =
   'grid-cols-[minmax(9rem,11rem)_minmax(5.5rem,6.5rem)_minmax(5rem,7rem)_minmax(6rem,1fr)_minmax(6rem,7.5rem)_1.25rem]'
@@ -85,16 +94,57 @@ function TableSkeleton() {
 
 export function ProformasPage() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [datePreset, setDatePreset] = useState<ListDatePreset | null>(null)
+  const [customStart, setCustomStart] = useState('')
+  const [customEnd, setCustomEnd] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const staff = useAuthStore((s) => s.staff)
   const depotId = useDepotStore((s) => s.currentDepotId)
   const effectiveDepotId = staff?.role === 'cashier' ? staff.depot_id : depotId
 
-  const { data, isLoading, isError } = useProformaList(effectiveDepotId, statusFilter)
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  const dateRange = useMemo(
+    () => (datePreset ? resolveReportDateRange(datePreset, customStart, customEnd) : null),
+    [datePreset, customStart, customEnd],
+  )
+  const dateSeed = useMemo(() => resolveReportDateRange('today'), [])
+  const { startAt, endAt } = listDateBounds(dateRange)
+
+  const { data, isLoading, isError } = useProformaList(
+    effectiveDepotId,
+    statusFilter,
+    debouncedSearch,
+    startAt,
+    endAt,
+    2000,
+  )
 
   const rows = data?.rows ?? []
   const totalCount = data?.count ?? 0
+
+  function exportRows(kind: 'csv' | 'xlsx') {
+    const body = rows.map((row) => [
+      row.number,
+      row.status,
+      row.document_date,
+      row.customer_name ?? '',
+      row.total_cfa,
+    ])
+    exportFilteredList({
+      kind,
+      basename: 'proformas',
+      sheetName: 'Proformas',
+      headers: PROFORMA_EXPORT_HEADERS,
+      rows: body,
+    })
+  }
 
   const chips: FilterBarChip[] = useMemo(
     () => [
@@ -135,6 +185,16 @@ export function ProformasPage() {
           description={<BiPageDescription {...PROFORMAS.pageDesc} />}
           icon={<NavPictogram path="/proformas" size="header" />}
           className="border-b-0"
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" variant="secondary" size="sm" disabled={rows.length === 0} onClick={() => exportRows('csv')}>
+                <BiButtonInline {...COMMON.exportCsv} />
+              </Button>
+              <Button type="button" variant="secondary" size="sm" disabled={rows.length === 0} onClick={() => exportRows('xlsx')}>
+                <BiButtonInline {...COMMON.exportXlsx} />
+              </Button>
+            </div>
+          }
         />
         <div className="px-3 sm:px-6 pb-3 sm:pb-4">
           <FilterBar
@@ -143,7 +203,25 @@ export function ProformasPage() {
             onChipChange={(value) => {
               setStatusFilter(value === 'all' ? null : value)
             }}
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder={bilingualPlain(PROFORMAS.searchPlaceholder)}
             count={totalCount}
+          />
+          <DatePresetFilter
+            className="mt-3"
+            preset={datePreset}
+            onPresetChange={(p) => {
+              setDatePreset(p)
+              if (p === 'custom' && !customStart && !customEnd) {
+                setCustomStart(dateSeed.startDate)
+                setCustomEnd(dateSeed.endDate)
+              }
+            }}
+            customStart={customStart || dateSeed.startDate}
+            customEnd={customEnd || dateSeed.endDate}
+            onCustomStartChange={setCustomStart}
+            onCustomEndChange={setCustomEnd}
           />
         </div>
       </div>

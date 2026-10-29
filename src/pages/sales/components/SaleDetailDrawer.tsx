@@ -27,7 +27,7 @@ import { BiModalTitle as BiSectionTitle, BiTableHeader } from '@/lib/bilingual/u
 import { FileText, PackageCheck, Printer, RotateCcw, Truck, XCircle } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { Drawer, Button, MoneyDisplay, Skeleton, SaleStatusBadge } from '@/components/ui'
-import { formatDateTime, formatReportDate, APP_BUSINESS_FALLBACK } from '@/lib/formatters'
+import { formatDateTime, formatReportDate, ymdInDisplayTimeZone, APP_BUSINESS_FALLBACK } from '@/lib/formatters'
 import { buildReceiptHtml, printReceiptHtml, receiptDataFromSaleDetail } from '@/lib/receiptHtml'
 import { useSaleDetail } from '@/hooks/useSales'
 import { useCustomerLedgerBalance } from '@/hooks/useCustomerActivity'
@@ -210,14 +210,14 @@ function SaleFulfillmentPanel({ sale }: { sale: SaleDetailData }) {
           {cashierJob && (staff?.role === 'admin' || staff?.role === 'cashier') && (
             <DetailRow
               label={t(SALES.customerReceipt)}
-              value={printJobStatusLabel(cashierJob.status)}
+              value={printJobStatusLabel(cashierJob.status, cashierJob.created_at)}
             />
           )}
           {depotJob && (staff?.role === 'admin' || staff?.role === 'depot_staff') && (
             <>
               <DetailRow
                 label={t(SALES.depotOrder)}
-                value={printJobStatusLabel(depotJob.status)}
+                value={printJobStatusLabel(depotJob.status, depotJob.created_at)}
               />
               {(staff?.role === 'depot_staff' || staff?.role === 'admin') && (
                 <Button
@@ -376,13 +376,7 @@ export function SaleDetailDrawer({ saleId, shiftId, isOverRefund = false, onClos
         open={!!saleId}
         onClose={onClose}
         title={sale ? sale.receipt_number : t(SALES.saleDetails)}
-        description={
-          sale
-            ? sale.document_date
-              ? formatReportDate(sale.document_date.slice(0, 10))
-              : formatDateTime(sale.created_at)
-            : undefined
-        }
+        description={sale ? formatDateTime(sale.created_at) : undefined}
         width="lg"
       >
         {isLoading ? (
@@ -410,12 +404,15 @@ export function SaleDetailDrawer({ saleId, shiftId, isOverRefund = false, onClos
             <DetailRow label={t(SALES.receiptNumber)} value={<span className="font-mono">{sale.receipt_number}</span>} />
             <DetailRow
               label={t(COMMON.date)}
-              value={
-                sale.document_date
-                  ? formatReportDate(sale.document_date.slice(0, 10))
-                  : formatDateTime(sale.created_at)
-              }
+              value={formatDateTime(sale.created_at)}
             />
+            {sale.document_date
+              && sale.document_date.slice(0, 10) !== ymdInDisplayTimeZone(sale.created_at) ? (
+              <DetailRow
+                label={t(SALES.documentDate)}
+                value={formatReportDate(sale.document_date.slice(0, 10))}
+              />
+            ) : null}
             {sale.external_ref?.trim() ? (
               <DetailRow label={t(POS.externalRef)} value={sale.external_ref.trim()} />
             ) : null}
@@ -556,7 +553,7 @@ export function SaleDetailDrawer({ saleId, shiftId, isOverRefund = false, onClos
                 label={
                   sale.discount_type === 'flat'
                     ? t(SALES.flatDiscount)
-                    : `${t(SALES.percentDiscount)} (${sale.discount_value}%)`
+                    : t(SALES.percentDiscount)
                 }
                 value={
                   <MoneyDisplay

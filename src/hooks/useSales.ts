@@ -95,6 +95,9 @@ export interface SaleDetailData extends Sale {
   payments: SalePaymentDetail[]
 }
 
+/** Derived from amount_applied_cfa / balance_added_cfa (no cash|mobile|bank column). */
+export type SalePaymentKind = 'cash' | 'credit' | 'mixed'
+
 export interface SalesListFilters {
   depotId?: string | null
   customerId?: string
@@ -102,6 +105,8 @@ export interface SalesListFilters {
   shiftId?: string
   status?: SaleStatus | null
   search?: string
+  /** Espèces / À crédit / Mixte derived filter. */
+  paymentKind?: SalePaymentKind | null
   shiftFilter?: ShiftFilter
   /** Inclusive YMD (Abidjan / UTC+0) */
   startDate?: string
@@ -110,6 +115,13 @@ export interface SalesListFilters {
   fulfillmentStatus?: FulfillmentStatus | null
   page?: number
   pageSize?: number
+}
+
+export interface SalesListTotals {
+  count: number
+  total_cfa: number
+  amount_applied_cfa: number
+  balance_added_cfa: number
 }
 
 export interface UnshiftedSalesSummaryFilters {
@@ -131,11 +143,112 @@ export const saleKeys = {
   all:    ['sales'] as const,
   lists:  () => ['sales', 'list'] as const,
   list:   (filters: SalesListFilters) => ['sales', 'list', filters] as const,
+  totals: (filters: SalesListFilters) => ['sales', 'totals', filters] as const,
   detail: (id: string) => ['sales', 'detail', id] as const,
   unshiftedSummary: (scope: UnshiftedSalesSummaryFilters) =>
     ['sales', 'list', 'unshifted-summary', scope] as const,
   unshiftedWindow: (scope: UnshiftedShiftWindow) =>
     ['sales', 'list', 'unshifted-window', scope] as const,
+}
+
+const EXPORT_ROW_CAP = 2000
+
+function escapeOrValue(value: string): string {
+  return value.replace(/[,()]/g, '')
+}
+
+async function resolveSalesSearchOrFilter(search: string): Promise<string> {
+  const term = search.trim()
+  const pattern = `%${term}%`
+  const [customersRes, staffRes] = await Promise.all([
+    supabase.from('customers').select('id').ilike('name', pattern).limit(100),
+    supabase.from('staff').select('id').ilike('full_name', pattern).limit(100),
+  ])
+  if (customersRes.error) throw customersRes.error
+  if (staffRes.error) throw staffRes.error
+
+  const parts = [`receipt_number.ilike.${escapeOrValue(pattern)}`]
+  const customerIds = ((customersRes.data ?? []) as Array<{ id: string }>).map((r) => r.id)
+  const staffIds = ((staffRes.data ?? []) as Array<{ id: string }>).map((r) => r.id)
+  if (customerIds.length > 0) {
+    parts.push(`customer_id.in.(${customerIds.map(escapeOrValue).join(',')})`)
+  }
+  if (staffIds.length > 0) {
+    parts.push(`cashier_id.in.(${staffIds.map(escapeOrValue).join(',')})`)
+  }
+  return parts.join(',')
+}
+
+function applyPaymentKindFilter<
+  T extends {
+    gt: (column: string, value: number) => T
+    eq: (column: string, value: string | number) => T
+  },
+>(q: T, paymentKind?: SalePaymentKind | null): T {
+  if (paymentKind === 'cash') {
+    return q.gt('amount_applied_cfa', 0).eq('balance_added_cfa', 0)
+  }
+  if (paymentKind === 'credit') {
+    return q.eq('amount_applied_cfa', 0).gt('balance_added_cfa', 0)
+  }
+  if (paymentKind === 'mixed') {
+    return q.gt('amount_applied_cfa', 0).gt('balance_added_cfa', 0)
+  }
+  return q
+}
+
+/**
+ * Shared sales list filters (before order/range).
+ * Must stay sync on the builder — awaiting a PostgREST builder unwraps its .then().
+ */
+function applySalesListFilters<
+  T extends {
+    eq: (column: string, value: string | number) => T
+    or: (filters: string) => T
+    gte: (column: string, value: string) => T
+    lte: (column: string, value: string) => T
+    is: (column: string, value: null) => T
+    not: (column: string, operator: string, value: null) => T
+    gt: (column: string, value: number) => T
+  },
+>(q: T, filters: SalesListFilters, searchOr: string | null): T {
+  let next = q
+  if (filters.depotId) {
+    next = next.eq('depot_id', filters.depotId)
+  }
+  if (filters.customerId) {
+    next = next.eq('customer_id', filters.customerId)
+  }
+  if (filters.status) {
+    next = next.eq('status', filters.status)
+  }
+  if (filters.fulfillmentStatus) {
+    next = next.eq('sale_fulfillments.status', filters.fulfillmentStatus)
+  }
+  if (searchOr) {
+    next = next.or(searchOr)
+  }
+  if (filters.cashierId) {
+    next = next.eq('cashier_id', filters.cashierId)
+  }
+  if (filters.shiftId) {
+    next = next.eq('shift_id', filters.shiftId)
+  } else {
+    next = applyShiftFilter(next, filters.shiftFilter)
+  }
+  next = applyPaymentKindFilter(next, filters.paymentKind)
+  if (filters.startDate) {
+    next = next.gte('created_at', `${filters.startDate}T00:00:00.000Z`)
+  }
+  if (filters.endDate) {
+    next = next.lte('created_at', `${filters.endDate}T23:59:59.999Z`)
+  }
+  return next
+}
+
+async function resolveSearchOr(filters: SalesListFilters): Promise<string | null> {
+  if (!filters.search?.trim()) return null
+  return resolveSalesSearchOrFilter(filters.search)
 }
 
 const SALE_SHIFT_EMBED = 'shifts!shift_id(opened_at, closed_at, status)'
@@ -169,6 +282,23 @@ function applyShiftFilter<
 // Fetch helpers
 // ─────────────────────────────────────────────────────────────────
 
+function mapSaleListRows(data: unknown[]): SaleListItem[] {
+  return (data ?? []).map((row: any) => {
+    const ff = embedOne(row.sale_fulfillments)
+    const customer = embedOne(row.customers)
+    const staff = embedOne(row.staff)
+    return {
+      ...row,
+      customer_name: customer?.name ?? null,
+      cashier_name: staff?.full_name ?? null,
+      cashier_role: staff?.role ?? null,
+      fulfillment_status: ff?.status ?? null,
+      fulfillment_released_at: ff?.released_at ?? null,
+      ...flattenShiftEmbed(row),
+    }
+  })
+}
+
 export async function fetchSalesList(filters: SalesListFilters): Promise<{
   data: SaleListItem[]
   count: number
@@ -186,6 +316,7 @@ export async function fetchSalesList(filters: SalesListFilters): Promise<{
       ? 'sale_fulfillments!inner(status, released_at)'
       : 'sale_fulfillments(status, released_at)'
 
+  const searchOr = await resolveSearchOr(filters)
   let q = supabase
     .from('sales')
     .select(
@@ -199,65 +330,101 @@ export async function fetchSalesList(filters: SalesListFilters): Promise<{
       { count: 'exact' },
     )
 
-  if (filters.depotId) {
-    q = q.eq('depot_id', filters.depotId)
-  }
-
-  if (filters.customerId) {
-    q = q.eq('customer_id', filters.customerId)
-  }
-
-  if (filters.status) {
-    q = q.eq('status', filters.status)
-  }
-
-  if (filters.fulfillmentStatus) {
-    q = q.eq('sale_fulfillments.status', filters.fulfillmentStatus)
-  }
-
-  if (filters.search?.trim()) {
-    q = q.ilike('receipt_number', `%${filters.search.trim()}%`)
-  }
-
-  if (filters.cashierId) {
-    q = q.eq('cashier_id', filters.cashierId)
-  }
-
-  if (filters.shiftId) {
-    q = q.eq('shift_id', filters.shiftId)
-  } else {
-    q = applyShiftFilter(q, filters.shiftFilter)
-  }
-
-  if (filters.startDate) {
-    q = q.gte('created_at', `${filters.startDate}T00:00:00.000Z`)
-  }
-
-  if (filters.endDate) {
-    q = q.lte('created_at', `${filters.endDate}T23:59:59.999Z`)
-  }
+  q = applySalesListFilters(q, filters, searchOr)
 
   const { data, error, count } = await q
     .order('created_at', { ascending: false })
     .range(from, to)
   if (error) throw error
 
-  const items: SaleListItem[] = (data ?? []).map((row: any) => {
-    const ff = embedOne(row.sale_fulfillments)
-    const customer = embedOne(row.customers)
-    const staff = embedOne(row.staff)
-    return {
-      ...row,
-      customer_name: customer?.name ?? null,
-      cashier_name: staff?.full_name ?? null,
-      cashier_role: staff?.role ?? null,
-      fulfillment_status: ff?.status ?? null,
-      fulfillment_released_at: ff?.released_at ?? null,
-      ...flattenShiftEmbed(row),
-    }
-  })
-
+  const items = mapSaleListRows(data ?? [])
   return { data: await fillCashierNames(items), count: count ?? 0 }
+}
+
+/** Totals for the full filtered set (not just the current page). */
+export async function fetchSalesListTotals(
+  filters: SalesListFilters,
+): Promise<SalesListTotals> {
+  const fulfillmentEmbed =
+    filters.fulfillmentStatus != null
+      ? 'sale_fulfillments!inner(status)'
+      : undefined
+
+  const searchOr = await resolveSearchOr(filters)
+  let q = supabase
+    .from('sales')
+    .select(
+      fulfillmentEmbed
+        ? `total_cfa, admin_override_total_cfa, amount_applied_cfa, balance_added_cfa, ${fulfillmentEmbed}`
+        : 'total_cfa, admin_override_total_cfa, amount_applied_cfa, balance_added_cfa',
+      { count: 'exact' },
+    )
+
+  q = applySalesListFilters(q, filters, searchOr)
+
+  const { data, error, count } = await q.limit(EXPORT_ROW_CAP)
+  if (error) throw error
+
+  let total_cfa = 0
+  let amount_applied_cfa = 0
+  let balance_added_cfa = 0
+  for (const row of data ?? []) {
+    const r = row as {
+      total_cfa: number
+      admin_override_total_cfa: number | null
+      amount_applied_cfa: number
+      balance_added_cfa: number
+    }
+    total_cfa += r.admin_override_total_cfa ?? r.total_cfa
+    amount_applied_cfa += r.amount_applied_cfa
+    balance_added_cfa += r.balance_added_cfa
+  }
+
+  return {
+    count: count ?? 0,
+    total_cfa,
+    amount_applied_cfa,
+    balance_added_cfa,
+  }
+}
+
+/** Filtered rows for CSV/Excel (capped). */
+export async function fetchSalesListForExport(
+  filters: SalesListFilters,
+): Promise<{ data: SaleListItem[]; truncated: boolean; count: number }> {
+  const fulfillmentEmbed =
+    filters.fulfillmentStatus != null
+      ? 'sale_fulfillments!inner(status, released_at)'
+      : 'sale_fulfillments(status, released_at)'
+
+  const searchOr = await resolveSearchOr(filters)
+  let q = supabase
+    .from('sales')
+    .select(
+      `
+      *,
+      customers!customer_id(name),
+      staff!cashier_id(full_name, role),
+      ${fulfillmentEmbed},
+      ${SALE_SHIFT_EMBED}
+      `,
+      { count: 'exact' },
+    )
+
+  q = applySalesListFilters(q, filters, searchOr)
+
+  const { data, error, count } = await q
+    .order('created_at', { ascending: false })
+    .limit(EXPORT_ROW_CAP)
+  if (error) throw error
+
+  const items = await fillCashierNames(mapSaleListRows(data ?? []))
+  const total = count ?? items.length
+  return {
+    data: items,
+    count: total,
+    truncated: total > EXPORT_ROW_CAP,
+  }
 }
 
 export async function fetchSaleDetail(id: string): Promise<SaleDetailData> {
@@ -416,6 +583,16 @@ export function useSalesList(filters: SalesListFilters) {
       const prev = prevKey[2] as SalesListFilters | undefined
       return (prev?.depotId ?? null) === (filters.depotId ?? null)
     }),
+  })
+}
+
+/** Totals ignore page/pageSize so changing page does not refetch. */
+export function useSalesListTotals(filters: SalesListFilters) {
+  const { page: _page, pageSize: _pageSize, ...rest } = filters
+  return useQuery({
+    queryKey: saleKeys.totals(rest),
+    queryFn: () => fetchSalesListTotals(rest),
+    staleTime: CACHE_STALE.salesList,
   })
 }
 

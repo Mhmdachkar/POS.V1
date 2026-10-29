@@ -112,7 +112,7 @@ async function fetchCustomer(id: string): Promise<Customer> {
   return data as Customer
 }
 
-async function fetchCustomerList(params: CustomerListParams): Promise<{ data: Customer[]; count: number }> {
+export async function fetchCustomerList(params: CustomerListParams): Promise<{ data: Customer[]; count: number }> {
   const { page, pageSize, search, filter } = params
   const from = page * pageSize
   const to = from + pageSize - 1
@@ -163,7 +163,7 @@ interface PaymentListParams {
   endDate?: string
 }
 
-async function fetchPaymentList(
+export async function fetchPaymentList(
   params: PaymentListParams,
 ): Promise<{ data: Array<Payment & { customer_name: string | null; recorded_by_name: string | null }>; count: number }> {
   const { page, pageSize, customerSearch, showReversed, startDate, endDate } = params

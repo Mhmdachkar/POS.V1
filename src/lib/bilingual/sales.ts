@@ -34,6 +34,19 @@ export const SALES = {
   releaseOrderHint: bi('Payée en caisse ; le magasinier prépare. Confirmez quand la commande est remise.', 'Paid at register; stock keeper picks. Confirm when handed over.'),
   noPrintJobs: bi('Aucune tâche d\'impression pour cette vente.', 'No print jobs for this sale.'),
   searchReceiptPlaceholder: bi('N° de ticket…', 'Receipt number…'),
+  searchListPlaceholder: bi(
+    'Ticket, client, caissier…',
+    'Receipt, customer, cashier…',
+  ),
+  paymentCash: bi('Espèces', 'Cash'),
+  paymentCredit: bi('À crédit', 'On credit'),
+  paymentMixed: bi('Mixte', 'Mixed'),
+  documentDate: bi('Date document', 'Document date'),
+  filteredTotals: bi('Totaux (filtre)', 'Totals (filter)'),
+  exportTruncated: bi(
+    'Export limité aux 2 000 premières lignes du filtre.',
+    'Export limited to the first 2,000 filtered rows.',
+  ),
   noSalesMatch: bi(
     'Aucune vente ne correspond aux filtres.',
     'No sales match your current filters.',

@@ -90,16 +90,38 @@ function buildCatalog(): SaleRow[] {
   return Array.from({ length: 40 }, (_, i) => makeSale(i))
 }
 
+function createEmptyLookupBuilder(calls: string[], table: string) {
+  const builder: Record<string, unknown> = {}
+  builder.select = () => {
+    calls.push(`select:${table}`)
+    return builder
+  }
+  builder.ilike = (col: unknown, val: unknown) => {
+    calls.push(`ilike:${table}.${String(col)}:${String(val)}`)
+    return builder
+  }
+  builder.limit = (n: unknown) => {
+    calls.push(`limit:${table}:${n}`)
+    return builder
+  }
+  const execute = () => Promise.resolve({ data: [], error: null, count: 0 })
+  builder.then = (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) =>
+    execute().then(resolve, reject)
+  return builder
+}
+
 function createFilterAwareFrom(allRows: SaleRow[]) {
   const calls: string[] = []
   let filtered = [...allRows]
   let range: [number, number] | null = null
+  let limit: number | null = null
   const builder: Record<string, unknown> = {}
 
   builder.select = (...args: unknown[]) => {
     calls.push(`select:${JSON.stringify(args[1] ?? {})}`)
     filtered = [...allRows]
     range = null
+    limit = null
     return builder
   }
   builder.order = (col: unknown) => {
@@ -111,6 +133,11 @@ function createFilterAwareFrom(allRows: SaleRow[]) {
     filtered = filtered.filter((r) => r[String(col)] === val)
     return builder
   }
+  builder.gt = (col: unknown, val: unknown) => {
+    calls.push(`gt:${String(col)}:${String(val)}`)
+    filtered = filtered.filter((r) => Number(r[String(col)]) > Number(val))
+    return builder
+  }
   builder.ilike = (col: unknown, val: unknown) => {
     calls.push(`ilike:${String(col)}:${String(val)}`)
     const needle = String(val).replace(/%/g, '').toLowerCase()
@@ -119,9 +146,26 @@ function createFilterAwareFrom(allRows: SaleRow[]) {
     )
     return builder
   }
+  builder.or = (filters: unknown) => {
+    const expr = String(filters)
+    calls.push(`or:${expr}`)
+    const receiptMatch = expr.match(/receipt_number\.ilike\.%([^%]+)%/)
+    if (receiptMatch) {
+      const needle = receiptMatch[1].toLowerCase()
+      filtered = filtered.filter((r) =>
+        String(r.receipt_number).toLowerCase().includes(needle),
+      )
+    }
+    return builder
+  }
   builder.range = (from: unknown, to: unknown) => {
     calls.push(`range:${from}-${to}`)
     range = [Number(from), Number(to)]
+    return builder
+  }
+  builder.limit = (n: unknown) => {
+    calls.push(`limit:${n}`)
+    limit = Number(n)
     return builder
   }
   builder.gte = (col: unknown, val: unknown) => {
@@ -142,13 +186,22 @@ function createFilterAwareFrom(allRows: SaleRow[]) {
   }
   const execute = () => {
     const count = filtered.length
-    const page = range ? filtered.slice(range[0], range[1] + 1) : filtered
+    let page = range ? filtered.slice(range[0], range[1] + 1) : filtered
+    if (limit != null) page = page.slice(0, limit)
     return Promise.resolve({ data: page, error: null, count })
   }
   builder.then = (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) =>
     execute().then(resolve, reject)
 
-  return { builder, calls }
+  const from = (table: string) => {
+    calls.push(`from:${table}`)
+    if (table === 'customers' || table === 'staff') {
+      return createEmptyLookupBuilder(calls, table)
+    }
+    return builder
+  }
+
+  return { builder, calls, from }
 }
 
 function adminStaff(): Staff {
@@ -196,8 +249,8 @@ describe('fetchSalesList', () => {
   })
 
   it('omits depot eq when depotId is null (All Depots)', async () => {
-    const { builder, calls } = createFilterAwareFrom(catalog)
-    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    const { calls, from } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation(from as never)
 
     const filters: SalesListFilters = {
       depotId: null,
@@ -211,8 +264,8 @@ describe('fetchSalesList', () => {
   })
 
   it('applies depot eq before range', async () => {
-    const { builder, calls } = createFilterAwareFrom(catalog)
-    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    const { calls, from } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation(from as never)
 
     const result = await fetchSalesList({
       depotId: 'depot-b',
@@ -227,9 +280,9 @@ describe('fetchSalesList', () => {
     expect(result.count).toBe(20)
   })
 
-  it('applies status filter and receipt ilike before range', async () => {
-    const { builder, calls } = createFilterAwareFrom(catalog)
-    vi.mocked(supabase.from).mockReturnValue(builder as never)
+  it('applies status filter and receipt search or() before range', async () => {
+    const { calls, from } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation(from as never)
 
     await fetchSalesList({
       depotId: null,
@@ -239,14 +292,14 @@ describe('fetchSalesList', () => {
       pageSize: 30,
     })
     expect(calls).toContain('eq:status:voided')
-    expect(calls).toContain('ilike:receipt_number:%DKR-00000000%')
+    expect(calls.some((c) => c.startsWith('or:receipt_number.ilike.%DKR-00000000%'))).toBe(true)
     const rangeIdx = calls.findIndex((c) => c.startsWith('range:'))
-    expect(calls.findIndex((c) => c.startsWith('ilike:'))).toBeLessThan(rangeIdx)
+    expect(calls.findIndex((c) => c.startsWith('or:'))).toBeLessThan(rangeIdx)
   })
 
   it('requests exact count and created_at descending', async () => {
-    const { builder, calls } = createFilterAwareFrom(catalog)
-    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    const { calls, from } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation(from as never)
 
     await fetchSalesList({ page: 0, pageSize: 30 })
     expect(calls.some((c) => c.includes('"count":"exact"'))).toBe(true)
@@ -254,8 +307,8 @@ describe('fetchSalesList', () => {
   })
 
   it('paginates after filters (page 1 of 30)', async () => {
-    const { builder } = createFilterAwareFrom(catalog)
-    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    const { from } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation(from as never)
 
     const result = await fetchSalesList({ page: 1, pageSize: 30, depotId: null })
     expect(result.data).toHaveLength(10)
@@ -295,23 +348,23 @@ describe('SalesPage', () => {
   })
 
   it('renders sales rows when data exists', async () => {
-    const { builder } = createFilterAwareFrom(catalog)
-    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    const { from } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation(from as never)
     renderSales()
     expect(await screen.findByText('DKR-00000000')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: SALES.historyTitle.fr })).toBeInTheDocument()
   })
 
   it('renders empty state when no sales match', async () => {
-    const { builder } = createFilterAwareFrom([])
-    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    const { from } = createFilterAwareFrom([])
+    vi.mocked(supabase.from).mockImplementation(from as never)
     renderSales()
     expect(await screen.findByText(SALES.noSales.fr)).toBeInTheDocument()
   })
 
   it('shows Depot column in admin All Depots and hides it when a depot is selected', async () => {
-    const { builder } = createFilterAwareFrom(catalog)
-    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    const { from } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation(from as never)
     const { rerender } = renderSales()
     expect(await screen.findByText('DKR-00000000')).toBeInTheDocument()
     expect(screen.getByText(COMMON.depot.fr)).toBeInTheDocument()
@@ -340,8 +393,8 @@ describe('SalesPage', () => {
       currentDepotName: 'Depot Abidjan',
       availableDepots: [],
     })
-    const { builder, calls } = createFilterAwareFrom(catalog)
-    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    const { calls, from } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation(from as never)
     renderSales()
     await screen.findByText('DKR-00000000')
     expect(calls).toContain('eq:depot_id:depot-a')
@@ -349,44 +402,44 @@ describe('SalesPage', () => {
     expect(screen.queryByText(COMMON.depot.fr)).not.toBeInTheDocument()
   })
 
-  it('does not query on each keystroke; one ilike after 300 ms idle', async () => {
-    const { builder, calls } = createFilterAwareFrom(catalog)
-    vi.mocked(supabase.from).mockReturnValue(builder as never)
+  it('does not query on each keystroke; one or() search after 300 ms idle', async () => {
+    const { calls, from } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation(from as never)
 
     renderSales()
     expect(await screen.findByText('DKR-00000000')).toBeInTheDocument()
-    const ilikeBefore = calls.filter((c) => c.startsWith('ilike:')).length
+    const orBefore = calls.filter((c) => c.startsWith('or:')).length
 
     vi.useFakeTimers()
-    const input = screen.getByPlaceholderText(SALES.searchReceiptPlaceholder.fr)
+    const input = screen.getByPlaceholderText(SALES.searchListPlaceholder.fr)
     await act(async () => {
       fireEvent.change(input, { target: { value: 'D' } })
       fireEvent.change(input, { target: { value: 'DK' } })
       fireEvent.change(input, { target: { value: 'DKR' } })
     })
 
-    expect(calls.filter((c) => c.startsWith('ilike:')).length).toBe(ilikeBefore)
+    expect(calls.filter((c) => c.startsWith('or:')).length).toBe(orBefore)
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(SALES_SEARCH_DEBOUNCE_MS - 1)
     })
-    expect(calls.filter((c) => c.startsWith('ilike:')).length).toBe(ilikeBefore)
+    expect(calls.filter((c) => c.startsWith('or:')).length).toBe(orBefore)
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1)
     })
     vi.useRealTimers()
     await waitFor(() => {
-      expect(calls).toContain('ilike:receipt_number:%DKR%')
+      expect(calls.some((c) => c.startsWith('or:receipt_number.ilike.%DKR%'))).toBe(true)
     })
-    expect(calls.filter((c) => c.startsWith('ilike:')).length).toBe(ilikeBefore + 1)
+    expect(calls.filter((c) => c.startsWith('or:')).length).toBeGreaterThan(orBefore)
   })
 
   it('resets page to 0 when search changes', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-    const { builder, calls } = createFilterAwareFrom(catalog)
-    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    const { calls, from } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation(from as never)
     renderSales()
     expect(await screen.findByRole('heading', { name: SALES.historyTitle.fr })).toBeInTheDocument()
 
@@ -396,7 +449,7 @@ describe('SalesPage', () => {
       expect(calls.some((c) => c === 'range:30-59')).toBe(true)
     })
 
-    await user.type(screen.getByPlaceholderText(SALES.searchReceiptPlaceholder.fr), 'X')
+    await user.type(screen.getByPlaceholderText(SALES.searchListPlaceholder.fr), 'X')
     await act(async () => {
       await vi.advanceTimersByTimeAsync(SALES_SEARCH_DEBOUNCE_MS)
     })
@@ -407,8 +460,8 @@ describe('SalesPage', () => {
 
   it('status filter changes the query and resets page', async () => {
     const user = userEvent.setup()
-    const { builder, calls } = createFilterAwareFrom(catalog)
-    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    const { calls, from } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation(from as never)
     renderSales()
     await screen.findByText('DKR-00000000')
     await user.click(screen.getByRole('button', { name: SALE_STATUS.voided.fr }))
@@ -419,12 +472,14 @@ describe('SalesPage', () => {
   })
 
   it('shows date chips unselected with no created_at bounds by default', async () => {
-    const { builder, calls } = createFilterAwareFrom(catalog)
-    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    const { calls, from } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation(from as never)
     renderSales()
     await screen.findByText('DKR-00000000')
     expect(screen.getByRole('button', { name: COMMON.today.fr })).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByRole('button', { name: COMMON.yesterday.fr })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: COMMON.thisWeek.fr })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: COMMON.thisMonth.fr })).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByRole('button', { name: COMMON.custom.fr })).toHaveAttribute('aria-pressed', 'false')
     expect(calls.some((c) => c.startsWith('gte:created_at:'))).toBe(false)
     expect(calls.some((c) => c.startsWith('lte:created_at:'))).toBe(false)
@@ -432,8 +487,8 @@ describe('SalesPage', () => {
 
   it('applies yesterday date bounds when selected', async () => {
     const user = userEvent.setup()
-    const { builder, calls } = createFilterAwareFrom(catalog)
-    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    const { calls, from } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation(from as never)
     renderSales()
     await screen.findByText('DKR-00000000')
     calls.length = 0
@@ -447,8 +502,8 @@ describe('SalesPage', () => {
 
   it('row click opens the sale drawer (sets sale id)', async () => {
     const user = userEvent.setup()
-    const { builder } = createFilterAwareFrom(catalog)
-    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    const { from } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation(from as never)
     renderSales()
     const row = await screen.findByRole('button', { name: /DKR-00000000/ })
     await user.click(row)

@@ -37,6 +37,11 @@ export const SHIFT_COPY = {
   openShift: bi('Ouvrir un service', 'Open shift'),
   closeShift: bi('Clôturer le service', 'Close shift'),
   viewShifts: bi('Voir les services', 'View shifts'),
+  overnightBanner: bi(
+    'Un ou plusieurs services sont ouverts depuis la veille. Fermez-les ou vérifiez-les.',
+    'One or more shifts have been open since yesterday. Close or review them.',
+  ),
+  overnightBadge: bi('Depuis la veille', 'Since yesterday'),
   shiftClosed: bi('Service fermé', 'Shift closed'),
   pageTitle: bi('Services', 'Shifts'),
   failedToLoad: bi('Impossible de charger les services', 'Failed to load shifts'),

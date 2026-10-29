@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useState } from 'react'
-import { BiEmptyTitle, BiPageDescription, BiPageTitle } from '@/lib/bilingual/ui'
+import { BiButtonInline, BiEmptyTitle, BiPageDescription, BiPageTitle } from '@/lib/bilingual/ui'
 import { COMMON, commonPageOf } from '@/lib/bilingual/common'
 import { ADMIN } from '@/lib/bilingual/admin'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
@@ -29,6 +29,7 @@ import { formatStockCompact } from '@/lib/stockQuantityDisplay'
 import { getProductStockStatus, type StockStatus } from '@/types'
 import { productPerfMark } from '@/lib/productPerf'
 import {
+  fetchInventoryList,
   INVENTORY_PAGE_SIZE,
   primarySellingUnit,
   useCategories,
@@ -37,9 +38,13 @@ import {
 } from '@/hooks/useInventory'
 import { useDepotStore } from '@/stores/depotStore'
 import { useAuthStore } from '@/stores/authStore'
+import { exportFilteredList, LIST_EXPORT_MAX_ROWS } from '@/lib/listExport'
+import { toastErrorBi } from '@/lib/bilingual/toast'
 import { ProductDetailDrawer } from './components/ProductDetailDrawer'
 import { ProductFormModal } from './components/ProductFormModal'
 import { t } from '@/lib/bilingual/types'
+
+const INVENTORY_EXPORT_HEADERS = ['Nom', 'Categorie', 'Stock pieces', 'Prix vente CFA', 'Actif']
 
 
 export function clampInventoryPage(page: number, totalPages: number): number {
@@ -163,6 +168,41 @@ export function InventoryPage() {
     ? 'grid-cols-[4rem_minmax(7rem,1.3fr)_minmax(5rem,0.8fr)_minmax(5rem,0.7fr)_minmax(5.5rem,0.7fr)_4.75rem_6.5rem_4.25rem_6.5rem]'
     : 'grid-cols-[4rem_minmax(7rem,1.3fr)_minmax(5rem,0.8fr)_minmax(5.5rem,0.7fr)_4.75rem_6.5rem_4.25rem_6.5rem]'
 
+  async function handleExport(kind: 'csv' | 'xlsx') {
+    try {
+      const result = await fetchInventoryList({
+        page: 0,
+        pageSize: LIST_EXPORT_MAX_ROWS,
+        search,
+        categoryId,
+        stockStatus,
+        depotId: currentDepotId,
+      })
+      const body = result.data.map((product) => {
+        const unit = primarySellingUnit(product.units ?? null)
+        return [
+          product.name,
+          product.category_name ?? '',
+          product.current_stock_pieces,
+          unit?.selling_price_cfa ?? '',
+          product.is_active ? '1' : '0',
+        ]
+      })
+      exportFilteredList({
+        kind,
+        basename: 'inventaire',
+        sheetName: 'Inventaire',
+        headers: INVENTORY_EXPORT_HEADERS,
+        rows: body,
+      })
+      if (result.count > LIST_EXPORT_MAX_ROWS) {
+        toastErrorBi(COMMON.exportTruncated)
+      }
+    } catch {
+      toastErrorBi(COMMON.failedToLoadData)
+    }
+  }
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="flex-shrink-0 border-b border-border bg-surface">
@@ -178,12 +218,32 @@ export function InventoryPage() {
           icon={<NavPictogram path="/inventory" size="header" />}
           className="border-b-0"
           actions={
-            canCreateProduct ? (
-              <Button className="gap-1.5 flex-shrink-0 w-full sm:w-auto justify-center" onClick={() => setShowCreate(true)}>
-                <Plus className="h-4 w-4" />
-                {t(INVENTORY.addProduct)}
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={totalCount === 0}
+                onClick={() => void handleExport('csv')}
+              >
+                <BiButtonInline {...COMMON.exportCsv} />
               </Button>
-            ) : undefined
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={totalCount === 0}
+                onClick={() => void handleExport('xlsx')}
+              >
+                <BiButtonInline {...COMMON.exportXlsx} />
+              </Button>
+              {canCreateProduct ? (
+                <Button className="gap-1.5 flex-shrink-0 w-full sm:w-auto justify-center" onClick={() => setShowCreate(true)}>
+                  <Plus className="h-4 w-4" />
+                  {t(INVENTORY.addProduct)}
+                </Button>
+              ) : null}
+            </div>
           }
         />
         <div className="px-3 sm:px-6 pb-3 sm:pb-4 space-y-3">

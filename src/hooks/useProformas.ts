@@ -5,8 +5,13 @@ import { CACHE_STALE } from '@/lib/cachePolicy'
 
 export const proformaKeys = {
   all: ['proformas'] as const,
-  list: (depotId: string | null, status: string | null) =>
-    ['proformas', 'list', depotId, status] as const,
+  list: (
+    depotId: string | null,
+    status: string | null,
+    search = '',
+    startAt: string | null = null,
+    endAt: string | null = null,
+  ) => ['proformas', 'list', depotId, status, search, startAt, endAt] as const,
   detail: (id: string) => ['proformas', 'detail', id] as const,
 }
 
@@ -48,12 +53,22 @@ export interface ProformaItemRow {
   sort_index: number
 }
 
-export async function fetchProformaList(depotId: string | null, status: string | null) {
+export async function fetchProformaList(
+  depotId: string | null,
+  status: string | null,
+  search = '',
+  startAt: string | null = null,
+  endAt: string | null = null,
+  limit = 100,
+) {
   const result = await rpc.listProformas({
     p_depot_id: depotId,
     p_status: status,
-    p_limit: 100,
+    p_limit: limit,
     p_offset: 0,
+    p_search: search.trim() || null,
+    p_start_at: startAt,
+    p_end_at: endAt,
   })
   if (result.error) throw result.error
   const payload = result.data as { rows: ProformaRow[]; count: number }
@@ -89,10 +104,17 @@ export async function fetchProformaDetail(id: string) {
   return data
 }
 
-export function useProformaList(depotId: string | null, status: string | null) {
+export function useProformaList(
+  depotId: string | null,
+  status: string | null,
+  search = '',
+  startAt: string | null = null,
+  endAt: string | null = null,
+  limit = 100,
+) {
   return useQuery({
-    queryKey: proformaKeys.list(depotId, status),
-    queryFn: () => fetchProformaList(depotId, status),
+    queryKey: proformaKeys.list(depotId, status, search, startAt, endAt),
+    queryFn: () => fetchProformaList(depotId, status, search, startAt, endAt, limit),
     staleTime: CACHE_STALE.customerDetail,
   })
 }
