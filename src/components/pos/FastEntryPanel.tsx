@@ -8,6 +8,7 @@ import { Trash2 } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { CustomerChip } from '@/components/pos/CustomerChip'
+import { ProductThumb } from '@/components/product/ProductThumb'
 import { formatCFA } from '@/lib/formatters'
 import { POS } from '@/lib/bilingual/pos'
 import { toastErrorBi } from '@/lib/bilingual/toast'
@@ -280,10 +281,13 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
           Enter
         </button>
         {activeHit && code.trim() && (
-          <p className="w-full text-xs text-text-secondary truncate">
-            → {unitCode(activeHit)} · {activeHit.product.name}
-            <span className="ml-2 text-[10px] font-normal text-text-muted">Tab</span>
-          </p>
+          <div className="w-full flex items-center gap-2 text-xs text-text-secondary min-w-0">
+            <ProductThumb photoUrl={activeHit.product.photo_url} name={activeHit.product.name} size="sm" />
+            <p className="truncate">
+              → {unitCode(activeHit)} · {activeHit.product.name}
+              <span className="ml-2 text-[10px] font-normal text-text-muted">Tab</span>
+            </p>
+          </div>
         )}
       </div>
 
@@ -294,16 +298,19 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
               <li key={`${hit.product.id}:${hit.unit.unit_level}`}>
                 <button
                   type="button"
-                  className="w-full text-left px-2 py-1.5 rounded-md hover:bg-surface text-sm"
+                  className="w-full text-left px-2 py-1.5 rounded-md hover:bg-surface text-sm flex items-center gap-2"
                   onClick={() => {
                     setLockedHit(hit)
                     setCode(hit.product.name)
                     setFocusQtyToken((n) => n + 1)
                   }}
                 >
-                  <span className="font-mono text-xs text-text-secondary">{unitCode(hit)}</span>
-                  <span className="ml-2 font-medium">{hit.product.name}</span>
-                  <span className="ml-2 text-xs text-text-muted">{hit.unit.unit_name}</span>
+                  <ProductThumb photoUrl={hit.product.photo_url} name={hit.product.name} size="sm" />
+                  <span className="min-w-0 truncate">
+                    <span className="font-mono text-xs text-text-secondary">{unitCode(hit)}</span>
+                    <span className="ml-2 font-medium">{hit.product.name}</span>
+                    <span className="ml-2 text-xs text-text-muted">{hit.unit.unit_name}</span>
+                  </span>
                 </button>
               </li>
             ))}
@@ -315,6 +322,7 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-surface-muted text-xs text-text-secondary">
             <tr>
+              <th className="w-12" />
               <th className="text-left px-2 py-2 font-semibold">{t(POS.codeCol)}</th>
               <th className="text-left px-2 py-2 font-semibold">{t(POS.designationCol)}</th>
               <th className="text-left px-2 py-2 font-semibold">{t(POS.unitCol)}</th>
@@ -334,6 +342,9 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
               const qtyValue = qtyDrafts[key] ?? String(row.quantity_in_unit)
               return (
                 <tr key={key} className="border-t border-border">
+                  <td className="px-2 py-1.5">
+                    <ProductThumb photoUrl={row.product_photo_url} name={row.product_name} size="sm" />
+                  </td>
                   <td className="px-2 py-1.5 font-mono text-xs text-text-secondary">—</td>
                   <td className="px-2 py-1.5 font-medium">{row.product_name}</td>
                   <td className="px-2 py-1.5">{row.unit_name}</td>
@@ -447,7 +458,7 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
                 <li key={`${hit.product.id}:${hit.unit.unit_level}`}>
                   <button
                     type="button"
-                    className="w-full text-left px-3 py-2 rounded-md hover:bg-surface-muted"
+                    className="w-full text-left px-3 py-2 rounded-md hover:bg-surface-muted flex items-center gap-3"
                     onClick={() => {
                       setLockedHit(hit)
                       setCode(hit.product.name)
@@ -455,9 +466,12 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
                       setFocusQtyToken((n) => n + 1)
                     }}
                   >
-                    <span className="font-medium">{hit.product.name}</span>
-                    <span className="block text-xs text-text-muted font-mono">
-                      {hit.product.units.map((u) => u.serial_number).filter(Boolean).join(' · ')}
+                    <ProductThumb photoUrl={hit.product.photo_url} name={hit.product.name} />
+                    <span className="min-w-0">
+                      <span className="font-medium block truncate">{hit.product.name}</span>
+                      <span className="block text-xs text-text-muted font-mono">
+                        {hit.product.units.map((u) => u.serial_number).filter(Boolean).join(' · ')}
+                      </span>
                     </span>
                   </button>
                 </li>
