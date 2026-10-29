@@ -40,22 +40,40 @@ vi.mock('@/hooks/useShifts', async (importOriginal) => {
   return {
     ...actual,
     useOpenShifts: vi.fn(() => ({
-      data: [{
-        id: 'shift-1',
-        depot_id: 'depot-a',
-        cashier_id: 'cashier-1',
-        opening_float_cfa: 1000,
-        opened_at: '2026-09-13T08:00:00Z',
-        closed_at: null,
-        closed_by: null,
-        expected_cash_cfa: null,
-        actual_cash_cfa: null,
-        discrepancy_cfa: null,
-        status: 'open',
-        depot_name: 'Depot Dakar',
-        cashier_name: 'Cashier Dakar',
-        closed_by_name: null,
-      }],
+      data: [
+        {
+          id: 'shift-1',
+          depot_id: 'depot-a',
+          cashier_id: 'cashier-1',
+          opening_float_cfa: 1000,
+          opened_at: '2026-09-13T08:00:00Z',
+          closed_at: null,
+          closed_by: null,
+          expected_cash_cfa: null,
+          actual_cash_cfa: null,
+          discrepancy_cfa: null,
+          status: 'open',
+          depot_name: 'Depot Dakar',
+          cashier_name: 'Cashier Dakar',
+          closed_by_name: null,
+        },
+        {
+          id: 'shift-admin',
+          depot_id: 'depot-a',
+          cashier_id: 'admin-1',
+          opening_float_cfa: 1000,
+          opened_at: '2026-09-13T08:00:00Z',
+          closed_at: null,
+          closed_by: null,
+          expected_cash_cfa: null,
+          actual_cash_cfa: null,
+          discrepancy_cfa: null,
+          status: 'open',
+          depot_name: 'Depot Dakar',
+          cashier_name: 'Admin User',
+          closed_by_name: null,
+        },
+      ],
       isLoading: false,
     })),
   }
@@ -386,7 +404,7 @@ describe('CEO Notes — PaymentPanel override payload', () => {
     expect(vi.mocked(rpc.completeSale).mock.calls[0][0]).toMatchObject({
       p_override_total_cfa: 800,
       p_price_exception_reason: 'Price match',
-      p_shift_id: 'shift-1',
+      p_shift_id: 'shift-admin',
     })
   })
 

@@ -9,6 +9,9 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AuditPage } from '@/pages/admin/AuditPage'
 import { downloadCsv } from '@/lib/csvExport'
+import { formatDateTime } from '@/lib/formatters'
+import { auditEventSummary } from '@/lib/auditPresentation'
+import { bilingualPlain } from '@/lib/bilingual/types'
 import type { AuditLogFilters, AuditLogRow } from '@/hooks/useAuditLog'
 import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '@/hooks/useAuditLog'
 
@@ -180,9 +183,9 @@ describe('AuditPage', () => {
     const call = vi.mocked(downloadCsv).mock.calls[0]
     expect(call[0]).toMatch(/^audit-log-/)
     expect(call[2][0]).toEqual(expect.arrayContaining([
-      rowA.occurred_at,
+      formatDateTime(rowA.occurred_at),
       'Admin User',
-      'complete_sale',
+      bilingualPlain(auditEventSummary(rowA)),
       'sale',
     ]))
   })

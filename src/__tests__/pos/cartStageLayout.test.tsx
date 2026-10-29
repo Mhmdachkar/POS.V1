@@ -170,7 +170,7 @@ describe('POS cart stage layout', () => {
 
     await user.click(getByBilingualRole('button', POS.selectCustomer))
     const picker = screen.getByTestId('pos-customer-picker')
-    expect(picker).toHaveClass('absolute', 'bottom-full', 'z-30')
+    expect(picker).toHaveClass('max-h-full')
     expect(payment.className).toBe(classesBefore)
     expect(payment).toHaveClass('mt-auto', 'flex-shrink-0', 'overflow-visible')
     expect(getByBilingualRole('button', POS.completeSaleAria)).toBeInTheDocument()

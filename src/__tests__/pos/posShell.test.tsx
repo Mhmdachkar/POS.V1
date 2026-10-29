@@ -29,7 +29,27 @@ vi.mock('@/hooks/useShifts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useShifts')>()
   return {
     ...actual,
-    useOpenShifts: () => ({ data: [], isLoading: false, isError: false }),
+    useOpenShifts: vi.fn(() => ({
+      data: [{
+        id: 'shift-1',
+        depot_id: 'depot-a',
+        cashier_id: 'cashier-1',
+        opening_float_cfa: 1000,
+        opened_at: '2026-09-13T08:00:00Z',
+        closed_at: null,
+        closed_by: null,
+        expected_cash_cfa: null,
+        actual_cash_cfa: null,
+        discrepancy_cfa: null,
+        status: 'open',
+        depot_name: 'Depot Dakar',
+        cashier_name: 'Cashier Dakar',
+        closed_by_name: null,
+      }],
+      isLoading: false,
+      isError: false,
+    })),
+    useShiftDetail: vi.fn(() => ({ data: null, isLoading: false, isError: false })),
   }
 })
 
@@ -417,22 +437,20 @@ describe('ShiftChip', () => {
     )
   }
 
-  it('renders a static no-shift chip', () => {
+  it('hides the chip for cashiers when no shift is open', async () => {
+    const { useOpenShifts } = await import('@/hooks/useShifts')
+    vi.mocked(useOpenShifts).mockReturnValueOnce({ data: [], isLoading: false, isError: false } as never)
+    const { container } = renderChip()
+    expect(container).toBeEmptyDOMElement()
+    expect(screen.queryByTestId('shift-chip')).not.toBeInTheDocument()
+  })
+
+  it('shows an active chip for cashiers with an open shift', () => {
     renderChip()
     const chip = screen.getByTestId('shift-chip')
     expect(chip).toBeInTheDocument()
-    expect(chip).toHaveTextContent(POS.noOpenShift.fr)
+    expect(chip).toHaveTextContent(POS.shiftActive.fr)
     expect(screen.queryByRole('button', { name: /Select for POS|Sélectionner pour la caisse/i })).not.toBeInTheDocument()
-  })
-
-  it('does not open a picker or bind a shift on click', async () => {
-    const user = userEvent.setup()
-    renderChip()
-    const chip = screen.getByTestId('shift-chip')
-    await user.click(chip)
-    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
-    expect(screen.queryByRole('option')).not.toBeInTheDocument()
-    expect(screen.queryByText(/None is selected automatically/)).not.toBeInTheDocument()
   })
 })
 

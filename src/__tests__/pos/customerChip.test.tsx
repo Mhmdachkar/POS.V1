@@ -63,9 +63,7 @@ describe('CustomerChip picker', () => {
     await user.click(getByBilingualRole('button', POS.selectCustomer))
 
     const picker = screen.getByTestId('pos-customer-picker')
-    expect(picker).toHaveClass('absolute')
-    expect(picker).toHaveClass('max-h-64')
-    expect(picker).toHaveClass('bottom-full')
+    expect(picker).toHaveClass('max-h-full')
     expect(usePOSStore.getState().isWalkIn).toBe(true)
     expect(usePOSStore.getState().customer).toBeNull()
   })

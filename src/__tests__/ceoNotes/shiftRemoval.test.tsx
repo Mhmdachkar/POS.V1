@@ -139,6 +139,7 @@ function createFilterAwareFrom(allRows: ShiftRow[]) {
     filtered = filtered.filter((r) => r[String(col)] === val)
     return builder
   }
+  builder.in = () => builder
   builder.range = (from: unknown, to: unknown) => {
     range = [Number(from), Number(to)]
     return builder
@@ -151,6 +152,15 @@ function createFilterAwareFrom(allRows: ShiftRow[]) {
   builder.then = (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) =>
     execute().then(resolve, reject)
   return builder
+}
+
+function mockSupabaseForShifts(allRows: ShiftRow[]) {
+  const shiftsBuilder = createFilterAwareFrom(allRows)
+  const emptyBuilder = createFilterAwareFrom([])
+  vi.mocked(supabase.from).mockImplementation((table: string) => {
+    if (table === 'shifts') return shiftsBuilder as never
+    return emptyBuilder as never
+  })
 }
 
 describe('CEO Notes — POS has no shift gate', () => {
@@ -181,10 +191,10 @@ describe('CEO Notes — POS has no shift gate', () => {
 })
 
 describe('CEO Notes — ShiftChip opens a shift', () => {
-  it('shows bilingual no-shift label and opens Ouvrir un service', async () => {
+  it('shows bilingual no-shift label and opens Ouvrir un service for admin', async () => {
     const user = userEvent.setup()
     useAuthStore.setState({
-      staff: cashierStaff(),
+      staff: adminStaff(),
       session: null,
       isLoading: false,
       authLoadState: 'authorized',
@@ -218,21 +228,19 @@ describe('CEO Notes — ShiftsPage historical only', () => {
   beforeEach(() => {
     useAuthStore.setState({ staff: adminStaff(), session: null, isLoading: false })
     useDepotStore.setState({ currentDepotId: null })
-    vi.mocked(supabase.from).mockReturnValue(
-      createFilterAwareFrom([
-        makeRow(),
-        makeRow({
-          id: 'sh-2',
-          status: 'closed',
-          closed_at: '2026-09-12T18:00:00Z',
-          closed_by: 'cashier-1',
-          expected_cash_cfa: 5000,
-          actual_cash_cfa: 5000,
-          discrepancy_cfa: 0,
-          closed_staff: { full_name: 'Cashier Dakar' },
-        }),
-      ]) as never,
-    )
+    mockSupabaseForShifts([
+      makeRow(),
+      makeRow({
+        id: 'sh-2',
+        status: 'closed',
+        closed_at: '2026-09-12T18:00:00Z',
+        closed_by: 'cashier-1',
+        expected_cash_cfa: 5000,
+        actual_cash_cfa: 5000,
+        discrepancy_cfa: 0,
+        closed_staff: { full_name: 'Cashier Dakar' },
+      }),
+    ])
   })
 
   it('has View actions and no Select for POS', async () => {
