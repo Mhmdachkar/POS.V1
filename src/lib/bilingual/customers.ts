@@ -54,7 +54,7 @@ export const CUSTOMERS = {
   financialSummary: bi('Résumé du compte', 'Account summary'),
   contactSection: bi('Contact', 'Contact'),
   recordPaymentTitle: bi('Encaisser un paiement', 'Record customer payment'),
-  walkInNoAccount: bi('Client de passage', 'Walk-in'),
+  walkInNoAccount: bi('Sans compte client', 'No customer account'),
   searchNamePhone: bi('Nom ou téléphone…', 'Search name or phone…'),
   searching: bi('Recherche…', 'Searching…'),
   typeNamePhone: bi('Saisissez un nom ou téléphone', 'Type a name or phone'),
