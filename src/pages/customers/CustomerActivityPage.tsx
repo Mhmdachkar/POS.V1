@@ -18,7 +18,7 @@ import {
   PaginationBar,
   Skeleton,
 } from '@/components/ui'
-import { formatDate, formatMoney } from '@/lib/formatters'
+import { formatDate } from '@/lib/formatters'
 import { parseError } from '@/lib/errors'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
 import { NAV } from '@/lib/bilingual/nav'
@@ -48,6 +48,7 @@ import { useDepotStore } from '@/stores/depotStore'
 import { SaleDetailDrawer } from '@/pages/sales/components/SaleDetailDrawer'
 import { CustomerFinancialSummary } from './components/CustomerFinancialSummary'
 import { ClientSoldeBlock } from './components/ClientSoldeBlock'
+import { LedgerSoldeAmount } from './components/LedgerSoldeAmount'
 import { CustomerAvatar } from '@/components/customers/CustomerAvatar'
 import { t } from '@/lib/bilingual/types'
 import {
@@ -335,8 +336,8 @@ export function CustomerActivityPage() {
                   <span className="text-right min-w-0">
                     <SignedActivityAmount event={event} />
                   </span>
-                  <span className="text-right text-sm tabular-nums text-text-primary">
-                    {formatMoney(event.runningBalanceCfa ?? 0)}
+                  <span className="text-right min-w-0">
+                    <LedgerSoldeAmount amountCfa={event.runningBalanceCfa ?? 0} />
                   </span>
                 </>
               )

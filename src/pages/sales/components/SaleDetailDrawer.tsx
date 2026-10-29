@@ -30,6 +30,9 @@ import { Drawer, Button, MoneyDisplay, Skeleton, SaleStatusBadge } from '@/compo
 import { formatDateTime, formatReportDate, APP_BUSINESS_FALLBACK } from '@/lib/formatters'
 import { buildReceiptHtml, printReceiptHtml, receiptDataFromSaleDetail } from '@/lib/receiptHtml'
 import { useSaleDetail } from '@/hooks/useSales'
+import { useCustomerLedgerBalance } from '@/hooks/useCustomerActivity'
+import { displayedAccountBalanceCfa, clientSoldeKind } from '@/lib/customerAccountBalance'
+import { LedgerSoldeAmount } from '@/pages/customers/components/LedgerSoldeAmount'
 import { useQueryClient } from '@tanstack/react-query'
 import { settingsKeys } from '@/hooks/useBusinessSettings'
 import { depotOptionKeys } from '@/hooks/useInventory'
@@ -262,6 +265,11 @@ export function SaleDetailDrawer({ saleId, shiftId, isOverRefund = false, onClos
     queryClient.getQueryData<BusinessSettings>(settingsKeys.current)?.business_name ?? APP_BUSINESS_FALLBACK
 
   const { data: sale, isLoading, isError } = useSaleDetail(saleId)
+  const { data: ledgerBalanceCfa } = useCustomerLedgerBalance(sale?.customer_id ?? null)
+  const accountBalanceCfa = displayedAccountBalanceCfa(
+    ledgerBalanceCfa,
+    sale?.customer_balance_owed_cfa ?? 0,
+  )
   const { data: deliveryNotes } = useDeliveryNotesForSale(
     saleId && sale && sale.status !== 'voided' ? saleId : null,
   )
@@ -435,11 +443,14 @@ export function SaleDetailDrawer({ saleId, shiftId, isOverRefund = false, onClos
                   <DetailRow
                     label={t(SALES.currentBalance)}
                     value={
-                      <MoneyDisplay
-                        amount={sale.customer_balance_owed_cfa}
-                        size="small"
-                        danger={sale.customer_balance_owed_cfa > 0}
-                      />
+                      <span className="inline-flex flex-col items-end gap-0.5">
+                        <LedgerSoldeAmount amountCfa={accountBalanceCfa} size="small" />
+                        {clientSoldeKind(accountBalanceCfa) === 'credit' && (
+                          <span className="text-xs text-success-foreground">
+                            {t(CUSTOMERS.accountCreditNote)}
+                          </span>
+                        )}
+                      </span>
                     }
                   />
                 )}

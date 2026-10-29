@@ -19,6 +19,7 @@ import {
   CUSTOMER_ACTIVITY_DRAWER_LIMIT,
   useCustomerActivity,
   useCustomerActivitySummary,
+  useCustomerLedgerBalances,
   type CustomerActivityEvent,
   type CustomerActivitySummary,
 } from '@/hooks/useCustomerActivity'
@@ -48,6 +49,8 @@ vi.mock('@/hooks/useCustomerActivity', async (importOriginal) => {
       isError: false,
       refetch: vi.fn(),
     })),
+    useCustomerLedgerBalances: vi.fn(() => ({ data: {}, isLoading: false })),
+    useCustomerLedgerBalance: vi.fn(() => ({ data: undefined, isLoading: false })),
     useCustomerActivitySummary: vi.fn(() => ({
       data: {
         sales: { count: 0, totalCfa: 0 },
@@ -195,6 +198,7 @@ describe('CustomersPage', () => {
 
   beforeEach(() => {
     vi.mocked(supabase.from).mockReset()
+    vi.mocked(useCustomerLedgerBalances).mockReturnValue({ data: {}, isLoading: false } as never)
     useAuthStore.setState({
       staff: adminStaff(),
       authLoadState: 'authorized',
@@ -249,6 +253,18 @@ describe('CustomersPage', () => {
     ).find((el) => el.className.includes('financial-value'))
     expect(node).toBeTruthy()
     expect(node).toHaveClass('text-sm', 'financial-value', 'text-danger-foreground')
+  })
+
+  it('shows Avoir for a negative ledger solde instead of an em dash', async () => {
+    vi.mocked(useCustomerLedgerBalances).mockReturnValue({
+      data: { 'cust-0': -100 },
+      isLoading: false,
+    } as never)
+    const { builder } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    renderCustomers()
+    await screen.findByText('John Doe')
+    expect(screen.getByText(`${CUSTOMERS.avoirPrefix.fr} ${formatCFA(100)}`)).toBeInTheDocument()
   })
 
   it('does not query on each keystroke; one or-filter after 300 ms idle', async () => {
@@ -383,6 +399,7 @@ describe('CustomerDetailDrawer (15E)', () => {
       events?: CustomerActivityEvent[]
       count?: number
       summary?: CustomerActivitySummary
+      accountBalanceCfa?: number
     } = {},
   ) {
     vi.mocked(useCustomer).mockReturnValue({
@@ -391,7 +408,11 @@ describe('CustomerDetailDrawer (15E)', () => {
       isError: false,
     } as never)
     vi.mocked(useCustomerActivity).mockReturnValue({
-      data: { data: extras.events ?? [], count: extras.count ?? extras.events?.length ?? 0 },
+      data: {
+        data: extras.events ?? [],
+        count: extras.count ?? extras.events?.length ?? 0,
+        accountBalanceCfa: extras.accountBalanceCfa,
+      },
       isLoading: false,
       isError: false,
       refetch: vi.fn(),
@@ -493,6 +514,23 @@ describe('CustomerDetailDrawer (15E)', () => {
     expect(screen.getByText(CUSTOMERS.inactiveCustomer.fr)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: CUSTOMERS.reactivateCustomer.fr })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: CUSTOMERS.recordPayment.fr })).toBeDisabled()
+  })
+
+  it('shows Avoir client pill when ledger solde is negative', () => {
+    renderDrawer(makeCustomer(0, { name: 'John Doe', balance_owed_cfa: 0 }), {
+      accountBalanceCfa: -100,
+    })
+    expect(screen.getAllByText(CUSTOMERS.accountCreditNote.fr).length).toBeGreaterThan(0)
+    expect(screen.queryByText(CUSTOMERS.accountSettled.fr)).not.toBeInTheDocument()
+    expect(screen.getByText(`${formatCFA(100)} ${CUSTOMERS.enVotreFaveur.fr}`)).toBeInTheDocument()
+  })
+
+  it('formats a negative activity running solde as en votre faveur', () => {
+    renderDrawer(
+      makeCustomer(0, { name: 'John Doe', balance_owed_cfa: 0 }),
+      { events: [paymentEvent({ runningBalanceCfa: -100, amountCfa: -100 })] },
+    )
+    expect(screen.getByText(`${formatCFA(100)} ${CUSTOMERS.enVotreFaveur.fr}`)).toBeInTheDocument()
   })
 
   it('renders zero balance without danger and empty activity', () => {

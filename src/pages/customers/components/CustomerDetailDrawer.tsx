@@ -45,6 +45,7 @@ import { CustomerFormModal } from './CustomerFormModal'
 import { CustomerFinancialSummary } from './CustomerFinancialSummary'
 import { ClientSoldeBlock } from './ClientSoldeBlock'
 import { CustomerAvatar, customerAccountTone } from '@/components/customers/CustomerAvatar'
+import { clientSoldeKind } from '@/lib/customerAccountBalance'
 import { cn } from '@/lib/cn'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { t } from '@/lib/bilingual/types'
@@ -213,12 +214,17 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
                 <span
                   className={cn(
                     'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold',
-                    tone === 'owing' && 'bg-danger-bg text-danger-foreground',
-                    tone === 'settled' && 'bg-success-bg text-success-foreground',
+                    clientSoldeKind(accountBalanceCfa) === 'due'
+                      ? 'bg-danger-bg text-danger-foreground'
+                      : 'bg-success-bg text-success-foreground',
                   )}
                 >
                   <BilingualText
-                    {...(tone === 'owing' ? CUSTOMERS.accountOwing : CUSTOMERS.accountSettled)}
+                    {...(clientSoldeKind(accountBalanceCfa) === 'due'
+                      ? CUSTOMERS.accountOwing
+                      : clientSoldeKind(accountBalanceCfa) === 'credit'
+                        ? CUSTOMERS.accountCreditNote
+                        : CUSTOMERS.accountSettled)}
                     variant="caption"
                     layout="inline"
                   />

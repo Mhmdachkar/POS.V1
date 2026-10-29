@@ -221,4 +221,29 @@ describe('CustomerActivityPage', () => {
     expect(headerBalance).toHaveClass('text-financial-sm', 'financial-value')
     expect(screen.queryByText(formatCFA(99998))).not.toBeInTheDocument()
   })
+
+  it('formats a negative running solde as en votre faveur', () => {
+    vi.mocked(useCustomerActivity).mockReturnValue({
+      data: {
+        data: [{
+          id: 'pay-x',
+          type: 'payment',
+          occurredAt: '2026-10-26T12:00:00Z',
+          reference: 'MAIN-REG-00000001',
+          description: 'Balance payment',
+          amountCfa: -100,
+          saleId: null,
+          runningBalanceCfa: -100,
+        }],
+        count: 1,
+        accountBalanceCfa: -100,
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as never)
+    renderPage()
+    expect(screen.getAllByText(`${formatCFA(100)} ${CUSTOMERS.enVotreFaveur.fr}`).length).toBeGreaterThan(0)
+    expect(screen.queryByText(`${formatCFA(-100)}`)).not.toBeInTheDocument()
+  })
 })

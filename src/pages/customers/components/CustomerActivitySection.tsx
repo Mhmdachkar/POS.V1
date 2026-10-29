@@ -37,6 +37,7 @@ import { CUSTOMERS } from '@/lib/bilingual/customers'
 import { BiTabLabel } from '@/lib/bilingual/ui'
 
 import { t, bilingualAriaLabel, type BilingualPair } from '@/lib/bilingual/types'
+import { LedgerSoldeAmount } from './LedgerSoldeAmount'
 
 
 
@@ -256,7 +257,7 @@ export function ActivityEventRow({ event, onOpenSale }: ActivityEventRowProps) {
         {event.runningBalanceCfa != null && (
           <p className="mt-0.5 text-xs text-text-muted">
             {t(CUSTOMERS.runningBalance)}{' '}
-            <MoneyDisplay amount={event.runningBalanceCfa} size="small" />
+            <LedgerSoldeAmount amountCfa={event.runningBalanceCfa} />
           </p>
         )}
 
