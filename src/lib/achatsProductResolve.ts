@@ -84,3 +84,10 @@ export function resolveNearestAchatsProduct(
 ): AchatsResolveHit | null {
   return rankAchatsProductHits(query, hits)[0] ?? null
 }
+
+/** Qty Delete/Backspace should leave 0, never an empty wipe. */
+export function sanitizeAchatsQtyInput(raw: string): string {
+  const cleaned = raw.replace(/[^\d.]/g, '')
+  if (cleaned === '' || cleaned === '.') return '0'
+  return cleaned
+}
