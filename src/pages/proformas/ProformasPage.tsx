@@ -38,10 +38,18 @@ import { bilingualAriaLabel, bilingualPlain, t } from '@/lib/bilingual/types'
 import { useProformaList, type ProformaRow } from '@/hooks/useProformas'
 import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
-import { exportFilteredList } from '@/lib/listExport'
+import { exportTable, type ExportColumn } from '@/lib/listExport'
+import { exportProformaStatus } from '@/lib/exportLabels'
+import { exportCfaInt } from '@/lib/tableExport'
 import { ProformaDetailDrawer } from './components/ProformaDetailDrawer'
 
-const PROFORMA_EXPORT_HEADERS = ['Numero', 'Statut', 'Date', 'Client', 'Total CFA']
+const PROFORMA_EXPORT_COLUMNS: ExportColumn[] = [
+  { header: 'Numéro' },
+  { header: 'Statut', kind: 'enum' },
+  { header: 'Date', kind: 'date' },
+  { header: 'Client' },
+  { header: 'Total CFA', kind: 'money', total: true },
+]
 const SEARCH_DEBOUNCE_MS = 300
 
 const GRID =
@@ -103,6 +111,7 @@ export function ProformasPage() {
 
   const staff = useAuthStore((s) => s.staff)
   const depotId = useDepotStore((s) => s.currentDepotId)
+  const depotName = useDepotStore((s) => s.currentDepotName)
   const effectiveDepotId = staff?.role === 'cashier' ? staff.depot_id : depotId
 
   useEffect(() => {
@@ -130,19 +139,30 @@ export function ProformasPage() {
   const totalCount = data?.count ?? 0
 
   function exportRows(kind: 'csv' | 'xlsx') {
-    const body = rows.map((row) => [
-      row.number,
-      row.status,
-      row.document_date,
-      row.customer_name ?? '',
-      row.total_cfa,
-    ])
-    exportFilteredList({
+    const filterLines: string[] = []
+    if (dateRange) filterLines.push(`Période : ${dateRange.startDate} → ${dateRange.endDate}`)
+    if (statusFilter) filterLines.push(`Statut : ${exportProformaStatus(statusFilter)}`)
+    if (debouncedSearch.trim()) filterLines.push(`Recherche : ${debouncedSearch.trim()}`)
+    void exportTable({
       kind,
-      basename: 'proformas',
-      sheetName: 'Proformas',
-      headers: PROFORMA_EXPORT_HEADERS,
-      rows: body,
+      columns: PROFORMA_EXPORT_COLUMNS,
+      rows: rows.map((row) => ({
+        cells: [
+          row.number,
+          exportProformaStatus(row.status),
+          row.document_date,
+          row.customer_name ?? '',
+          exportCfaInt(row.total_cfa),
+        ],
+        excludeFromTotals: row.status === 'cancelled',
+      })),
+      meta: {
+        title: 'Proformas',
+        sheetName: 'Proformas',
+        basename: 'proformas',
+        depotName,
+        filterLines,
+      },
     })
   }
 

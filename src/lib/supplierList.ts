@@ -63,7 +63,7 @@ export function supplierExportRows(
     r.name,
     r.phone ?? '',
     r.email ?? '',
-    Number(r.balance_owed_cfa) || 0,
+    Math.round(Number(r.balance_owed_cfa) || 0),
     r.is_active ? 'Actif' : 'Inactif',
     r.payment_term_days ?? '',
     r.address ?? '',

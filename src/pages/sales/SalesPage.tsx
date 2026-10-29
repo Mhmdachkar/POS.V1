@@ -55,22 +55,24 @@ import type { SaleStatus } from '@/types/database'
 import type { FulfillmentStatus } from '@/lib/printPayload'
 import { t } from '@/lib/bilingual/types'
 import { SALE_STATUS } from '@/lib/bilingual/status'
-import { exportFilteredList } from '@/lib/listExport'
+import { exportTable, type ExportColumn } from '@/lib/listExport'
+import { exportSaleStatus } from '@/lib/exportLabels'
+import { exportCfaInt } from '@/lib/tableExport'
 import { toastErrorBi, toastSuccessBi } from '@/lib/bilingual/toast'
 
 
 /** Receipt / client / cashier search debounce. Do not query on every keystroke. */
 export const SALES_SEARCH_DEBOUNCE_MS = 300
 
-const SALE_EXPORT_HEADERS = [
-  'Ticket',
-  'Date',
-  'Client',
-  'Caissier',
-  'Statut',
-  'Total CFA',
-  'Payé CFA',
-  'Crédit CFA',
+const SALE_EXPORT_COLUMNS: ExportColumn[] = [
+  { header: 'Ticket' },
+  { header: 'Date', kind: 'date' },
+  { header: 'Client' },
+  { header: 'Caissier' },
+  { header: 'Statut', kind: 'enum' },
+  { header: 'Total CFA', kind: 'money', total: true },
+  { header: 'Payé CFA', kind: 'money', total: true },
+  { header: 'Crédit CFA', kind: 'money', total: true },
 ]
 
 // ─────────────────────────────────────────────────────────────────
@@ -263,22 +265,37 @@ export function SalesPage() {
         page: 0,
         pageSize: 2000,
       })
-      const body = rows.map((sale) => [
-        sale.receipt_number,
-        formatReportDateTime(sale.created_at),
-        sale.customer_name ?? t(POS.walkIn),
-        sale.cashier_name ?? '',
-        sale.status,
-        sale.admin_override_total_cfa ?? sale.total_cfa,
-        sale.amount_applied_cfa,
-        sale.balance_added_cfa,
-      ])
-      exportFilteredList({
+      const filterLines: string[] = []
+      if (dateRange) filterLines.push(`Période : ${dateRange.startDate} → ${dateRange.endDate}`)
+      if (statusFilter) filterLines.push(`Statut : ${exportSaleStatus(statusFilter)}`)
+      if (paymentKind) filterLines.push(`Paiement : ${paymentKind}`)
+      if (debouncedSearch.trim()) filterLines.push(`Recherche : ${debouncedSearch.trim()}`)
+      const currentDepotLabel = effectiveDepotId
+        ? depotName(effectiveDepotId)
+        : (showDepotColumn ? 'Tous les dépôts' : null)
+      await exportTable({
         kind,
-        basename: 'ventes',
-        sheetName: 'Ventes',
-        headers: SALE_EXPORT_HEADERS,
-        rows: body,
+        columns: SALE_EXPORT_COLUMNS,
+        rows: rows.map((sale) => ({
+          cells: [
+            sale.receipt_number,
+            sale.created_at,
+            sale.customer_name ?? t(POS.walkIn),
+            sale.cashier_name ?? '',
+            exportSaleStatus(sale.status),
+            exportCfaInt(sale.admin_override_total_cfa ?? sale.total_cfa),
+            exportCfaInt(sale.amount_applied_cfa),
+            exportCfaInt(sale.balance_added_cfa),
+          ],
+          excludeFromTotals: sale.status === 'voided',
+        })),
+        meta: {
+          title: 'Ventes',
+          sheetName: 'Ventes',
+          basename: 'ventes',
+          depotName: currentDepotLabel,
+          filterLines,
+        },
       })
       if (truncated) {
         toastErrorBi(COMMON.exportTruncated)

@@ -38,13 +38,21 @@ import {
 } from '@/hooks/useInventory'
 import { useDepotStore } from '@/stores/depotStore'
 import { useAuthStore } from '@/stores/authStore'
-import { exportFilteredList, LIST_EXPORT_MAX_ROWS } from '@/lib/listExport'
+import { exportTable, LIST_EXPORT_MAX_ROWS, type ExportColumn } from '@/lib/listExport'
+import { exportActiveLabel } from '@/lib/exportLabels'
+import { exportCfaInt } from '@/lib/tableExport'
 import { toastErrorBi } from '@/lib/bilingual/toast'
 import { ProductDetailDrawer } from './components/ProductDetailDrawer'
 import { ProductFormModal } from './components/ProductFormModal'
 import { t } from '@/lib/bilingual/types'
 
-const INVENTORY_EXPORT_HEADERS = ['Nom', 'Categorie', 'Stock pieces', 'Prix vente CFA', 'Actif']
+const INVENTORY_EXPORT_COLUMNS: ExportColumn[] = [
+  { header: 'Nom' },
+  { header: 'Catégorie' },
+  { header: 'Stock (pièces)', kind: 'qty', total: true },
+  { header: 'Prix vente CFA', kind: 'money' },
+  { header: 'Actif', kind: 'enum' },
+]
 
 
 export function clampInventoryPage(page: number, totalPages: number): number {
@@ -103,6 +111,7 @@ export function InventoryPage() {
   const [showCreate, setShowCreate] = useState(false)
 
   const currentDepotId = useDepotStore((s) => s.currentDepotId)
+  const currentDepotName = useDepotStore((s) => s.currentDepotName)
   const isAdmin = useAuthStore((s) => s.staff?.role === 'admin')
   const canCreateProduct = isAdmin && currentDepotId !== null
   const { data: categories } = useCategories()
@@ -178,22 +187,32 @@ export function InventoryPage() {
         stockStatus,
         depotId: currentDepotId,
       })
-      const body = result.data.map((product) => {
-        const unit = primarySellingUnit(product.units ?? null)
-        return [
-          product.name,
-          product.category_name ?? '',
-          product.current_stock_pieces,
-          unit?.selling_price_cfa ?? '',
-          product.is_active ? '1' : '0',
-        ]
-      })
-      exportFilteredList({
+      const filterLines: string[] = []
+      if (search.trim()) filterLines.push(`Recherche : ${search.trim()}`)
+      if (stockStatus !== 'all') filterLines.push(`Stock : ${stockStatus}`)
+      const depotLabel = currentDepotName ?? (currentDepotId ? null : 'Tous les dépôts')
+      await exportTable({
         kind,
-        basename: 'inventaire',
-        sheetName: 'Inventaire',
-        headers: INVENTORY_EXPORT_HEADERS,
-        rows: body,
+        columns: INVENTORY_EXPORT_COLUMNS,
+        rows: result.data.map((product) => {
+          const unit = primarySellingUnit(product.units ?? null)
+          return {
+            cells: [
+              product.name,
+              product.category_name ?? '',
+              product.current_stock_pieces,
+              unit?.selling_price_cfa != null ? exportCfaInt(unit.selling_price_cfa) : '',
+              exportActiveLabel(product.is_active),
+            ],
+          }
+        }),
+        meta: {
+          title: 'Inventaire',
+          sheetName: 'Inventaire',
+          basename: 'inventaire',
+          depotName: depotLabel,
+          filterLines,
+        },
       })
       if (result.count > LIST_EXPORT_MAX_ROWS) {
         toastErrorBi(COMMON.exportTruncated)

@@ -13,7 +13,8 @@ import { NavPictogram } from '@/components/layout/NavPictogram'
 import { cn } from '@/lib/cn'
 import { EmptyState, PageHeader, Skeleton } from '@/components/ui'
 import { formatDateTime } from '@/lib/formatters'
-import { downloadCsv } from '@/lib/csvExport'
+import { exportTable, type ExportColumn } from '@/lib/listExport'
+import { useDepotStore } from '@/stores/depotStore'
 import {
   AUDIT_ACTIONS,
   AUDIT_ENTITY_TYPES,
@@ -35,7 +36,6 @@ import {
   type ReportPreset,
 } from '@/lib/reportDates'
 import { REPORTS } from '@/lib/bilingual/reports'
-import { useDepotStore } from '@/stores/depotStore'
 import { useDepotOptions } from '@/hooks/useInventory'
 import { AuditDetailDrawer } from './components/AuditDetailDrawer'
 import type { AuditLogRow } from '@/hooks/useAuditLog'
@@ -91,18 +91,38 @@ export function AuditPage() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
   function exportCsv() {
-    downloadCsv(
-      `audit-log-${range.startDate}_${range.endDate}.csv`,
-      [t(ADMIN.auditHeaders.occurred), t(ADMIN.auditHeaders.actor), t(ADMIN.auditHeaders.action), t(ADMIN.auditHeaders.entityType), t(ADMIN.auditHeaders.entityId), t(ADMIN.auditHeaders.depotId)],
-      rows.map((r) => [
-        formatDateTime(r.occurred_at),
-        r.actor_name ?? '',
-        bilingualPlain(auditEventSummary(r)),
-        r.entity_type,
-        r.entity_id ?? '',
-        r.depot_id ?? '',
-      ]),
-    )
+    const columns: ExportColumn[] = [
+      { header: t(ADMIN.auditHeaders.occurred), kind: 'date' },
+      { header: t(ADMIN.auditHeaders.actor) },
+      { header: t(ADMIN.auditHeaders.action) },
+      { header: t(ADMIN.auditHeaders.entityType) },
+      { header: t(ADMIN.auditHeaders.entityId) },
+      { header: t(ADMIN.auditHeaders.depotId) },
+    ]
+    const filterLines = [`Période : ${range.startDate} → ${range.endDate}`]
+    if (action) filterLines.push(`Action : ${action}`)
+    if (entityType) filterLines.push(`Entité : ${entityType}`)
+    void exportTable({
+      kind: 'csv',
+      columns,
+      rows: rows.map((r) => ({
+        cells: [
+          r.occurred_at,
+          r.actor_name ?? '',
+          bilingualPlain(auditEventSummary(r)),
+          r.entity_type,
+          r.entity_id ?? '',
+          r.depot_id ?? '',
+        ],
+      })),
+      meta: {
+        title: 'Journal d\'audit',
+        sheetName: 'Audit',
+        basename: `audit-log-${range.startDate}_${range.endDate}`,
+        depotName,
+        filterLines,
+      },
+    })
   }
 
   return (

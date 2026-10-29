@@ -27,8 +27,8 @@ import {
 import { BilingualText } from '@/components/ui/BilingualText'
 import { bilingualAriaLabel, bilingualPlain, t } from '@/lib/bilingual/types'
 import { useSupplierList, type SupplierRow } from '@/hooks/useAchats'
-import { downloadCsv } from '@/lib/csvExport'
-import { downloadXlsx } from '@/lib/reportExport'
+import { exportTable, type ExportColumn } from '@/lib/listExport'
+import { exportCfaInt } from '@/lib/tableExport'
 import {
   nextSupplierSort,
   SUPPLIER_EXPORT_HEADERS,
@@ -73,14 +73,27 @@ export function SuppliersPage() {
   }
 
   function exportRows(kind: 'csv' | 'xlsx') {
-    const body = supplierExportRows(rows)
-    if (kind === 'csv') {
-      downloadCsv('fournisseurs.csv', SUPPLIER_EXPORT_HEADERS, body)
-      return
-    }
-    downloadXlsx('fournisseurs.xlsx', [
-      { name: 'Fournisseurs', headers: SUPPLIER_EXPORT_HEADERS, rows: body },
-    ])
+    const filterLines: string[] = []
+    filterLines.push(activeOnly ? 'Actifs seulement' : 'Tous les fournisseurs')
+    if (debouncedSearch.trim()) filterLines.push(`Recherche : ${debouncedSearch.trim()}`)
+    const columns: ExportColumn[] = SUPPLIER_EXPORT_HEADERS.map((header, i) => ({
+      header,
+      kind: i === 3 ? 'money' : i === 4 ? 'enum' : 'text',
+      total: i === 3,
+    }))
+    void exportTable({
+      kind,
+      columns,
+      rows: supplierExportRows(rows).map((cells) => ({
+        cells: cells.map((v, i) => (i === 3 ? exportCfaInt(Number(v) || 0) : v)),
+      })),
+      meta: {
+        title: 'Fournisseurs',
+        sheetName: 'Fournisseurs',
+        basename: 'fournisseurs',
+        filterLines,
+      },
+    })
   }
 
   const chips: FilterBarChip[] = useMemo(

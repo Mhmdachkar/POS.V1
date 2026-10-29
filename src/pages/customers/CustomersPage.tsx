@@ -52,17 +52,25 @@ import {
 import { BilingualText } from '@/components/ui/BilingualText'
 import { t, bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
 import { fetchCustomerList, useCustomerList, type CustomerListFilter } from '@/hooks/useCustomers'
-import { useCustomerLedgerBalances } from '@/hooks/useCustomerActivity'
+import { fetchCustomerLedgerBalance, useCustomerLedgerBalances } from '@/hooks/useCustomerActivity'
 import { displayedAccountBalanceCfa } from '@/lib/customerAccountBalance'
 import { useAuthStore } from '@/stores/authStore'
-import { exportFilteredList, LIST_EXPORT_MAX_ROWS } from '@/lib/listExport'
+import { exportTable, LIST_EXPORT_MAX_ROWS, type ExportColumn } from '@/lib/listExport'
+import { exportActiveLabel } from '@/lib/exportLabels'
+import { exportCfaInt } from '@/lib/tableExport'
 import { toastErrorBi } from '@/lib/bilingual/toast'
 import { CustomerDetailDrawer } from './components/CustomerDetailDrawer'
 import { CustomerFormModal } from './components/CustomerFormModal'
 import { CustomerAvatar, customerAccountTone } from '@/components/customers/CustomerAvatar'
 import { LedgerSoldeAmount } from './components/LedgerSoldeAmount'
 
-const CUSTOMER_EXPORT_HEADERS = ['Nom', 'Telephone', 'Actif', 'Solde CFA', 'Cree']
+const CUSTOMER_EXPORT_COLUMNS: ExportColumn[] = [
+  { header: 'Nom' },
+  { header: 'Téléphone' },
+  { header: 'Actif', kind: 'enum' },
+  { header: 'Solde CFA', kind: 'money', total: true },
+  { header: 'Créé le', kind: 'date' },
+]
 
 /** Name/phone search debounce. Do not query on every keystroke. */
 export const CUSTOMERS_SEARCH_DEBOUNCE_MS = 300
@@ -175,19 +183,34 @@ export function CustomersPage() {
         search: debouncedSearch,
         filter,
       })
-      const body = result.data.map((c) => [
-        c.name,
-        c.phone ?? '',
-        c.is_active ? '1' : '0',
-        c.balance_owed_cfa,
-        c.created_at,
-      ])
-      exportFilteredList({
+      const ledgerEntries = await Promise.all(
+        result.data.map(async (c) => [c.id, await fetchCustomerLedgerBalance(c.id)] as const),
+      )
+      const ledgerById = Object.fromEntries(ledgerEntries) as Record<string, number | null>
+      const filterLines: string[] = []
+      if (filter !== 'all') filterLines.push(`Filtre : ${filter}`)
+      if (debouncedSearch.trim()) filterLines.push(`Recherche : ${debouncedSearch.trim()}`)
+      await exportTable({
         kind,
-        basename: 'clients',
-        sheetName: 'Clients',
-        headers: CUSTOMER_EXPORT_HEADERS,
-        rows: body,
+        columns: CUSTOMER_EXPORT_COLUMNS,
+        rows: result.data.map((c) => {
+          const solde = displayedAccountBalanceCfa(ledgerById[c.id], c.balance_owed_cfa)
+          return {
+            cells: [
+              c.name,
+              c.phone ?? '',
+              exportActiveLabel(c.is_active),
+              exportCfaInt(solde),
+              c.created_at,
+            ],
+          }
+        }),
+        meta: {
+          title: 'Clients',
+          sheetName: 'Clients',
+          basename: 'clients',
+          filterLines,
+        },
       })
       if (result.count > LIST_EXPORT_MAX_ROWS) {
         toastErrorBi(COMMON.exportTruncated)
