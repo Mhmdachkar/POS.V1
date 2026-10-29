@@ -49,6 +49,8 @@ import {
   useDeliveryNotesForSale,
 } from '@/hooks/useDeliveryNotes'
 import { printDeliveryNotePdf } from '@/lib/deliveryNoteDocument'
+import { printSaleInvoicePdf } from '@/lib/saleInvoiceDocument'
+import { fetchBusinessSettings } from '@/hooks/useBusinessSettings'
 import { t } from '@/lib/bilingual/types'
 import { formatSoldQuantityDetail } from '@/lib/saleQuantityDisplay'
 import { SaleUnitBadge } from '@/components/sales/SaleUnitBadge'
@@ -289,10 +291,44 @@ export function SaleDetailDrawer({ saleId, shiftId, isOverRefund = false, onClos
     })
 
   const canVoid = sale && sale.status === 'completed'
+  const canPrintInvoice =
+    canMutateSale &&
+    sale &&
+    (sale.status === 'completed' || sale.status === 'partially_returned')
   const canCreateDelivery =
     canMutateSale &&
     sale &&
     (sale.status === 'completed' || sale.status === 'partially_returned')
+
+  async function handlePrintFacture() {
+    if (!sale) return
+    try {
+      const settings = await fetchBusinessSettings()
+      const depot =
+        queryClient.getQueryData<Array<{ id: string; name: string; location?: string }>>(
+          depotOptionKeys.all,
+        )?.find((d) => d.id === sale.depot_id) ?? null
+      printSaleInvoicePdf({
+        sale,
+        client: {
+          name: sale.customer_name?.trim() || t(SALES.saleInfo),
+          phone: sale.customer_phone,
+          address: null,
+        },
+        header: {
+          businessName: settings.business_name,
+          logoUrl: settings.logo_url,
+          phone: settings.phone,
+          businessAddress: settings.address,
+          depotName: depot?.name ?? depotName,
+          depotAddress: depot?.location ?? null,
+        },
+      })
+    } catch (err) {
+      const parsed = parseError(err)
+      toastErrorFromCode(parsed.code, parsed.details)
+    }
+  }
 
   async function handlePrintDeliveryNote(noteId: string) {
     try {
@@ -685,6 +721,17 @@ export function SaleDetailDrawer({ saleId, shiftId, isOverRefund = false, onClos
                   ?? depotName
                 }
               />
+              )}
+              {canPrintInvoice && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full gap-2"
+                  onClick={() => { void handlePrintFacture() }}
+                >
+                  <FileText className="h-4 w-4" />
+                  {t(SALES.printInvoiceA4)}
+                </Button>
               )}
               {canCreateDelivery && (
                 <Button

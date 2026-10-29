@@ -67,6 +67,7 @@ export interface SaleItemDetail {
   net_line_total_cfa: number
   product_name: string
   unit_name: string
+  serial_number: string | null
 }
 
 export interface SalePaymentDetail {
@@ -286,7 +287,7 @@ export async function fetchSaleDetail(id: string): Promise<SaleDetailData> {
       .select(
         `
         *,
-        products!product_id(name, product_units(unit_level, unit_name))
+        products!product_id(name, product_units(unit_level, unit_name, serial_number))
         `,
       )
       .eq('sale_id', id)
@@ -326,6 +327,7 @@ export async function fetchSaleDetail(id: string): Promise<SaleDetailData> {
       net_line_total_cfa: item.net_line_total_cfa,
       product_name: product?.name ?? '',
       unit_name: unitRow?.unit_name ?? '',
+      serial_number: unitRow?.serial_number ?? null,
     }
   })
 

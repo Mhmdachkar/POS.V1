@@ -158,6 +158,7 @@ export const SALES = {
   ),
   deliveryCreated: bi('Bon de livraison créé', 'Delivery note created'),
   printDeliveryNote: bi('Imprimer le BL', 'Print delivery note'),
+  printInvoiceA4: bi('Facture A4', 'A4 invoice'),
   deliveryNoStock: bi(
     'Aucun mouvement de stock. La préparation dépôt reste séparée.',
     'No stock movement. Depot picking stays separate.',
