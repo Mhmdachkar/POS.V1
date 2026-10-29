@@ -110,6 +110,7 @@ export function CustomerActivityPage() {
   const totalCount = activity?.count ?? 0
   const totalPages = Math.max(1, Math.ceil(totalCount / CUSTOMER_ACTIVITY_PAGE_SIZE))
   const isLoading = loadingCustomer || loadingActivity
+  const soldeLoading = loadingActivity && activity?.accountBalanceCfa === undefined
   const accountBalanceCfa = activity?.accountBalanceCfa ?? customer?.balance_owed_cfa ?? 0
 
   const handleFilterChange = (next: CustomerActivityTypeFilter) => {
@@ -181,7 +182,7 @@ export function CustomerActivityPage() {
           actions={
             customer ? (
               <div className="flex flex-col items-end gap-2">
-                <ClientSoldeBlock accountBalanceCfa={accountBalanceCfa} />
+                <ClientSoldeBlock accountBalanceCfa={accountBalanceCfa} loading={soldeLoading} />
                 {isAdmin && (
                   <div className="flex flex-col items-end gap-2">
                     <div className="flex flex-wrap items-center justify-end gap-2">
@@ -260,6 +261,7 @@ export function CustomerActivityPage() {
               summary={summary}
               isLoading={loadingSummary}
               outstandingBalanceCfa={accountBalanceCfa}
+              balanceLoading={soldeLoading}
             />
           )}
           <ActivityFilterTabs value={filter} onChange={handleFilterChange} />

@@ -37,6 +37,8 @@ interface CustomerFinancialSummaryProps {
   isLoading?: boolean
   /** Displayed solde from customer_ledger running balance (signed). */
   outstandingBalanceCfa: number
+  /** True while ledger solde is still loading — avoid flashing Compte soldé / 0. */
+  balanceLoading?: boolean
   className?: string
   /** Compact header band (activity page) vs stacked drawer section. */
   layout?: 'drawer' | 'page'
@@ -50,6 +52,7 @@ export function CustomerFinancialSummary({
   summary,
   isLoading = false,
   outstandingBalanceCfa,
+  balanceLoading = false,
   className,
   layout = 'drawer',
 }: CustomerFinancialSummaryProps) {
@@ -69,35 +72,49 @@ export function CustomerFinancialSummary({
           <div
             className={cn(
               'px-3 py-2.5 text-center',
-              clientSoldeKind(outstandingBalanceCfa) === 'due' ? 'bg-danger-bg' : 'bg-success-bg',
+              balanceLoading
+                ? 'bg-surface-muted'
+                : clientSoldeKind(outstandingBalanceCfa) === 'due'
+                  ? 'bg-danger-bg'
+                  : 'bg-success-bg',
             )}
           >
             <p
               className={cn(
                 'text-[11px] font-semibold uppercase tracking-wide',
-                clientSoldeKind(outstandingBalanceCfa) === 'due'
-                  ? 'text-danger-foreground'
-                  : 'text-success-foreground',
+                balanceLoading
+                  ? 'text-text-secondary'
+                  : clientSoldeKind(outstandingBalanceCfa) === 'due'
+                    ? 'text-danger-foreground'
+                    : 'text-success-foreground',
               )}
             >
               {t(
-                clientSoldeKind(outstandingBalanceCfa) === 'due'
-                  ? CUSTOMERS.balanceOwed
-                  : clientSoldeKind(outstandingBalanceCfa) === 'credit'
-                    ? CUSTOMERS.creditInFavor
-                    : CUSTOMERS.accountSettled,
+                balanceLoading
+                  ? CUSTOMERS.balanceSection
+                  : clientSoldeKind(outstandingBalanceCfa) === 'due'
+                    ? CUSTOMERS.balanceOwed
+                    : clientSoldeKind(outstandingBalanceCfa) === 'credit'
+                      ? CUSTOMERS.creditInFavor
+                      : CUSTOMERS.accountSettled,
               )}
             </p>
             <p className="mt-1 text-base font-semibold tabular-nums text-text-primary">&nbsp;</p>
-            <MoneyDisplay
-              amount={clientSoldeDisplayAmount(outstandingBalanceCfa)}
-              size="medium"
-              danger={clientSoldeKind(outstandingBalanceCfa) === 'due'}
-              className={cn(
-                'mt-0.5',
-                clientSoldeKind(outstandingBalanceCfa) !== 'due' && 'text-success-foreground',
-              )}
-            />
+            {balanceLoading ? (
+              <span className="mt-0.5 inline-block text-base tabular-nums text-text-muted" aria-busy="true">
+                …
+              </span>
+            ) : (
+              <MoneyDisplay
+                amount={clientSoldeDisplayAmount(outstandingBalanceCfa)}
+                size="medium"
+                danger={clientSoldeKind(outstandingBalanceCfa) === 'due'}
+                className={cn(
+                  'mt-0.5',
+                  clientSoldeKind(outstandingBalanceCfa) !== 'due' && 'text-success-foreground',
+                )}
+              />
+            )}
           </div>
         </>
       )}
