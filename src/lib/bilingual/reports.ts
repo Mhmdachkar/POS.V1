@@ -14,7 +14,7 @@ export const REPORTS = {
   ),
   purchased: bi('Acheté', 'Purchased'),
   creditPurchases: bi('À crédit', 'On credit'),
-  paidAtValidate: bi('Payé à la validation', 'Paid on validation'),
+  paidAtValidate: bi('Payé à la validation du BR', 'Paid when GR is validated'),
   receiptCount: bi('BR', 'GRs'),
   reportSummary: bi('Résumé', 'Summary'),
   reportByProduct: bi('Par produit', 'By product'),
