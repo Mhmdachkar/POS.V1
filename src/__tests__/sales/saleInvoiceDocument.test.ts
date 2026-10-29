@@ -75,6 +75,17 @@ describe('saleInvoiceDocument', () => {
     expect(html).not.toMatch(/TVA|ASDI|timbre/i)
   })
 
+  it('always shows Reste a payer including 0 CFA', () => {
+    const html = buildSaleInvoicePrintHtml({
+      sale: baseSale({ amount_applied_cfa: 10_000, balance_added_cfa: 0 }),
+      client: { name: 'Client Test', phone: null, address: null },
+      header: { businessName: 'Aquilux' },
+    })
+    expect(html).toContain('Reste \u00e0 payer')
+    expect(html).toContain(formatCFA(0))
+    expect(html).toContain('@page { size: A4; margin: 0; }')
+  })
+
   it('lists returns under Avoir without reducing invoice Total', () => {
     const html = buildSaleInvoicePrintHtml({
       sale: baseSale({

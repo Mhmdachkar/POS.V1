@@ -17,10 +17,11 @@ import {
 import { printCommercialDocument } from '@/lib/reportExport'
 import { DISPLAY_TIME_ZONE, formatReportDate } from '@/lib/formatters'
 import { releveSoldeSentence } from '@/lib/amountInWordsFr'
+import { ledgerAccountBalanceCfa } from '@/lib/customerAccountBalance'
 
 export const LEDGER_PERIOD_SQL_NOTE_THRESHOLD = 2000
 
-export type StatementLineType = 'Vente' | 'Reglement' | 'Retour' | 'Encaissement'
+export type StatementLineType = 'Vente' | 'Reglement' | 'Retour' | 'Encaissement' | 'Remboursement'
 
 /** @deprecated Use statementLineTypeLabel */
 export type StatementLibelle = 'Vente' | 'Reglement' | 'Retour'
@@ -51,7 +52,10 @@ export interface CustomerStatementDataset {
   totalDebitCfa: number
   totalCreditCfa: number
   soldeFinalCfa: number
+  /** customers.balance_owed_cfa — debt-only, not used for displayed closing solde. */
   balanceOwedCfa: number
+  /** Last customer_ledger running_balance_cfa (signed). Displayed client solde. */
+  accountBalanceCfa: number
   largeLedgerNote: boolean
   asOfDateLabel: string
 }
@@ -68,6 +72,7 @@ function ymdInAbidjan(iso: string): string {
 export function statementLineTypeLabel(type: StatementLineType): string {
   if (type === 'Reglement') return 'R\u00e8glement'
   if (type === 'Encaissement') return 'Encaissement'
+  if (type === 'Remboursement') return 'Remboursement'
   return type
 }
 
@@ -75,6 +80,7 @@ function typeForKind(kind: CustomerLedgerRpcRow['kind']): StatementLineType {
   if (kind === 'sale') return 'Vente'
   if (kind === 'return') return 'Retour'
   if (kind === 'cash_payment') return 'Encaissement'
+  if (kind === 'cash_refund') return 'Remboursement'
   return 'Reglement'
 }
 
@@ -85,13 +91,12 @@ export function statementDetailForLedgerRow(row: CustomerLedgerRpcRow): string {
   if (row.kind === 'cash_payment') {
     return 'Encaissement sur vente'
   }
+  if (row.kind === 'cash_refund') {
+    return 'Remboursement esp\u00e8ces'
+  }
   if (row.kind === 'return') {
     const items = row.item_summary?.trim()
-    const cash = Number(row.cash_refunded_cfa ?? 0)
-    const parts: string[] = []
-    if (items) parts.push(items)
-    if (cash > 0) parts.push(`Remboursement esp\u00e8ces ${formatDocCfa(cash)}`)
-    return parts.join(' \u2014 ') || 'Retour marchandise'
+    return items || 'Retour marchandise'
   }
   const note = row.note?.trim()
   return note || 'Paiement compte client'
@@ -197,13 +202,10 @@ export function buildCustomerStatementDataset(opts: {
   const lines = withOpeningBalanceRow(soldeInitialCfa, periodFromYmd, movementLines)
   const totalDebitCfa = lines.reduce((s, l) => s + l.debitCfa, 0)
   const totalCreditCfa = lines.reduce((s, l) => s + l.creditCfa, 0)
-  const soldeFinalFromLedger =
-    lines.length > 0 ? lines[lines.length - 1]!.soldeCfa : soldeInitialCfa
-  const fullAccount =
-    periodFromYmd == null && periodToYmd == null
-  /** Full-period PDF solde matches customers.balance_owed_cfa (screen). */
-  const soldeFinalCfa = fullAccount ? opts.balanceOwedCfa : soldeFinalFromLedger
+  const soldeFinalCfa =
+    movementLines.length > 0 ? movementLines[movementLines.length - 1]!.soldeCfa : soldeInitialCfa
   const asOfIso = opts.asOfIso ?? new Date().toISOString()
+  const accountBalanceCfa = ledgerAccountBalanceCfa(opts.ledgerOldestFirst)
 
   return {
     customerId: opts.customerId,
@@ -217,26 +219,23 @@ export function buildCustomerStatementDataset(opts: {
     totalCreditCfa,
     soldeFinalCfa,
     balanceOwedCfa: opts.balanceOwedCfa,
+    accountBalanceCfa,
     largeLedgerNote: opts.ledgerOldestFirst.length > LEDGER_PERIOD_SQL_NOTE_THRESHOLD,
     asOfDateLabel: formatDocDate(asOfIso),
   }
 }
 
-/** Full-range invariant used by tests and UI checks. */
+/** Full-range closing solde equals the displayed client solde (ledger running balance). */
 export function statementMatchesBalance(dataset: CustomerStatementDataset): boolean {
   if (dataset.periodFromYmd != null || dataset.periodToYmd != null) return true
-  return Math.round(dataset.soldeFinalCfa) === Math.round(dataset.balanceOwedCfa)
+  return Math.round(dataset.soldeFinalCfa) === Math.round(dataset.accountBalanceCfa)
 }
 
 const STATEMENT_EXTRA_CSS = `
+  table.doc.statement th, table.doc.statement td { border: 1px solid #d0d5dd; }
   table.doc.statement tbody tr:nth-child(even) { background: #f9fafb; }
   table.doc.statement tbody tr.opening td { font-weight: 600; background: #f3f4f6; }
   .statement-footer { margin-top: 14px; font-size: 11px; color: #667085; text-align: right; }
-  @media print {
-    .statement-page-footer::after {
-      content: counter(page) " / " counter(pages);
-    }
-  }
 `
 
 export function buildCustomerStatementHtml(dataset: CustomerStatementDataset): string {
@@ -295,13 +294,14 @@ export function buildCustomerStatementHtml(dataset: CustomerStatementDataset): s
       <tr class="net"><td>${escapeDocHtml(closingLabel)} au ${escapeDocHtml(dataset.asOfDateLabel)}</td><td>${escapeDocHtml(closingAmount)}</td></tr>
     </table>
     <p class="words">${escapeDocHtml(releveSoldeSentence(dataset.soldeFinalCfa))}</p>
-    <p class="statement-footer statement-page-footer">Page</p>
+    ${dataset.soldeFinalCfa < 0 ? `<p class="note">Avoir client</p>` : ''}
+    <p class="statement-footer">\u00c9dit\u00e9 le ${escapeDocHtml(dataset.asOfDateLabel)}</p>
   `
-  const html = wrapCommercialDocument({
+  return wrapCommercialDocument({
     title: `Releve — ${dataset.client.name}`,
     bodyHtml: body,
+    extraCss: STATEMENT_EXTRA_CSS,
   })
-  return html.replace('</style>', `${STATEMENT_EXTRA_CSS}</style>`)
 }
 
 export function printCustomerStatementPdf(dataset: CustomerStatementDataset): void {

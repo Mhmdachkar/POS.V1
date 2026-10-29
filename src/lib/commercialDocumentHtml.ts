@@ -65,9 +65,10 @@ export interface CommercialDocMeta {
 }
 
 const BASE_CSS = `
-  @page { margin: 12mm; }
+  @page { size: A4; margin: 0; }
   * { box-sizing: border-box; }
-  body { font-family: "Segoe UI", system-ui, sans-serif; color: #111; font-size: 11px; margin: 0; padding: 8px; }
+  html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; color: #111; font-size: 11px; margin: 0; padding: 12mm; }
   h1 { font-size: 16px; margin: 0 0 4px; letter-spacing: 0.02em; text-transform: uppercase; }
   h2 { font-size: 12px; margin: 0 0 8px; font-weight: 600; }
   .muted { color: #667085; }
@@ -95,15 +96,16 @@ const BASE_CSS = `
   .sign { margin-top: 28px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
   .sign-box { border: 1px dashed #98a2b3; min-height: 72px; border-radius: 6px; padding: 8px; }
   .sign-box span { font-size: 10px; color: #667085; text-transform: uppercase; letter-spacing: 0.04em; }
-  @media print { body { padding: 0; } }
+  @media print { body { padding: 12mm; } }
 `
 
 export function wrapCommercialDocument(opts: {
   title: string
   bodyHtml: string
+  extraCss?: string
 }): string {
   return `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>${escapeDocHtml(opts.title)}</title>
-<style>${BASE_CSS}</style></head><body>${opts.bodyHtml}</body></html>`
+<style>${BASE_CSS}${opts.extraCss ?? ''}</style></head><body>${opts.bodyHtml}</body></html>`
 }
 
 export function renderCommercialHeader(
@@ -244,10 +246,7 @@ export function renderSaleInvoiceTotals(opts: {
     opts.amountPaidCfa > 0 || opts.balanceAddedCfa > 0
       ? `<tr><td>Pay\u00e9</td><td>${escapeDocHtml(formatDocCfa(opts.amountPaidCfa))}</td></tr>`
       : ''
-  const resteRow =
-    opts.balanceAddedCfa > 0
-      ? `<tr><td>Reste \u00e0 payer</td><td>${escapeDocHtml(formatDocCfa(opts.balanceAddedCfa))}</td></tr>`
-      : ''
+  const resteRow = `<tr><td>Reste \u00e0 payer</td><td>${escapeDocHtml(formatDocCfa(opts.balanceAddedCfa))}</td></tr>`
   return `<table class="totals">
   <tr><td>Sous-total</td><td>${escapeDocHtml(formatDocCfa(opts.subtotalCfa))}</td></tr>
   ${opts.discountCfa > 0 ? `<tr><td>Remise</td><td>${escapeDocHtml(formatDocCfa(opts.discountCfa))}</td></tr>` : ''}

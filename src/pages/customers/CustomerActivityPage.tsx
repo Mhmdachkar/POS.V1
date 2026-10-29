@@ -2,7 +2,7 @@
  * CustomerActivityPage — paginated account activity for one customer.
  *
  * Newest first. Sales, returns, and standalone payments are separate events.
- * Current balance is read from the customer record, never from visible rows.
+ * Displayed solde is last customer_ledger running_balance_cfa, not the visible page.
  */
 
 import { useState } from 'react'
@@ -14,7 +14,6 @@ import {
   Button,
   EmptyState,
   LoadingButton,
-  MoneyDisplay,
   PageHeader,
   PaginationBar,
   Skeleton,
@@ -48,6 +47,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
 import { SaleDetailDrawer } from '@/pages/sales/components/SaleDetailDrawer'
 import { CustomerFinancialSummary } from './components/CustomerFinancialSummary'
+import { ClientSoldeBlock } from './components/ClientSoldeBlock'
 import { CustomerAvatar } from '@/components/customers/CustomerAvatar'
 import { t } from '@/lib/bilingual/types'
 import {
@@ -109,6 +109,7 @@ export function CustomerActivityPage() {
   const totalCount = activity?.count ?? 0
   const totalPages = Math.max(1, Math.ceil(totalCount / CUSTOMER_ACTIVITY_PAGE_SIZE))
   const isLoading = loadingCustomer || loadingActivity
+  const accountBalanceCfa = activity?.accountBalanceCfa ?? customer?.balance_owed_cfa ?? 0
 
   const handleFilterChange = (next: CustomerActivityTypeFilter) => {
     setFilter(next)
@@ -168,7 +169,7 @@ export function CustomerActivityPage() {
               <span className="inline-flex items-center gap-3">
                 <CustomerAvatar
                   name={customer.name}
-                  balanceOwedCfa={customer.balance_owed_cfa}
+                  balanceOwedCfa={Math.max(0, accountBalanceCfa)}
                   isActive={customer.is_active}
                 />
                 <span>{customer.name}</span>
@@ -179,15 +180,7 @@ export function CustomerActivityPage() {
           actions={
             customer ? (
               <div className="flex flex-col items-end gap-2">
-                <div className="text-right">
-                  <p className="text-xs text-text-secondary">{t(CUSTOMERS.outstandingBalance)}</p>
-                  <MoneyDisplay
-                    amount={customer.balance_owed_cfa}
-                    size="medium"
-                    danger={customer.balance_owed_cfa > 0}
-                    className={customer.balance_owed_cfa <= 0 ? 'text-success-foreground' : undefined}
-                  />
-                </div>
+                <ClientSoldeBlock accountBalanceCfa={accountBalanceCfa} />
                 {isAdmin && (
                   <div className="flex flex-col items-end gap-2">
                     <div className="flex flex-wrap items-center justify-end gap-2">
@@ -265,7 +258,7 @@ export function CustomerActivityPage() {
               layout="page"
               summary={summary}
               isLoading={loadingSummary}
-              outstandingBalanceCfa={customer.balance_owed_cfa}
+              outstandingBalanceCfa={accountBalanceCfa}
             />
           )}
           <ActivityFilterTabs value={filter} onChange={handleFilterChange} />

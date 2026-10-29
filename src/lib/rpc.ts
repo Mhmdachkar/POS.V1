@@ -475,7 +475,7 @@ export const rpc = {
 
 export interface CustomerLedgerRpcRow {
   id: string
-  kind: 'sale' | 'cash_payment' | 'return' | 'account_payment'
+  kind: 'sale' | 'cash_payment' | 'return' | 'account_payment' | 'cash_refund'
   occurred_at: string
   reference: string | null
   item_summary: string | null
