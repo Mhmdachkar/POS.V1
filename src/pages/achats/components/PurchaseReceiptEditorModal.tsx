@@ -7,6 +7,11 @@ import { BiButtonStack, BiModalTitle, BiTableHeader } from '@/lib/bilingual/ui'
 import { t } from '@/lib/bilingual/types'
 import { parseError } from '@/lib/errors'
 import { formatCfaIntInput, formatThousandsInput, parseCFAInput, roundCfaInt } from '@/lib/formatters'
+import {
+  rankAchatsProductHits,
+  resolveNearestAchatsProduct,
+  type AchatsResolveHit,
+} from '@/lib/achatsProductResolve'
 import { resolveProductPhotoUrl } from '@/lib/productPhotos'
 import { useUpsertPurchaseReceipt, useSupplierList } from '@/hooks/useAchats'
 import { useDepotStore } from '@/stores/depotStore'
@@ -41,26 +46,13 @@ function primaryCode(p: ProductWithUnits): string | null {
   return p.units.find((u) => u.serial_number?.trim())?.serial_number?.trim() ?? null
 }
 
-function resolveAddTarget(
-  query: string,
-  hits: ProductWithUnits[],
-): { product: ProductWithUnits; unitLevel: number } | null {
-  const needle = query.trim().toLowerCase()
-  if (!needle) return null
-
-  for (const p of hits) {
-    const exact = p.units.find((u) => u.serial_number?.trim().toLowerCase() === needle)
-    if (exact) return { product: p, unitLevel: exact.unit_level }
-  }
-
-  if (hits.length === 1) {
-    const p = hits[0]!
-    const unit = p.units.find((u) => u.unit_level === 0) ?? p.units[0]
-    if (!unit) return null
-    return { product: p, unitLevel: unit.unit_level }
-  }
-
-  return null
+interface PendingLine {
+  product: ProductWithUnits
+  unitLevel: number
+  unitName: string
+  serialNumber: string | null
+  unitCostCfa: string
+  quantityInUnit: string
 }
 
 function ProductThumb({
@@ -98,14 +90,25 @@ export function PurchaseReceiptEditorModal({ open, onClose, onCreated }: Props) 
   const suppliersQ = useSupplierList(true)
   const upsert = useUpsertPurchaseReceipt()
   const searchRef = useRef<HTMLInputElement>(null)
+  const qtyRef = useRef<HTMLInputElement>(null)
+  const costRef = useRef<HTMLInputElement>(null)
   const [supplierId, setSupplierId] = useState('')
   const [documentDate, setDocumentDate] = useState(todayAbidjan())
   const [externalRef, setExternalRef] = useState('')
   const [notes, setNotes] = useState('')
   const [lines, setLines] = useState<LineDraft[]>([])
   const [productQuery, setProductQuery] = useState('')
+  const [pending, setPending] = useState<PendingLine | null>(null)
   const [error, setError] = useState('')
-  const { data: products = [] } = usePOSProductCatalog(productQuery, depotId, !!depotId)
+  const { data: products = [] } = usePOSProductCatalog(
+    pending ? '' : productQuery,
+    depotId,
+    !!depotId,
+  )
+  const suggestions = useMemo(
+    () => (pending ? [] : rankAchatsProductHits(productQuery, products).slice(0, 12)),
+    [pending, productQuery, products],
+  )
 
   useEffect(() => {
     if (!open) return
@@ -115,6 +118,7 @@ export function PurchaseReceiptEditorModal({ open, onClose, onCreated }: Props) 
     setNotes('')
     setLines([])
     setProductQuery('')
+    setPending(null)
     setError('')
     const tmr = setTimeout(() => searchRef.current?.focus(), 50)
     return () => clearTimeout(tmr)
@@ -131,52 +135,87 @@ export function PurchaseReceiptEditorModal({ open, onClose, onCreated }: Props) 
     [lines],
   )
 
-  function addProduct(p: ProductWithUnits, unitLevel?: number) {
-    const unit =
-      (unitLevel != null ? p.units.find((u) => u.unit_level === unitLevel) : null) ??
-      p.units.find((u) => u.unit_level === 0) ??
-      p.units[0]
-    if (!unit) return
+  function focusQty() {
+    requestAnimationFrame(() => {
+      qtyRef.current?.focus()
+      qtyRef.current?.select()
+    })
+  }
+
+  function stageHit(hit: AchatsResolveHit) {
+    setPending({
+      product: hit.product,
+      unitLevel: hit.unit.unit_level,
+      unitName: hit.unit.unit_name,
+      serialNumber: hit.unit.serial_number?.trim() || primaryCode(hit.product),
+      unitCostCfa: formatCfaIntInput(hit.unit.cost_price_cfa),
+      quantityInUnit: '1',
+    })
+    setProductQuery(hit.product.name)
+    setError('')
+    focusQty()
+  }
+
+  function confirmFromQuery() {
+    const hit = resolveNearestAchatsProduct(productQuery, products)
+    if (!hit) {
+      setError(t(COMMON.noResults))
+      return
+    }
+    stageHit(hit)
+  }
+
+  function clearPending() {
+    setPending(null)
+    setProductQuery('')
+    setError('')
+    requestAnimationFrame(() => searchRef.current?.focus())
+  }
+
+  function commitPending() {
+    if (!pending) return
+    const qty = Number(pending.quantityInUnit)
+    if (!Number.isFinite(qty) || qty <= 0) {
+      setError(t(ACHATS.qty))
+      focusQty()
+      return
+    }
+    const p = pending.product
+    const unitLevel = pending.unitLevel
+    const unitCost = pending.unitCostCfa
+    const serial = pending.serialNumber
+    const unitName = pending.unitName
 
     setLines((prev) => {
-      const existing = prev.find(
-        (l) => l.product_id === p.id && l.unit_level === unit.unit_level,
-      )
+      const existing = prev.find((l) => l.product_id === p.id && l.unit_level === unitLevel)
       if (existing) {
-        const nextQty = Number(existing.quantity_in_unit || 0) + 1
+        const nextQty = Number(existing.quantity_in_unit || 0) + qty
         return prev.map((l) =>
           l.key === existing.key
-            ? { ...l, quantity_in_unit: String(Number.isFinite(nextQty) ? nextQty : 1) }
+            ? {
+                ...l,
+                quantity_in_unit: String(Number.isFinite(nextQty) ? nextQty : qty),
+                unit_cost_cfa: unitCost,
+              }
             : l,
         )
       }
       return [
         ...prev,
         {
-          key: `${p.id}-${unit.unit_level}-${Date.now()}`,
+          key: `${p.id}-${unitLevel}-${Date.now()}`,
           product_id: p.id,
           product_name: p.name,
           product_photo_url: p.photo_url ?? null,
-          serial_number: unit.serial_number?.trim() || primaryCode(p),
-          unit_level: unit.unit_level,
-          unit_name: unit.unit_name,
-          quantity_in_unit: '1',
-          unit_cost_cfa: formatCfaIntInput(unit.cost_price_cfa),
+          serial_number: serial,
+          unit_level: unitLevel,
+          unit_name: unitName,
+          quantity_in_unit: String(qty),
+          unit_cost_cfa: unitCost,
         },
       ]
     })
-    setProductQuery('')
-    setError('')
-    requestAnimationFrame(() => searchRef.current?.focus())
-  }
-
-  function tryAddFromQuery() {
-    const target = resolveAddTarget(productQuery, products)
-    if (!target) {
-      setError(t(COMMON.noResults))
-      return
-    }
-    addProduct(target.product, target.unitLevel)
+    clearPending()
   }
 
   async function saveDraft() {
@@ -298,58 +337,180 @@ export function PurchaseReceiptEditorModal({ open, onClose, onCreated }: Props) 
           </div>
 
           <div className="space-y-2">
-            <label className="block space-y-1">
+            <div className="space-y-1">
               <span className="text-sm font-medium text-text-secondary">
                 <BiTableHeader {...ACHATS.searchProduct} />
               </span>
               <p className="text-xs text-text-muted">{t(ACHATS.enterToAdd)}</p>
-              <div className="flex gap-2">
-                <input
-                  ref={searchRef}
-                  className="w-full h-11 px-3 rounded-md border border-border bg-surface text-sm font-mono"
-                  value={productQuery}
-                  onChange={(e) => {
-                    setProductQuery(e.target.value)
-                    if (error) setError('')
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key !== 'Enter') return
-                    e.preventDefault()
-                    tryAddFromQuery()
-                  }}
-                  placeholder={t(ACHATS.enterToAdd)}
-                  autoComplete="off"
-                />
-                <Button type="button" onClick={() => tryAddFromQuery()}>
-                  Enter
-                </Button>
-              </div>
-            </label>
 
-            {productQuery.trim() && (
+              {!pending ? (
+                <div className="flex gap-2">
+                  <input
+                    ref={searchRef}
+                    className="w-full h-11 px-3 rounded-md border border-border bg-surface text-sm font-mono"
+                    value={productQuery}
+                    onChange={(e) => {
+                      setProductQuery(e.target.value)
+                      if (error) setError('')
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Tab' && productQuery.trim()) {
+                        e.preventDefault()
+                        confirmFromQuery()
+                        return
+                      }
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        confirmFromQuery()
+                      }
+                    }}
+                    placeholder={t(ACHATS.enterToAdd)}
+                    autoComplete="off"
+                  />
+                  <Button type="button" onClick={() => confirmFromQuery()}>
+                    <BiButtonStack {...ACHATS.confirmProduct} />
+                  </Button>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-primary/40 bg-primary-subtle/40 p-3 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <ProductThumb
+                      photoUrl={pending.product.photo_url}
+                      name={pending.product.name}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-text-muted">{t(ACHATS.pendingProduct)}</p>
+                      <p className="text-xs font-mono text-text-secondary truncate">
+                        {pending.serialNumber || '\u2014'}
+                      </p>
+                      <p className="text-sm font-semibold truncate">{pending.product.name}</p>
+                      <p className="text-[11px] text-text-muted">{pending.unitName}</p>
+                    </div>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => clearPending()}>
+                      <BiButtonStack {...ACHATS.changeProduct} />
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="block space-y-0.5">
+                      <span className="text-[11px] text-text-muted">{t(ACHATS.qty)}</span>
+                      <input
+                        ref={qtyRef}
+                        className="w-full h-11 px-3 rounded-md border border-border bg-surface text-sm tabular-nums"
+                        inputMode="decimal"
+                        value={pending.quantityInUnit}
+                        onChange={(e) =>
+                          setPending((cur) =>
+                            cur ? { ...cur, quantityInUnit: e.target.value } : cur,
+                          )
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') {
+                            e.preventDefault()
+                            clearPending()
+                            return
+                          }
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            commitPending()
+                          }
+                        }}
+                      />
+                    </label>
+                    <label className="block space-y-0.5">
+                      <span className="text-[11px] text-text-muted">{t(ACHATS.unitCost)}</span>
+                      <input
+                        ref={costRef}
+                        className="w-full h-11 px-3 rounded-md border border-border bg-surface text-sm tabular-nums"
+                        inputMode="numeric"
+                        value={pending.unitCostCfa}
+                        onChange={(e) =>
+                          setPending((cur) =>
+                            cur
+                              ? { ...cur, unitCostCfa: formatThousandsInput(e.target.value) }
+                              : cur,
+                          )
+                        }
+                        onBlur={() =>
+                          setPending((cur) =>
+                            cur
+                              ? {
+                                  ...cur,
+                                  unitCostCfa: formatCfaIntInput(parseCFAInput(cur.unitCostCfa)),
+                                }
+                              : cur,
+                          )
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') {
+                            e.preventDefault()
+                            clearPending()
+                            return
+                          }
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            commitPending()
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <MoneyDisplay
+                      amount={
+                        Number(pending.quantityInUnit || 0) *
+                        roundCfaInt(parseCFAInput(pending.unitCostCfa || '0'))
+                      }
+                      className="text-sm font-semibold"
+                    />
+                    <Button type="button" onClick={() => commitPending()}>
+                      Enter
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {!pending && productQuery.trim() && (
               <div className="max-h-56 overflow-auto rounded-md border border-border divide-y divide-border">
                 <div className="sticky top-0 z-[1] grid grid-cols-[3rem_minmax(5rem,7rem)_1fr] gap-2 px-3 py-1.5 bg-surface-muted text-[11px] font-semibold text-text-secondary">
                   <span />
                   <BiTableHeader {...ACHATS.code} />
                   <BiTableHeader {...ACHATS.description} />
                 </div>
-                {products.length === 0 ? (
+                {suggestions.length === 0 ? (
                   <p className="px-3 py-2 text-sm text-text-muted">{t(COMMON.noResults)}</p>
                 ) : (
-                  products.slice(0, 12).map((p) => {
-                    const code = primaryCode(p)
+                  suggestions.map((hit, index) => {
+                    const code =
+                      hit.unit.serial_number?.trim() || primaryCode(hit.product) || '\u2014'
                     return (
                       <button
-                        key={p.id}
+                        key={`${hit.product.id}-${hit.unit.unit_level}`}
                         type="button"
-                        className="w-full grid grid-cols-[3rem_minmax(5rem,7rem)_1fr] gap-2 items-center px-3 py-2 text-left hover:bg-surface-muted"
-                        onClick={() => addProduct(p)}
+                        className={cn(
+                          'w-full grid grid-cols-[3rem_minmax(5rem,7rem)_1fr] gap-2 items-center px-3 py-2 text-left hover:bg-surface-muted',
+                          index === 0 && 'bg-primary-subtle/50',
+                        )}
+                        onClick={() => stageHit(hit)}
                       >
-                        <ProductThumb photoUrl={p.photo_url} name={p.name} size="sm" />
+                        <ProductThumb
+                          photoUrl={hit.product.photo_url}
+                          name={hit.product.name}
+                          size="sm"
+                        />
                         <span className="text-xs font-mono text-text-secondary truncate">
-                          {code || '\u2014'}
+                          {code}
                         </span>
-                        <span className="text-sm font-medium truncate">{p.name}</span>
+                        <span className="text-sm font-medium truncate">
+                          {hit.product.name}
+                          {index === 0 && (
+                            <span className="ml-2 text-[10px] font-normal text-text-muted">
+                              Tab
+                            </span>
+                          )}
+                        </span>
                       </button>
                     )
                   })
