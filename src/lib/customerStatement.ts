@@ -14,20 +14,30 @@ import {
   renderCommercialHeader,
   wrapCommercialDocument,
 } from '@/lib/commercialDocumentHtml'
-import { printHtmlDocument } from '@/lib/reportExport'
+import { printCommercialDocument } from '@/lib/reportExport'
 import { DISPLAY_TIME_ZONE, formatReportDate } from '@/lib/formatters'
+import { releveSoldeSentence } from '@/lib/amountInWordsFr'
 
 export const LEDGER_PERIOD_SQL_NOTE_THRESHOLD = 2000
 
+export type StatementLineType = 'Vente' | 'Reglement' | 'Retour' | 'Encaissement'
+
+/** @deprecated Use statementLineTypeLabel */
 export type StatementLibelle = 'Vente' | 'Reglement' | 'Retour'
 
 export interface StatementLine {
   occurredAt: string
   reference: string
-  libelle: StatementLibelle
+  type: StatementLineType
+  /** Short type column label */
+  typeLabel: string
+  /** Detail / libelle column */
+  detail: string
   debitCfa: number
   creditCfa: number
   soldeCfa: number
+  /** Opening-balance row (no movement date). */
+  isOpening?: boolean
 }
 
 export interface CustomerStatementDataset {
@@ -55,16 +65,52 @@ function ymdInAbidjan(iso: string): string {
   }).format(new Date(iso))
 }
 
-function libelleFor(kind: CustomerLedgerRpcRow['kind']): StatementLibelle {
+export function statementLineTypeLabel(type: StatementLineType): string {
+  if (type === 'Reglement') return 'R\u00e8glement'
+  if (type === 'Encaissement') return 'Encaissement'
+  return type
+}
+
+function typeForKind(kind: CustomerLedgerRpcRow['kind']): StatementLineType {
   if (kind === 'sale') return 'Vente'
   if (kind === 'return') return 'Retour'
+  if (kind === 'cash_payment') return 'Encaissement'
   return 'Reglement'
 }
 
-/** Display label with accent for Reglement. */
-export function libelleLabel(libelle: StatementLibelle): string {
-  if (libelle === 'Reglement') return 'R\u00e8glement'
-  return libelle
+export function statementDetailForLedgerRow(row: CustomerLedgerRpcRow): string {
+  if (row.kind === 'sale') {
+    return row.adds_credit ? 'Vente \u00e0 cr\u00e9dit' : 'Vente comptant'
+  }
+  if (row.kind === 'cash_payment') {
+    return 'Encaissement sur vente'
+  }
+  if (row.kind === 'return') {
+    const items = row.item_summary?.trim()
+    const cash = Number(row.cash_refunded_cfa ?? 0)
+    const parts: string[] = []
+    if (items) parts.push(items)
+    if (cash > 0) parts.push(`Remboursement esp\u00e8ces ${formatDocCfa(cash)}`)
+    return parts.join(' \u2014 ') || 'Retour marchandise'
+  }
+  const note = row.note?.trim()
+  return note || 'Paiement compte client'
+}
+
+export function todayYmdAbidjan(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: DISPLAY_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+}
+
+export function statementClosingBalanceLabel(soldeFinalCfa: number): string {
+  const rounded = Math.round(soldeFinalCfa)
+  if (rounded > 0) return 'Solde d\u00fb'
+  if (rounded < 0) return 'Solde en votre faveur'
+  return 'Compte sold\u00e9'
 }
 
 /**
@@ -92,10 +138,13 @@ export function buildStatementLines(
     const amount = Number(row.amount_cfa)
     const debit = amount > 0 ? amount : 0
     const credit = amount < 0 ? Math.abs(amount) : 0
+    const type = typeForKind(row.kind)
     lines.push({
       occurredAt: row.occurred_at,
       reference: row.reference?.trim() || '\u2014',
-      libelle: libelleFor(row.kind),
+      type,
+      typeLabel: statementLineTypeLabel(type),
+      detail: statementDetailForLedgerRow(row),
       debitCfa: debit,
       creditCfa: credit,
       soldeCfa: Number(row.running_balance_cfa),
@@ -103,6 +152,29 @@ export function buildStatementLines(
   }
 
   return { soldeInitialCfa: soldeInitial, lines }
+}
+
+export function withOpeningBalanceRow(
+  soldeInitialCfa: number,
+  periodFromYmd: string | null,
+  lines: StatementLine[],
+): StatementLine[] {
+  if (lines.length === 0 && soldeInitialCfa === 0) return lines
+  const label = periodFromYmd
+    ? `Solde initial au ${formatReportDate(periodFromYmd)}`
+    : 'Solde initial'
+  const opening: StatementLine = {
+    occurredAt: '',
+    reference: '\u2014',
+    type: 'Reglement',
+    typeLabel: '',
+    detail: label,
+    debitCfa: 0,
+    creditCfa: 0,
+    soldeCfa: soldeInitialCfa,
+    isOpening: true,
+  }
+  return [opening, ...lines]
 }
 
 export function buildCustomerStatementDataset(opts: {
@@ -117,11 +189,12 @@ export function buildCustomerStatementDataset(opts: {
 }): CustomerStatementDataset {
   const periodFromYmd = opts.periodFromYmd ?? null
   const periodToYmd = opts.periodToYmd ?? null
-  const { soldeInitialCfa, lines } = buildStatementLines(
+  const { soldeInitialCfa, lines: movementLines } = buildStatementLines(
     opts.ledgerOldestFirst,
     periodFromYmd,
     periodToYmd,
   )
+  const lines = withOpeningBalanceRow(soldeInitialCfa, periodFromYmd, movementLines)
   const totalDebitCfa = lines.reduce((s, l) => s + l.debitCfa, 0)
   const totalCreditCfa = lines.reduce((s, l) => s + l.creditCfa, 0)
   const soldeFinalFromLedger =
@@ -155,6 +228,17 @@ export function statementMatchesBalance(dataset: CustomerStatementDataset): bool
   return Math.round(dataset.soldeFinalCfa) === Math.round(dataset.balanceOwedCfa)
 }
 
+const STATEMENT_EXTRA_CSS = `
+  table.doc.statement tbody tr:nth-child(even) { background: #f9fafb; }
+  table.doc.statement tbody tr.opening td { font-weight: 600; background: #f3f4f6; }
+  .statement-footer { margin-top: 14px; font-size: 11px; color: #667085; text-align: right; }
+  @media print {
+    .statement-page-footer::after {
+      content: counter(page) " / " counter(pages);
+    }
+  }
+`
+
 export function buildCustomerStatementHtml(dataset: CustomerStatementDataset): string {
   const periodLabel =
     dataset.periodFromYmd || dataset.periodToYmd
@@ -163,10 +247,11 @@ export function buildCustomerStatementHtml(dataset: CustomerStatementDataset): s
 
   const rows = dataset.lines
     .map(
-      (l) => `<tr>
-      <td>${escapeDocHtml(formatDocDate(l.occurredAt))}</td>
+      (l) => `<tr class="${l.isOpening ? 'opening' : ''}">
+      <td>${l.isOpening ? '' : escapeDocHtml(formatDocDate(l.occurredAt))}</td>
       <td>${escapeDocHtml(l.reference)}</td>
-      <td>${escapeDocHtml(libelleLabel(l.libelle))}</td>
+      <td>${escapeDocHtml(l.typeLabel)}</td>
+      <td>${escapeDocHtml(l.detail)}</td>
       <td class="num">${l.debitCfa ? escapeDocHtml(formatDocCfa(l.debitCfa)) : ''}</td>
       <td class="num">${l.creditCfa ? escapeDocHtml(formatDocCfa(l.creditCfa)) : ''}</td>
       <td class="num">${escapeDocHtml(formatDocCfa(l.soldeCfa))}</td>
@@ -178,6 +263,9 @@ export function buildCustomerStatementHtml(dataset: CustomerStatementDataset): s
     ? `<p class="note">Grand historique (&gt; ${LEDGER_PERIOD_SQL_NOTE_THRESHOLD} lignes) : filtrage p\u00e9riode c\u00f4t\u00e9 client. Une version SQL p\u00e9riode pourra \u00eatre ajout\u00e9e plus tard.</p>`
     : ''
 
+  const closingLabel = statementClosingBalanceLabel(dataset.soldeFinalCfa)
+  const closingAmount = formatDocCfa(Math.abs(dataset.soldeFinalCfa))
+
   const body = `
     ${renderCommercialHeader(dataset.header, {
       title: 'Relev\u00e9 de compte client',
@@ -188,32 +276,36 @@ export function buildCustomerStatementHtml(dataset: CustomerStatementDataset): s
     <div class="parties">
       ${renderClientBlock(dataset.client)}
       <div class="party">
-        <h3>Soldes</h3>
-        <p>Solde initial : <strong>${escapeDocHtml(formatDocCfa(dataset.soldeInitialCfa))}</strong></p>
+        <h3>R\u00e9capitulatif p\u00e9riode</h3>
         <p>Total d\u00e9bit : <strong>${escapeDocHtml(formatDocCfa(dataset.totalDebitCfa))}</strong></p>
         <p>Total cr\u00e9dit : <strong>${escapeDocHtml(formatDocCfa(dataset.totalCreditCfa))}</strong></p>
       </div>
     </div>
     ${note}
-    <table class="doc">
+    <table class="doc statement">
       <thead><tr>
-        <th>Date</th><th>N\u00b0</th><th>Libell\u00e9</th>
+        <th>Date</th><th>N\u00b0</th><th>Type</th><th>Libell\u00e9</th>
         <th class="num">D\u00e9bit</th><th class="num">Cr\u00e9dit</th><th class="num">Solde</th>
       </tr></thead>
-      <tbody>${rows || `<tr><td colspan="6" class="muted">Aucune \u00e9criture sur la p\u00e9riode.</td></tr>`}</tbody>
+      <tbody>${rows || `<tr><td colspan="7" class="muted">Aucune \u00e9criture sur la p\u00e9riode.</td></tr>`}</tbody>
     </table>
-    <p style="font-size:13px;font-weight:700;margin-top:12px;">
-      Solde d\u00fb au ${escapeDocHtml(dataset.asOfDateLabel)} : ${escapeDocHtml(formatDocCfa(dataset.soldeFinalCfa))}
-    </p>
+    <table class="totals">
+      <tr><td>Total d\u00e9bit</td><td>${escapeDocHtml(formatDocCfa(dataset.totalDebitCfa))}</td></tr>
+      <tr><td>Total cr\u00e9dit</td><td>${escapeDocHtml(formatDocCfa(dataset.totalCreditCfa))}</td></tr>
+      <tr class="net"><td>${escapeDocHtml(closingLabel)} au ${escapeDocHtml(dataset.asOfDateLabel)}</td><td>${escapeDocHtml(closingAmount)}</td></tr>
+    </table>
+    <p class="words">${escapeDocHtml(releveSoldeSentence(dataset.soldeFinalCfa))}</p>
+    <p class="statement-footer statement-page-footer">Page</p>
   `
-  return wrapCommercialDocument({
+  const html = wrapCommercialDocument({
     title: `Releve — ${dataset.client.name}`,
     bodyHtml: body,
   })
+  return html.replace('</style>', `${STATEMENT_EXTRA_CSS}</style>`)
 }
 
 export function printCustomerStatementPdf(dataset: CustomerStatementDataset): void {
-  printHtmlDocument(buildCustomerStatementHtml(dataset))
+  printCommercialDocument(buildCustomerStatementHtml(dataset))
 }
 
 export function customerStatementWhatsAppText(dataset: CustomerStatementDataset): string {
@@ -236,6 +328,8 @@ export function statementDatasetFromSources(opts: {
   depotAddress?: string | null
   periodFromYmd?: string | null
   periodToYmd?: string | null
+  businessPhone?: string | null
+  businessAddress?: string | null
 }): CustomerStatementDataset {
   return buildCustomerStatementDataset({
     customerId: opts.customer.id,
@@ -247,6 +341,8 @@ export function statementDatasetFromSources(opts: {
     header: {
       businessName: opts.businessName,
       logoUrl: opts.logoUrl,
+      phone: opts.businessPhone ?? null,
+      businessAddress: opts.businessAddress ?? null,
       depotName: opts.depotName,
       depotAddress: opts.depotAddress,
     },

@@ -43,6 +43,8 @@ export interface BusinessSettings {
   id: true
   business_name: string
   logo_url: string | null
+  phone: string | null
+  address: string | null
   cfa_to_usd_rate: number
   rate_updated_at: string
   rate_updated_by: string | null
@@ -315,6 +317,8 @@ export interface Payment {
   recorded_by: string
   recorded_at: string
   note: string | null
+  /** {depot}-REG-######## for customer_payment rows. */
+  receipt_number: string | null
   /**
    * Reversal fields — used for:
    * 1. sale_payment mirrors when a sale is voided

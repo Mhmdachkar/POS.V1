@@ -69,7 +69,7 @@ describe('customerStatement', () => {
     const { soldeInitialCfa, lines } = buildStatementLines(ledger, '2026-01-12', '2026-01-31')
     expect(soldeInitialCfa).toBe(100_000)
     expect(lines).toHaveLength(1)
-    expect(lines[0]!.libelle).toBe('Reglement')
+    expect(lines[0]!.type).toBe('Reglement')
     expect(lines[0]!.creditCfa).toBe(40_000)
   })
 
@@ -83,14 +83,30 @@ describe('customerStatement', () => {
     })
     const html = buildCustomerStatementHtml(ds)
     expect(html).toContain('charset="utf-8"')
-    expect(html).toContain('<th>Date</th><th>N\u00b0</th><th>Libell\u00e9</th>')
+    expect(html).toContain('<th>Date</th><th>N\u00b0</th><th>Type</th><th>Libell\u00e9</th>')
     expect(html).toContain('D\u00e9bit')
     expect(html).toContain('Cr\u00e9dit')
     expect(html).toContain('Solde')
     expect(html).toContain('Vente')
     expect(html).toContain('R\u00e8glement')
     expect(html).toContain('Retour')
-    expect(html).toContain('Solde d\u00fb au')
+    expect(html).toContain('Solde d\u00fb')
+    expect(html).toContain('Arr\u00eat\u00e9 le pr\u00e9sent relev\u00e9')
+    expect(html).not.toMatch(/TVA|ASDI|timbre/i)
+  })
+
+  it('includes opening balance row in dataset', () => {
+    const ds = buildCustomerStatementDataset({
+      customerId: 'c1',
+      client,
+      header,
+      ledgerOldestFirst: ledger,
+      balanceOwedCfa: 50_000,
+      periodFromYmd: '2026-01-12',
+      periodToYmd: '2026-01-31',
+    })
+    expect(ds.lines[0]?.isOpening).toBe(true)
+    expect(ds.lines[0]?.soldeCfa).toBe(100_000)
   })
 
   it('proforma kit column order helper is N Code Designation Unite Qte PU Remise Montant', async () => {

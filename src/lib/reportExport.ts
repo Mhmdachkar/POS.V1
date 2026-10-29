@@ -137,6 +137,29 @@ export function printReportSummary(title: string, lines: Array<{ label: string; 
 }
 
 /**
+ * Print commercial A4 HTML via a dedicated window (no blob URL).
+ * Prefer this for Releve / proforma-style documents.
+ */
+export function printCommercialDocument(html: string): void {
+  const win = window.open('', '_blank')
+  if (!win) {
+    printHtmlDocument(html)
+    return
+  }
+  win.document.open()
+  win.document.write(html)
+  win.document.close()
+  win.focus()
+  window.setTimeout(() => {
+    try {
+      win.print()
+    } catch {
+      /* user may close tab before print */
+    }
+  }, 350)
+}
+
+/**
  * Open Soft Gestion commercial HTML in a new tab and trigger print.
  * Never use `noopener` on window.open — Chrome returns null and the PDF never appears.
  */
