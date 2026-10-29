@@ -1,8 +1,8 @@
 /**
  * useCustomerActivity — customer-scoped sales / returns / payments timeline.
  *
- * Activity is an explanatory event list, not a ledger.
- * Current balance always comes from customer.balance_owed_cfa.
+ * Activity is an explanatory event list from customer_ledger.
+ * Displayed solde is last running_balance_cfa (signed), not balance_owed_cfa.
  *
  * Standalone customer_payment rows are never treated as allocated to a sale.
  * Returns are first-class events (not inferred from sale status).
@@ -16,6 +16,7 @@ import { customerKeys } from '@/hooks/useCustomers'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
 import { bilingualPlain } from '@/lib/bilingual/types'
 import { authoritativeFinalSaleTotal } from '@/lib/saleTotals'
+import { ledgerAccountBalanceCfa } from '@/lib/customerAccountBalance'
 
 export const CUSTOMER_ACTIVITY_DRAWER_LIMIT = 5
 export const CUSTOMER_ACTIVITY_PAGE_SIZE = 25
@@ -46,6 +47,8 @@ export interface CustomerActivityEvent {
 export interface CustomerActivityResult {
   data: CustomerActivityEvent[]
   count: number
+  /** Last ledger running balance (signed). Omitted on legacy table-scan fetchers. */
+  accountBalanceCfa?: number
 }
 
 export interface CustomerActivitySummaryMetric {
@@ -446,11 +449,23 @@ export function mapCustomerLedgerRow(row: CustomerLedgerRpcRow): CustomerActivit
       runningBalanceCfa,
     }
   }
+  if (row.kind === 'cash_refund') {
+    return {
+      id: row.id,
+      type: 'return',
+      occurredAt: row.occurred_at,
+      reference: row.reference?.trim() || bilingualPlain(CUSTOMERS.activityCashRefund),
+      description: bilingualPlain(CUSTOMERS.activityCashRefund),
+      amountCfa,
+      saleId: row.sale_id,
+      runningBalanceCfa,
+    }
+  }
   return {
     id: row.id,
     type: 'payment',
     occurredAt: row.occurred_at,
-    reference: bilingualPlain(CUSTOMERS.activityCustomerPaymentRef),
+    reference: row.reference?.trim() || bilingualPlain(CUSTOMERS.activityCustomerPaymentRef),
     description: row.note?.trim() || bilingualPlain(CUSTOMERS.activityBalancePayment),
     amountCfa,
     saleId: null,
@@ -458,7 +473,7 @@ export function mapCustomerLedgerRow(row: CustomerLedgerRpcRow): CustomerActivit
   }
 }
 
-/** Oldest-first rows from customer_ledger. The last running balance is Solde dû. */
+/** Oldest-first rows from customer_ledger. Displayed solde is last running_balance_cfa. */
 export function pageCustomerLedger(
   rows: CustomerLedgerRpcRow[],
   filters: CustomerActivityFilters,
@@ -470,6 +485,7 @@ export function pageCustomerLedger(
   return {
     data: newestFirst.slice(from, from + filters.pageSize),
     count: filtered.length,
+    accountBalanceCfa: ledgerAccountBalanceCfa(rows),
   }
 }
 

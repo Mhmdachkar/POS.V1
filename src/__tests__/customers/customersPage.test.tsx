@@ -505,7 +505,7 @@ describe('CustomerDetailDrawer (15E)', () => {
     })
     renderDrawer(customer)
 
-    expect(screen.getAllByText(CUSTOMERS.outstandingBalance.fr)[0]).toBeInTheDocument()
+    expect(screen.getAllByText(CUSTOMERS.accountSettled.fr)[0]).toBeInTheDocument()
     const zero = formatCFA(0)
     const node = screen.getAllByText((_, el) =>
       el?.tagName === 'SPAN' && el.textContent === zero,

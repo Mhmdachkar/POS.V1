@@ -5,7 +5,7 @@
  * recent account activity → actions.
  *
  * Recent activity is 3–5 events. Full history lives on
- * /customers/:customerId/activity. Balance is always customer.balance_owed_cfa.
+ * /customers/:customerId/activity. Displayed solde is last ledger running balance.
  */
 
 import { useEffect, useState, type ReactNode } from 'react'
@@ -14,7 +14,7 @@ import { ADMIN } from '@/lib/bilingual/admin'
 import { BiButtonInline, BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
 import { Link } from 'react-router-dom'
 import { Edit, Banknote, UserX, UserCheck, Download, FileText, MessageCircle } from 'lucide-react'
-import { Drawer, Button, LoadingButton, MoneyDisplay, Skeleton } from '@/components/ui'
+import { Drawer, Button, LoadingButton, Skeleton } from '@/components/ui'
 import { formatDate } from '@/lib/formatters'
 import { parseError } from '@/lib/errors'
 import {
@@ -43,6 +43,7 @@ import { SaleDetailDrawer } from '@/pages/sales/components/SaleDetailDrawer'
 import { RecordPaymentModal } from './RecordPaymentModal'
 import { CustomerFormModal } from './CustomerFormModal'
 import { CustomerFinancialSummary } from './CustomerFinancialSummary'
+import { ClientSoldeBlock } from './ClientSoldeBlock'
 import { CustomerAvatar, customerAccountTone } from '@/components/customers/CustomerAvatar'
 import { cn } from '@/lib/cn'
 import { BilingualText } from '@/components/ui/BilingualText'
@@ -176,13 +177,14 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
   }
 
   const events = activity?.data ?? []
+  const accountBalanceCfa = activity?.accountBalanceCfa ?? customer?.balance_owed_cfa ?? 0
   const tone = customer
     ? customerAccountTone({
-        balanceOwedCfa: customer.balance_owed_cfa,
+        balanceOwedCfa: Math.max(0, accountBalanceCfa),
         isActive: customer.is_active,
       })
     : 'inactive'
-  const hasOutstanding = tone === 'owing'
+  const hasOutstanding = (customer?.balance_owed_cfa ?? 0) > 0
 
   return (
     <>
@@ -194,7 +196,7 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
             <span className="inline-flex items-center gap-3">
               <CustomerAvatar
                 name={customer.name}
-                balanceOwedCfa={customer.balance_owed_cfa}
+                balanceOwedCfa={Math.max(0, accountBalanceCfa)}
                 isActive={customer.is_active}
               />
               <span>{customer.name}</span>
@@ -246,22 +248,7 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
                 tone === 'inactive' && 'border-border bg-surface-muted',
               )}
             >
-              <p
-                className={cn(
-                  'text-xs font-semibold uppercase tracking-wide mb-1',
-                  tone === 'owing' && 'text-danger-foreground',
-                  tone === 'settled' && 'text-success-foreground',
-                  tone === 'inactive' && 'text-text-secondary',
-                )}
-              >
-                {t(CUSTOMERS.outstandingBalance)}
-              </p>
-              <MoneyDisplay
-                amount={customer.balance_owed_cfa}
-                size="medium"
-                danger={hasOutstanding}
-                className={tone === 'settled' ? 'text-success-foreground' : undefined}
-              />
+              <ClientSoldeBlock accountBalanceCfa={accountBalanceCfa} size="medium" align="left" />
               <p className="text-xs text-text-muted mt-1">
                 {t(CUSTOMERS.balanceHelp)}
               </p>
@@ -271,7 +258,7 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
               className="mt-4"
               summary={summary}
               isLoading={loadingSummary}
-              outstandingBalanceCfa={customer.balance_owed_cfa}
+              outstandingBalanceCfa={accountBalanceCfa}
               layout="drawer"
             />
 

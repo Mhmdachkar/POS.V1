@@ -52,7 +52,49 @@ describe('customerStatement', () => {
     }),
   ]
 
-  it('full-range final solde equals balance_owed_cfa', () => {
+  it('full-range final solde equals displayed ledger balance, not balance_owed_cfa', () => {
+    const creditLedger: CustomerLedgerRpcRow[] = [
+      row({
+        id: '1',
+        kind: 'sale',
+        occurred_at: '2026-10-26T10:00:00Z',
+        amount_cfa: 100,
+        running_balance_cfa: 100,
+        adds_credit: true,
+        reference: 'MAIN-00000001',
+      }),
+      row({
+        id: '2',
+        kind: 'account_payment',
+        occurred_at: '2026-10-26T11:00:00Z',
+        amount_cfa: -200,
+        running_balance_cfa: -100,
+        reference: 'MAIN-REG-00000050',
+      }),
+    ]
+    const ds = buildCustomerStatementDataset({
+      customerId: 'c1',
+      client,
+      header,
+      ledgerOldestFirst: creditLedger,
+      balanceOwedCfa: 0,
+    })
+    expect(ds.soldeFinalCfa).toBe(-100)
+    expect(ds.accountBalanceCfa).toBe(-100)
+    expect(ds.soldeFinalCfa).toBe(ds.accountBalanceCfa)
+    expect(statementMatchesBalance(ds)).toBe(true)
+    const html = buildCustomerStatementHtml(ds)
+    expect(html).toContain('Solde en votre faveur')
+    expect(html).toContain('Avoir client')
+    expect(html).toContain('MAIN-REG-00000050')
+    expect(html).toContain('@page { size: A4; margin: 0; }')
+    expect(html).toContain('table.doc.statement')
+    expect(html).toContain('border: 1px solid #d0d5dd')
+    expect(html).toContain('\u00c9dit\u00e9 le')
+    expect(html).not.toContain('statement-page-footer')
+  })
+
+  it('full-range final solde equals last running balance when it matches owed', () => {
     const ds = buildCustomerStatementDataset({
       customerId: 'c1',
       client,
@@ -62,6 +104,7 @@ describe('customerStatement', () => {
     })
     expect(ds.soldeInitialCfa).toBe(0)
     expect(ds.soldeFinalCfa).toBe(50_000)
+    expect(ds.accountBalanceCfa).toBe(50_000)
     expect(statementMatchesBalance(ds)).toBe(true)
   })
 
@@ -93,6 +136,65 @@ describe('customerStatement', () => {
     expect(html).toContain('Solde d\u00fb')
     expect(html).toContain('Arr\u00eat\u00e9 le pr\u00e9sent relev\u00e9')
     expect(html).not.toMatch(/TVA|ASDI|timbre/i)
+  })
+
+  it('cash-refunded return has Retour credit and Remboursement debit', () => {
+    const cashReturn: CustomerLedgerRpcRow[] = [
+      row({
+        id: 's',
+        kind: 'sale',
+        occurred_at: '2026-10-26T10:00:00Z',
+        amount_cfa: 8000,
+        running_balance_cfa: 8000,
+        reference: 'MAIN-00000007',
+      }),
+      row({
+        id: 'c',
+        kind: 'cash_payment',
+        occurred_at: '2026-10-26T10:00:00Z',
+        amount_cfa: -8000,
+        running_balance_cfa: 0,
+        reference: 'MAIN-00000007',
+      }),
+      row({
+        id: 'r',
+        kind: 'return',
+        occurred_at: '2026-10-27T10:00:00Z',
+        amount_cfa: -8000,
+        running_balance_cfa: -8000,
+        reference: 'MAIN-00000007',
+        item_summary: '1 x Cable',
+        cash_refunded_cfa: 8000,
+      }),
+      row({
+        id: 'rf',
+        kind: 'cash_refund',
+        occurred_at: '2026-10-27T10:00:00Z',
+        amount_cfa: 8000,
+        running_balance_cfa: 0,
+        reference: 'MAIN-00000007',
+        cash_refunded_cfa: 8000,
+      }),
+    ]
+    const { lines } = buildStatementLines(cashReturn, null, null)
+    const ret = lines.find((l) => l.type === 'Retour')
+    const refund = lines.find((l) => l.type === 'Remboursement')
+    expect(ret?.creditCfa).toBe(8000)
+    expect(ret?.debitCfa).toBe(0)
+    expect(refund?.debitCfa).toBe(8000)
+    expect(refund?.creditCfa).toBe(0)
+    const html = buildCustomerStatementHtml(
+      buildCustomerStatementDataset({
+        customerId: 'c1',
+        client,
+        header,
+        ledgerOldestFirst: cashReturn,
+        balanceOwedCfa: 0,
+      }),
+    )
+    expect(html).toContain('Remboursement')
+    expect(html).toContain('Retour')
+    expect(html).toContain('1 x Cable')
   })
 
   it('includes opening balance row in dataset', () => {

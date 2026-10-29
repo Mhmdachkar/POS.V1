@@ -4,6 +4,10 @@ import { CUSTOMERS } from '@/lib/bilingual/customers'
 import type { CustomerActivitySummary } from '@/hooks/useCustomerActivity'
 import { t } from '@/lib/bilingual/types'
 import { cn } from '@/lib/cn'
+import {
+  clientSoldeDisplayAmount,
+  clientSoldeKind,
+} from '@/lib/customerAccountBalance'
 
 
 function SummaryCell({
@@ -31,7 +35,7 @@ function SummaryCell({
 interface CustomerFinancialSummaryProps {
   summary: CustomerActivitySummary | undefined
   isLoading?: boolean
-  /** Outstanding balance from customers.balance_owed_cfa — always shown. */
+  /** Displayed solde from customer_ledger running balance (signed). */
   outstandingBalanceCfa: number
   className?: string
   /** Compact header band (activity page) vs stacked drawer section. */
@@ -65,23 +69,34 @@ export function CustomerFinancialSummary({
           <div
             className={cn(
               'px-3 py-2.5 text-center',
-              outstandingBalanceCfa > 0 ? 'bg-danger-bg' : 'bg-success-bg',
+              clientSoldeKind(outstandingBalanceCfa) === 'due' ? 'bg-danger-bg' : 'bg-success-bg',
             )}
           >
             <p
               className={cn(
                 'text-[11px] font-semibold uppercase tracking-wide',
-                outstandingBalanceCfa > 0 ? 'text-danger-foreground' : 'text-success-foreground',
+                clientSoldeKind(outstandingBalanceCfa) === 'due'
+                  ? 'text-danger-foreground'
+                  : 'text-success-foreground',
               )}
             >
-              {t(CUSTOMERS.balanceOwed)}
+              {t(
+                clientSoldeKind(outstandingBalanceCfa) === 'due'
+                  ? CUSTOMERS.balanceOwed
+                  : clientSoldeKind(outstandingBalanceCfa) === 'credit'
+                    ? CUSTOMERS.creditInFavor
+                    : CUSTOMERS.accountSettled,
+              )}
             </p>
             <p className="mt-1 text-base font-semibold tabular-nums text-text-primary">&nbsp;</p>
             <MoneyDisplay
-              amount={outstandingBalanceCfa}
+              amount={clientSoldeDisplayAmount(outstandingBalanceCfa)}
               size="medium"
-              danger={outstandingBalanceCfa > 0}
-              className={cn('mt-0.5', outstandingBalanceCfa <= 0 && 'text-success-foreground')}
+              danger={clientSoldeKind(outstandingBalanceCfa) === 'due'}
+              className={cn(
+                'mt-0.5',
+                clientSoldeKind(outstandingBalanceCfa) !== 'due' && 'text-success-foreground',
+              )}
             />
           </div>
         </>
