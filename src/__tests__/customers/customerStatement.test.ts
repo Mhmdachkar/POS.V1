@@ -90,6 +90,8 @@ describe('customerStatement', () => {
     expect(html).toContain('@page { size: A4; margin: 0; }')
     expect(html).toContain('table.doc.statement')
     expect(html).toContain('border: 1px solid #d0d5dd')
+    expect(html).toContain('print-color-adjust: exact')
+    expect(html).toContain('box-shadow: inset 0 0 0 1000px #f9fafb')
     expect(html).toContain('\u00c9dit\u00e9 le')
     expect(html).not.toContain('statement-page-footer')
   })

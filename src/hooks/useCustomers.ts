@@ -68,6 +68,8 @@ export const customerKeys = {
   ) => ['customers', 'activity', customerId, filters] as const,
   activitySummary: (customerId: string) =>
     ['customers', 'activity-summary', customerId] as const,
+  ledgerBalance: (customerId: string) =>
+    ['customers', 'ledger-balance', customerId] as const,
 }
 
 export const paymentKeys = {

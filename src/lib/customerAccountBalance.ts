@@ -22,3 +22,11 @@ export function clientSoldeKind(balanceCfa: number): ClientSoldeKind {
 export function clientSoldeDisplayAmount(balanceCfa: number): number {
   return Math.abs(Math.round(Number(balanceCfa) || 0))
 }
+
+/** Prefer ledger running balance when loaded; otherwise debt-only owed. */
+export function displayedAccountBalanceCfa(
+  ledgerBalanceCfa: number | null | undefined,
+  balanceOwedCfa: number,
+): number {
+  return ledgerBalanceCfa ?? balanceOwedCfa
+}

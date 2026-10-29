@@ -108,6 +108,8 @@ export const CUSTOMERS = {
   outstandingBalance: bi('Solde dû', 'Balance due'),
   creditInFavor: bi('Solde en votre faveur', 'Credit in your favour'),
   accountCreditNote: bi('Avoir client', 'Customer credit'),
+  enVotreFaveur: bi('en votre faveur', 'in your favour'),
+  avoirPrefix: bi('Avoir', 'Credit'),
   activityCashRefund: bi('Remboursement espèces', 'Cash refund'),
   runningBalance: bi('Solde', 'Balance'),
   balanceHelp: bi('Le solde inclut les ventes à crédit et les paiements reçus.', 'Balance includes credit sales and payments received.'),

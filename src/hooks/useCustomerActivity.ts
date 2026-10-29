@@ -511,6 +511,38 @@ export function useCustomerActivity(customerId: string | null, filters: Customer
   })
 }
 
+export async function fetchCustomerLedgerBalance(customerId: string): Promise<number | null> {
+  const result = await rpc.customerLedger(customerId)
+  if (result.error) throw result.error
+  const rows = result.data ?? []
+  if (rows.length === 0) return null
+  return ledgerAccountBalanceCfa(rows)
+}
+
+export function useCustomerLedgerBalance(customerId: string | null) {
+  return useQuery({
+    queryKey: customerKeys.ledgerBalance(customerId ?? ''),
+    queryFn: () => fetchCustomerLedgerBalance(customerId!),
+    enabled: !!customerId,
+    staleTime: CACHE_STALE.customerDetail,
+  })
+}
+
+export function useCustomerLedgerBalances(customerIds: string[]) {
+  const key = [...customerIds].sort().join(',')
+  return useQuery({
+    queryKey: [...customerKeys.all, 'ledger-balances', key],
+    queryFn: async () => {
+      const entries = await Promise.all(
+        customerIds.map(async (id) => [id, await fetchCustomerLedgerBalance(id)] as const),
+      )
+      return Object.fromEntries(entries) as Record<string, number | null>
+    },
+    enabled: customerIds.length > 0,
+    staleTime: CACHE_STALE.customerDetail,
+  })
+}
+
 export function useCustomerActivitySummary(customerId: string | null) {
   return useQuery({
     queryKey: customerKeys.activitySummary(customerId ?? ''),

@@ -3,7 +3,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import { rpc } from '@/lib/rpc'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SaleDetailDrawer } from '@/pages/sales/components/SaleDetailDrawer'
@@ -14,6 +15,7 @@ import type { SaleDetailData } from '@/hooks/useSales'
 import { formatCFA } from '@/lib/formatters'
 import { formatShiftTimeRange } from '@/lib/shiftAttribution'
 import { SALES } from '@/lib/bilingual/sales'
+import { CUSTOMERS } from '@/lib/bilingual/customers'
 import { REPORTS } from '@/lib/bilingual/reports'
 
 vi.mock('@/hooks/useSales', async (importOriginal) => {
@@ -28,6 +30,7 @@ vi.mock('@/lib/rpc', () => ({
   rpc: {
     processReturn: vi.fn(),
     voidSale: vi.fn(),
+    customerLedger: vi.fn(async () => ({ data: [], error: null })),
   },
 }))
 
@@ -118,6 +121,7 @@ function renderDrawer(
 describe('SaleDetailDrawer', () => {
   beforeEach(() => {
     vi.mocked(useSaleDetail).mockReset()
+    vi.mocked(rpc.customerLedger).mockResolvedValue({ data: [], error: null } as never)
   })
 
   it('renders loading skeletons', () => {
@@ -321,6 +325,29 @@ describe('SaleDetailDrawer', () => {
     ).find((el) => el.className.includes('financial-value'))
     expect(balanceNode).toBeTruthy()
     expect(balanceNode).toHaveClass('text-sm', 'financial-value', 'text-danger-foreground')
+  })
+
+  it('shows ledger credit solde as en votre faveur plus Avoir client', async () => {
+    vi.mocked(rpc.customerLedger).mockResolvedValue({
+      data: [{
+        id: '1',
+        kind: 'account_payment',
+        occurred_at: '2026-10-26T12:00:00Z',
+        reference: 'MAIN-REG-00000001',
+        item_summary: null,
+        note: null,
+        amount_cfa: -100,
+        running_balance_cfa: -100,
+        sale_id: null,
+        adds_credit: false,
+      }],
+      error: null,
+    } as never)
+    renderDrawer(baseSale({ customer_balance_owed_cfa: 0, receipt_number: 'MAIN-00000018' }))
+    await waitFor(() => {
+      expect(screen.getByText(`${formatCFA(100)} ${CUSTOMERS.enVotreFaveur.fr}`)).toBeInTheDocument()
+    })
+    expect(screen.getByText(CUSTOMERS.accountCreditNote.fr)).toBeInTheDocument()
   })
 
   it('13E-E: zero current balance uses MoneyDisplay small without danger', () => {

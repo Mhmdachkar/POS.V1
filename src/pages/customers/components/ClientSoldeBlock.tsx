@@ -1,11 +1,8 @@
-import { MoneyDisplay } from '@/components/ui'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
 import { t } from '@/lib/bilingual/types'
-import {
-  clientSoldeDisplayAmount,
-  clientSoldeKind,
-} from '@/lib/customerAccountBalance'
+import { clientSoldeKind } from '@/lib/customerAccountBalance'
 import { cn } from '@/lib/cn'
+import { LedgerSoldeAmount } from './LedgerSoldeAmount'
 
 export function ClientSoldeBlock({
   accountBalanceCfa,
@@ -28,12 +25,7 @@ export function ClientSoldeBlock({
   return (
     <div className={cn(align === 'right' ? 'text-right' : 'text-left', className)}>
       <p className="text-xs text-text-secondary">{t(label)}</p>
-      <MoneyDisplay
-        amount={clientSoldeDisplayAmount(accountBalanceCfa)}
-        size={size}
-        danger={kind === 'due'}
-        className={kind !== 'due' ? 'text-success-foreground' : undefined}
-      />
+      <LedgerSoldeAmount amountCfa={accountBalanceCfa} size={size} />
       {kind === 'credit' && (
         <p className="text-xs text-success-foreground mt-0.5">{t(CUSTOMERS.accountCreditNote)}</p>
       )}
