@@ -27,7 +27,6 @@ import {
   emptyActivityMessage,
   useCustomerActivity,
   useCustomerActivitySummary,
-  withRunningBalances,
   type CustomerActivityTypeFilter,
 } from '@/hooks/useCustomerActivity'
 import {
@@ -176,7 +175,7 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
     }
   }
 
-  const events = withRunningBalances(activity?.data ?? [], customer?.balance_owed_cfa ?? 0)
+  const events = activity?.data ?? []
   const tone = customer
     ? customerAccountTone({
         balanceOwedCfa: customer.balance_owed_cfa,

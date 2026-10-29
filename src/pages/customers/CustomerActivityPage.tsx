@@ -36,7 +36,6 @@ import {
   formatActivityRange,
   useCustomerActivity,
   useCustomerActivitySummary,
-  withRunningBalances,
   type CustomerActivityTypeFilter,
 } from '@/hooks/useCustomerActivity'
 import {
@@ -106,10 +105,7 @@ export function CustomerActivityPage() {
     customerId ?? null,
   )
 
-  const rows = withRunningBalances(
-    activity?.data ?? [],
-    customer?.balance_owed_cfa ?? 0,
-  )
+  const rows = activity?.data ?? []
   const totalCount = activity?.count ?? 0
   const totalPages = Math.max(1, Math.ceil(totalCount / CUSTOMER_ACTIVITY_PAGE_SIZE))
   const isLoading = loadingCustomer || loadingActivity

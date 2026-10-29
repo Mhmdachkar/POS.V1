@@ -274,6 +274,8 @@ export function buildDeliveryNoteDocumentHtml(opts: {
     discount?: string
     amount?: string
   }>
+  /** Sum of Montant column when showPrices (formatted CFA). */
+  totalAmount?: string
 }): string {
   const lineRows = opts.rows.map((r, i) => ({ index: i + 1, ...r }))
   const received = opts.receivedByName?.trim()
@@ -297,6 +299,11 @@ export function buildDeliveryNoteDocumentHtml(opts: {
       </div>
     </div>
     ${renderLineTable({ showPrices: opts.showPrices, rows: lineRows })}
+    ${
+      opts.showPrices && opts.totalAmount
+        ? `<table class="totals"><tr class="net"><td>Total</td><td>${escapeDocHtml(opts.totalAmount)}</td></tr></table>`
+        : ''
+    }
     ${renderSignatureBoxes('Cachet / Signature', 'Client / Re\u00e7u')}
   `
   return wrapCommercialDocument({ title: `BL ${opts.number}`, bodyHtml: body })

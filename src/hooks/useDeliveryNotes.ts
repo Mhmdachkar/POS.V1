@@ -46,6 +46,10 @@ export interface DeliveryNoteItemRow {
   unit_price_cfa: number
   line_discount_cfa: number
   line_total_cfa: number
+  /** Full sale line qty (from get_delivery_note join). */
+  sale_quantity_in_unit?: number
+  /** Full sale line discount before BL proration. */
+  sale_line_discount_cfa?: number
   product_name: string
   unit_name: string
   serial_number: string | null

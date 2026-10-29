@@ -11,14 +11,19 @@ export function CheckoutSummary() {
   const staff = useAuthStore((s) => s.staff)
   const isAdmin = staff?.role === 'admin'
 
-  const { discountType, discountValue, totals, overrideTotalCfa, setOverrideTotalCfa } =
+  const { discountType, discountValue, totals, overrideTotalCfa, setOverrideTotalCfa, items } =
     usePOSStore(useShallow((s) => ({
       discountType:         s.discountType,
       discountValue:        s.discountValue,
       totals:               s.totals,
       overrideTotalCfa:     s.overrideTotalCfa,
       setOverrideTotalCfa:  s.setOverrideTotalCfa,
+      items:                s.items,
     })))
+
+  const lineDiscountTotalCfa = isAdmin
+    ? items.reduce((sum, item) => sum + (item.line_discount_cfa ?? 0), 0)
+    : 0
 
   // Store payment fields already use the effective final total.
   const effectiveTotal = effectiveFinalTotal(totals.total_cfa, overrideTotalCfa)
@@ -34,6 +39,15 @@ export function CheckoutSummary() {
 
   return (
     <div className="space-y-0.5">
+      {isAdmin && lineDiscountTotalCfa > 0 && (
+        <div className="flex items-center justify-between">
+          <BilingualText {...POS.lineDiscountCol} variant="caption" />
+          <span className="text-xs text-success-foreground">
+            − <MoneyDisplay amount={lineDiscountTotalCfa} size="small" />
+          </span>
+        </div>
+      )}
+
       {discountType && (
         <>
           <div className="flex items-center justify-between">
