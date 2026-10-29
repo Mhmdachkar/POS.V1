@@ -21,6 +21,10 @@ export const PROFORMAS = {
   cancel: bi('Annuler', 'Cancel'),
   duplicate: bi('Dupliquer', 'Duplicate'),
   printPdf: bi('Imprimer / PDF', 'Print / PDF'),
+  printBlocked: bi(
+    'Autorisez les fenêtres pop-up pour ouvrir le PDF.',
+    'Allow pop-ups to open the PDF.',
+  ),
   whatsapp: bi('WhatsApp', 'WhatsApp'),
   empty: bi('Aucun proforma.', 'No quotes yet.'),
   failedToLoad: bi('Impossible de charger les proformas.', 'Could not load quotes.'),

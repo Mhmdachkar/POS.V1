@@ -20,7 +20,7 @@ import { PROFORMAS } from '@/lib/bilingual/proformas'
 import { COMMON } from '@/lib/bilingual/common'
 import { formatReportDate, formatCFA, APP_BUSINESS_FALLBACK } from '@/lib/formatters'
 import { parseError } from '@/lib/errors'
-import { toastErrorBi, toastErrorFromCode, toastErrorMessage, toastSuccessBi, toastSuccessMessage } from '@/lib/bilingual/toast'
+import { toastErrorBi, toastErrorFromCode, toastSuccessBi, toastSuccessMessage } from '@/lib/bilingual/toast'
 import { t } from '@/lib/bilingual/types'
 import {
   useDuplicateProforma,
@@ -121,7 +121,7 @@ export function ProformaDetailDrawer({ proformaId, onClose }: ProformaDetailDraw
     try {
       exportProforma(printCtx, mode)
     } catch (err) {
-      toastErrorMessage('Export impossible', 'Export failed')
+      toastErrorBi(PROFORMAS.printBlocked)
       void err
     }
   }

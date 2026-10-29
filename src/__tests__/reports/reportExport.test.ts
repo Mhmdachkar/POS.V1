@@ -48,10 +48,15 @@ describe('reportExport', () => {
     const originalOpen = window.open
 
     beforeEach(() => {
+      vi.useFakeTimers()
       vi.spyOn(window, 'open').mockReturnValue(null)
+      vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-print')
+      vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
     })
 
     afterEach(() => {
+      vi.runOnlyPendingTimers()
+      vi.useRealTimers()
       window.open = originalOpen
       vi.restoreAllMocks()
     })
@@ -62,22 +67,29 @@ describe('reportExport', () => {
       const write = vi.fn()
       const close = vi.fn()
       vi.mocked(window.open).mockReturnValue({
-        document: { write, close },
+        document: { write, close, readyState: 'complete' },
         focus,
         print,
       } as unknown as Window)
 
       printReportSummary('Sales report', [{ label: 'Net', value: '1 000 CFA' }])
 
-      expect(window.open).toHaveBeenCalledWith('', '_blank', 'noopener,noreferrer')
-      expect(write).toHaveBeenCalled()
+      expect(window.open).toHaveBeenCalled()
+      const openedUrl = vi.mocked(window.open).mock.calls[0]![0] as string
+      expect(openedUrl.startsWith('blob:')).toBe(true)
+      // print is deferred; advance timers
+      vi.runAllTimers()
       expect(focus).toHaveBeenCalled()
       expect(print).toHaveBeenCalled()
     })
 
-    it('no-ops when popup is blocked', () => {
+    it('falls back to iframe print when popup is blocked', () => {
+      const append = vi.spyOn(document.body, 'appendChild')
       printReportSummary('Blocked', [{ label: 'A', value: 'B' }])
       expect(window.open).toHaveBeenCalled()
+      expect(append).toHaveBeenCalled()
+      const iframe = append.mock.calls.find((c) => (c[0] as HTMLElement).tagName === 'IFRAME')?.[0] as HTMLIFrameElement
+      expect(iframe).toBeTruthy()
     })
   })
 
