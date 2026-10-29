@@ -22,7 +22,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install
@@ -36,9 +36,11 @@ jobs:
           VITE_APP_NAME: ${{ secrets.VITE_APP_NAME }}
           VITE_ENABLE_QUERY_DEVTOOLS: 'false'
 
+      # Vite Cloudflare plugin writes the deployable config to dist/wrangler.json
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
+          wranglerVersion: '4.135.0'
+          command: deploy --config dist/wrangler.json
