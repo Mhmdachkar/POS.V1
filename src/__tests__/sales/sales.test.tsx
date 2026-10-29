@@ -15,7 +15,12 @@ import { render, screen, waitFor, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { fetchSalesList, saleKeys, type SalesListFilters } from '@/hooks/useSales'
+import {
+  fetchSalesList,
+  fetchSalesListTotals,
+  saleKeys,
+  type SalesListFilters,
+} from '@/hooks/useSales'
 import { SalesPage, SALES_SEARCH_DEBOUNCE_MS } from '@/pages/sales/SalesPage'
 import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
@@ -313,6 +318,41 @@ describe('fetchSalesList', () => {
     const result = await fetchSalesList({ page: 1, pageSize: 30, depotId: null })
     expect(result.data).toHaveLength(10)
     expect(result.count).toBe(40)
+  })
+})
+
+describe('fetchSalesListTotals', () => {
+  const catalog = buildCatalog()
+
+  beforeEach(() => {
+    vi.mocked(supabase.from).mockReset()
+  })
+
+  it('excludes voided from money totals and reports them separately', async () => {
+    const { from } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation(from as never)
+
+    const totals = await fetchSalesListTotals({ depotId: null })
+    const voided = catalog.filter((r) => r.status === 'voided')
+    const active = catalog.filter((r) => r.status !== 'voided')
+    expect(totals.voided_count).toBe(voided.length)
+    expect(totals.count).toBe(active.length)
+    expect(totals.total_cfa).toBe(active.reduce((s, r) => s + r.total_cfa, 0))
+    expect(totals.voided_total_cfa).toBe(voided.reduce((s, r) => s + r.total_cfa, 0))
+    expect(totals.total_cfa + totals.voided_total_cfa).toBe(
+      catalog.reduce((s, r) => s + r.total_cfa, 0),
+    )
+  })
+
+  it('when status=voided, totals are the voided set only', async () => {
+    const { from } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockImplementation(from as never)
+
+    const totals = await fetchSalesListTotals({ depotId: null, status: 'voided' })
+    const voided = catalog.filter((r) => r.status === 'voided')
+    expect(totals.count).toBe(voided.length)
+    expect(totals.voided_count).toBe(0)
+    expect(totals.total_cfa).toBe(voided.reduce((s, r) => s + r.total_cfa, 0))
   })
 })
 

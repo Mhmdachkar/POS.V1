@@ -39,7 +39,7 @@ import {
   Skeleton,
   type ListDatePreset,
 } from '@/components/ui'
-import { formatReportDateTime } from '@/lib/formatters'
+import { formatCFA, formatReportDateTime } from '@/lib/formatters'
 import { resolveReportDateRange } from '@/lib/reportDates'
 import {
   fetchSalesListForExport,
@@ -491,15 +491,27 @@ export function SalesPage() {
               </button>
             ))}
 
-            {totals && totals.count > 0 && (
+            {totals && (totals.count > 0 || totals.voided_count > 0) && (
               <div
                 className={cn(
                   'grid gap-4 px-4 py-3 items-center border-b border-border bg-surface-muted/60',
                   gridCols,
                 )}
               >
-                <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide col-span-2">
-                  {t(SALES.filteredTotals)} ({totals.count})
+                <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide col-span-2 leading-snug">
+                  {statusFilter === 'voided'
+                    ? `${t(SALES.filteredTotals)} (${totals.count})`
+                    : `${t(SALES.filteredTotalsExclVoided)} (${totals.count})`}
+                  {totals.voided_count > 0 && statusFilter !== 'voided' ? (
+                    <span className="block font-normal normal-case text-text-muted mt-0.5">
+                      {t(
+                        SALES.voidedExcludedFromTotals(
+                          totals.voided_count,
+                          formatCFA(totals.voided_total_cfa),
+                        ),
+                      )}
+                    </span>
+                  ) : null}
                 </span>
                 {showDepotColumn && <span aria-hidden="true" />}
                 {showSoldBy && <span aria-hidden="true" />}
