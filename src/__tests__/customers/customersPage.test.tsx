@@ -267,6 +267,19 @@ describe('CustomersPage', () => {
     expect(screen.getByText(`${CUSTOMERS.avoirPrefix.fr} ${formatCFA(100)}`)).toBeInTheDocument()
   })
 
+  it('shows a loading placeholder for Solde dû while ledger balances load', async () => {
+    vi.mocked(useCustomerLedgerBalances).mockReturnValue({
+      data: undefined,
+      isLoading: true,
+    } as never)
+    const { builder } = createFilterAwareFrom(catalog)
+    vi.mocked(supabase.from).mockReturnValue(builder as never)
+    renderCustomers()
+    await screen.findByText('John Doe')
+    expect(screen.getAllByText('…').length).toBeGreaterThan(0)
+    expect(screen.queryByText(`${CUSTOMERS.avoirPrefix.fr} ${formatCFA(100)}`)).not.toBeInTheDocument()
+  })
+
   it('does not query on each keystroke; one or-filter after 300 ms idle', async () => {
     const { builder, calls } = createFilterAwareFrom(catalog)
     vi.mocked(supabase.from).mockReturnValue(builder as never)
@@ -523,6 +536,39 @@ describe('CustomerDetailDrawer (15E)', () => {
     expect(screen.getAllByText(CUSTOMERS.accountCreditNote.fr).length).toBeGreaterThan(0)
     expect(screen.queryByText(CUSTOMERS.accountSettled.fr)).not.toBeInTheDocument()
     expect(screen.getByText(`${formatCFA(100)} ${CUSTOMERS.enVotreFaveur.fr}`)).toBeInTheDocument()
+  })
+
+  it('shows a loading placeholder for solde while activity ledger is loading', () => {
+    vi.mocked(useCustomer).mockReturnValue({
+      data: makeCustomer(0, { name: 'John Doe', balance_owed_cfa: 0 }),
+      isLoading: false,
+      isError: false,
+    } as never)
+    vi.mocked(useCustomerActivity).mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isError: false,
+      refetch: vi.fn(),
+    } as never)
+    vi.mocked(useCustomerActivitySummary).mockReturnValue({
+      data: {
+        sales: { count: 0, totalCfa: 0 },
+        returns: { count: 0, totalCfa: 0 },
+        payments: { count: 0, totalCfa: 0 },
+      },
+      isLoading: false,
+      isError: false,
+    } as never)
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <MemoryRouter>
+        <QueryClientProvider client={client}>
+          <CustomerDetailDrawer customerId="cust-0" onClose={vi.fn()} />
+        </QueryClientProvider>
+      </MemoryRouter>,
+    )
+    expect(screen.getAllByText('…').length).toBeGreaterThan(0)
+    expect(screen.queryByText(CUSTOMERS.accountSettled.fr)).not.toBeInTheDocument()
   })
 
   it('formats a negative activity running solde as en votre faveur', () => {

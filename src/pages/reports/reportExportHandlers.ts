@@ -26,6 +26,8 @@ export type ReportTabId =
   | 'inventory'
   | 'customers'
   | 'purchases'
+  | 'purchases-products'
+  | 'purchases-period'
   | 'payments'
   | 'shifts'
   | 'returns'
@@ -33,6 +35,11 @@ export type ReportTabId =
   | 'transfers'
   | 'audit'
   | 'cost'
+
+export interface PurchasesExportData {
+  rows: Array<Record<string, unknown>>
+  totals: Record<string, unknown>
+}
 
 export interface ReportExportContext {
   tab: ReportTabId
@@ -45,6 +52,9 @@ export interface ReportExportContext {
   customers?: AdminCustomersReport
   cash?: AdminCashReport
   cost?: AdminCostReport
+  purchases?: PurchasesExportData
+  purchasesProducts?: PurchasesExportData
+  purchasesPeriod?: PurchasesExportData
 }
 
 function salesSummaryRows(d: AdminSalesReport): unknown[][] {
@@ -73,7 +83,7 @@ async function buildSalesLineDataset(ctx: ReportExportContext) {
 }
 
 export async function exportReportCsv(ctx: ReportExportContext): Promise<void> {
-  const { tab, stamp, sales, inventory, customers, cash, cost } = ctx
+  const { tab, stamp, sales, inventory, customers, cash, cost, purchases, purchasesProducts, purchasesPeriod } = ctx
   if (tab === 'sales') {
     const dataset = await buildSalesLineDataset(ctx)
     if (!dataset) return
@@ -171,11 +181,47 @@ export async function exportReportCsv(ctx: ReportExportContext): Promise<void> {
         r.potential_profit,
       ]),
     )
+  } else if (tab === 'purchases' && purchases) {
+    downloadCsv(
+      `achats-fournisseurs-${stamp}.csv`,
+      ['Fournisseur', 'Acheté', 'À crédit', 'Payé à validation', 'BR', 'Solde dû'],
+      purchases.rows.map((r) => [
+        r.supplier_name,
+        r.purchased_cfa,
+        r.credit_cfa,
+        r.paid_at_validate_cfa,
+        r.receipt_count,
+        r.balance_owed_cfa,
+      ]),
+    )
+  } else if (tab === 'purchases-products' && purchasesProducts) {
+    downloadCsv(
+      `achats-produits-${stamp}.csv`,
+      ['Produit', 'Pièces', 'Acheté', 'BR'],
+      purchasesProducts.rows.map((r) => [
+        r.product_name,
+        r.quantity_pieces,
+        r.purchased_cfa,
+        r.receipt_count,
+      ]),
+    )
+  } else if (tab === 'purchases-period' && purchasesPeriod) {
+    downloadCsv(
+      `achats-periode-${stamp}.csv`,
+      ['Date', 'Acheté', 'À crédit', 'Payé à validation', 'BR'],
+      purchasesPeriod.rows.map((r) => [
+        r.document_date,
+        r.purchased_cfa,
+        r.credit_cfa,
+        r.paid_at_validate_cfa,
+        r.receipt_count,
+      ]),
+    )
   }
 }
 
 export async function exportReportXlsx(ctx: ReportExportContext): Promise<void> {
-  const { tab, stamp, sales, inventory, customers, cash, cost } = ctx
+  const { tab, stamp, sales, inventory, customers, cash, cost, purchases, purchasesProducts, purchasesPeriod } = ctx
   if (tab === 'sales') {
     const dataset = await buildSalesLineDataset(ctx)
     if (!dataset) return
@@ -283,11 +329,47 @@ export async function exportReportXlsx(ctx: ReportExportContext): Promise<void> 
         ]),
       },
     ])
+  } else if (tab === 'purchases' && purchases) {
+    downloadXlsx(`achats-fournisseurs-${stamp}.xlsx`, [{
+      name: 'Fournisseurs',
+      headers: ['Fournisseur', 'Acheté', 'À crédit', 'Payé à validation', 'BR', 'Solde dû'],
+      rows: purchases.rows.map((r) => [
+        r.supplier_name,
+        r.purchased_cfa,
+        r.credit_cfa,
+        r.paid_at_validate_cfa,
+        r.receipt_count,
+        r.balance_owed_cfa,
+      ]),
+    }])
+  } else if (tab === 'purchases-products' && purchasesProducts) {
+    downloadXlsx(`achats-produits-${stamp}.xlsx`, [{
+      name: 'Produits',
+      headers: ['Produit', 'Pièces', 'Acheté', 'BR'],
+      rows: purchasesProducts.rows.map((r) => [
+        r.product_name,
+        r.quantity_pieces,
+        r.purchased_cfa,
+        r.receipt_count,
+      ]),
+    }])
+  } else if (tab === 'purchases-period' && purchasesPeriod) {
+    downloadXlsx(`achats-periode-${stamp}.xlsx`, [{
+      name: 'Période',
+      headers: ['Date', 'Acheté', 'À crédit', 'Payé à validation', 'BR'],
+      rows: purchasesPeriod.rows.map((r) => [
+        r.document_date,
+        r.purchased_cfa,
+        r.credit_cfa,
+        r.paid_at_validate_cfa,
+        r.receipt_count,
+      ]),
+    }])
   }
 }
 
 export async function exportReportPrint(ctx: ReportExportContext): Promise<void> {
-  const { tab, sales, inventory, customers, cash, cost } = ctx
+  const { tab, sales, inventory, customers, cash, cost, purchases, purchasesProducts, purchasesPeriod } = ctx
   if (tab === 'sales') {
     const dataset = await buildSalesLineDataset(ctx)
     if (!dataset) return
@@ -329,6 +411,26 @@ export async function exportReportPrint(ctx: ReportExportContext): Promise<void>
       { label: t(REPORTS.potentialProfit), value: cfaExportValue(cost.inventory_totals.total_potential_profit) },
       { label: t(REPORTS.totalRestockCost), value: cfaExportValue(cost.period_totals.total_restock_cost_cfa) },
       { label: t(REPORTS.totalRestockPieces), value: formatReportPieces(Number(cost.period_totals.total_restock_quantity_pieces)) },
+    ])
+  } else if (tab === 'purchases' && purchases) {
+    printReportSummary(title, [
+      { label: t(REPORTS.purchased), value: cfaExportValue(Number(purchases.totals.purchased_cfa ?? 0)) },
+      { label: t(REPORTS.creditPurchases), value: cfaExportValue(Number(purchases.totals.credit_cfa ?? 0)) },
+      { label: t(REPORTS.paidAtValidate), value: cfaExportValue(Number(purchases.totals.paid_at_validate_cfa ?? 0)) },
+      { label: t(REPORTS.receiptCount), value: String(purchases.totals.receipt_count ?? 0) },
+    ])
+  } else if (tab === 'purchases-products' && purchasesProducts) {
+    printReportSummary(title, [
+      { label: t(REPORTS.purchased), value: cfaExportValue(Number(purchasesProducts.totals.purchased_cfa ?? 0)) },
+      { label: t(REPORTS.purchasePieces), value: formatReportPieces(Number(purchasesProducts.totals.quantity_pieces ?? 0)) },
+      { label: t(REPORTS.receiptCount), value: String(purchasesProducts.totals.receipt_count ?? 0) },
+    ])
+  } else if (tab === 'purchases-period' && purchasesPeriod) {
+    printReportSummary(title, [
+      { label: t(REPORTS.purchased), value: cfaExportValue(Number(purchasesPeriod.totals.purchased_cfa ?? 0)) },
+      { label: t(REPORTS.creditPurchases), value: cfaExportValue(Number(purchasesPeriod.totals.credit_cfa ?? 0)) },
+      { label: t(REPORTS.paidAtValidate), value: cfaExportValue(Number(purchasesPeriod.totals.paid_at_validate_cfa ?? 0)) },
+      { label: t(REPORTS.receiptCount), value: String(purchasesPeriod.totals.receipt_count ?? 0) },
     ])
   }
 }

@@ -17,6 +17,10 @@ import { parseError } from '@/lib/errors'
 import { toastErrorBi, toastErrorFromCode, toastSuccessBi } from '@/lib/bilingual/toast'
 import { bilingualPlain, t } from '@/lib/bilingual/types'
 import { cn } from '@/lib/cn'
+import { FileText } from 'lucide-react'
+import { fetchBusinessSettings } from '@/hooks/useBusinessSettings'
+import { printPurchaseReceiptPdf } from '@/lib/purchaseReceiptDocument'
+import { creditDueDateYmd, isCreditOverdue } from '@/lib/supplierDueDate'
 import {
   useCancelPurchaseReceipt,
   usePurchaseReceiptDetail,
@@ -83,6 +87,32 @@ export function PurchaseReceiptDetailDrawer({ receiptId, onClose }: Props) {
     }
   }
 
+  async function handlePrintBr() {
+    if (!receipt || !data?.supplier) return
+    try {
+      const settings = await fetchBusinessSettings()
+      printPurchaseReceiptPdf({
+        receipt,
+        items,
+        supplier: {
+          name: data.supplier.name,
+          phone: data.supplier.phone,
+          address: data.supplier.address,
+          payment_term_days: data.supplier.payment_term_days,
+        },
+        header: {
+          businessName: settings.business_name,
+          logoUrl: settings.logo_url,
+          phone: settings.phone,
+          businessAddress: settings.address,
+        },
+      })
+    } catch (err) {
+      const parsed = parseError(err)
+      toastErrorFromCode(parsed.code, parsed.details)
+    }
+  }
+
   async function handleCancel() {
     if (!receipt) return
     setBusy(true)
@@ -139,6 +169,26 @@ export function PurchaseReceiptDetailDrawer({ receiptId, onClose }: Props) {
                     : ''}
                 </p>
               )}
+              {receipt.payment_mode === 'credit' &&
+                creditDueDateYmd(receipt.document_date, data?.supplier?.payment_term_days) && (
+                  <p className="text-text-secondary flex flex-wrap items-center gap-2">
+                    <span>
+                      {t(ACHATS.dueDate)}{' '}
+                      {formatReportDate(
+                        creditDueDateYmd(receipt.document_date, data?.supplier?.payment_term_days)!,
+                      )}
+                    </span>
+                    {isCreditOverdue(
+                      receipt.document_date,
+                      data?.supplier?.payment_term_days,
+                      receipt.payment_mode,
+                    ) && (
+                      <Badge variant="danger">
+                        <BilingualText {...ACHATS.overdue} variant="caption" layout="inline" />
+                      </Badge>
+                    )}
+                  </p>
+                )}
             </div>
 
             <div className="space-y-2">
@@ -225,7 +275,11 @@ export function PurchaseReceiptDetailDrawer({ receiptId, onClose }: Props) {
             )}
 
             {isValidated && (
-              <div className="border-t border-border pt-4">
+              <div className="border-t border-border pt-4 flex flex-wrap gap-2">
+                <Button type="button" variant="secondary" onClick={() => void handlePrintBr()}>
+                  <FileText className="h-4 w-4 mr-1.5" />
+                  <BiButtonStack {...ACHATS.printBrA4} />
+                </Button>
                 <Button type="button" variant="danger" onClick={() => setCancelOpen(true)}>
                   <BiButtonStack {...ACHATS.cancel} />
                 </Button>

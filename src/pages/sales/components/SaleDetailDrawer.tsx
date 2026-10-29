@@ -265,7 +265,10 @@ export function SaleDetailDrawer({ saleId, shiftId, isOverRefund = false, onClos
     queryClient.getQueryData<BusinessSettings>(settingsKeys.current)?.business_name ?? APP_BUSINESS_FALLBACK
 
   const { data: sale, isLoading, isError } = useSaleDetail(saleId)
-  const { data: ledgerBalanceCfa } = useCustomerLedgerBalance(sale?.customer_id ?? null)
+  const { data: ledgerBalanceCfa, isLoading: ledgerBalanceLoading } =
+    useCustomerLedgerBalance(sale?.customer_id ?? null)
+  /** Avoid flashing owed/0 while the ledger solde request is in flight. */
+  const soldeLoading = !!sale?.customer_id && ledgerBalanceLoading
   const accountBalanceCfa = displayedAccountBalanceCfa(
     ledgerBalanceCfa,
     sale?.customer_balance_owed_cfa ?? 0,
@@ -444,8 +447,12 @@ export function SaleDetailDrawer({ saleId, shiftId, isOverRefund = false, onClos
                     label={t(SALES.currentBalance)}
                     value={
                       <span className="inline-flex flex-col items-end gap-0.5">
-                        <LedgerSoldeAmount amountCfa={accountBalanceCfa} size="small" />
-                        {clientSoldeKind(accountBalanceCfa) === 'credit' && (
+                        <LedgerSoldeAmount
+                          amountCfa={accountBalanceCfa}
+                          size="small"
+                          loading={soldeLoading}
+                        />
+                        {!soldeLoading && clientSoldeKind(accountBalanceCfa) === 'credit' && (
                           <span className="text-xs text-success-foreground">
                             {t(CUSTOMERS.accountCreditNote)}
                           </span>

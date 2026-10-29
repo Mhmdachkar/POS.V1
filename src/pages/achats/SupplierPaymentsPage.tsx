@@ -22,7 +22,7 @@ import { BilingualText } from '@/components/ui/BilingualText'
 import { useSupplierList, useSupplierPaymentList, type SupplierRow } from '@/hooks/useAchats'
 import { RecordSupplierPaymentModal } from './components/RecordSupplierPaymentModal'
 
-const GRID = 'grid-cols-[minmax(8rem,1fr)_minmax(7rem,9rem)_6.5rem_5.5rem_minmax(6rem,1fr)]'
+const GRID = 'grid-cols-[minmax(8rem,1fr)_minmax(7rem,10rem)_minmax(7rem,9rem)_6.5rem_5.5rem_minmax(6rem,1fr)]'
 
 function methodLabel(m: string) {
   if (m === 'mobile') return ACHATS.mobile
@@ -101,6 +101,7 @@ export function SupplierPaymentsPage() {
               )}
             >
               <BiTableHeader {...ACHATS.supplier} />
+              <BiTableHeader {...ACHATS.receiptNumber} />
               <BiTableHeader {...ACHATS.recordedAt} />
               <span className="text-right">
                 <BiTableHeader {...ACHATS.amount} />
@@ -114,6 +115,9 @@ export function SupplierPaymentsPage() {
                 className={cn('grid gap-4 px-4 py-3 bg-surface border-b border-border items-center', GRID)}
               >
                 <span className="text-sm truncate">{row.supplier_name ?? row.supplier_id}</span>
+                <span className="font-mono text-xs tabular-nums truncate">
+                  {row.receipt_number || '\u2014'}
+                </span>
                 <span className="text-sm text-text-secondary tabular-nums">
                   {formatReportDateTime(row.recorded_at)}
                 </span>

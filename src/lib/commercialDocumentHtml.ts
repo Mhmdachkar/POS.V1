@@ -148,18 +148,22 @@ export function renderCommercialHeader(
 </div>`
 }
 
-export function renderClientBlock(client: CommercialClientBlock): string {
-  const phone = client.phone?.trim()
-    ? `<p>T\u00e9l. : ${escapeDocHtml(client.phone.trim())}</p>`
+export function renderPartyBlock(heading: string, party: CommercialClientBlock): string {
+  const phone = party.phone?.trim()
+    ? `<p>T\u00e9l. : ${escapeDocHtml(party.phone.trim())}</p>`
     : ''
-  const address = client.address?.trim()
-    ? `<p>${escapeDocHtml(client.address.trim())}</p>`
+  const address = party.address?.trim()
+    ? `<p>${escapeDocHtml(party.address.trim())}</p>`
     : ''
   return `<div class="party">
-  <h3>Client</h3>
-  <p><strong>${escapeDocHtml(client.name)}</strong></p>
+  <h3>${escapeDocHtml(heading)}</h3>
+  <p><strong>${escapeDocHtml(party.name)}</strong></p>
   ${phone}${address}
 </div>`
+}
+
+export function renderClientBlock(client: CommercialClientBlock): string {
+  return renderPartyBlock('Client', client)
 }
 
 export function renderSignatureBoxes(left: string, right: string): string {

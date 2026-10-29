@@ -305,7 +305,7 @@ describe('SaleDetailDrawer', () => {
     )
   })
 
-  it('13E-A: Total uses MoneyDisplay medium; owed balance uses small + danger', () => {
+  it('13E-A: Total uses MoneyDisplay medium; owed balance uses small + danger', async () => {
     document.getElementById('vhm-receipt-drawer')?.remove()
     renderDrawer(baseSale({
       total_cfa: 12500,
@@ -319,12 +319,14 @@ describe('SaleDetailDrawer', () => {
     expect(totalNode).toBeTruthy()
     expect(totalNode).toHaveClass('text-financial-sm', 'financial-value')
 
-    const balanceLabel = formatCFA(4500)
-    const balanceNode = screen.getAllByText((_, node) =>
-      node?.tagName === 'SPAN' && node.textContent === balanceLabel,
-    ).find((el) => el.className.includes('financial-value'))
-    expect(balanceNode).toBeTruthy()
-    expect(balanceNode).toHaveClass('text-sm', 'financial-value', 'text-danger-foreground')
+    await waitFor(() => {
+      const balanceLabel = formatCFA(4500)
+      const balanceNode = screen.getAllByText((_, node) =>
+        node?.tagName === 'SPAN' && node.textContent === balanceLabel,
+      ).find((el) => el.className.includes('financial-value'))
+      expect(balanceNode).toBeTruthy()
+      expect(balanceNode).toHaveClass('text-sm', 'financial-value', 'text-danger-foreground')
+    })
   })
 
   it('shows ledger credit solde as en votre faveur plus Avoir client', async () => {
@@ -350,15 +352,34 @@ describe('SaleDetailDrawer', () => {
     expect(screen.getByText(CUSTOMERS.accountCreditNote.fr)).toBeInTheDocument()
   })
 
-  it('13E-E: zero current balance uses MoneyDisplay small without danger', () => {
+  it('13E-E: zero current balance uses MoneyDisplay small without danger', async () => {
     renderDrawer(baseSale({ customer_balance_owed_cfa: 0 }))
-    const zero = formatCFA(0)
-    const node = screen.getAllByText((_, el) =>
-      el?.tagName === 'SPAN' && el.textContent === zero,
-    ).find((el) => el.className.includes('financial-value'))
-    expect(node).toBeTruthy()
-    expect(node).toHaveClass('text-sm', 'financial-value')
-    expect(node).not.toHaveClass('text-danger-foreground')
+    await waitFor(() => {
+      const zero = formatCFA(0)
+      const node = screen.getAllByText((_, el) =>
+        el?.tagName === 'SPAN' && el.textContent === zero,
+      ).find((el) => el.className.includes('financial-value'))
+      expect(node).toBeTruthy()
+      expect(node).toHaveClass('text-sm', 'financial-value')
+      expect(node).not.toHaveClass('text-danger-foreground')
+    })
+  })
+
+  it('shows a loading placeholder for Solde actuel until ledger resolves', async () => {
+    let resolveLedger: (value: { data: never[]; error: null }) => void = () => {}
+    vi.mocked(rpc.customerLedger).mockReturnValue(
+      new Promise((resolve) => {
+        resolveLedger = resolve
+      }) as never,
+    )
+    renderDrawer(baseSale({ customer_balance_owed_cfa: 0, receipt_number: 'MAIN-00000018' }))
+    const soldeRow = screen.getByText(SALES.currentBalance.fr).closest('div')
+    expect(soldeRow).toHaveTextContent('…')
+    expect(soldeRow).not.toHaveTextContent(formatCFA(0))
+    resolveLedger({ data: [], error: null })
+    await waitFor(() => {
+      expect(screen.getByText(SALES.currentBalance.fr).closest('div')).not.toHaveTextContent('…')
+    })
   })
 
   it('13E-E: item, financial, and return rows use MoneyDisplay; actions sit after content', () => {

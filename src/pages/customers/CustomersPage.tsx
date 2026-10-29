@@ -139,7 +139,10 @@ export function CustomersPage() {
   const customers   = data?.data ?? []
   const totalCount  = data?.count ?? 0
   const totalPages  = Math.ceil(totalCount / pageSize)
-  const { data: ledgerBalances } = useCustomerLedgerBalances(customers.map((c) => c.id))
+  const {
+    data: ledgerBalances,
+    isLoading: ledgerBalancesLoading,
+  } = useCustomerLedgerBalances(customers.map((c) => c.id))
 
   const handleSearchChange = (value: string) => {
     setSearch(value)
@@ -235,12 +238,13 @@ export function CustomersPage() {
 
             {/* Rows */}
             {customers.map((customer) => {
+              const soldeLoading = ledgerBalancesLoading || ledgerBalances === undefined
               const accountBalanceCfa = displayedAccountBalanceCfa(
                 ledgerBalances?.[customer.id],
                 customer.balance_owed_cfa,
               )
               const tone = customerAccountTone({
-                balanceOwedCfa: Math.max(0, accountBalanceCfa),
+                balanceOwedCfa: soldeLoading ? customer.balance_owed_cfa : Math.max(0, accountBalanceCfa),
                 isActive: customer.is_active,
               })
               return (
@@ -262,7 +266,7 @@ export function CustomersPage() {
                 <span className="flex items-center gap-3 min-w-0">
                   <CustomerAvatar
                     name={customer.name}
-                    balanceOwedCfa={Math.max(0, accountBalanceCfa)}
+                    balanceOwedCfa={soldeLoading ? customer.balance_owed_cfa : Math.max(0, accountBalanceCfa)}
                     isActive={customer.is_active}
                   />
                   <span className="text-sm font-semibold text-text-primary truncate min-w-0">
@@ -273,7 +277,11 @@ export function CustomersPage() {
                   {customer.phone ?? <span className="text-text-muted italic">—</span>}
                 </span>
                 <span className="text-right min-w-0">
-                  <LedgerSoldeAmount amountCfa={accountBalanceCfa} variant="compact" />
+                  <LedgerSoldeAmount
+                    amountCfa={accountBalanceCfa}
+                    variant="compact"
+                    loading={soldeLoading}
+                  />
                 </span>
                 <span className="min-w-0">
                   {customer.is_active

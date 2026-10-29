@@ -233,18 +233,22 @@ export function statementMatchesBalance(dataset: CustomerStatementDataset): bool
 
 const STATEMENT_EXTRA_CSS = `
   table.doc.statement th, table.doc.statement td { border: 1px solid #d0d5dd; }
+  table.doc.statement tbody tr:nth-child(even),
   table.doc.statement tbody tr:nth-child(even) td {
-    background: #f9fafb;
-    box-shadow: inset 0 0 0 1000px #f9fafb;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    background-color: #f5f5f5 !important;
+    background: #f5f5f5 !important;
+    box-shadow: inset 0 0 0 1000px #f5f5f5;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
+  table.doc.statement tbody tr.opening,
   table.doc.statement tbody tr.opening td {
     font-weight: 600;
-    background: #f3f4f6;
+    background-color: #f3f4f6 !important;
+    background: #f3f4f6 !important;
     box-shadow: inset 0 0 0 1000px #f3f4f6;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   .statement-footer { margin-top: 14px; font-size: 11px; color: #667085; text-align: right; }
 `

@@ -9,6 +9,9 @@ import { parseError } from '@/lib/errors'
 import { useRecordSupplierPayment, type SupplierRow } from '@/hooks/useAchats'
 import { useDepotStore } from '@/stores/depotStore'
 import { cn } from '@/lib/cn'
+import { fetchBusinessSettings } from '@/hooks/useBusinessSettings'
+import { printSupplierPaymentSlip } from '@/lib/supplierPaymentDocument'
+import { toastErrorFromCode, toastSuccessBi } from '@/lib/bilingual/toast'
 
 interface Props {
   open: boolean
@@ -50,20 +53,55 @@ export function RecordSupplierPaymentModal({ open, onClose, supplier }: Props) {
       return
     }
     if (amount > Number(supplier.balance_owed_cfa) + 0.01) {
-      setError(t(ACHATS.balance))
+      setError(t(ACHATS.paymentExceedsBalance))
       return
     }
     try {
-      await record.mutateAsync({
+      const result = await record.mutateAsync({
         p_supplier_id: supplier.id,
         p_amount_cfa: amount,
         p_method: method,
         p_note: note.trim() || null,
         p_depot_id: depotId,
       })
+      toastSuccessBi(ACHATS.paymentOk)
+      if (result.receipt_number) {
+        try {
+          const settings = await fetchBusinessSettings()
+          printSupplierPaymentSlip({
+            receiptNumber: result.receipt_number,
+            amountCfa: Number(result.amount_cfa ?? amount),
+            methodLabel: t(
+              method === 'mobile' ? ACHATS.mobile : method === 'bank' ? ACHATS.bank : ACHATS.cash,
+            ),
+            recordedAt: new Date().toISOString(),
+            note: note.trim() || null,
+            newBalanceOwedCfa: result.new_balance_owed_cfa,
+            supplier: {
+              name: supplier.name,
+              phone: supplier.phone,
+              address: supplier.address,
+            },
+            header: {
+              businessName: settings.business_name,
+              logoUrl: settings.logo_url,
+              phone: settings.phone,
+              businessAddress: settings.address,
+            },
+          })
+        } catch (printErr) {
+          const parsed = parseError(printErr)
+          toastErrorFromCode(parsed.code, parsed.details)
+        }
+      }
       onClose()
     } catch (err) {
-      setError(parseError(err).message)
+      const parsed = parseError(err)
+      if (parsed.code === 'INVALID_AMOUNT' && parsed.details?.reason === 'exceeds_supplier_balance') {
+        setError(t(ACHATS.paymentExceedsBalance))
+        return
+      }
+      setError(parsed.message)
     }
   }
 

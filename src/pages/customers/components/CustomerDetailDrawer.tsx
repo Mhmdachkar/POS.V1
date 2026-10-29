@@ -178,10 +178,13 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
   }
 
   const events = activity?.data ?? []
+  const soldeLoading = loadingActivity && activity?.accountBalanceCfa === undefined
   const accountBalanceCfa = activity?.accountBalanceCfa ?? customer?.balance_owed_cfa ?? 0
   const tone = customer
     ? customerAccountTone({
-        balanceOwedCfa: Math.max(0, accountBalanceCfa),
+        balanceOwedCfa: soldeLoading
+          ? (customer.balance_owed_cfa ?? 0)
+          : Math.max(0, accountBalanceCfa),
         isActive: customer.is_active,
       })
     : 'inactive'
@@ -210,7 +213,7 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
           customer ? (
             <span className="inline-flex flex-wrap items-center gap-2">
               <span>{customer.is_active ? t(CUSTOMERS.activeCustomer) : t(CUSTOMERS.inactiveCustomer)}</span>
-              {tone !== 'inactive' && (
+              {tone !== 'inactive' && !soldeLoading && (
                 <span
                   className={cn(
                     'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold',
@@ -254,7 +257,12 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
                 tone === 'inactive' && 'border-border bg-surface-muted',
               )}
             >
-              <ClientSoldeBlock accountBalanceCfa={accountBalanceCfa} size="medium" align="left" />
+              <ClientSoldeBlock
+                accountBalanceCfa={accountBalanceCfa}
+                size="medium"
+                align="left"
+                loading={soldeLoading}
+              />
               <p className="text-xs text-text-muted mt-1">
                 {t(CUSTOMERS.balanceHelp)}
               </p>
@@ -265,6 +273,7 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
               summary={summary}
               isLoading={loadingSummary}
               outstandingBalanceCfa={accountBalanceCfa}
+              balanceLoading={soldeLoading}
               layout="drawer"
             />
 
