@@ -119,6 +119,14 @@ export const ACHATS = {
   label: bi('Libellé', 'Description'),
   statementFailed: bi('Impossible de générer le relevé.', 'Could not generate the statement.'),
   searchPlaceholder: bi('Nom ou téléphone…', 'Name or phone…'),
+  searchReceiptsPlaceholder: bi(
+    'N° BR, référence, fournisseur…',
+    'Receipt #, reference, supplier…',
+  ),
+  searchPaymentsPlaceholder: bi(
+    'N° RGF, fournisseur…',
+    'Payment #, supplier…',
+  ),
   paymentTerm: bi('Délai', 'Terms'),
   paymentTermDays: bi('Délai de paiement (jours)', 'Payment terms (days)'),
   paymentTermInvalid: bi(

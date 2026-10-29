@@ -76,6 +76,20 @@ export function formatPieces(pieces: number | null | undefined): string {
   return `${rounded < 0 ? MINUS_SIGN : ''}${abs} ${unit}`
 }
 
+/** Calendar YMD in Africa/Abidjan (en-CA → YYYY-MM-DD). */
+export function ymdInDisplayTimeZone(
+  iso: string | Date | null | undefined,
+  now: Date = new Date(),
+): string {
+  const d = iso == null ? now : iso instanceof Date ? iso : new Date(iso)
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: DISPLAY_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d)
+}
+
 /** Format a date+time: French "26 oct. 2026, 22:31" (Africa/Abidjan). */
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—'

@@ -159,6 +159,9 @@ export const rpc = {
     p_status?: string | null
     p_limit?: number
     p_offset?: number
+    p_search?: string | null
+    p_start_at?: string | null
+    p_end_at?: string | null
   }): Promise<RpcResult<unknown>> =>
     callRpc('list_proformas', params),
 
@@ -235,6 +238,9 @@ export const rpc = {
     p_status?: string | null
     p_limit?: number
     p_offset?: number
+    p_search?: string | null
+    p_start_at?: string | null
+    p_end_at?: string | null
   }): Promise<RpcResult<unknown>> =>
     callRpc('list_purchase_receipts', params),
 
@@ -251,11 +257,17 @@ export const rpc = {
     p_supplier_id?: string | null
     p_limit?: number
     p_offset?: number
+    p_search?: string | null
+    p_start_at?: string | null
+    p_end_at?: string | null
   }): Promise<RpcResult<unknown>> => {
     const args: Record<string, unknown> = {}
     if (params.p_supplier_id) args.p_supplier_id = params.p_supplier_id
     if (params.p_limit != null) args.p_limit = params.p_limit
     if (params.p_offset != null) args.p_offset = params.p_offset
+    if (params.p_search?.trim()) args.p_search = params.p_search.trim()
+    if (params.p_start_at) args.p_start_at = params.p_start_at
+    if (params.p_end_at) args.p_end_at = params.p_end_at
     return callRpc('list_supplier_payments', args)
   },
 

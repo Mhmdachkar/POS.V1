@@ -1,17 +1,22 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Banknote, FileText, Plus } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import {
   Badge,
   Button,
+  DatePresetFilter,
   EmptyState,
+  FilterBar,
   MoneyDisplay,
   Skeleton,
+  type ListDatePreset,
 } from '@/components/ui'
 import { formatReportDateTime } from '@/lib/formatters'
+import { listDateBounds, resolveReportDateRange } from '@/lib/reportDates'
 import { ACHATS } from '@/lib/bilingual/achats'
 import { COMMON } from '@/lib/bilingual/common'
 import {
+  BiButtonInline,
   BiButtonStack,
   BiEmptyDescription,
   BiEmptyTitle,
@@ -19,12 +24,16 @@ import {
   BiTableHeader,
 } from '@/lib/bilingual/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
-import { t } from '@/lib/bilingual/types'
+import { bilingualPlain, t } from '@/lib/bilingual/types'
 import { parseError } from '@/lib/errors'
 import { toastErrorFromCode } from '@/lib/bilingual/toast'
 import { reprintSupplierPaymentSlip } from '@/lib/supplierPaymentDocument'
 import { useSupplierList, useSupplierPaymentList, type SupplierPaymentRow, type SupplierRow } from '@/hooks/useAchats'
+import { exportFilteredList } from '@/lib/listExport'
 import { RecordSupplierPaymentModal } from './components/RecordSupplierPaymentModal'
+
+const PAYMENT_EXPORT_HEADERS = ['Fournisseur', 'Numero', 'Date', 'Montant CFA', 'Methode', 'Note']
+const SEARCH_DEBOUNCE_MS = 300
 
 const GRID =
   'grid-cols-[minmax(8rem,1fr)_minmax(7rem,10rem)_minmax(7rem,9rem)_6.5rem_5.5rem_minmax(6rem,1fr)_2.75rem]'
@@ -36,10 +45,34 @@ function methodLabel(m: string) {
 }
 
 export function SupplierPaymentsPage() {
-  const { data, isLoading, isError } = useSupplierPaymentList(null)
-  const suppliersQ = useSupplierList(false)
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [datePreset, setDatePreset] = useState<ListDatePreset | null>(null)
+  const [customStart, setCustomStart] = useState('')
+  const [customEnd, setCustomEnd] = useState('')
   const [payOpen, setPayOpen] = useState(false)
   const [supplierId, setSupplierId] = useState<string>('')
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  const dateRange = useMemo(
+    () => (datePreset ? resolveReportDateRange(datePreset, customStart, customEnd) : null),
+    [datePreset, customStart, customEnd],
+  )
+  const dateSeed = useMemo(() => resolveReportDateRange('today'), [])
+  const { startAt, endAt } = listDateBounds(dateRange)
+
+  const { data, isLoading, isError } = useSupplierPaymentList(
+    null,
+    debouncedSearch,
+    startAt,
+    endAt,
+    2000,
+  )
+  const suppliersQ = useSupplierList(false)
   const rows = data?.rows ?? []
   const suppliers = suppliersQ.data?.rows ?? []
 
@@ -47,6 +80,24 @@ export function SupplierPaymentsPage() {
     () => suppliers.find((s) => s.id === supplierId) ?? null,
     [suppliers, supplierId],
   )
+
+  function exportRows(kind: 'csv' | 'xlsx') {
+    const body = rows.map((row) => [
+      row.supplier_name ?? row.supplier_id,
+      row.receipt_number ?? '',
+      row.recorded_at,
+      row.amount_cfa,
+      row.method,
+      row.note ?? '',
+    ])
+    exportFilteredList({
+      kind,
+      basename: 'reglements-fournisseurs',
+      sheetName: 'Reglements',
+      headers: PAYMENT_EXPORT_HEADERS,
+      rows: body,
+    })
+  }
 
   async function handlePrint(row: SupplierPaymentRow) {
     try {
@@ -71,10 +122,41 @@ export function SupplierPaymentsPage() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="flex-shrink-0 px-3 sm:px-6 py-3 border-b border-border bg-surface flex flex-wrap items-center gap-3 justify-between">
-        <p className="text-sm text-text-secondary">
-          <BiPageDescription {...ACHATS.paymentsDesc} />
-        </p>
-        <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-text-secondary">
+            <BiPageDescription {...ACHATS.paymentsDesc} />
+          </p>
+          <div className="mt-2">
+            <FilterBar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder={bilingualPlain(ACHATS.searchPaymentsPlaceholder)}
+              count={data?.count ?? 0}
+            />
+          </div>
+          <DatePresetFilter
+            className="mt-3"
+            preset={datePreset}
+            onPresetChange={(p) => {
+              setDatePreset(p)
+              if (p === 'custom' && !customStart && !customEnd) {
+                setCustomStart(dateSeed.startDate)
+                setCustomEnd(dateSeed.endDate)
+              }
+            }}
+            customStart={customStart || dateSeed.startDate}
+            customEnd={customEnd || dateSeed.endDate}
+            onCustomStartChange={setCustomStart}
+            onCustomEndChange={setCustomEnd}
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="secondary" size="sm" disabled={rows.length === 0} onClick={() => exportRows('csv')}>
+            <BiButtonInline {...COMMON.exportCsv} />
+          </Button>
+          <Button type="button" variant="secondary" size="sm" disabled={rows.length === 0} onClick={() => exportRows('xlsx')}>
+            <BiButtonInline {...COMMON.exportXlsx} />
+          </Button>
           <select
             className="h-9 px-2 rounded-md border border-border bg-surface text-sm max-w-[14rem]"
             value={supplierId}

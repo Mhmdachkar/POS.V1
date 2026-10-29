@@ -3,14 +3,11 @@
  *
  * Features:
  *   - Paginated sales list (newest first)
- *   - Filter by status (All / Completed / Voided / Returned / Partially Returned)
- *   - Search by receipt number
+ *   - Filter by status, fulfillment, payment kind (Espèces / Crédit / Mixte)
+ *   - Search by receipt number, customer name, or cashier name
+ *   - Date presets including this week / this month
+ *   - Totals row for the filtered set + CSV/Excel export
  *   - Row click opens SaleDetailDrawer (with Return + Void actions)
- *   - Depot scoped (RLS enforces — cashier sees only their depot)
- *
- * Roles:
- *   - cashier: sees their depot's sales
- *   - admin: sees selected depot's sales (or all if no depot selected)
  *
  * Phase 13E-A: PageHeader + FilterBar + MoneyDisplay on list totals.
  * Custom sticky CSS-grid list retained (not DataTable).
@@ -20,7 +17,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { rpc } from '@/lib/rpc'
 import { REPORTS } from '@/lib/bilingual/reports'
-import { BiEmptyTitle, BiPageTitle, BiTableHeader } from '@/lib/bilingual/ui'
+import { BiButtonInline, BiEmptyTitle, BiPageTitle, BiTableHeader } from '@/lib/bilingual/ui'
 import { SALES } from '@/lib/bilingual/sales'
 import { COMMON } from '@/lib/bilingual/common'
 import { POS } from '@/lib/bilingual/pos'
@@ -29,6 +26,7 @@ import { Receipt } from 'lucide-react'
 import { NavPictogram } from '@/components/layout/NavPictogram'
 import { cn } from '@/lib/cn'
 import {
+  Button,
   DatePresetFilter,
   EmptyState,
   FilterBar,
@@ -43,7 +41,12 @@ import {
 } from '@/components/ui'
 import { formatReportDateTime } from '@/lib/formatters'
 import { resolveReportDateRange } from '@/lib/reportDates'
-import { useSalesList } from '@/hooks/useSales'
+import {
+  fetchSalesListForExport,
+  useSalesList,
+  useSalesListTotals,
+  type SalePaymentKind,
+} from '@/hooks/useSales'
 import { useDepotOptions } from '@/hooks/useInventory'
 import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
@@ -52,10 +55,23 @@ import type { SaleStatus } from '@/types/database'
 import type { FulfillmentStatus } from '@/lib/printPayload'
 import { t } from '@/lib/bilingual/types'
 import { SALE_STATUS } from '@/lib/bilingual/status'
+import { exportFilteredList } from '@/lib/listExport'
+import { toastErrorBi, toastSuccessBi } from '@/lib/bilingual/toast'
 
 
-/** Receipt-number search debounce. Do not query on every keystroke. */
+/** Receipt / client / cashier search debounce. Do not query on every keystroke. */
 export const SALES_SEARCH_DEBOUNCE_MS = 300
+
+const SALE_EXPORT_HEADERS = [
+  'Ticket',
+  'Date',
+  'Client',
+  'Caissier',
+  'Statut',
+  'Total CFA',
+  'Payé CFA',
+  'Crédit CFA',
+]
 
 // ─────────────────────────────────────────────────────────────────
 // Status filter (UI chips use string "all"; hook still receives null)
@@ -73,6 +89,15 @@ function statusFilterChips(): Array<{ value: string; label: string }> {
     value: opt.value ?? 'all',
     label: opt.label,
   }))
+}
+
+function paymentKindChips(): Array<{ value: SalePaymentKind | 'all'; label: string }> {
+  return [
+    { value: 'all', label: t(COMMON.all) },
+    { value: 'cash', label: t(SALES.paymentCash) },
+    { value: 'credit', label: t(SALES.paymentCredit) },
+    { value: 'mixed', label: t(SALES.paymentMixed) },
+  ]
 }
 
 /** Shared tracks so header + each row grid align (avoid per-row `auto` sizing). */
@@ -133,12 +158,14 @@ export function SalesPage() {
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<SaleStatus | null>(null)
+  const [paymentKind, setPaymentKind] = useState<SalePaymentKind | null>(null)
   const [fulfillmentFilter, setFulfillmentFilter] = useState<FulfillmentStatus | null>(null)
   const [datePreset, setDatePreset] = useState<ListDatePreset | null>(null)
   const [customStart, setCustomStart] = useState('')
   const [customEnd, setCustomEnd] = useState('')
   const [page, setPage] = useState(0)
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
 
   const staff     = useAuthStore((s) => s.staff)
   const depotId   = useDepotStore((s) => s.currentDepotId)
@@ -172,18 +199,22 @@ export function SalesPage() {
 
   useEffect(() => {
     setPage(0)
-  }, [depotId, datePreset, customStart, customEnd])
+  }, [depotId, datePreset, customStart, customEnd, paymentKind])
 
-  const { data, isLoading, isError } = useSalesList({
+  const listFilters = {
     depotId: effectiveDepotId,
-    status:  statusFilter,
+    status: statusFilter,
     fulfillmentStatus: fulfillmentFilter,
-    search:  debouncedSearch,
+    paymentKind,
+    search: debouncedSearch,
     startDate: dateRange?.startDate,
     endDate: dateRange?.endDate,
     page,
-    pageSize: 30,
-  })
+    pageSize: 30 as const,
+  }
+
+  const { data, isLoading, isError } = useSalesList(listFilters)
+  const { data: totals } = useSalesListTotals(listFilters)
 
   const depotName = (id: string) =>
     depots?.find((d) => d.id === id)?.name ?? '—'
@@ -224,6 +255,43 @@ export function SalesPage() {
     handleStatusChange(value === 'all' ? null : (value as SaleStatus))
   }
 
+  async function handleExport(kind: 'csv' | 'xlsx') {
+    setExporting(true)
+    try {
+      const { data: rows, truncated } = await fetchSalesListForExport({
+        ...listFilters,
+        page: 0,
+        pageSize: 2000,
+      })
+      const body = rows.map((sale) => [
+        sale.receipt_number,
+        formatReportDateTime(sale.created_at),
+        sale.customer_name ?? t(POS.walkIn),
+        sale.cashier_name ?? '',
+        sale.status,
+        sale.admin_override_total_cfa ?? sale.total_cfa,
+        sale.amount_applied_cfa,
+        sale.balance_added_cfa,
+      ])
+      exportFilteredList({
+        kind,
+        basename: 'ventes',
+        sheetName: 'Ventes',
+        headers: SALE_EXPORT_HEADERS,
+        rows: body,
+      })
+      if (truncated) {
+        toastErrorBi(COMMON.exportTruncated)
+      } else {
+        toastSuccessBi(COMMON.export)
+      }
+    } catch {
+      toastErrorBi(COMMON.failedToLoadData)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Single header band: PageHeader + FilterBar */}
@@ -232,12 +300,34 @@ export function SalesPage() {
           title={<BiPageTitle {...(isDepotStaff ? SALES.ordersTitle : SALES.historyTitle)} />}
           icon={<NavPictogram path="/sales" size="header" />}
           className="border-b-0"
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={exporting || totalCount === 0}
+                onClick={() => void handleExport('csv')}
+              >
+                <BiButtonInline {...COMMON.exportCsv} />
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={exporting || totalCount === 0}
+                onClick={() => void handleExport('xlsx')}
+              >
+                <BiButtonInline {...COMMON.exportXlsx} />
+              </Button>
+            </div>
+          }
         />
         <div className="px-3 sm:px-6 pb-3 sm:pb-4">
           <FilterBar
             search={search}
             onSearchChange={handleSearchChange}
-            searchPlaceholder={t(SALES.searchReceiptPlaceholder)}
+            searchPlaceholder={t(SALES.searchListPlaceholder)}
             chips={statusFilterChips()}
             activeChip={statusFilter ?? 'all'}
             onChipChange={handleChipChange}
@@ -258,6 +348,26 @@ export function SalesPage() {
             onCustomStartChange={setCustomStart}
             onCustomEndChange={setCustomEnd}
           />
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {paymentKindChips().map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  setPaymentKind(opt.value === 'all' ? null : opt.value)
+                  setPage(0)
+                }}
+                className={cn(
+                  'px-3 min-h-[44px] h-11 rounded-full text-sm font-medium flex-shrink-0 transition-colors',
+                  (paymentKind ?? 'all') === opt.value
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-surface-muted text-text-secondary border border-border hover:bg-surface',
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {(isDepotStaff || staff?.role === 'admin') &&
               fulfillmentChips().map((opt) => (
@@ -301,7 +411,7 @@ export function SalesPage() {
               icon={<Receipt className="h-8 w-8" />}
               title={<BiEmptyTitle {...SALES.noSales} />}
               description={
-                search || statusFilter
+                search || statusFilter || paymentKind
                   ? t(SALES.noSalesMatch)
                   : t(SALES.noSalesYet)
               }
@@ -340,13 +450,8 @@ export function SalesPage() {
                   selectedSaleId === sale.id && 'bg-primary-subtle',
                 )}
               >
-                <span className="text-sm font-mono font-semibold text-text-primary truncate min-w-0 inline-flex items-center gap-2">
+                <span className="text-sm font-mono font-semibold text-text-primary truncate min-w-0">
                   {sale.receipt_number}
-                  {overRefundIds.has(sale.id) && (
-                    <span className="rounded-full bg-danger-bg px-2 py-0.5 text-[10px] font-medium text-danger-foreground">
-                      {t(REPORTS.overRefundBadge)}
-                    </span>
-                  )}
                 </span>
                 <span className="min-w-0 whitespace-nowrap">
                   <SaleStatusBadge status={sale.status} />
@@ -386,12 +491,39 @@ export function SalesPage() {
               </button>
             ))}
 
+            {totals && totals.count > 0 && (
+              <div
+                className={cn(
+                  'grid gap-4 px-4 py-3 items-center border-b border-border bg-surface-muted/60',
+                  gridCols,
+                )}
+              >
+                <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide col-span-2">
+                  {t(SALES.filteredTotals)} ({totals.count})
+                </span>
+                {showDepotColumn && <span aria-hidden="true" />}
+                {showSoldBy && <span aria-hidden="true" />}
+                <span className="text-xs text-text-secondary text-right tabular-nums">
+                  <span className="block">{t(SALES.amountApplied)}</span>
+                  <MoneyDisplay amount={totals.amount_applied_cfa} size="small" />
+                </span>
+                <span className="text-right tabular-nums">
+                  <MoneyDisplay amount={totals.total_cfa} size="small" />
+                </span>
+                <span className="text-xs text-text-secondary text-right tabular-nums">
+                  <span className="block">{t(SALES.balanceAdded)}</span>
+                  <MoneyDisplay amount={totals.balance_added_cfa} size="small" />
+                </span>
+                <span aria-hidden="true" />
+              </div>
+            )}
+
             <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />
           </>
         )}
       </div>
 
-      {/* Sale detail drawer */}
+      {/* Sale detail drawer — over-refund banner only here, not on the list */}
       <SaleDetailDrawer
         saleId={selectedSaleId}
         shiftId={null}

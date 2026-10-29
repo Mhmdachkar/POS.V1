@@ -28,6 +28,7 @@ export const PROFORMAS = {
   whatsapp: bi('Partager WhatsApp', 'WhatsApp'),
   empty: bi('Aucun proforma.', 'No quotes yet.'),
   failedToLoad: bi('Impossible de charger les proformas.', 'Could not load quotes.'),
+  searchPlaceholder: bi('N° ou client…', 'Number or customer…'),
   save: bi('Enregistrer', 'Save'),
   priceDriftTitle: bi('Prix modifi\u00e9s', 'Prices changed'),
   priceDriftBody: bi(

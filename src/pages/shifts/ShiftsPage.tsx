@@ -2,8 +2,9 @@
  * ShiftsPage — open, close, and review cashier shifts.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { BiButtonStack, BiEmptyTitle, BiPageTitle, BiTableHeader } from '@/lib/bilingual/ui'
+import { BilingualText } from '@/components/ui/BilingualText'
 import { SHIFT_COPY } from '@/lib/bilingual/shift'
 import { COMMON } from '@/lib/bilingual/common'
 import { Clock } from 'lucide-react'
@@ -12,6 +13,7 @@ import { OpenShiftModal } from './components/OpenShiftModal'
 import { persistPosShiftSelection } from '@/lib/posShiftPersistence'
 import { cn } from '@/lib/cn'
 import {
+  Badge,
   Button,
   EmptyState,
   FilterBar,
@@ -26,6 +28,7 @@ import {
 } from '@/components/ui'
 import { SHIFT_STATUS } from '@/lib/bilingual/status'
 import { formatDate, formatMoney, formatTime } from '@/lib/formatters'
+import { isOvernightOpenShift } from '@/lib/overnightShift'
 import {
   SHIFT_PAGE_SIZE,
   canAccessShifts,
@@ -92,6 +95,10 @@ export function ShiftsPage() {
   const shifts = data?.data ?? []
   const totalCount = data?.count ?? 0
   const totalPages = Math.ceil(totalCount / SHIFT_PAGE_SIZE)
+  const hasOvernightOpen = useMemo(
+    () => shifts.some((s) => s.status === 'open' && isOvernightOpenShift(s.opened_at)),
+    [shifts],
+  )
 
   useEffect(() => {
     if (isLoading) return
@@ -129,13 +136,21 @@ export function ShiftsPage() {
             ) : undefined
           }
         />
-        <div className="px-3 sm:px-6 pb-3 sm:pb-4">
+        <div className="px-3 sm:px-6 pb-3 sm:pb-4 space-y-3">
           <FilterBar
             chips={statusChips()}
             activeChip={statusFilter ?? 'all'}
             onChipChange={handleChipChange}
             count={totalCount}
           />
+          {hasOvernightOpen && (
+            <div
+              className="rounded-md border border-warning/30 bg-warning-bg/40 px-3 py-2 text-sm text-warning-foreground"
+              role="status"
+            >
+              <BilingualText {...SHIFT_COPY.overnightBanner} variant="body" />
+            </div>
+          )}
         </div>
       </div>
 
@@ -204,8 +219,13 @@ export function ShiftsPage() {
                 )}
                 aria-label={`${t(COMMON.view)} — ${shift.cashier_name ?? t(COMMON.cashier)}`}
               >
-                <span className="whitespace-nowrap">
+                <span className="whitespace-nowrap inline-flex flex-wrap items-center gap-1">
                   <ShiftStatusBadge status={shift.status} />
+                  {shift.status === 'open' && isOvernightOpenShift(shift.opened_at) && (
+                    <Badge variant="warning">
+                      <BilingualText {...SHIFT_COPY.overnightBadge} variant="caption" layout="inline" />
+                    </Badge>
+                  )}
                 </span>
                 {showDepot && (
                   <span className="text-sm text-text-primary truncate">{shift.depot_name}</span>

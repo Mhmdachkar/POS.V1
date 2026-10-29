@@ -41,6 +41,7 @@ import { formatDate } from '@/lib/formatters'
 import { COMMON } from '@/lib/bilingual/common'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
 import {
+  BiButtonInline,
   BiButtonStack,
   BiEmptyDescription,
   BiEmptyTitle,
@@ -50,14 +51,18 @@ import {
 } from '@/lib/bilingual/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { t, bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
-import { useCustomerList, type CustomerListFilter } from '@/hooks/useCustomers'
+import { fetchCustomerList, useCustomerList, type CustomerListFilter } from '@/hooks/useCustomers'
 import { useCustomerLedgerBalances } from '@/hooks/useCustomerActivity'
 import { displayedAccountBalanceCfa } from '@/lib/customerAccountBalance'
 import { useAuthStore } from '@/stores/authStore'
+import { exportFilteredList, LIST_EXPORT_MAX_ROWS } from '@/lib/listExport'
+import { toastErrorBi } from '@/lib/bilingual/toast'
 import { CustomerDetailDrawer } from './components/CustomerDetailDrawer'
 import { CustomerFormModal } from './components/CustomerFormModal'
 import { CustomerAvatar, customerAccountTone } from '@/components/customers/CustomerAvatar'
 import { LedgerSoldeAmount } from './components/LedgerSoldeAmount'
+
+const CUSTOMER_EXPORT_HEADERS = ['Nom', 'Telephone', 'Actif', 'Solde CFA', 'Cree']
 
 /** Name/phone search debounce. Do not query on every keystroke. */
 export const CUSTOMERS_SEARCH_DEBOUNCE_MS = 300
@@ -162,6 +167,36 @@ export function CustomersPage() {
     ariaLabel: opt.aria,
   }))
 
+  async function handleExport(kind: 'csv' | 'xlsx') {
+    try {
+      const result = await fetchCustomerList({
+        page: 0,
+        pageSize: LIST_EXPORT_MAX_ROWS,
+        search: debouncedSearch,
+        filter,
+      })
+      const body = result.data.map((c) => [
+        c.name,
+        c.phone ?? '',
+        c.is_active ? '1' : '0',
+        c.balance_owed_cfa,
+        c.created_at,
+      ])
+      exportFilteredList({
+        kind,
+        basename: 'clients',
+        sheetName: 'Clients',
+        headers: CUSTOMER_EXPORT_HEADERS,
+        rows: body,
+      })
+      if (result.count > LIST_EXPORT_MAX_ROWS) {
+        toastErrorBi(COMMON.exportTruncated)
+      }
+    } catch {
+      toastErrorBi(COMMON.failedToLoadData)
+    }
+  }
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Single header band: PageHeader + FilterBar */}
@@ -171,15 +206,35 @@ export function CustomersPage() {
           icon={<NavPictogram path="/customers" size="header" />}
           className="border-b-0"
           actions={
-            canCreateCustomer ? (
+            <div className="flex flex-wrap items-center gap-2">
               <Button
-                className="gap-1.5 flex-shrink-0"
-                onClick={() => setShowCreateModal(true)}
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={totalCount === 0}
+                onClick={() => void handleExport('csv')}
               >
-                <Plus className="h-4 w-4" />
-                <BiButtonStack {...CUSTOMERS.newCustomerButton} />
+                <BiButtonInline {...COMMON.exportCsv} />
               </Button>
-            ) : undefined
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={totalCount === 0}
+                onClick={() => void handleExport('xlsx')}
+              >
+                <BiButtonInline {...COMMON.exportXlsx} />
+              </Button>
+              {canCreateCustomer ? (
+                <Button
+                  className="gap-1.5 flex-shrink-0"
+                  onClick={() => setShowCreateModal(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                  <BiButtonStack {...CUSTOMERS.newCustomerButton} />
+                </Button>
+              ) : null}
+            </div>
           }
         />
         <div className="px-3 sm:px-6 pb-3 sm:pb-4">

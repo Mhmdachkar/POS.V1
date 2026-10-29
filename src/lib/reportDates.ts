@@ -92,3 +92,15 @@ export const REPORT_PRESET_LABELS: Record<ReportPreset, string> = {
   this_month: 'This month',
   custom: 'Custom',
 }
+
+/** Inclusive Abidjan YMD → UTC day bounds for list RPC / PostgREST filters. */
+export function listDateBounds(range: ReportDateRange | null | undefined): {
+  startAt: string | null
+  endAt: string | null
+} {
+  if (!range) return { startAt: null, endAt: null }
+  return {
+    startAt: `${range.startDate}T00:00:00.000Z`,
+    endAt: `${range.endDate}T23:59:59.999Z`,
+  }
+}
