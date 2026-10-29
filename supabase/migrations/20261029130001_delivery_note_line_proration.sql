@@ -1,4 +1,4 @@
--- BL line Montant = delivered qty × unit price − prorated line discount (not full sale line total).
+-- BL line Montant = delivered qty x unit price - prorated line discount (not full sale line total).
 
 CREATE OR REPLACE FUNCTION public.create_delivery_note(
   p_sale_id uuid,
