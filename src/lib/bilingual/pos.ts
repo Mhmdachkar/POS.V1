@@ -182,6 +182,7 @@ export const POS = {
   netToPay: bi('Net à payer', 'Amount due'),
   lineBenefit: bi('Bénéfice', 'Profit'),
   belowCostWarning: bi('P.U. sous le coût', 'Unit price below cost'),
+  tabConfirmHint: bi('Tab confirme', 'Tab confirms'),
   f2SearchHint: bi('F2 recherche', 'F2 search'),
   f9PayHint: bi('F9 encaisser', 'F9 checkout'),
 } as const

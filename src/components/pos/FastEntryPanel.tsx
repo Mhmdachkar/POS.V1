@@ -3,7 +3,7 @@
  * Shares cart + PaymentPanel; open shift still required.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { BilingualText } from '@/components/ui/BilingualText'
@@ -12,15 +12,29 @@ import { formatCFA } from '@/lib/formatters'
 import { POS } from '@/lib/bilingual/pos'
 import { toastErrorBi } from '@/lib/bilingual/toast'
 import { t } from '@/lib/bilingual/types'
+import {
+  rankAchatsProductHits,
+  resolveNearestAchatsProduct,
+  type AchatsResolveHit,
+} from '@/lib/achatsProductResolve'
+import { preventQtyEmptyOnDelete, sanitizeQtyInput } from '@/lib/qtyInput'
 import { tryAddCartItem, tryUpdateCartQuantity } from '@/lib/posCartActions'
 import { usePosCatalogStock } from '@/hooks/usePosCatalogStock'
-import { fetchProductSearch } from '@/hooks/useProducts'
+import { usePOSProductCatalog } from '@/hooks/useProducts'
 import { effectiveFinalTotal, usePOSStore } from '@/stores/posStore'
 import { useAuthStore } from '@/stores/authStore'
-import type { ProductWithUnits } from '@/types'
+
 interface FastEntryPanelProps {
   depotId: string | null
   onRequestPay: () => void
+}
+
+function lineKey(productId: string, unitLevel: number) {
+  return `${productId}:${unitLevel}`
+}
+
+function unitCode(hit: AchatsResolveHit): string {
+  return hit.unit.serial_number?.trim() || '—'
 }
 
 export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
@@ -28,9 +42,24 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
   const isAdmin = staff?.role === 'admin'
   const { getAvailablePieces } = usePosCatalogStock()
   const codeRef = useRef<HTMLInputElement>(null)
+  const qtyRef = useRef<HTMLInputElement>(null)
   const [code, setCode] = useState('')
+  const [entryQty, setEntryQty] = useState('1')
+  const [lockedHit, setLockedHit] = useState<AchatsResolveHit | null>(null)
+  const [focusQtyToken, setFocusQtyToken] = useState(0)
+  const [qtyDrafts, setQtyDrafts] = useState<Record<string, string>>({})
   const [searchOpen, setSearchOpen] = useState(false)
-  const [searchHits, setSearchHits] = useState<ProductWithUnits[]>([])
+
+  const { data: catalogHits = [] } = usePOSProductCatalog(code, depotId, !!depotId)
+  const suggestions = useMemo(
+    () => rankAchatsProductHits(code, catalogHits).slice(0, 12),
+    [code, catalogHits],
+  )
+  const liveHit = useMemo(
+    () => resolveNearestAchatsProduct(code, catalogHits),
+    [code, catalogHits],
+  )
+  const activeHit = lockedHit ?? liveHit
 
   const {
     items,
@@ -43,18 +72,20 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
     removeItem,
     updateLinePrice,
     updateLineDiscount,
-  } = usePOSStore(useShallow((s) => ({
-    items: s.items,
-    totals: s.totals,
-    overrideTotalCfa: s.overrideTotalCfa,
-    documentDateYmd: s.documentDateYmd,
-    externalRef: s.externalRef,
-    setDocumentDateYmd: s.setDocumentDateYmd,
-    setExternalRef: s.setExternalRef,
-    removeItem: s.removeItem,
-    updateLinePrice: s.updateLinePrice,
-    updateLineDiscount: s.updateLineDiscount,
-  })))
+  } = usePOSStore(
+    useShallow((s) => ({
+      items: s.items,
+      totals: s.totals,
+      overrideTotalCfa: s.overrideTotalCfa,
+      documentDateYmd: s.documentDateYmd,
+      externalRef: s.externalRef,
+      setDocumentDateYmd: s.setDocumentDateYmd,
+      setExternalRef: s.setExternalRef,
+      removeItem: s.removeItem,
+      updateLinePrice: s.updateLinePrice,
+      updateLineDiscount: s.updateLineDiscount,
+    })),
+  )
 
   const articles = useMemo(
     () => items.reduce((n, i) => n + i.quantity_in_unit, 0),
@@ -74,29 +105,35 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
   )
   const net = effectiveFinalTotal(totals.total_cfa, isAdmin ? overrideTotalCfa : null)
 
-  const resolveByCode = useCallback(async (raw: string) => {
-    if (!depotId || !raw.trim()) return null
-    const hits = await fetchProductSearch(raw.trim(), depotId, null)
-    if (hits.length === 0) return null
-    // Prefer exact serial match on any unit
-    const needle = raw.trim().toLowerCase()
-    for (const p of hits) {
-      const exact = p.units.find((u) => u.serial_number?.trim().toLowerCase() === needle)
-      if (exact) return { product: p, unit: exact }
-    }
-    const p = hits[0]!
-    const unit = p.units.find((u) => u.unit_level === 0) ?? p.units[0]
-    if (!unit) return null
-    return { product: p, unit }
-  }, [depotId])
+  useEffect(() => {
+    if (!focusQtyToken) return
+    const tmr = setTimeout(() => {
+      qtyRef.current?.focus()
+      qtyRef.current?.select()
+    }, 0)
+    return () => clearTimeout(tmr)
+  }, [focusQtyToken])
 
-  const addFromCode = useCallback(async () => {
-    const resolved = await resolveByCode(code)
-    if (!resolved) {
+  function lockNearestAndFocusQty() {
+    const hit = resolveNearestAchatsProduct(code, catalogHits)
+    if (!hit) {
       toastErrorBi(POS.searchProducts)
       return
     }
-    const { product, unit } = resolved
+    setLockedHit(hit)
+    setCode(hit.product.name)
+    setFocusQtyToken((n) => n + 1)
+  }
+
+  function addHit(hit: AchatsResolveHit, qtyRaw: string) {
+    const qty = Number(sanitizeQtyInput(qtyRaw))
+    if (!Number.isFinite(qty) || qty <= 0) {
+      toastErrorBi(POS.qtyInvalid)
+      setFocusQtyToken((n) => n + 1)
+      return
+    }
+    const { product, unit } = hit
+    const stock = product.current_stock_pieces
     const result = tryAddCartItem(
       {
         product_id: product.id,
@@ -104,32 +141,57 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
         product_photo_url: product.photo_url,
         unit_level: unit.unit_level as 0 | 1 | 2,
         unit_name: unit.unit_name,
-        quantity_in_unit: 1,
+        quantity_in_unit: qty,
         unit_price_cfa: unit.selling_price_cfa,
         cost_price_cfa: unit.cost_price_cfa,
         conversion_to_base: unit.conversion_to_base,
         line_discount_cfa: 0,
       },
-      product.current_stock_pieces,
+      stock,
     )
     if (!result.ok) {
       toastErrorBi(POS.insufficientStock)
       return
     }
     setCode('')
-    codeRef.current?.focus()
-  }, [code, resolveByCode])
+    setEntryQty('1')
+    setLockedHit(null)
+    requestAnimationFrame(() => codeRef.current?.focus())
+  }
+
+  function submitEntry() {
+    const hit = lockedHit ?? resolveNearestAchatsProduct(code, catalogHits)
+    if (!hit) {
+      toastErrorBi(POS.searchProducts)
+      return
+    }
+    addHit(hit, entryQty)
+  }
+
+  function commitLineQty(productId: string, unitLevel: number, raw: string, stock: number | null) {
+    const key = lineKey(productId, unitLevel)
+    const cleaned = sanitizeQtyInput(raw)
+    setQtyDrafts((prev) => ({ ...prev, [key]: cleaned }))
+    const qty = Number(cleaned)
+    // Keep the line: Delete → 0 stays in the field; only trash removes.
+    if (!Number.isFinite(qty) || qty <= 0) return
+    const r = tryUpdateCartQuantity(productId, unitLevel, qty, stock)
+    if (!r.ok) {
+      toastErrorBi(POS.insufficientStock)
+      return
+    }
+    setQtyDrafts((prev) => {
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'F2') {
         e.preventDefault()
         setSearchOpen(true)
-        void (async () => {
-          if (!depotId) return
-          const hits = await fetchProductSearch(code.trim() || '', depotId, null)
-          setSearchHits(hits.slice(0, 20))
-        })()
       }
       if (e.key === 'F9') {
         e.preventDefault()
@@ -138,7 +200,7 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [code, depotId, onRequestPay])
+  }, [onRequestPay])
 
   return (
     <div className="flex flex-col h-full min-h-0 bg-surface">
@@ -162,8 +224,92 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
             maxLength={64}
           />
         </label>
-        <span className="text-xs text-text-muted">{t(POS.f2SearchHint)} · {t(POS.f9PayHint)}</span>
+        <span className="text-xs text-text-muted">
+          {t(POS.tabConfirmHint)} · {t(POS.f2SearchHint)} · {t(POS.f9PayHint)}
+        </span>
       </div>
+
+      <div className="flex-shrink-0 border-b border-border px-3 py-2 flex flex-wrap items-end gap-2">
+        <label className="flex flex-col gap-1 min-w-[12rem] flex-1">
+          <span className="text-xs text-text-secondary">{t(POS.codeCol)} / {t(POS.designationCol)}</span>
+          <input
+            ref={codeRef}
+            value={code}
+            onChange={(e) => {
+              setLockedHit(null)
+              setCode(e.target.value)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Tab' && !e.shiftKey && code.trim()) {
+                e.preventDefault()
+                lockNearestAndFocusQty()
+                return
+              }
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                submitEntry()
+              }
+            }}
+            placeholder={t(POS.codeCol)}
+            className="h-11 w-full rounded-md border border-border bg-background px-3 font-mono text-sm"
+            autoFocus
+          />
+        </label>
+        <label className="flex flex-col gap-1 w-24">
+          <span className="text-xs text-text-secondary">{t(POS.qtyCol)}</span>
+          <input
+            ref={qtyRef}
+            inputMode="decimal"
+            value={entryQty}
+            onChange={(e) => setEntryQty(sanitizeQtyInput(e.target.value))}
+            onKeyDown={(e) => {
+              preventQtyEmptyOnDelete(e, entryQty, setEntryQty)
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                submitEntry()
+              }
+            }}
+            className="h-11 w-full rounded-md border border-border bg-background px-2 text-right tabular-nums text-sm"
+          />
+        </label>
+        <button
+          type="button"
+          className="h-11 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium"
+          onClick={() => submitEntry()}
+        >
+          Enter
+        </button>
+        {activeHit && code.trim() && (
+          <p className="w-full text-xs text-text-secondary truncate">
+            → {unitCode(activeHit)} · {activeHit.product.name}
+            <span className="ml-2 text-[10px] font-normal text-text-muted">Tab</span>
+          </p>
+        )}
+      </div>
+
+      {code.trim() && suggestions.length > 0 && !lockedHit && (
+        <div className="flex-shrink-0 max-h-40 overflow-auto border-b border-border bg-surface-muted/40 px-2 py-1">
+          <ul className="space-y-0.5">
+            {suggestions.map((hit) => (
+              <li key={`${hit.product.id}:${hit.unit.unit_level}`}>
+                <button
+                  type="button"
+                  className="w-full text-left px-2 py-1.5 rounded-md hover:bg-surface text-sm"
+                  onClick={() => {
+                    setLockedHit(hit)
+                    setCode(hit.product.name)
+                    setFocusQtyToken((n) => n + 1)
+                  }}
+                >
+                  <span className="font-mono text-xs text-text-secondary">{unitCode(hit)}</span>
+                  <span className="ml-2 font-medium">{hit.product.name}</span>
+                  <span className="ml-2 text-xs text-text-muted">{hit.unit.unit_name}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="flex-1 min-h-0 overflow-auto">
         <table className="w-full text-sm">
@@ -184,27 +330,31 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
             {items.map((row) => {
               const stock = getAvailablePieces(row.product_id)
               const belowCost = row.unit_price_cfa < row.cost_price_cfa
+              const key = lineKey(row.product_id, row.unit_level)
+              const qtyValue = qtyDrafts[key] ?? String(row.quantity_in_unit)
               return (
-                <tr key={`${row.product_id}:${row.unit_level}`} className="border-t border-border">
+                <tr key={key} className="border-t border-border">
                   <td className="px-2 py-1.5 font-mono text-xs text-text-secondary">—</td>
                   <td className="px-2 py-1.5 font-medium">{row.product_name}</td>
                   <td className="px-2 py-1.5">{row.unit_name}</td>
                   <td className="px-2 py-1.5 text-right">
                     <input
-                      type="number"
-                      min={1}
+                      inputMode="decimal"
                       className="w-16 h-9 rounded-md border border-border px-1 text-right tabular-nums"
-                      value={row.quantity_in_unit}
-                      onChange={(e) => {
-                        const qty = Number(e.target.value)
-                        const r = tryUpdateCartQuantity(
+                      value={qtyValue}
+                      onChange={(e) =>
+                        commitLineQty(
                           row.product_id,
                           row.unit_level,
-                          qty,
-                          stock,
+                          e.target.value,
+                          stock ?? null,
                         )
-                        if (!r.ok) toastErrorBi(POS.insufficientStock)
-                      }}
+                      }
+                      onKeyDown={(e) =>
+                        preventQtyEmptyOnDelete(e, qtyValue, (next) =>
+                          commitLineQty(row.product_id, row.unit_level, next, stock ?? null),
+                        )
+                      }
                     />
                   </td>
                   <td className="px-2 py-1.5 text-right">
@@ -214,7 +364,9 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
                       className={`w-24 h-9 rounded-md border px-1 text-right tabular-nums ${belowCost ? 'border-warning' : 'border-border'}`}
                       value={row.unit_price_cfa}
                       title={belowCost ? t(POS.belowCostWarning) : undefined}
-                      onChange={(e) => updateLinePrice(row.product_id, row.unit_level, Number(e.target.value))}
+                      onChange={(e) =>
+                        updateLinePrice(row.product_id, row.unit_level, Number(e.target.value))
+                      }
                     />
                   </td>
                   <td className="px-2 py-1.5 text-right">
@@ -223,10 +375,14 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
                       min={0}
                       className="w-20 h-9 rounded-md border border-border px-1 text-right tabular-nums"
                       value={row.line_discount_cfa ?? 0}
-                      onChange={(e) => updateLineDiscount(row.product_id, row.unit_level, Number(e.target.value))}
+                      onChange={(e) =>
+                        updateLineDiscount(row.product_id, row.unit_level, Number(e.target.value))
+                      }
                     />
                   </td>
-                  <td className="px-2 py-1.5 text-right tabular-nums font-medium">{formatCFA(row.line_total_cfa)}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums font-medium">
+                    {formatCFA(row.line_total_cfa)}
+                  </td>
                   <td className="px-2 py-1.5 text-right tabular-nums text-text-secondary">
                     {stock == null ? '—' : formatCFA(stock).replace(' CFA', '')}
                   </td>
@@ -247,76 +403,61 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
         </table>
       </div>
 
-      <div className="flex-shrink-0 border-t border-border px-3 py-2 flex flex-wrap items-center gap-2">
-        <input
-          ref={codeRef}
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault()
-              void addFromCode()
-            }
-          }}
-          placeholder={t(POS.codeCol)}
-          className="h-11 min-w-[10rem] flex-1 rounded-md border border-border bg-background px-3 font-mono text-sm"
-          autoFocus
-        />
-        <button
-          type="button"
-          className="h-11 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium"
-          onClick={() => { void addFromCode() }}
-        >
-          Enter
-        </button>
-      </div>
-
       <div className="flex-shrink-0 sticky bottom-0 border-t border-border bg-surface-muted px-3 py-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-sm">
-        <div><span className="text-text-secondary">{t(POS.linesCount(items.length))}</span></div>
-        <div><span className="text-text-secondary">{t(POS.articlesCount(articles))}</span></div>
-        <div className="tabular-nums">{t(POS.total)}: <strong>{formatCFA(totals.subtotal_cfa)}</strong></div>
-        <div className="tabular-nums">{t(POS.discount)}: <strong>{formatCFA(lineRemise + totals.discount_amount_cfa)}</strong></div>
-        <div className="tabular-nums">{t(POS.netToPay)}: <strong>{formatCFA(net)}</strong></div>
+        <div>
+          <span className="text-text-secondary">{t(POS.linesCount(items.length))}</span>
+        </div>
+        <div>
+          <span className="text-text-secondary">{t(POS.articlesCount(articles))}</span>
+        </div>
+        <div className="tabular-nums">
+          {t(POS.total)}: <strong>{formatCFA(totals.subtotal_cfa)}</strong>
+        </div>
+        <div className="tabular-nums">
+          {t(POS.discount)}: <strong>{formatCFA(lineRemise + totals.discount_amount_cfa)}</strong>
+        </div>
+        <div className="tabular-nums">
+          {t(POS.netToPay)}: <strong>{formatCFA(net)}</strong>
+        </div>
         {isAdmin && (
-          <div className="tabular-nums">{t(POS.lineBenefit)}: <strong>{formatCFA(benefit)}</strong></div>
+          <div className="tabular-nums">
+            {t(POS.lineBenefit)}: <strong>{formatCFA(benefit)}</strong>
+          </div>
         )}
       </div>
 
       {searchOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center pt-20 px-4" onClick={() => setSearchOpen(false)}>
-          <div className="bg-surface rounded-xl shadow-lg max-w-lg w-full max-h-[60vh] overflow-auto p-3" onClick={(e) => e.stopPropagation()}>
-            <p className="text-sm font-semibold mb-2"><BilingualText {...POS.saisieRapide} layout="inline" /></p>
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center pt-20 px-4"
+          onClick={() => setSearchOpen(false)}
+        >
+          <div
+            className="bg-surface rounded-xl shadow-lg max-w-lg w-full max-h-[60vh] overflow-auto p-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-sm font-semibold mb-2">
+              <BilingualText {...POS.saisieRapide} layout="inline" />
+            </p>
             <ul className="space-y-1">
-              {searchHits.map((p) => (
-                <li key={p.id}>
+              {(code.trim() ? suggestions : catalogHits.slice(0, 20).map((p) => {
+                const unit = p.units.find((u) => u.unit_level === 0) ?? p.units[0]
+                if (!unit) return null
+                return { product: p, unit, score: 0, matchLabel: 'name_contains' as const }
+              }).filter(Boolean) as AchatsResolveHit[]).map((hit) => (
+                <li key={`${hit.product.id}:${hit.unit.unit_level}`}>
                   <button
                     type="button"
                     className="w-full text-left px-3 py-2 rounded-md hover:bg-surface-muted"
                     onClick={() => {
-                      const unit = p.units.find((u) => u.unit_level === 0) ?? p.units[0]
-                      if (!unit) return
-                      const r = tryAddCartItem(
-                        {
-                          product_id: p.id,
-                          product_name: p.name,
-                          product_photo_url: p.photo_url,
-                          unit_level: unit.unit_level as 0 | 1 | 2,
-                          unit_name: unit.unit_name,
-                          quantity_in_unit: 1,
-                          unit_price_cfa: unit.selling_price_cfa,
-                          cost_price_cfa: unit.cost_price_cfa,
-                          conversion_to_base: unit.conversion_to_base,
-                          line_discount_cfa: 0,
-                        },
-                        p.current_stock_pieces,
-                      )
-                      if (!r.ok) toastErrorBi(POS.insufficientStock)
+                      setLockedHit(hit)
+                      setCode(hit.product.name)
                       setSearchOpen(false)
+                      setFocusQtyToken((n) => n + 1)
                     }}
                   >
-                    <span className="font-medium">{p.name}</span>
+                    <span className="font-medium">{hit.product.name}</span>
                     <span className="block text-xs text-text-muted font-mono">
-                      {p.units.map((u) => u.serial_number).filter(Boolean).join(' · ')}
+                      {hit.product.units.map((u) => u.serial_number).filter(Boolean).join(' · ')}
                     </span>
                   </button>
                 </li>

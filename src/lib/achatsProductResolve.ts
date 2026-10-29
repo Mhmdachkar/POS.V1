@@ -1,4 +1,5 @@
 import type { ProductWithUnits } from '@/types'
+import { sanitizeQtyInput } from '@/lib/qtyInput'
 import type { ProductUnit } from '@/types/database'
 
 export interface AchatsResolveHit {
@@ -87,7 +88,5 @@ export function resolveNearestAchatsProduct(
 
 /** Qty Delete/Backspace should leave 0, never an empty wipe. */
 export function sanitizeAchatsQtyInput(raw: string): string {
-  const cleaned = raw.replace(/[^\d.]/g, '')
-  if (cleaned === '' || cleaned === '.') return '0'
-  return cleaned
+  return sanitizeQtyInput(raw)
 }
