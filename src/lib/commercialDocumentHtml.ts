@@ -6,7 +6,7 @@ import { localizedUnitLabel } from '@/lib/localizedUnits'
  */
 
 import { DISPLAY_TIME_ZONE, formatCFA, formatReportDate, formatReportDateTime } from '@/lib/formatters'
-import { arreteeProformaSentence } from '@/lib/amountInWordsFr'
+import { arreteeFactureSentence, arreteeProformaSentence } from '@/lib/amountInWordsFr'
 
 export function escapeDocHtml(s: string): string {
   return s
@@ -221,6 +221,117 @@ export function renderMoneyTotals(opts: {
   <tr class="net"><td>Net \u00e0 payer</td><td>${escapeDocHtml(formatDocCfa(opts.net))}</td></tr>
 </table>
 <p class="words">${escapeDocHtml(arreteeProformaSentence(opts.net))}</p>`
+}
+
+export function renderSaleInvoiceTotals(opts: {
+  subtotalCfa: number
+  discountCfa: number
+  calculatedTotalCfa: number
+  payableTotalCfa: number
+  amountPaidCfa: number
+  balanceAddedCfa: number
+}): string {
+  const adjustmentCfa =
+    opts.payableTotalCfa < opts.calculatedTotalCfa
+      ? opts.calculatedTotalCfa - opts.payableTotalCfa
+      : 0
+  const calculatedRow =
+    adjustmentCfa > 0
+      ? `<tr><td>Total calcul\u00e9</td><td>${escapeDocHtml(formatDocCfa(opts.calculatedTotalCfa))}</td></tr>
+         <tr><td>Ajustement</td><td>\u2212 ${escapeDocHtml(formatDocCfa(adjustmentCfa))}</td></tr>`
+      : ''
+  const paidRow =
+    opts.amountPaidCfa > 0 || opts.balanceAddedCfa > 0
+      ? `<tr><td>Pay\u00e9</td><td>${escapeDocHtml(formatDocCfa(opts.amountPaidCfa))}</td></tr>`
+      : ''
+  const resteRow =
+    opts.balanceAddedCfa > 0
+      ? `<tr><td>Reste \u00e0 payer</td><td>${escapeDocHtml(formatDocCfa(opts.balanceAddedCfa))}</td></tr>`
+      : ''
+  return `<table class="totals">
+  <tr><td>Sous-total</td><td>${escapeDocHtml(formatDocCfa(opts.subtotalCfa))}</td></tr>
+  ${opts.discountCfa > 0 ? `<tr><td>Remise</td><td>${escapeDocHtml(formatDocCfa(opts.discountCfa))}</td></tr>` : ''}
+  ${calculatedRow}
+  <tr class="net"><td>Total</td><td>${escapeDocHtml(formatDocCfa(opts.payableTotalCfa))}</td></tr>
+  ${paidRow}
+  ${resteRow}
+</table>
+<p class="words">${escapeDocHtml(arreteeFactureSentence(opts.payableTotalCfa))}</p>`
+}
+
+export function buildSaleInvoiceDocumentHtml(opts: {
+  header: CommercialHeaderContext
+  client: CommercialClientBlock
+  receiptNumber: string
+  date: string
+  externalRef?: string | null
+  rows: Array<{
+    code: string
+    designation: string
+    unit: string
+    qty: string
+    unitPrice: string
+    discount: string
+    amount: string
+  }>
+  subtotalCfa: number
+  discountCfa: number
+  calculatedTotalCfa: number
+  payableTotalCfa: number
+  amountPaidCfa: number
+  balanceAddedCfa: number
+  avoirRows?: Array<{ date: string; reference: string; detail: string; amount: string }>
+}): string {
+  const lineRows = opts.rows.map((r, i) => ({ index: i + 1, ...r }))
+  const extraLines = opts.externalRef?.trim()
+    ? [{ label: 'R\u00e9f.', value: opts.externalRef.trim() }]
+    : []
+  const avoirBlock =
+    opts.avoirRows && opts.avoirRows.length > 0
+      ? `<h2 style="margin-top:18px;font-size:12px;">Avoir</h2>
+    <table class="doc">
+      <thead><tr>
+        <th>Date</th><th>N\u00b0 vente</th><th>Libell\u00e9</th><th class="num">Montant</th>
+      </tr></thead>
+      <tbody>${opts.avoirRows
+        .map(
+          (r) => `<tr>
+        <td>${escapeDocHtml(r.date)}</td>
+        <td>${escapeDocHtml(r.reference)}</td>
+        <td>${escapeDocHtml(r.detail)}</td>
+        <td class="num">${escapeDocHtml(r.amount)}</td>
+      </tr>`,
+        )
+        .join('')}</tbody>
+    </table>
+    <p class="note">Les avoirs sont indicatifs et ne modifient pas le total de la facture.</p>`
+      : ''
+  const body = `
+    ${renderCommercialHeader(opts.header, {
+      title: 'Facture',
+      numberLabel: 'N\u00b0',
+      number: opts.receiptNumber,
+      dateLabel: 'Date',
+      date: opts.date,
+      extraLines,
+    })}
+    <div class="parties">
+      ${renderClientBlock(opts.client)}
+      <div class="party"><h3>Document</h3><p class="muted">Facture de vente (valeur comptable).</p></div>
+    </div>
+    ${renderLineTable({ showPrices: true, rows: lineRows })}
+    ${renderSaleInvoiceTotals({
+      subtotalCfa: opts.subtotalCfa,
+      discountCfa: opts.discountCfa,
+      calculatedTotalCfa: opts.calculatedTotalCfa,
+      payableTotalCfa: opts.payableTotalCfa,
+      amountPaidCfa: opts.amountPaidCfa,
+      balanceAddedCfa: opts.balanceAddedCfa,
+    })}
+    ${avoirBlock}
+    ${renderSignatureBoxes('Cachet / Signature', 'Client')}
+  `
+  return wrapCommercialDocument({ title: `Facture ${opts.receiptNumber}`, bodyHtml: body })
 }
 
 export function buildProformaDocumentHtml(opts: {
