@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
-import { Plus, Truck } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { ArrowDown, ArrowUp, Plus, Truck } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import {
   Badge,
@@ -15,6 +16,7 @@ import {
 import { ACHATS } from '@/lib/bilingual/achats'
 import { COMMON } from '@/lib/bilingual/common'
 import {
+  BiButtonInline,
   BiButtonStack,
   BiEmptyDescription,
   BiEmptyTitle,
@@ -23,20 +25,63 @@ import {
   BiTableHeader,
 } from '@/lib/bilingual/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
-import { bilingualAriaLabel, t } from '@/lib/bilingual/types'
+import { bilingualAriaLabel, bilingualPlain, t } from '@/lib/bilingual/types'
 import { useSupplierList, type SupplierRow } from '@/hooks/useAchats'
+import { downloadCsv } from '@/lib/csvExport'
+import { downloadXlsx } from '@/lib/reportExport'
+import {
+  nextSupplierSort,
+  SUPPLIER_EXPORT_HEADERS,
+  SUPPLIERS_SEARCH_DEBOUNCE_MS,
+  supplierExportRows,
+  type SupplierSortBy,
+  type SupplierSortDir,
+} from '@/lib/supplierList'
 import { SupplierFormModal } from './components/SupplierFormModal'
 import { RecordSupplierPaymentModal } from './components/RecordSupplierPaymentModal'
 
 const GRID = 'grid-cols-[minmax(10rem,1.4fr)_8rem_7.5rem_6.5rem_1.25rem]'
 
 export function SuppliersPage() {
+  const navigate = useNavigate()
   const [activeOnly, setActiveOnly] = useState(true)
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [sortBy, setSortBy] = useState<SupplierSortBy>('name')
+  const [sortDir, setSortDir] = useState<SupplierSortDir>('asc')
   const [formOpen, setFormOpen] = useState(false)
   const [editRow, setEditRow] = useState<SupplierRow | null>(null)
   const [payRow, setPayRow] = useState<SupplierRow | null>(null)
-  const { data, isLoading, isError } = useSupplierList(activeOnly)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), SUPPLIERS_SEARCH_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  const { data, isLoading, isError } = useSupplierList(
+    activeOnly,
+    debouncedSearch,
+    sortBy,
+    sortDir,
+  )
   const rows = data?.rows ?? []
+
+  function handleSort(field: SupplierSortBy) {
+    const next = nextSupplierSort(sortBy, sortDir, field)
+    setSortBy(next.sortBy)
+    setSortDir(next.sortDir)
+  }
+
+  function exportRows(kind: 'csv' | 'xlsx') {
+    const body = supplierExportRows(rows)
+    if (kind === 'csv') {
+      downloadCsv('fournisseurs.csv', SUPPLIER_EXPORT_HEADERS, body)
+      return
+    }
+    downloadXlsx('fournisseurs.xlsx', [
+      { name: 'Fournisseurs', headers: SUPPLIER_EXPORT_HEADERS, rows: body },
+    ])
+  }
 
   const chips: FilterBarChip[] = useMemo(
     () => [
@@ -58,20 +103,31 @@ export function SuppliersPage() {
               chips={chips}
               activeChip={activeOnly ? 'active' : 'all'}
               onChipChange={(v) => setActiveOnly(v !== 'all')}
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder={bilingualPlain(ACHATS.searchPlaceholder)}
               count={data?.count ?? 0}
             />
           </div>
         </div>
-        <Button
-          type="button"
-          onClick={() => {
-            setEditRow(null)
-            setFormOpen(true)
-          }}
-        >
-          <Plus className="h-4 w-4 mr-1.5" />
-          <BiButtonStack {...ACHATS.newSupplier} />
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="secondary" size="sm" onClick={() => exportRows('csv')} disabled={rows.length === 0}>
+            <BiButtonInline {...COMMON.exportCsv} />
+          </Button>
+          <Button type="button" variant="secondary" size="sm" onClick={() => exportRows('xlsx')} disabled={rows.length === 0}>
+            <BiButtonInline {...COMMON.exportXlsx} />
+          </Button>
+          <Button
+            type="button"
+            onClick={() => {
+              setEditRow(null)
+              setFormOpen(true)
+            }}
+          >
+            <Plus className="h-4 w-4 mr-1.5" />
+            <BiButtonStack {...ACHATS.newSupplier} />
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto">
@@ -98,7 +154,11 @@ export function SuppliersPage() {
           <div className="p-8">
             <EmptyState
               icon={<Truck className="h-8 w-8" />}
-              title={<BiEmptyTitle {...ACHATS.emptySuppliers} />}
+              title={
+                <BiEmptyTitle
+                  {...(search.trim() ? ACHATS.emptySearch : ACHATS.emptySuppliers)}
+                />
+              }
             />
           </div>
         ) : (
@@ -109,11 +169,33 @@ export function SuppliersPage() {
                 GRID,
               )}
             >
-              <BiTableHeader {...ACHATS.name} />
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-left hover:text-text-primary"
+                onClick={() => handleSort('name')}
+              >
+                <BiTableHeader {...ACHATS.name} />
+                {sortBy === 'name' &&
+                  (sortDir === 'asc' ? (
+                    <ArrowUp className="h-3.5 w-3.5" />
+                  ) : (
+                    <ArrowDown className="h-3.5 w-3.5" />
+                  ))}
+              </button>
               <BiTableHeader {...ACHATS.phone} />
-              <span className="text-right">
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 justify-self-end hover:text-text-primary"
+                onClick={() => handleSort('balance_owed_cfa')}
+              >
                 <BiTableHeader {...ACHATS.balance} />
-              </span>
+                {sortBy === 'balance_owed_cfa' &&
+                  (sortDir === 'asc' ? (
+                    <ArrowUp className="h-3.5 w-3.5" />
+                  ) : (
+                    <ArrowDown className="h-3.5 w-3.5" />
+                  ))}
+              </button>
               <BiTableHeader {...ACHATS.status} />
               <span />
             </div>
@@ -126,10 +208,7 @@ export function SuppliersPage() {
                   GRID,
                   CLICKABLE_ROW,
                 )}
-                onClick={() => {
-                  setEditRow(row)
-                  setFormOpen(true)
-                }}
+                onClick={() => navigate(`/achats/fournisseurs/${row.id}`)}
               >
                 <span className="text-sm font-medium truncate">{row.name}</span>
                 <span className="text-sm text-text-secondary truncate">{row.phone || '\u2014'}</span>

@@ -16,6 +16,7 @@ import { SalesPage } from '@/pages/sales/SalesPage'
 import { ProformasPage } from '@/pages/proformas/ProformasPage'
 import { AchatsLayout } from '@/pages/achats/AchatsLayout'
 import { SuppliersPage } from '@/pages/achats/SuppliersPage'
+import { SupplierDetailPage } from '@/pages/achats/SupplierDetailPage'
 import { PurchaseReceiptsPage } from '@/pages/achats/PurchaseReceiptsPage'
 import { SupplierPaymentsPage } from '@/pages/achats/SupplierPaymentsPage'
 import { CustomersPage } from '@/pages/customers/CustomersPage'
@@ -100,6 +101,7 @@ export function AppRoutes() {
             <Route path="/achats" element={<AchatsLayout />}>
               <Route index element={<Navigate to="fournisseurs" replace />} />
               <Route path="fournisseurs" element={<SuppliersPage />} />
+              <Route path="fournisseurs/:id" element={<SupplierDetailPage />} />
               <Route path="receptions" element={<PurchaseReceiptsPage />} />
               <Route path="reglements" element={<SupplierPaymentsPage />} />
             </Route>

@@ -29,7 +29,13 @@ import { ReportReturnsTab } from './tabs/ReportReturnsTab'
 import { ReportVoidsTab } from './tabs/ReportVoidsTab'
 import { ReportCustomersTab } from './tabs/ReportCustomersTab'
 import { ReportPurchasesTab } from './tabs/ReportPurchasesTab'
-import { usePurchasesReport } from '@/hooks/useAchats'
+import { ReportPurchasesByProductTab } from './tabs/ReportPurchasesByProductTab'
+import { ReportPurchasesByPeriodTab } from './tabs/ReportPurchasesByPeriodTab'
+import {
+  usePurchasesByPeriodReport,
+  usePurchasesByProductReport,
+  usePurchasesReport,
+} from '@/hooks/useAchats'
 import { ReportShiftsTab } from './tabs/ReportShiftsTab'
 import { ReportInventoryTab } from './tabs/ReportInventoryTab'
 import { ReportCostTab } from './tabs/ReportCostTab'
@@ -38,11 +44,11 @@ import { ReportAuditTab } from './tabs/ReportAuditTab'
 import { ReportMovementsTab } from './tabs/ReportMovementsTab'
 import { ReportModulePanel } from './components/ReportModulePanel'
 import { ReportSection } from './components/ReportSection'
-import { MoneyDisplay, PaginationBar } from '@/components/ui'
+import { FilterBar, MoneyDisplay, PaginationBar, type FilterBarChip } from '@/components/ui'
 import { REPORTS } from '@/lib/bilingual/reports'
 import { COMMON } from '@/lib/bilingual/common'
-import { BiModalTitle as BiSectionTitle, BiTableHeader } from '@/lib/bilingual/ui'
-import { t } from '@/lib/bilingual/types'
+import { BiModalTitle as BiSectionTitle, BiTabLabel, BiTableHeader } from '@/lib/bilingual/ui'
+import { bilingualAriaLabel, t } from '@/lib/bilingual/types'
 import {
   formatCFA,
   formatCompactMoney,
@@ -69,6 +75,8 @@ const LEGACY_TAB: Record<ReportId, ReportTabId> = {
   'cash-z': 'shifts',
   'customers-receivables': 'customers',
   'purchases-suppliers': 'purchases',
+  'purchases-products': 'purchases-products',
+  'purchases-period': 'purchases-period',
   'stock-inventory': 'inventory',
   'stock-movements': 'inventory',
   'stock-low': 'inventory',
@@ -96,7 +104,7 @@ function useExport(id: ReportId, extra: Record<string, unknown>) {
     ...extra,
   }
   return {
-    disabled: extra.sales == null && extra.inventory == null && extra.customers == null && extra.cash == null && extra.cost == null && extra.purchases == null && id !== 'stock-transfers' && id !== 'control-audit' && id !== 'stock-movements' && id !== 'cash-collections',
+    disabled: extra.sales == null && extra.inventory == null && extra.customers == null && extra.cash == null && extra.cost == null && extra.purchases == null && extra.purchasesProducts == null && extra.purchasesPeriod == null && id !== 'stock-transfers' && id !== 'control-audit' && id !== 'stock-movements' && id !== 'cash-collections',
     csv: () => { void exportReportCsv(ctx as never) },
     xlsx: () => { void exportReportXlsx(ctx as never) },
     print: () => { void exportReportPrint(ctx as never) },
@@ -410,13 +418,88 @@ export function CustomersReceivablesPage() {
 
 export function PurchasesSuppliersPage() {
   const search = useReportSearch()
-  const q = usePurchasesReport(search.depotId, search.range.startDate, search.range.endDate)
+  const [includeZero, setIncludeZero] = useState(false)
+  const q = usePurchasesReport(
+    search.depotId,
+    search.range.startDate,
+    search.range.endDate,
+    null,
+    includeZero,
+  )
   const exp = useExport('purchases-suppliers', { purchases: q.data })
+  const chips: FilterBarChip[] = useMemo(
+    () => [
+      {
+        value: 'active',
+        label: <BiTabLabel {...REPORTS.purchasesActiveOnly} />,
+        ariaLabel: bilingualAriaLabel(REPORTS.purchasesActiveOnly),
+      },
+      {
+        value: 'all',
+        label: <BiTabLabel {...REPORTS.purchasesIncludeZero} />,
+        ariaLabel: bilingualAriaLabel(REPORTS.purchasesIncludeZero),
+      },
+    ],
+    [],
+  )
   return (
     <Frame id="purchases-suppliers" exp={exp}>
+      <div className="mb-4">
+        <FilterBar
+          chips={chips}
+          activeChip={includeZero ? 'all' : 'active'}
+          onChipChange={(v) => setIncludeZero(v === 'all')}
+          count={q.data?.rows?.length ?? 0}
+        />
+      </div>
       <ReportSectionState isLoading={q.isLoading} isError={q.isError} data={q.data} onRetry={() => { void q.refetch() }}>
         {(purchases) => (
           <ReportPurchasesTab
+            rows={purchases.rows ?? []}
+            totals={purchases.totals ?? {
+              purchased_cfa: 0,
+              credit_cfa: 0,
+              paid_at_validate_cfa: 0,
+              receipt_count: 0,
+            }}
+          />
+        )}
+      </ReportSectionState>
+    </Frame>
+  )
+}
+
+export function PurchasesByProductPage() {
+  const search = useReportSearch()
+  const q = usePurchasesByProductReport(search.depotId, search.range.startDate, search.range.endDate)
+  const exp = useExport('purchases-products', { purchasesProducts: q.data })
+  return (
+    <Frame id="purchases-products" exp={exp}>
+      <ReportSectionState isLoading={q.isLoading} isError={q.isError} data={q.data} onRetry={() => { void q.refetch() }}>
+        {(purchases) => (
+          <ReportPurchasesByProductTab
+            rows={purchases.rows ?? []}
+            totals={purchases.totals ?? {
+              purchased_cfa: 0,
+              quantity_pieces: 0,
+              receipt_count: 0,
+            }}
+          />
+        )}
+      </ReportSectionState>
+    </Frame>
+  )
+}
+
+export function PurchasesByPeriodPage() {
+  const search = useReportSearch()
+  const q = usePurchasesByPeriodReport(search.depotId, search.range.startDate, search.range.endDate)
+  const exp = useExport('purchases-period', { purchasesPeriod: q.data })
+  return (
+    <Frame id="purchases-period" exp={exp}>
+      <ReportSectionState isLoading={q.isLoading} isError={q.isError} data={q.data} onRetry={() => { void q.refetch() }}>
+        {(purchases) => (
+          <ReportPurchasesByPeriodTab
             rows={purchases.rows ?? []}
             totals={purchases.totals ?? {
               purchased_cfa: 0,

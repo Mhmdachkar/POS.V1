@@ -256,6 +256,12 @@ export function messageForCodeBilingual(
       'Adjusted total must be between 1 and the calculated total.',
     )
   }
+  if (code === 'INVALID_AMOUNT' && details?.reason === 'exceeds_supplier_balance') {
+    return bi(
+      'Le montant dépasse le solde dû du fournisseur.',
+      'Amount exceeds the supplier balance owed.',
+    )
+  }
   if (code === 'INVALID_INPUT' && details?.reason === 'override_requires_reason') {
     return bi(
       'Indiquez un motif pour modifier le total.',

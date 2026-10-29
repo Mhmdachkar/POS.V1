@@ -14,6 +14,8 @@ export type ReportId =
   | 'cash-z'
   | 'customers-receivables'
   | 'purchases-suppliers'
+  | 'purchases-products'
+  | 'purchases-period'
   | 'stock-inventory'
   | 'stock-movements'
   | 'stock-low'
@@ -60,6 +62,8 @@ export const REPORT_GROUPS: Array<{ title: BilingualPair; items: ReportDef[] }> 
     title: REPORTS.groupPurchases,
     items: [
       { id: 'purchases-suppliers', path: '/reports/purchases/suppliers', group: REPORTS.groupPurchases, title: REPORTS.reportPurchases, description: REPORTS.descPurchases, filters: [], exportTab: 'purchases-suppliers' },
+      { id: 'purchases-products', path: '/reports/purchases/products', group: REPORTS.groupPurchases, title: REPORTS.reportPurchasesByProduct, description: REPORTS.descPurchasesByProduct, filters: [], exportTab: 'purchases-products' },
+      { id: 'purchases-period', path: '/reports/purchases/period', group: REPORTS.groupPurchases, title: REPORTS.reportPurchasesByPeriod, description: REPORTS.descPurchasesByPeriod, filters: [], exportTab: 'purchases-period' },
     ],
   },
   {

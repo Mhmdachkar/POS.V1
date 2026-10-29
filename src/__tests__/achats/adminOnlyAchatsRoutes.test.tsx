@@ -15,6 +15,7 @@ function renderGuarded(path: string) {
       <Routes>
         <Route element={<RoleGuard roles={['admin']} redirectTo="/pos" />}>
           <Route path="/achats/fournisseurs" element={<div>Achats ok</div>} />
+          <Route path="/achats/fournisseurs/:id" element={<div>Supplier detail ok</div>} />
           <Route path="/reports/purchases/suppliers" element={<div>Purchases report ok</div>} />
         </Route>
         <Route path="/pos" element={<div>POS fallback</div>} />
@@ -38,5 +39,18 @@ describe('admin-only achats routes', () => {
     first.unmount()
     renderGuarded('/reports/purchases/suppliers')
     expect(screen.getByText('Purchases report ok')).toBeInTheDocument()
+  })
+
+  it('redirects cashier from supplier detail', () => {
+    authState.staff = { role: 'cashier', id: 'c1' }
+    renderGuarded('/achats/fournisseurs/sup-1')
+    expect(screen.getByText('POS fallback')).toBeInTheDocument()
+    expect(screen.queryByText('Supplier detail ok')).not.toBeInTheDocument()
+  })
+
+  it('allows admin on supplier detail', () => {
+    authState.staff = { role: 'admin', id: 'a1' }
+    renderGuarded('/achats/fournisseurs/sup-1')
+    expect(screen.getByText('Supplier detail ok')).toBeInTheDocument()
   })
 })

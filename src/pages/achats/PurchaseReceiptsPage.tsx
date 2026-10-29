@@ -24,7 +24,8 @@ import {
   BiTableHeader,
 } from '@/lib/bilingual/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
-import { bilingualAriaLabel } from '@/lib/bilingual/types'
+import { bilingualAriaLabel, t } from '@/lib/bilingual/types'
+import { isCreditOverdue } from '@/lib/supplierDueDate'
 import { usePurchaseReceiptList, type PurchaseReceiptRow } from '@/hooks/useAchats'
 import { useDepotStore } from '@/stores/depotStore'
 import { PurchaseReceiptDetailDrawer } from './components/PurchaseReceiptDetailDrawer'
@@ -142,9 +143,20 @@ export function PurchaseReceiptsPage() {
                 onClick={() => setSelectedId(row.id)}
               >
                 <span className="font-mono text-sm tabular-nums truncate">{row.number}</span>
-                <Badge variant={statusVariant(row.status)}>
-                  <BilingualText {...statusLabel(row.status)} variant="caption" layout="inline" />
-                </Badge>
+                <div className="flex flex-wrap items-center gap-1">
+                  <Badge variant={statusVariant(row.status)}>
+                    <BilingualText {...statusLabel(row.status)} variant="caption" layout="inline" />
+                  </Badge>
+                  {isCreditOverdue(
+                    row.document_date,
+                    row.supplier_payment_term_days,
+                    row.payment_mode,
+                  ) && (
+                    <Badge variant="danger">
+                      <BilingualText {...ACHATS.overdue} variant="caption" layout="inline" />
+                    </Badge>
+                  )}
+                </div>
                 <span className="text-sm text-text-secondary tabular-nums">
                   {formatReportDate(row.document_date)}
                 </span>

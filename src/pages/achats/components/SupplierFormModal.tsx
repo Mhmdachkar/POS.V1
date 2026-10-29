@@ -8,6 +8,7 @@ import { bilingualPlain, t } from '@/lib/bilingual/types'
 import { parseError } from '@/lib/errors'
 import { toastErrorFromCode, toastSuccessBi } from '@/lib/bilingual/toast'
 import { useCreateSupplier, useUpdateSupplier, type SupplierRow } from '@/hooks/useAchats'
+import { parsePaymentTermDays } from '@/lib/supplierList'
 
 interface Props {
   open: boolean
@@ -20,6 +21,9 @@ export function SupplierFormModal({ open, onClose, supplier }: Props) {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
+  const [email, setEmail] = useState('')
+  const [notes, setNotes] = useState('')
+  const [paymentTerm, setPaymentTerm] = useState('')
   const [error, setError] = useState('')
   const nameRef = useRef<HTMLInputElement>(null)
   const create = useCreateSupplier()
@@ -31,6 +35,11 @@ export function SupplierFormModal({ open, onClose, supplier }: Props) {
     setName(supplier?.name ?? '')
     setPhone(supplier?.phone ?? '')
     setAddress(supplier?.address ?? '')
+    setEmail(supplier?.email ?? '')
+    setNotes(supplier?.notes ?? '')
+    setPaymentTerm(
+      supplier?.payment_term_days == null ? '' : String(supplier.payment_term_days),
+    )
     setError('')
     const tmr = setTimeout(() => nameRef.current?.focus(), 50)
     return () => clearTimeout(tmr)
@@ -45,19 +54,30 @@ export function SupplierFormModal({ open, onClose, supplier }: Props) {
       setError(t(ACHATS.nameRequired))
       return
     }
+    const term = parsePaymentTermDays(paymentTerm)
+    if (!term.ok) {
+      setError(t(ACHATS.paymentTermInvalid))
+      return
+    }
     try {
       if (isEdit && supplier) {
         await update.mutateAsync({
           p_supplier_id: supplier.id,
           p_name: name.trim(),
-          p_phone: phone.trim() || null,
-          p_address: address.trim() || null,
+          p_phone: phone.trim(),
+          p_address: address.trim(),
+          p_email: email.trim(),
+          p_notes: notes.trim(),
+          p_payment_term_days: term.days,
         })
       } else {
         await create.mutateAsync({
           p_name: name.trim(),
           p_phone: phone.trim() || null,
           p_address: address.trim() || null,
+          p_email: email.trim() || null,
+          p_notes: notes.trim() || null,
+          p_payment_term_days: term.days,
         })
       }
       onClose()
@@ -112,12 +132,44 @@ export function SupplierFormModal({ open, onClose, supplier }: Props) {
         </label>
         <label className="block space-y-1">
           <span className="text-sm font-medium text-text-secondary">
+            <BiTableHeader {...ACHATS.email} />
+          </span>
+          <input
+            type="email"
+            className="w-full h-10 px-3 rounded-md border border-border bg-surface text-sm"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </label>
+        <label className="block space-y-1">
+          <span className="text-sm font-medium text-text-secondary">
             <BiTableHeader {...ACHATS.address} />
           </span>
           <textarea
             className="w-full min-h-[72px] px-3 py-2 rounded-md border border-border bg-surface text-sm"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
+          />
+        </label>
+        <label className="block space-y-1">
+          <span className="text-sm font-medium text-text-secondary">
+            <BiTableHeader {...ACHATS.notes} />
+          </span>
+          <textarea
+            className="w-full min-h-[72px] px-3 py-2 rounded-md border border-border bg-surface text-sm"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+        </label>
+        <label className="block space-y-1">
+          <span className="text-sm font-medium text-text-secondary">
+            <BiTableHeader {...ACHATS.paymentTermDays} />
+          </span>
+          <input
+            inputMode="numeric"
+            className="w-full h-10 px-3 rounded-md border border-border bg-surface text-sm tabular-nums"
+            value={paymentTerm}
+            onChange={(e) => setPaymentTerm(e.target.value)}
           />
         </label>
         {error && <p className="text-sm text-danger-foreground">{error}</p>}

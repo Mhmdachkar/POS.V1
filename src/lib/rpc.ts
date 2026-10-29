@@ -166,6 +166,9 @@ export const rpc = {
     p_name: string
     p_phone?: string | null
     p_address?: string | null
+    p_email?: string | null
+    p_notes?: string | null
+    p_payment_term_days?: number | null
   }): Promise<RpcResult<{ id: string }>> =>
     callRpc('create_supplier', params),
 
@@ -175,6 +178,9 @@ export const rpc = {
     p_phone?: string | null
     p_address?: string | null
     p_is_active?: boolean | null
+    p_email?: string | null
+    p_notes?: string | null
+    p_payment_term_days?: number | null
   }): Promise<RpcResult<unknown>> =>
     callRpc('update_supplier', params),
 
@@ -182,8 +188,17 @@ export const rpc = {
     p_active_only?: boolean
     p_limit?: number
     p_offset?: number
+    p_search?: string | null
+    p_sort_by?: string | null
+    p_sort_dir?: string | null
   }): Promise<RpcResult<unknown>> =>
     callRpc('list_suppliers', params),
+
+  getSupplier: (supplierId: string): Promise<RpcResult<unknown>> =>
+    callRpc('get_supplier', { p_supplier_id: supplierId }),
+
+  supplierLedger: (supplierId: string): Promise<RpcResult<unknown>> =>
+    callRpc('supplier_ledger', { p_supplier_id: supplierId }),
 
   upsertPurchaseReceipt: (params: {
     p_depot_id: string
@@ -244,8 +259,25 @@ export const rpc = {
     p_start_date?: string | null
     p_end_date?: string | null
     p_supplier_id?: string | null
+    p_include_zero?: boolean
   }): Promise<RpcResult<unknown>> =>
     callRpc('admin_report_purchases', params),
+
+  adminReportPurchasesByProduct: (params: {
+    p_depot_id?: string | null
+    p_start_date?: string | null
+    p_end_date?: string | null
+    p_supplier_id?: string | null
+  }): Promise<RpcResult<unknown>> =>
+    callRpc('admin_report_purchases_by_product', params),
+
+  adminReportPurchasesByPeriod: (params: {
+    p_depot_id?: string | null
+    p_start_date?: string | null
+    p_end_date?: string | null
+    p_supplier_id?: string | null
+  }): Promise<RpcResult<unknown>> =>
+    callRpc('admin_report_purchases_by_period', params),
 
   saleDeliveryRemaining: (saleId: string): Promise<RpcResult<unknown>> =>
     callRpc('sale_delivery_remaining', { p_sale_id: saleId }),

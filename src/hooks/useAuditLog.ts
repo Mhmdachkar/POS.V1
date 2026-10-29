@@ -43,6 +43,7 @@ export const AUDIT_ACTIONS = [
   'cancel_purchase_receipt',
   'record_supplier_payment',
   'create_supplier',
+  'update_supplier',
   'correct_electro2_stock_cost',
   'upsert_purchase_receipt',
   'create_delivery_note',

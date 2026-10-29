@@ -26,4 +26,11 @@ describe('achats supplier lifecycle + pay method gates', () => {
     expect(canValidatePaid('mobile')).toBe(true)
     expect(canValidatePaid('bank')).toBe(true)
   })
+
+  it('exposes email, notes and délai labels for the supplier form', () => {
+    expect(bilingualPlain(ACHATS.email)).toMatch(/e-?mail/i)
+    expect(bilingualPlain(ACHATS.notes)).toMatch(/notes/i)
+    expect(bilingualPlain(ACHATS.paymentTermDays)).toMatch(/délai|payment terms/i)
+    expect(bilingualPlain(ACHATS.paymentTermInvalid)).toMatch(/entier|whole number/i)
+  })
 })
