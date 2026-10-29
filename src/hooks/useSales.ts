@@ -168,8 +168,8 @@ async function resolveSalesSearchOrFilter(search: string): Promise<string> {
   if (staffRes.error) throw staffRes.error
 
   const parts = [`receipt_number.ilike.${escapeOrValue(pattern)}`]
-  const customerIds = (customersRes.data ?? []).map((r) => r.id)
-  const staffIds = (staffRes.data ?? []).map((r) => r.id)
+  const customerIds = ((customersRes.data ?? []) as Array<{ id: string }>).map((r) => r.id)
+  const staffIds = ((staffRes.data ?? []) as Array<{ id: string }>).map((r) => r.id)
   if (customerIds.length > 0) {
     parts.push(`customer_id.in.(${customerIds.map(escapeOrValue).join(',')})`)
   }
@@ -182,7 +182,7 @@ async function resolveSalesSearchOrFilter(search: string): Promise<string> {
 function applyPaymentKindFilter<
   T extends {
     gt: (column: string, value: number) => T
-    eq: (column: string, value: number) => T
+    eq: (column: string, value: string | number) => T
   },
 >(q: T, paymentKind?: SalePaymentKind | null): T {
   if (paymentKind === 'cash') {
@@ -203,7 +203,7 @@ function applyPaymentKindFilter<
  */
 function applySalesListFilters<
   T extends {
-    eq: (column: string, value: string) => T
+    eq: (column: string, value: string | number) => T
     or: (filters: string) => T
     gte: (column: string, value: string) => T
     lte: (column: string, value: string) => T
