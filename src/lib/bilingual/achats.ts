@@ -31,8 +31,8 @@ export const ACHATS = {
   deactivate: bi('Désactiver', 'Deactivate'),
   reactivate: bi('Réactiver', 'Reactivate'),
   deactivateBlockedBalance: bi(
-    'Impossible de désactiver tant que le solde dû est supérieur à 0. Enregistrez un règlement d’abord.',
-    'Cannot deactivate while balance owed is greater than 0. Record a payment first.',
+    'Solde à régler avant de désactiver',
+    'Settle the balance before deactivating',
   ),
   deactivatedOk: bi('Fournisseur désactivé', 'Supplier deactivated'),
   reactivatedOk: bi('Fournisseur réactivé', 'Supplier reactivated'),

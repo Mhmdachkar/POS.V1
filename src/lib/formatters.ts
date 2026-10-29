@@ -221,6 +221,17 @@ export function parseCFAInput(raw: string): number {
   return parseFloat(cleaned)
 }
 
+/** Soft Gestion: CFA are whole francs. Round for inputs/defaults to match formatMoney. */
+export function roundCfaInt(amount: number | null | undefined): number {
+  if (amount == null || !Number.isFinite(Number(amount))) return 0
+  return Math.round(Number(amount))
+}
+
+/** Format a CFA amount for text inputs as a whole-franc thousands string. */
+export function formatCfaIntInput(amount: number | null | undefined): string {
+  return formatThousandsInput(String(roundCfaInt(amount)))
+}
+
 /**
  * Group digits with spaces while typing: 40000 → "40 000".
  * Keeps an optional decimal part ungrouped.

@@ -141,8 +141,8 @@ export function ProductFormModal({ open, onClose, depotId, product }: ProductFor
           relative_quantity: unit.relative_quantity != null
             ? formatThousandsInput(String(unit.relative_quantity))
             : '',
-          cost_price_cfa: formatThousandsInput(String(unit.cost_price_cfa)),
-          selling_price_cfa: formatThousandsInput(String(unit.selling_price_cfa)),
+          cost_price_cfa: formatThousandsInput(String(Math.round(Number(unit.cost_price_cfa ?? 0)))),
+          selling_price_cfa: formatThousandsInput(String(Math.round(Number(unit.selling_price_cfa ?? 0)))),
         }
       }
       setUnits(next)
@@ -183,8 +183,8 @@ export function ProductFormModal({ open, onClose, depotId, product }: ProductFor
       if (!u.enabled) continue
       const serial = u.serial_number.trim()
       if (!u.unit_name.trim() || !serial) return null
-      const cost = parseCFAInput(u.cost_price_cfa)
-      const selling = parseCFAInput(u.selling_price_cfa)
+      const cost = Math.round(parseCFAInput(u.cost_price_cfa))
+      const selling = Math.round(parseCFAInput(u.selling_price_cfa))
       if (!(cost >= 0) || !(selling >= 0)) return null
 
       let relQty: number | null = null
