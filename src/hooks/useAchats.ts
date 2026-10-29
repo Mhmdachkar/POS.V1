@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { rpc } from '@/lib/rpc'
 import { CACHE_STALE } from '@/lib/cachePolicy'
 import { markReportsAndDashboardStale, refreshPosCatalogStock } from '@/lib/cacheInvalidation'
-import type { SupplierLedgerRpcRow } from '@/lib/supplierLedger'
+import { asSupplierLedgerRows } from '@/lib/supplierLedger'
 
 export const achatsKeys = {
   all: ['achats'] as const,
@@ -115,7 +115,7 @@ export function useSupplierLedger(id: string | null) {
     queryFn: async () => {
       const result = await rpc.supplierLedger(id!)
       if (result.error) throw result.error
-      return (result.data ?? []) as SupplierLedgerRpcRow[]
+      return asSupplierLedgerRows(result.data)
     },
     enabled: !!id,
     staleTime: CACHE_STALE.customerDetail,
@@ -209,7 +209,7 @@ export function useSupplierPaymentList(supplierId: string | null = null) {
     queryKey: achatsKeys.payments(supplierId),
     queryFn: async () => {
       const result = await rpc.listSupplierPayments({
-        p_supplier_id: supplierId,
+        ...(supplierId ? { p_supplier_id: supplierId } : {}),
         p_limit: 100,
         p_offset: 0,
       })

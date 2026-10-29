@@ -112,7 +112,11 @@ export function buildPurchaseReceiptDocumentHtml(ctx: PurchaseReceiptPrintContex
     )}</p>
     ${renderSignatureBoxes('Cachet / Signature', 'Fournisseur')}
   `
-  return wrapCommercialDocument({ title: `BR ${receipt.number}`, bodyHtml: body })
+  return wrapCommercialDocument({
+    title: `BR ${receipt.number}`,
+    bodyHtml: body,
+    watermark: receipt.status === 'cancelled' ? 'ANNUL\u00c9' : null,
+  })
 }
 
 export function printPurchaseReceiptPdf(ctx: PurchaseReceiptPrintContext): void {

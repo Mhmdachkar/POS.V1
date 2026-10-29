@@ -103,9 +103,17 @@ export function wrapCommercialDocument(opts: {
   title: string
   bodyHtml: string
   extraCss?: string
+  watermark?: string | null
 }): string {
+  const mark = opts.watermark?.trim()
+  const watermarkCss = mark
+    ? `.doc-watermark{position:fixed;inset:12%;display:flex;align-items:center;justify-content:center;font-size:92px;font-weight:800;color:rgba(180,35,24,0.16);transform:rotate(-28deg);letter-spacing:0.12em;pointer-events:none;z-index:0;}`
+    : ''
+  const watermarkHtml = mark
+    ? `<div class="doc-watermark">${escapeDocHtml(mark)}</div>`
+    : ''
   return `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>${escapeDocHtml(opts.title)}</title>
-<style>${BASE_CSS}${opts.extraCss ?? ''}</style></head><body>${opts.bodyHtml}</body></html>`
+<style>${BASE_CSS}${watermarkCss}${opts.extraCss ?? ''}</style></head><body>${watermarkHtml}${opts.bodyHtml}</body></html>`
 }
 
 export function renderCommercialHeader(

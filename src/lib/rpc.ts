@@ -251,8 +251,13 @@ export const rpc = {
     p_supplier_id?: string | null
     p_limit?: number
     p_offset?: number
-  }): Promise<RpcResult<unknown>> =>
-    callRpc('list_supplier_payments', params),
+  }): Promise<RpcResult<unknown>> => {
+    const args: Record<string, unknown> = {}
+    if (params.p_supplier_id) args.p_supplier_id = params.p_supplier_id
+    if (params.p_limit != null) args.p_limit = params.p_limit
+    if (params.p_offset != null) args.p_offset = params.p_offset
+    return callRpc('list_supplier_payments', args)
+  },
 
   adminReportPurchases: (params: {
     p_depot_id?: string | null

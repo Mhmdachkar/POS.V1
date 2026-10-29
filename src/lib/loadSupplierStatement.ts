@@ -8,7 +8,7 @@ import {
   type SupplierStatementDataset,
 } from '@/lib/supplierStatement'
 import { DISPLAY_TIME_ZONE } from '@/lib/formatters'
-import type { SupplierLedgerRpcRow } from '@/lib/supplierLedger'
+import { asSupplierLedgerRows } from '@/lib/supplierLedger'
 
 function ymdFirstLedger(ledger: { occurred_at: string }[]): string | null {
   if (ledger.length === 0) return null
@@ -39,7 +39,7 @@ export async function loadSupplierStatement(opts: {
   ])
   if (ledgerRes.error) throw ledgerRes.error
 
-  const ledgerOldestFirst = (ledgerRes.data ?? []) as SupplierLedgerRpcRow[]
+  const ledgerOldestFirst = asSupplierLedgerRows(ledgerRes.data)
   let periodFromYmd = opts.periodFromYmd ?? null
   let periodToYmd = opts.periodToYmd ?? null
   if (

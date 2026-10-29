@@ -4,6 +4,12 @@ import { cn } from '@/lib/cn'
 export const CLICKABLE_ROW =
   'cursor-pointer hover:bg-surface-muted transition-colors focus:outline-none focus:bg-primary-subtle'
 
+/** Even/odd striping used on list tables (Clients, etc.). */
+export function tableRowZebra(index: number, selected = false): string {
+  if (selected) return 'bg-primary-subtle'
+  return index % 2 === 1 ? 'bg-surface-muted/50' : 'bg-surface'
+}
+
 export function RowChevron({ className }: { className?: string }) {
   return (
     <ChevronRight

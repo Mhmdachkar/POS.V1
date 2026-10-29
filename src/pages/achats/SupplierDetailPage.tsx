@@ -16,6 +16,7 @@ import { BilingualText } from '@/components/ui/BilingualText'
 import {
   BiButtonInline,
   BiButtonStack,
+  BiEmptyDescription,
   BiEmptyTitle,
   BiTabLabel,
   BiTableHeader,
@@ -25,16 +26,19 @@ import { COMMON } from '@/lib/bilingual/common'
 import { t } from '@/lib/bilingual/types'
 import { formatReportDate, formatReportDateTime } from '@/lib/formatters'
 import { parseError } from '@/lib/errors'
+import { toastErrorFromCode } from '@/lib/bilingual/toast'
 import {
   useSupplierDetail,
   useSupplierLedger,
   useSupplierPaymentList,
   useSupplierReceiptList,
   type PurchaseReceiptRow,
+  type SupplierPaymentRow,
   type SupplierRow,
 } from '@/hooks/useAchats'
 import { supplierLedgerAccountBalanceCfa, type SupplierLedgerRpcRow } from '@/lib/supplierLedger'
 import { exportSupplierStatement } from '@/lib/loadSupplierStatement'
+import { reprintSupplierPaymentSlip } from '@/lib/supplierPaymentDocument'
 import { useDepotStore } from '@/stores/depotStore'
 import { SupplierFormModal } from './components/SupplierFormModal'
 import { RecordSupplierPaymentModal } from './components/RecordSupplierPaymentModal'
@@ -44,7 +48,7 @@ type DetailTab = 'receipts' | 'payments' | 'movements'
 
 const RECEIPT_GRID =
   'grid-cols-[minmax(8rem,11rem)_minmax(5.5rem,6.5rem)_minmax(5rem,7rem)_minmax(5rem,7rem)_minmax(6rem,7.5rem)]'
-const PAY_GRID = 'grid-cols-[minmax(7rem,10rem)_minmax(7rem,9rem)_6.5rem_5.5rem_minmax(6rem,1fr)]'
+const PAY_GRID = 'grid-cols-[minmax(7rem,10rem)_minmax(7rem,9rem)_6.5rem_5.5rem_minmax(6rem,1fr)_2.75rem]'
 const MOVE_GRID =
   'grid-cols-[6.5rem_minmax(6rem,9rem)_minmax(5rem,7rem)_minmax(7rem,1.4fr)_6.5rem_6.5rem_6.5rem]'
 
@@ -122,6 +126,27 @@ export function SupplierDetailPage() {
         payment_term_days: supplier.payment_term_days,
       }
     : null
+
+  async function handlePrintPayment(row: SupplierPaymentRow) {
+    if (!supplier) return
+    try {
+      await reprintSupplierPaymentSlip({
+        receiptNumber: row.receipt_number || '\u2014',
+        amountCfa: row.amount_cfa,
+        methodLabel: t(methodLabel(row.method)),
+        recordedAt: row.recorded_at,
+        note: row.note,
+        supplier: {
+          name: supplier.name,
+          phone: supplier.phone,
+          address: supplier.address,
+        },
+      })
+    } catch (err) {
+      const parsed = parseError(err)
+      toastErrorFromCode(parsed.code, parsed.details)
+    }
+  }
 
   async function handleStatement() {
     if (!supplier) return
@@ -404,6 +429,7 @@ export function SupplierDetailPage() {
                 </span>
                 <BiTableHeader {...ACHATS.method} />
                 <BiTableHeader {...ACHATS.note} />
+                <span />
               </div>
               {payments.map((row) => (
                 <div
@@ -421,6 +447,17 @@ export function SupplierDetailPage() {
                     <BilingualText {...methodLabel(row.method)} variant="caption" layout="inline" />
                   </Badge>
                   <span className="text-sm text-text-secondary truncate">{row.note || '\u2014'}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="justify-self-end px-2"
+                    onClick={() => void handlePrintPayment(row)}
+                    title={t(ACHATS.printPaymentSlip)}
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span className="sr-only">{t(ACHATS.printPaymentSlip)}</span>
+                  </Button>
                 </div>
               ))}
             </>
@@ -433,6 +470,14 @@ export function SupplierDetailPage() {
               {Array.from({ length: 4 }).map((_, i) => (
                 <Skeleton key={i} className="h-10 w-full" />
               ))}
+            </div>
+          ) : ledgerQ.isError ? (
+            <div className="p-8">
+              <EmptyState
+                icon={<Truck className="h-8 w-8" />}
+                title={<BiEmptyTitle {...ACHATS.failedToLoad} />}
+                description={<BiEmptyDescription {...COMMON.checkConnection} />}
+              />
             </div>
           ) : movementsNewestFirst.length === 0 ? (
             <div className="p-8">

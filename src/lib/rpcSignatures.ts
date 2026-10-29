@@ -79,9 +79,9 @@ export const RPC_SIGNATURES = {
   validate_purchase_receipt: ['p_purchase_receipt_id', 'p_payment_mode'],
   cancel_purchase_receipt: ['p_purchase_receipt_id'],
   get_purchase_receipt: ['p_purchase_receipt_id'],
-  list_purchase_receipts: [],
+  list_purchase_receipts: ['p_depot_id', 'p_supplier_id', 'p_status', 'p_limit', 'p_offset'],
   record_supplier_payment: ['p_supplier_id', 'p_amount_cfa', 'p_method'],
-  list_supplier_payments: [],
+  list_supplier_payments: ['p_supplier_id', 'p_limit', 'p_offset'],
   admin_report_purchases: [
     'p_depot_id',
     'p_start_date',

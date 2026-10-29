@@ -34,6 +34,7 @@ import {
   PaginationBar,
   RowChevron,
   CLICKABLE_ROW,
+  tableRowZebra,
   Skeleton,
 } from '@/components/ui'
 import { formatDate } from '@/lib/formatters'
@@ -237,7 +238,7 @@ export function CustomersPage() {
             </div>
 
             {/* Rows */}
-            {customers.map((customer) => {
+            {customers.map((customer, index) => {
               const soldeLoading = ledgerBalancesLoading || ledgerBalances === undefined
               const accountBalanceCfa = displayedAccountBalanceCfa(
                 ledgerBalances?.[customer.id],
@@ -257,10 +258,10 @@ export function CustomersPage() {
                   CUSTOMERS_GRID,
                   'border-b border-border border-l-4',
                   CLICKABLE_ROW,
+                  tableRowZebra(index, selectedCustomerId === customer.id),
                   tone === 'owing' && 'border-l-danger',
                   tone === 'settled' && 'border-l-success',
                   tone === 'inactive' && 'border-l-border-strong',
-                  selectedCustomerId === customer.id && 'bg-primary-subtle',
                 )}
               >
                 <span className="flex items-center gap-3 min-w-0">

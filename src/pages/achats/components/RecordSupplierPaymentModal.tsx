@@ -11,6 +11,7 @@ import { useDepotStore } from '@/stores/depotStore'
 import { cn } from '@/lib/cn'
 import { fetchBusinessSettings } from '@/hooks/useBusinessSettings'
 import { printSupplierPaymentSlip } from '@/lib/supplierPaymentDocument'
+import { supplierPaymentAmountIssue } from '@/lib/supplierPaymentAmount'
 import { toastErrorFromCode, toastSuccessBi } from '@/lib/bilingual/toast'
 
 interface Props {
@@ -44,18 +45,21 @@ export function RecordSupplierPaymentModal({ open, onClose, supplier }: Props) {
     return () => clearTimeout(tmr)
   }, [open, supplier?.id])
 
+  const amountIssue = supplier
+    ? supplierPaymentAmountIssue(amountStr, supplier.balance_owed_cfa)
+    : 'empty'
+  const inlineError =
+    amountIssue === 'exceeds'
+      ? t(ACHATS.paymentExceedsBalance)
+      : amountIssue === 'invalid'
+        ? t(ACHATS.amount)
+        : error
+  const canSubmit = amountIssue === null
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!supplier) return
-    const amount = Number(amountStr)
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setError(t(ACHATS.amount))
-      return
-    }
-    if (amount > Number(supplier.balance_owed_cfa) + 0.01) {
-      setError(t(ACHATS.paymentExceedsBalance))
-      return
-    }
+    if (!supplier || !canSubmit) return
+    const amount = Number(amountStr.trim().replace(/\s/g, '').replace(',', '.'))
     try {
       const result = await record.mutateAsync({
         p_supplier_id: supplier.id,
@@ -125,7 +129,11 @@ export function RecordSupplierPaymentModal({ open, onClose, supplier }: Props) {
               inputMode="decimal"
               className="w-full h-10 px-3 rounded-md border border-border bg-surface text-sm tabular-nums"
               value={amountStr}
-              onChange={(e) => setAmountStr(e.target.value)}
+              onChange={(e) => {
+                setAmountStr(e.target.value)
+                setError('')
+              }}
+              aria-invalid={amountIssue === 'exceeds' || amountIssue === 'invalid'}
             />
           </label>
           <div className="space-y-1">
@@ -160,12 +168,16 @@ export function RecordSupplierPaymentModal({ open, onClose, supplier }: Props) {
               onChange={(e) => setNote(e.target.value)}
             />
           </label>
-          {error && <p className="text-sm text-danger-foreground">{error}</p>}
+          {inlineError && (
+            <p className="text-sm text-danger-foreground" role="alert">
+              {inlineError}
+            </p>
+          )}
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="ghost" onClick={onClose}>
               <BiButtonStack {...COMMON.cancel} />
             </Button>
-            <LoadingButton type="submit" loading={record.isPending}>
+            <LoadingButton type="submit" loading={record.isPending} disabled={!canSubmit}>
               <BiButtonStack {...ACHATS.recordPayment} />
             </LoadingButton>
           </div>

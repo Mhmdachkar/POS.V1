@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { SupplierLedgerRpcRow } from '@/lib/supplierLedger'
 import {
+  asSupplierLedgerRows,
   supplierLedgerAccountBalanceCfa,
   supplierLedgerMatchesOwed,
   withFlooredSupplierRunningBalances,
@@ -27,6 +28,21 @@ function row(
 
 const header = { businessName: 'Aquilux' }
 const party = { name: 'Fournisseur Test', phone: '0700000000', address: 'Abidjan' }
+
+describe('asSupplierLedgerRows', () => {
+  it('reads jsonb { rows } and a raw TABLE array', () => {
+    const sample = row({
+      id: '1',
+      kind: 'purchase',
+      occurred_at: '2026-01-10T10:00:00Z',
+      amount_cfa: 69_000,
+      running_balance_cfa: 69_000,
+    })
+    expect(asSupplierLedgerRows({ rows: [sample] })).toEqual([sample])
+    expect(asSupplierLedgerRows([sample])).toEqual([sample])
+    expect(asSupplierLedgerRows(null)).toEqual([])
+  })
+})
 
 describe('supplier ledger floor', () => {
   it('floors running balance at 0 when a credit BR is cancelled after a payment', () => {

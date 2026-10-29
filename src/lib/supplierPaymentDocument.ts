@@ -16,6 +16,7 @@ import {
 import { printCommercialDocument } from '@/lib/reportExport'
 import { APP_BUSINESS_FALLBACK } from '@/lib/formatters'
 import { amountInWordsFrCfa } from '@/lib/amountInWordsFr'
+import { fetchBusinessSettings } from '@/hooks/useBusinessSettings'
 
 export interface SupplierPaymentSlipContext {
   receiptNumber: string
@@ -81,4 +82,20 @@ export function buildSupplierPaymentSlipHtml(ctx: SupplierPaymentSlipContext): s
 
 export function printSupplierPaymentSlip(ctx: SupplierPaymentSlipContext): void {
   printCommercialDocument(buildSupplierPaymentSlipHtml(ctx))
+}
+
+export async function reprintSupplierPaymentSlip(
+  ctx: Omit<SupplierPaymentSlipContext, 'header'>,
+): Promise<void> {
+  const settings = await fetchBusinessSettings()
+  printSupplierPaymentSlip({
+    ...ctx,
+    receiptNumber: ctx.receiptNumber?.trim() || '\u2014',
+    header: {
+      businessName: settings.business_name,
+      logoUrl: settings.logo_url,
+      phone: settings.phone,
+      businessAddress: settings.address,
+    },
+  })
 }
