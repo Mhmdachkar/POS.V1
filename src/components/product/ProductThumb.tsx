@@ -9,24 +9,33 @@ export function ProductThumb({
 }: {
   photoUrl: string | null | undefined
   name: string
-  size?: 'sm' | 'md'
+  size?: 'sm' | 'md' | 'lg'
 }) {
   const [failed, setFailed] = useState(false)
   const src = resolveProductPhotoUrl(photoUrl, name)
-  const dim = size === 'sm' ? 'h-10 w-10' : 'h-12 w-12'
+  const dim =
+    size === 'lg' ? 'h-16 w-16' : size === 'sm' ? 'h-11 w-11' : 'h-14 w-14'
   if (!src || failed) {
     return (
       <span
-        className={cn(dim, 'rounded-md bg-surface-muted flex-shrink-0 ring-1 ring-border/60')}
+        className={cn(
+          dim,
+          'rounded-md bg-surface-muted flex-shrink-0 ring-1 ring-border flex items-center justify-center text-[10px] text-text-muted',
+        )}
         aria-hidden
-      />
+      >
+        —
+      </span>
     )
   }
   return (
     <img
       src={src}
       alt=""
-      className={cn(dim, 'rounded-md object-cover flex-shrink-0 ring-1 ring-border/60')}
+      className={cn(
+        dim,
+        'rounded-md object-contain bg-surface-muted flex-shrink-0 ring-1 ring-border p-0.5',
+      )}
       onError={() => setFailed(true)}
     />
   )

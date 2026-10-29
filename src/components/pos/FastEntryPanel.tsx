@@ -38,6 +38,16 @@ function unitCode(hit: AchatsResolveHit): string {
   return hit.unit.serial_number?.trim() || '—'
 }
 
+function serialForCartLine(
+  productId: string,
+  unitLevel: number,
+  catalog: { id: string; units: { unit_level: number; serial_number: string | null }[] }[],
+): string {
+  const p = catalog.find((x) => x.id === productId)
+  const u = p?.units.find((x) => x.unit_level === unitLevel)
+  return u?.serial_number?.trim() || '—'
+}
+
 export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
   const staff = useAuthStore((s) => s.staff)
   const isAdmin = staff?.role === 'admin'
@@ -281,12 +291,15 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
           Enter
         </button>
         {activeHit && code.trim() && (
-          <div className="w-full flex items-center gap-2 text-xs text-text-secondary min-w-0">
-            <ProductThumb photoUrl={activeHit.product.photo_url} name={activeHit.product.name} size="sm" />
-            <p className="truncate">
-              → {unitCode(activeHit)} · {activeHit.product.name}
-              <span className="ml-2 text-[10px] font-normal text-text-muted">Tab</span>
-            </p>
+          <div className="w-full flex items-center gap-3 rounded-lg border border-border bg-surface-muted/50 px-2 py-2 text-sm text-text-secondary min-w-0">
+            <ProductThumb photoUrl={activeHit.product.photo_url} name={activeHit.product.name} size="lg" />
+            <div className="min-w-0">
+              <p className="font-medium text-text-primary truncate">{activeHit.product.name}</p>
+              <p className="text-xs truncate font-mono">
+                {unitCode(activeHit)} · {activeHit.unit.unit_name}
+                <span className="ml-2 text-[10px] font-sans text-text-muted">Tab</span>
+              </p>
+            </div>
           </div>
         )}
       </div>
@@ -305,7 +318,7 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
                     setFocusQtyToken((n) => n + 1)
                   }}
                 >
-                  <ProductThumb photoUrl={hit.product.photo_url} name={hit.product.name} size="sm" />
+                  <ProductThumb photoUrl={hit.product.photo_url} name={hit.product.name} size="md" />
                   <span className="min-w-0 truncate">
                     <span className="font-mono text-xs text-text-secondary">{unitCode(hit)}</span>
                     <span className="ml-2 font-medium">{hit.product.name}</span>
@@ -322,7 +335,7 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-surface-muted text-xs text-text-secondary">
             <tr>
-              <th className="w-12" />
+              <th className="w-16 text-left px-2 py-2 font-semibold">{t(POS.photoCol)}</th>
               <th className="text-left px-2 py-2 font-semibold">{t(POS.codeCol)}</th>
               <th className="text-left px-2 py-2 font-semibold">{t(POS.designationCol)}</th>
               <th className="text-left px-2 py-2 font-semibold">{t(POS.unitCol)}</th>
@@ -343,9 +356,9 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
               return (
                 <tr key={key} className="border-t border-border">
                   <td className="px-2 py-1.5">
-                    <ProductThumb photoUrl={row.product_photo_url} name={row.product_name} size="sm" />
+                    <ProductThumb photoUrl={row.product_photo_url} name={row.product_name} size="md" />
                   </td>
-                  <td className="px-2 py-1.5 font-mono text-xs text-text-secondary">—</td>
+                  <td className="px-2 py-1.5 font-mono text-xs text-text-secondary">{serialForCartLine(row.product_id, row.unit_level, catalogHits)}</td>
                   <td className="px-2 py-1.5 font-medium">{row.product_name}</td>
                   <td className="px-2 py-1.5">{row.unit_name}</td>
                   <td className="px-2 py-1.5 text-right">

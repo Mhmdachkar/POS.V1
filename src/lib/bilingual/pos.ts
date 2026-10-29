@@ -169,6 +169,7 @@ export const POS = {
   saisieRapide: bi('Saisie rapide', 'Fast entry'),
   documentDate: bi('Date', 'Date'),
   externalRef: bi('Réf.', 'Ref.'),
+  photoCol: bi('Photo', 'Photo'),
   codeCol: bi('Code', 'Code'),
   designationCol: bi('Désignation', 'Description'),
   unitCol: bi('Unité', 'Unit'),

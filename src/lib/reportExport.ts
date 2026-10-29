@@ -136,13 +136,44 @@ export function printReportSummary(title: string, lines: Array<{ label: string; 
   printHtmlDocument(html)
 }
 
+/**
+ * Open Soft Gestion commercial HTML in a new tab and trigger print.
+ * Never use `noopener` on window.open — Chrome returns null and the PDF never appears.
+ */
 export function printHtmlDocument(html: string): void {
-  const win = window.open('', '_blank', 'noopener,noreferrer')
-  if (!win) return
-  win.document.write(html)
-  win.document.close()
-  win.focus()
-  win.print()
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const win = window.open(url, '_blank')
+  if (!win) {
+    // Popup blocked: still print via hidden iframe so PDF flow is not a silent no-op.
+    const iframe = document.createElement('iframe')
+    iframe.setAttribute(
+      'style',
+      'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden',
+    )
+    iframe.src = url
+    document.body.appendChild(iframe)
+    iframe.addEventListener('load', () => {
+      try {
+        iframe.contentWindow?.focus()
+        iframe.contentWindow?.print()
+      } finally {
+        window.setTimeout(() => {
+          iframe.remove()
+          URL.revokeObjectURL(url)
+        }, 60_000)
+      }
+    })
+    return
+  }
+  window.setTimeout(() => {
+    try {
+      win.focus()
+      win.print()
+    } finally {
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    }
+  }, 300)
 }
 
 export function cfaExportValue(amount: number | null | undefined): string {
