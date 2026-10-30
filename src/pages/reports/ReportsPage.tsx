@@ -89,6 +89,7 @@ export function ReportsPage() {
   const [shiftId, setShiftId] = useState(initial.shiftId)
 
   const depotId = useDepotStore((s) => s.currentDepotId)
+  const depotName = useDepotStore((s) => s.currentDepotName)
   const showDepotColumn = !depotId
 
   useEffect(() => {
@@ -232,6 +233,7 @@ export function ReportsPage() {
       stamp: `${range.startDate}_${range.endDate}`,
       startDate: range.startDate,
       endDate: range.endDate,
+      depotName,
       salesFilters: {
         depotId,
         startDate: range.startDate,
@@ -251,6 +253,7 @@ export function ReportsPage() {
       tab,
       range,
       depotId,
+      depotName,
       cashierId,
       shiftId,
       categoryId,

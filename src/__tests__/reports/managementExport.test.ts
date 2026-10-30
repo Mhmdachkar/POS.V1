@@ -579,9 +579,9 @@ describe('customer account export', () => {
 
 describe('report filenames', () => {
   it('builds professional sales and customer names', () => {
-    expect(salesReportFilename('2026-09-18', '2026-09-18', 'xlsx')).toBe('Sales_Report_2026-09-18.xlsx')
+    expect(salesReportFilename('2026-09-18', '2026-09-18', 'xlsx')).toBe('Rapport_Ventes_2026-09-18.xlsx')
     expect(salesReportFilename('2026-09-01', '2026-09-18', 'pdf')).toBe(
-      'Sales_Report_2026-09-01_to_2026-09-18.pdf',
+      'Rapport_Ventes_2026-09-01_au_2026-09-18.pdf',
     )
     expect(customerAccountFilename('Amadou Diallo', 'xlsx')).toBe(
       'Customer_Amadou_Diallo_Account_Report.xlsx',

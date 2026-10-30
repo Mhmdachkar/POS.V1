@@ -40,7 +40,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
 import { exportTable, type ExportColumn } from '@/lib/listExport'
 import { exportProformaStatus } from '@/lib/exportLabels'
-import { exportCfaInt } from '@/lib/tableExport'
+import { exportCfaInt, isVoidedExportStatus } from '@/lib/tableExport'
 import { ProformaDetailDrawer } from './components/ProformaDetailDrawer'
 
 const PROFORMA_EXPORT_COLUMNS: ExportColumn[] = [
@@ -154,7 +154,7 @@ export function ProformasPage() {
           row.customer_name ?? '',
           exportCfaInt(row.total_cfa),
         ],
-        excludeFromTotals: row.status === 'cancelled',
+        excludeFromTotals: isVoidedExportStatus(row.status),
       })),
       meta: {
         title: 'Proformas',

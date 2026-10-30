@@ -21,8 +21,8 @@ export function salesReportFilename(
   const range =
     startDate === endDate
       ? startDate
-      : `${startDate}_to_${endDate}`
-  return `Sales_Report_${range}.${ext}`
+      : `${startDate}_au_${endDate}`
+  return `Rapport_Ventes_${range}.${ext}`
 }
 
 export function customerAccountFilename(
