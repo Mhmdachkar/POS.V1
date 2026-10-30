@@ -333,6 +333,7 @@ describe('sales export reconciliation', () => {
     expect(aoa.flat().join(' ')).not.toMatch(/\bShift\b/)
 
     const html = salesExportPrintHtml(dataset)
+    expect(html).toContain('@page { size: A4; margin: 0; }')
     expect(html).toContain('Total ligne')
     expect(html).toContain('N° ticket')
     expect(html).toContain('Total final de la vente')

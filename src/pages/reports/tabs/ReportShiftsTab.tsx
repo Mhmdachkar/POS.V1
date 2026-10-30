@@ -5,7 +5,7 @@ import { COMMON } from '@/lib/bilingual/common'
 import { SHIFT_STATUS } from '@/lib/bilingual/status'
 import { Button, MoneyDisplay } from '@/components/ui'
 import { formatCFA, formatReportDateTime } from '@/lib/formatters'
-import { printHtmlDocument } from '@/lib/reportExport'
+import { printCommercialDocument } from '@/lib/reportExport'
 import type { AdminCashReport, AdminSalesReport, CashShiftReportRow } from '@/types/rpc'
 import { ShiftDetailDrawer } from '@/pages/shifts/components/ShiftDetailDrawer'
 import { InfoTip } from '../components/InfoTip'
@@ -23,7 +23,14 @@ function printShiftReport(shift: CashShiftReportRow, kind: '80' | '58' | 'A4' | 
   const title = kind === 'X' ? t(REPORTS.printX) : t(kind === '80' ? REPORTS.printZ80 : kind === '58' ? REPORTS.printZ58 : REPORTS.printZA4)
   const width = kind === '58' ? '58mm' : kind === 'A4' ? '210mm' : '80mm'
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
-<style>body{font-family:system-ui,sans-serif;width:${width};padding:8px;color:#111}h1{font-size:14px;margin:0 0 8px}p{margin:2px 0;font-size:12px}@media print{body{padding:0}}</style></head>
+<style>
+  @page { size: auto; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: system-ui, sans-serif; width: ${width}; margin: 0; padding: 8px; color: #111; }
+  h1 { font-size: 14px; margin: 0 0 8px; }
+  p { margin: 2px 0; font-size: 12px; }
+</style></head>
 <body>
 <h1>${title}</h1>
 <p>${t(COMMON.cashier)}: ${shift.cashier_name}</p>
@@ -34,7 +41,7 @@ function printShiftReport(shift: CashShiftReportRow, kind: '80' | '58' | 'A4' | 
 <p>${t(REPORTS.colActual)}: ${formatCFA(Number(shift.actual_cash_cfa ?? 0))}</p>
 <p>${t(COMMON.discrepancy)}: ${formatCFA(Number(shift.discrepancy_cfa ?? 0))}</p>
 </body></html>`
-  printHtmlDocument(html)
+  printCommercialDocument(html)
 }
 
 export function ReportShiftsTab({ cash, sales }: ReportShiftsTabProps) {
