@@ -1,6 +1,12 @@
 import { downloadCsv } from '@/lib/csvExport'
 import { cfaExportValue, downloadXlsx, printReportSummary } from '@/lib/reportExport'
-import { exportCfaInt } from '@/lib/tableExport'
+import {
+  buildReportExportAoa,
+  downloadStyledWorkbook,
+  exportCfaInt,
+  exportTable,
+  type ExportColumn,
+} from '@/lib/tableExport'
 import {
   buildSalesExportDataset,
   downloadSalesExportXlsx,
@@ -47,6 +53,7 @@ export interface ReportExportContext {
   stamp: string
   startDate: string
   endDate: string
+  depotName?: string | null
   salesFilters: SalesExportFilters
   sales?: AdminSalesReport
   inventory?: AdminInventoryReport
@@ -71,6 +78,12 @@ function salesSummaryRows(d: AdminSalesReport): unknown[][] {
     ['Annulations (nombre)', d.voided_count],
     ['Montant annulé (CFA)', exportCfaInt(d.voided_amount_cfa)],
   ]
+}
+
+function reportPeriodLine(ctx: ReportExportContext): string {
+  return ctx.startDate === ctx.endDate
+    ? `Période : ${ctx.startDate}`
+    : `Période : ${ctx.startDate} → ${ctx.endDate}`
 }
 
 async function buildSalesLineDataset(ctx: ReportExportContext) {
@@ -226,22 +239,59 @@ export async function exportReportXlsx(ctx: ReportExportContext): Promise<void> 
   if (tab === 'sales') {
     const dataset = await buildSalesLineDataset(ctx)
     if (!dataset) return
-    downloadSalesExportXlsx(dataset)
+    await downloadSalesExportXlsx(dataset, { depotName: ctx.depotName })
     return
   }
   if (tab === 'overview' && sales) {
-    downloadXlsx(`rapport-${tab}-${stamp}.xlsx`, [
-      { name: 'Résumé', headers: ['Métrique', 'Valeur'], rows: salesSummaryRows(sales) },
-      {
-        name: 'Produits',
-        headers: ['Produit', 'Pièces nettes', 'Ventes nettes', 'MB', 'CMV'],
-        rows: sales.product_performance.map((p) => [
+    const resume = await buildReportExportAoa({
+      title: 'Rapport des ventes — Résumé',
+      columns: [
+        { header: 'Métrique' },
+        { header: 'Valeur' },
+      ],
+      rows: salesSummaryRows(sales).map((row) => ({
+        cells: [row[0], typeof row[1] === 'number' ? exportCfaInt(Number(row[1])) : row[1]],
+      })),
+      depotName: ctx.depotName,
+      filterLines: [reportPeriodLine(ctx)],
+    })
+    const prodCols: ExportColumn[] = [
+      { header: 'Produit' },
+      { header: 'Pièces nettes', kind: 'qty', total: true },
+      { header: 'Ventes nettes', kind: 'money', total: true },
+      { header: 'MB', kind: 'money', total: true },
+      { header: 'CMV', kind: 'money', total: true },
+    ]
+    const prod = await buildReportExportAoa({
+      title: 'Rapport des ventes — Produits',
+      columns: prodCols,
+      rows: sales.product_performance.map((p) => ({
+        cells: [
           p.name,
           p.net_pieces,
           exportCfaInt(p.net_sales_cfa),
           exportCfaInt(p.gross_profit_cfa),
           exportCfaInt(p.cogs_cfa),
-        ]),
+        ],
+      })),
+      depotName: ctx.depotName,
+      filterLines: [reportPeriodLine(ctx)],
+    })
+    downloadStyledWorkbook(`rapport-${tab}-${stamp}.xlsx`, [
+      {
+        name: 'Résumé',
+        aoa: resume.aoa,
+        headerRowIndex: resume.headerRowIndex,
+        lastDataRow: resume.dataEndRow,
+        freeze: true,
+      },
+      {
+        name: 'Produits',
+        aoa: prod.aoa,
+        headerRowIndex: prod.headerRowIndex,
+        lastDataRow: prod.dataEndRow,
+        moneyCols: [2, 3, 4],
+        freeze: true,
       },
     ])
   } else if (tab === 'products' && sales) {
@@ -299,11 +349,32 @@ export async function exportReportXlsx(ctx: ReportExportContext): Promise<void> 
       ]),
     }])
   } else if (tab === 'cost' && cost) {
-    downloadXlsx(`cout-${stamp}.xlsx`, [
-      {
-        name: 'Valorisation inventaire',
-        headers: ['Produit', 'Dépôt', 'Catégorie', 'Stock (pièces)', 'Prix coût', 'Valeur@coût', 'Valeur@vente', 'Bénéfice potentiel'],
-        rows: cost.inventory_cost.map((r) => [
+    const invCols: ExportColumn[] = [
+      { header: 'Produit' },
+      { header: 'Dépôt' },
+      { header: 'Catégorie' },
+      { header: 'Stock (pièces)', kind: 'qty', total: true },
+      { header: 'Prix coût', kind: 'money' },
+      { header: 'Valeur@coût', kind: 'money', total: true },
+      { header: 'Valeur@vente', kind: 'money', total: true },
+      { header: 'Bénéfice potentiel', kind: 'money', total: true },
+    ]
+    const restockCols: ExportColumn[] = [
+      { header: 'Date', kind: 'date' },
+      { header: 'Produit' },
+      { header: 'Dépôt' },
+      { header: 'Unité' },
+      { header: 'Qté', kind: 'qty', total: true },
+      { header: 'Pièces', kind: 'qty', total: true },
+      { header: 'Coût unit.', kind: 'money' },
+      { header: 'Coût total', kind: 'money', total: true },
+      { header: 'Note' },
+    ]
+    const inv = await buildReportExportAoa({
+      title: 'Stock — Coût (valorisation)',
+      columns: invCols,
+      rows: cost.inventory_cost.map((r) => ({
+        cells: [
           r.product_name,
           r.depot_name,
           r.category_name,
@@ -312,13 +383,17 @@ export async function exportReportXlsx(ctx: ReportExportContext): Promise<void> 
           exportCfaInt(r.inventory_value_at_cost),
           exportCfaInt(r.inventory_value_at_selling),
           exportCfaInt(r.potential_profit),
-        ]),
-      },
-      {
-        name: 'Journal réappro',
-        headers: ['Date', 'Produit', 'Dépôt', 'Unité', 'Qté', 'Pièces', 'Coût unit.', 'Coût total', 'Note'],
-        rows: cost.restock_log.map((r) => [
-          r.entered_at.slice(0, 10),
+        ],
+      })),
+      depotName: ctx.depotName,
+      filterLines: [reportPeriodLine(ctx)],
+    })
+    const restock = await buildReportExportAoa({
+      title: 'Stock — Coût (réappro)',
+      columns: restockCols,
+      rows: cost.restock_log.map((r) => ({
+        cells: [
+          r.entered_at,
           r.product_name,
           r.depot_name,
           r.unit_name ?? `N${r.unit_level}`,
@@ -327,45 +402,114 @@ export async function exportReportXlsx(ctx: ReportExportContext): Promise<void> 
           exportCfaInt(r.unit_cost_price_cfa),
           exportCfaInt(r.total_cost_cfa),
           r.note ?? '',
-        ]),
+        ],
+      })),
+      depotName: ctx.depotName,
+      filterLines: [reportPeriodLine(ctx)],
+    })
+    downloadStyledWorkbook(`cout-${stamp}.xlsx`, [
+      {
+        name: 'Valorisation',
+        aoa: inv.aoa,
+        headerRowIndex: inv.headerRowIndex,
+        lastDataRow: inv.dataEndRow,
+        moneyCols: [4, 5, 6, 7],
+        freeze: true,
+      },
+      {
+        name: 'Réappro',
+        aoa: restock.aoa,
+        headerRowIndex: restock.headerRowIndex,
+        lastDataRow: restock.dataEndRow,
+        dateCols: [0],
+        moneyCols: [6, 7],
+        freeze: true,
       },
     ])
   } else if (tab === 'purchases' && purchases) {
-    downloadXlsx(`achats-fournisseurs-${stamp}.xlsx`, [{
-      name: 'Fournisseurs',
-      headers: ['Fournisseur', 'Acheté', 'À crédit', 'Payé à validation', 'BR', 'Solde dû'],
-      rows: purchases.rows.map((r) => [
-        r.supplier_name,
-        exportCfaInt(Number(r.purchased_cfa)),
-        exportCfaInt(Number(r.credit_cfa)),
-        exportCfaInt(Number(r.paid_at_validate_cfa)),
-        r.receipt_count,
-        exportCfaInt(Number(r.balance_owed_cfa)),
-      ]),
-    }])
+    const columns: ExportColumn[] = [
+      { header: 'Fournisseur' },
+      { header: 'Acheté', kind: 'money', total: true },
+      { header: 'À crédit', kind: 'money', total: true },
+      { header: 'Payé à validation', kind: 'money', total: true },
+      { header: 'BR', kind: 'qty', total: true },
+      { header: 'Solde dû', kind: 'money', total: true },
+    ]
+    await exportTable({
+      kind: 'xlsx',
+      columns,
+      rows: purchases.rows.map((r) => ({
+        cells: [
+          r.supplier_name,
+          exportCfaInt(Number(r.purchased_cfa)),
+          exportCfaInt(Number(r.credit_cfa)),
+          exportCfaInt(Number(r.paid_at_validate_cfa)),
+          Number(r.receipt_count) || 0,
+          exportCfaInt(Number(r.balance_owed_cfa)),
+        ],
+      })),
+      meta: {
+        title: 'Achats — Fournisseurs',
+        sheetName: 'Fournisseurs',
+        basename: `achats-fournisseurs-${stamp}`,
+        depotName: ctx.depotName,
+        filterLines: [reportPeriodLine(ctx)],
+      },
+    })
   } else if (tab === 'purchases-products' && purchasesProducts) {
-    downloadXlsx(`achats-produits-${stamp}.xlsx`, [{
-      name: 'Produits',
-      headers: ['Produit', 'Pièces', 'Acheté', 'BR'],
-      rows: purchasesProducts.rows.map((r) => [
-        r.product_name,
-        r.quantity_pieces,
-        exportCfaInt(Number(r.purchased_cfa)),
-        r.receipt_count,
-      ]),
-    }])
+    const columns: ExportColumn[] = [
+      { header: 'Produit' },
+      { header: 'Pièces', kind: 'qty', total: true },
+      { header: 'Acheté', kind: 'money', total: true },
+      { header: 'BR', kind: 'qty', total: true },
+    ]
+    await exportTable({
+      kind: 'xlsx',
+      columns,
+      rows: purchasesProducts.rows.map((r) => ({
+        cells: [
+          r.product_name,
+          r.quantity_pieces,
+          exportCfaInt(Number(r.purchased_cfa)),
+          Number(r.receipt_count) || 0,
+        ],
+      })),
+      meta: {
+        title: 'Achats — Produits',
+        sheetName: 'Produits',
+        basename: `achats-produits-${stamp}`,
+        depotName: ctx.depotName,
+        filterLines: [reportPeriodLine(ctx)],
+      },
+    })
   } else if (tab === 'purchases-period' && purchasesPeriod) {
-    downloadXlsx(`achats-periode-${stamp}.xlsx`, [{
-      name: 'Période',
-      headers: ['Date', 'Acheté', 'À crédit', 'Payé à validation', 'BR'],
-      rows: purchasesPeriod.rows.map((r) => [
-        r.document_date,
-        exportCfaInt(Number(r.purchased_cfa)),
-        exportCfaInt(Number(r.credit_cfa)),
-        exportCfaInt(Number(r.paid_at_validate_cfa)),
-        r.receipt_count,
-      ]),
-    }])
+    const columns: ExportColumn[] = [
+      { header: 'Date', kind: 'date' },
+      { header: 'Acheté', kind: 'money', total: true },
+      { header: 'À crédit', kind: 'money', total: true },
+      { header: 'Payé à validation', kind: 'money', total: true },
+      { header: 'BR', kind: 'qty', total: true },
+    ]
+    await exportTable({
+      kind: 'xlsx',
+      columns,
+      rows: purchasesPeriod.rows.map((r) => ({
+        cells: [
+          r.document_date,
+          exportCfaInt(Number(r.purchased_cfa)),
+          exportCfaInt(Number(r.credit_cfa)),
+          exportCfaInt(Number(r.paid_at_validate_cfa)),
+          Number(r.receipt_count) || 0,
+        ],
+      })),
+      meta: {
+        title: 'Achats — Période',
+        sheetName: 'Période',
+        basename: `achats-periode-${stamp}`,
+        depotName: ctx.depotName,
+        filterLines: [reportPeriodLine(ctx)],
+      },
+    })
   }
 }
 

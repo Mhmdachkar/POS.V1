@@ -8,7 +8,14 @@
 
 import { supabase } from '@/lib/supabase'
 import { formatCFA, formatDate, formatDateTime } from '@/lib/formatters'
-import { downloadXlsx, printHtmlDocument } from '@/lib/reportExport'
+import { printCommercialDocument } from '@/lib/reportExport'
+import {
+  buildTableExportAoa,
+  downloadStyledWorkbook,
+  exportCfaInt,
+  resolveExportCompanyName,
+  type ExportColumn,
+} from '@/lib/tableExport'
 import { salesReportFilename } from '@/lib/reportFilenames'
 import {
   authoritativeFinalSaleTotal,
@@ -66,8 +73,6 @@ export interface SalesExportSaleGroup {
 }
 
 const PAGE_SIZE = 500
-
-const SALES_COL_WIDTHS = [12, 16, 16, 28, 12, 10, 12, 12]
 
 function unitFallback(level: number): string {
   if (level === 1) return 'Paquet'
@@ -275,14 +280,14 @@ export function salesExportSheetAoa(dataset: SalesExportDataset): unknown[][] {
   for (const group of groups) {
     for (const line of group.lines) {
       aoa.push([
-        formatDate(line.saleCreatedAt),
+        line.saleCreatedAt,
         line.receiptNumber,
         line.serialNumber,
         line.productName,
         line.unitName,
         line.quantity,
-        line.unitPriceCfa,
-        line.lineTotalCfa,
+        exportCfaInt(line.unitPriceCfa),
+        exportCfaInt(line.lineTotalCfa),
       ])
     }
     const label = group.hasOverride
@@ -342,17 +347,61 @@ export function salesExportSheetAoa(dataset: SalesExportDataset): unknown[][] {
   return aoa
 }
 
-export function downloadSalesExportXlsx(dataset: SalesExportDataset): void {
-  const aoa = salesExportSheetAoa(dataset)
-  downloadXlsx(salesReportFilename(dataset.startDate, dataset.endDate, 'xlsx'), [
+const SALES_EXPORT_COLUMNS: ExportColumn[] = [
+  { header: 'Date', kind: 'date' },
+  { header: 'N° ticket' },
+  { header: 'N° série' },
+  { header: 'Produit' },
+  { header: 'Unité' },
+  { header: 'Quantité', kind: 'qty', total: true },
+  { header: 'Prix unitaire', kind: 'money' },
+  { header: 'Total ligne', kind: 'money', total: true },
+]
+
+export async function downloadSalesExportXlsx(
+  dataset: SalesExportDataset,
+  opts?: { depotName?: string | null; companyName?: string | null },
+): Promise<void> {
+  const company = await resolveExportCompanyName(opts?.companyName)
+  const rangeLabel =
+    dataset.startDate === dataset.endDate
+      ? dataset.startDate
+      : `${dataset.startDate} → ${dataset.endDate}`
+  const { aoa, headerRowIndex, dataEndRow } = buildTableExportAoa(
+    SALES_EXPORT_COLUMNS,
+    dataset.lines.map((line) => ({
+      cells: [
+        line.saleCreatedAt,
+        line.receiptNumber,
+        line.serialNumber,
+        line.productName,
+        line.unitName,
+        line.quantity,
+        exportCfaInt(line.unitPriceCfa),
+        exportCfaInt(line.lineTotalCfa),
+      ],
+    })),
+    {
+      title: 'Rapport des ventes',
+      sheetName: 'Ventes',
+      basename: 'rapport-ventes',
+      depotName: opts?.depotName,
+      filterLines: [
+        `Période : ${rangeLabel}`,
+        `Total période (autoritatif) : ${exportCfaInt(dataset.authoritativeTotalCfa)} CFA`,
+      ],
+    },
+    company,
+  )
+  downloadStyledWorkbook(salesReportFilename(dataset.startDate, dataset.endDate, 'xlsx'), [
     {
       name: 'Ventes',
-      headers: [],
-      rows: aoa,
-      rawAoa: true,
-      colWidths: SALES_COL_WIDTHS,
-      wrapText: true,
-      boldFirstColLabels: true,
+      aoa,
+      headerRowIndex,
+      lastDataRow: dataEndRow,
+      dateCols: [0],
+      moneyCols: [6, 7],
+      freeze: true,
     },
   ])
 }
@@ -426,7 +475,8 @@ export function salesExportPrintHtml(dataset: SalesExportDataset): string {
 }
 
 export function printSalesExportPdf(dataset: SalesExportDataset): void {
-  printHtmlDocument(salesExportPrintHtml(dataset))
+  // Same window.open('') path as facture/relevé — avoids Chrome blob: URL header/footer.
+  printCommercialDocument(salesExportPrintHtml(dataset))
 }
 
 function escape(s: string): string {

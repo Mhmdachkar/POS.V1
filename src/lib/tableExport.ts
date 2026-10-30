@@ -2,10 +2,12 @@
  * Shared table CSV/XLSX export — French Excel friendly.
  *
  * CSV: UTF-8 BOM + ";" delimiter.
- * XLSX: bold filled header, freeze, AutoFilter, content widths, Abidjan dates.
+ * XLSX: bold filled header, freeze below header, AutoFilter, content widths,
+ * Abidjan wall-clock dates as real Excel serials (dd/mm/yyyy hh:mm).
  */
 
 import * as XLSX from 'xlsx-js-style'
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { DISPLAY_TIME_ZONE, formatReportDateTime } from '@/lib/formatters'
 import { fetchBusinessSettings } from '@/hooks/useBusinessSettings'
 
@@ -15,7 +17,6 @@ export type ExportCellKind = 'text' | 'money' | 'qty' | 'date' | 'bool' | 'enum'
 
 export interface ExportColumn {
   header: string
-  /** Column letter width hint; also used for AutoFilter. */
   kind?: ExportCellKind
   /** Include in TOTAUX when money/qty. */
   total?: boolean
@@ -26,7 +27,6 @@ export interface TableExportMeta {
   sheetName: string
   basename: string
   depotName?: string | null
-  /** Human-readable period / filter summary lines. */
   filterLines?: string[]
   companyName?: string | null
 }
@@ -37,10 +37,25 @@ export interface TableExportRow {
   excludeFromTotals?: boolean
 }
 
+export interface StyledSheetSpec {
+  name: string
+  aoa: unknown[][]
+  /** 0-based header row index (freeze is the row below). */
+  headerRowIndex: number
+  /** 0-based columns that hold Excel date serials / ISO strings to convert. */
+  dateCols?: number[]
+  moneyCols?: number[]
+  /** AutoFilter covers header..lastDataRow (0-based inclusive). */
+  lastDataRow?: number
+  freeze?: boolean
+}
+
 const HEADER_FILL = { patternType: 'solid' as const, fgColor: { rgb: 'D9E2F3' } }
 const HEADER_FONT = { bold: true, color: { rgb: '1F2937' } }
 const META_FONT = { bold: true }
 const TOTAL_FILL = { patternType: 'solid' as const, fgColor: { rgb: 'FFF2CC' } }
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}(?:[T\s].*)?$/
 
 /** Whole CFA integer for export (never fractional). */
 export function exportCfaInt(amount: number | null | undefined): number {
@@ -52,12 +67,30 @@ export function exportOuiNon(value: boolean | null | undefined): string {
   return value ? 'Oui' : 'Non'
 }
 
-/** Excel date value in Africa/Abidjan wall clock (Date object for SheetJS). */
-export function exportExcelDate(iso: string | null | undefined): Date | string {
-  if (!iso) return ''
+/** True when a status label should be left out of TOTAUX. */
+export function isVoidedExportStatus(value: unknown): boolean {
+  const s = String(value ?? '').trim().toLowerCase()
+  return (
+    s === 'cancelled'
+    || s === 'canceled'
+    || s === 'voided'
+    || s === 'annulé'
+    || s === 'annule'
+    || s === 'annulée'
+    || s === 'annulee'
+  )
+}
+
+function abidjanParts(iso: string): {
+  year: number
+  month: number
+  day: number
+  hour: number
+  minute: number
+  second: number
+} | null {
   const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  // Local Date with Abidjan wall-clock parts → timezone-naive Excel serial.
+  if (Number.isNaN(d.getTime())) return null
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone: DISPLAY_TIME_ZONE,
     hourCycle: 'h23',
@@ -69,17 +102,38 @@ export function exportExcelDate(iso: string | null | undefined): Date | string {
     second: '2-digit',
   }).formatToParts(d)
   const get = (t: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === t)?.value ?? '00'
-  return new Date(
-    Number(get('year')),
-    Number(get('month')) - 1,
-    Number(get('day')),
-    Number(get('hour')),
-    Number(get('minute')),
-    Number(get('second')),
-  )
+  return {
+    year: Number(get('year')),
+    month: Number(get('month')),
+    day: Number(get('day')),
+    hour: Number(get('hour')),
+    minute: Number(get('minute')),
+    second: Number(get('second')),
+  }
+}
+
+/**
+ * Excel serial for Africa/Abidjan wall clock.
+ * Keep cell.t = 'n' with z = 'dd/mm/yyyy hh:mm' — never t='d' on a serial
+ * (xlsx-js-style then rewrites it as 1970-01-01).
+ */
+export function exportExcelSerial(iso: string | null | undefined): number | '' {
+  if (!iso || !ISO_DATE_RE.test(String(iso).trim())) return ''
+  const p = abidjanParts(String(iso).trim())
+  if (!p) return ''
+  return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) / 86_400_000 + 25569
+}
+
+/** @deprecated Prefer exportExcelSerial — kept for callers/tests. */
+export function exportExcelDate(iso: string | null | undefined): Date | string {
+  if (!iso) return ''
+  const p = abidjanParts(iso)
+  if (!p) return ''
+  return new Date(p.year, p.month - 1, p.day, p.hour, p.minute, p.second)
 }
 
 export function exportDateLabel(iso: string | null | undefined): string {
+  if (!iso || !ISO_DATE_RE.test(String(iso).trim())) return iso ? String(iso) : ''
   return formatReportDateTime(iso)
 }
 
@@ -95,7 +149,9 @@ function escapeCsvCell(value: unknown): string {
 function contentWidth(values: unknown[], min = 10, max = 42): number {
   let w = min
   for (const v of values) {
-    const s = v instanceof Date ? 'dd/mm/yyyy hh:mm' : String(v ?? '')
+    const s = typeof v === 'number' && v > 20_000 && v < 100_000
+      ? 'dd/mm/yyyy hh:mm'
+      : String(v ?? '')
     w = Math.max(w, Math.min(max, s.length + 2))
   }
   return w
@@ -124,10 +180,11 @@ function applyDateFormats(
   for (let R = startRow; R <= endRow; R++) {
     for (const C of dateCols) {
       const addr = XLSX.utils.encode_cell({ r: R, c: C })
-      const cell = ws[addr] as (XLSX.CellObject & { z?: string }) | undefined
+      const cell = ws[addr] as (XLSX.CellObject & { z?: string; t?: string }) | undefined
       if (!cell || cell.v == null || cell.v === '') continue
-      if (cell.v instanceof Date || typeof cell.v === 'number') {
-        cell.t = 'd'
+      if (typeof cell.v === 'number') {
+        // Keep numeric Excel serial — do NOT set t='d'
+        cell.t = 'n'
         cell.z = 'dd/mm/yyyy hh:mm'
       }
     }
@@ -151,6 +208,56 @@ function applyMoneyFormats(
   }
 }
 
+/** xlsx-js-style emits empty <sheetView/> — inject real freeze panes into the zip. */
+export function injectFreezePanes(xlsxBytes: Uint8Array, ySplitBySheetIndex: number[]): Uint8Array {
+  const files = unzipSync(xlsxBytes)
+  const sheetNames = Object.keys(files)
+    .filter((n) => /^xl\/worksheets\/sheet\d+\.xml$/i.test(n))
+    .sort((a, b) => {
+      const na = Number(a.match(/sheet(\d+)/i)?.[1] ?? 0)
+      const nb = Number(b.match(/sheet(\d+)/i)?.[1] ?? 0)
+      return na - nb
+    })
+  sheetNames.forEach((name, idx) => {
+    const ySplit = ySplitBySheetIndex[idx]
+    if (ySplit == null || ySplit <= 0) return
+    const xml = strFromU8(files[name]!)
+    const pane =
+      `<pane ySplit="${ySplit}" topLeftCell="A${ySplit + 1}" activePane="bottomLeft" state="frozen"/>`
+    let next = xml
+    if (next.includes('<sheetViews/>')) {
+      next = next.replace(
+        '<sheetViews/>',
+        `<sheetViews><sheetView workbookViewId="0">${pane}</sheetView></sheetViews>`,
+      )
+    } else if (/<sheetView\b[^>]*\/>/.test(next)) {
+      next = next.replace(/<sheetView\b([^>]*)\/>/, `<sheetView$1>${pane}</sheetView>`)
+    } else if (/<sheetView\b[^>]*>/.test(next) && !next.includes('<pane ')) {
+      next = next.replace(/<sheetView\b([^>]*)>/, `<sheetView$1>${pane}`)
+    } else if (next.includes('<sheetData')) {
+      next = next.replace(
+        '<sheetData',
+        `<sheetViews><sheetView workbookViewId="0">${pane}</sheetView></sheetViews><sheetData`,
+      )
+    }
+    files[name] = strToU8(next)
+  })
+  return zipSync(files, { level: 6 })
+}
+
+function triggerDownload(filename: string, bytes: Uint8Array, mime: string): void {
+  // Copy into a standalone ArrayBuffer so BlobPart typing accepts it under TS 5.x.
+  const copy = new Uint8Array(bytes.byteLength)
+  copy.set(bytes)
+  const blob = new Blob([copy.buffer], { type: mime })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export async function resolveExportCompanyName(override?: string | null): Promise<string> {
   if (override?.trim()) return override.trim()
   try {
@@ -171,12 +278,19 @@ function buildMetaBlock(meta: TableExportMeta, company: string, colCount: number
     if (line.trim()) lines.push([line])
   }
   lines.push([`Édité le ${nowLabel}`])
-  lines.push([]) // blank before header
-  // Pad rows to colCount for cleaner sheet
+  lines.push([])
   return lines.map((row) => {
     const out = [...row]
     while (out.length < colCount) out.push('')
     return out
+  })
+}
+
+function rowExcludedFromTotals(row: TableExportRow, columns: ExportColumn[]): boolean {
+  if (row.excludeFromTotals) return true
+  return columns.some((col, i) => {
+    if (col.kind !== 'enum' && !/statut/i.test(col.header)) return false
+    return isVoidedExportStatus(row.cells[i])
   })
 }
 
@@ -186,7 +300,7 @@ function buildTotalsRow(
 ): unknown[] | null {
   const hasTotal = columns.some((c) => c.total && (c.kind === 'money' || c.kind === 'qty'))
   if (!hasTotal) return null
-  const included = dataRows.filter((r) => !r.excludeFromTotals)
+  const included = dataRows.filter((r) => !rowExcludedFromTotals(r, columns))
   const totals: unknown[] = columns.map((col, i) => {
     if (i === 0) return 'TOTAUX'
     if (!col.total || (col.kind !== 'money' && col.kind !== 'qty')) return ''
@@ -194,6 +308,7 @@ function buildTotalsRow(
     for (const row of included) {
       const v = row.cells[i]
       if (typeof v === 'number' && Number.isFinite(v)) sum += v
+      else if (typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v))) sum += Number(v)
     }
     return col.kind === 'money' ? exportCfaInt(sum) : Math.round(sum * 1000) / 1000
   })
@@ -215,7 +330,6 @@ export function buildTableExportAoa(
       if (kind === 'money' && (typeof v === 'number' || (typeof v === 'string' && v !== ''))) {
         return exportCfaInt(typeof v === 'number' ? v : Number(v))
       }
-      // Keep ISO strings here; XLSX writer converts, CSV formats as Abidjan label.
       if (kind === 'date' && v instanceof Date) return v.toISOString()
       return v ?? ''
     })
@@ -231,6 +345,95 @@ export function buildTableExportAoa(
   return { aoa, headerRowIndex, dataStartRow, dataEndRow }
 }
 
+function convertSheetDates(
+  aoa: unknown[][],
+  dateCols: Set<number>,
+  dataStartRow: number,
+  dataEndRow: number,
+): unknown[][] {
+  return aoa.map((row, ri) => {
+    if (ri < dataStartRow || ri > dataEndRow) return row
+    return row.map((cell, ci) => {
+      if (!dateCols.has(ci)) return cell
+      if (typeof cell === 'number' && Number.isFinite(cell)) return cell
+      if (typeof cell === 'string' && ISO_DATE_RE.test(cell.trim())) {
+        const serial = exportExcelSerial(cell.trim())
+        return serial === '' ? cell : serial
+      }
+      return cell
+    })
+  })
+}
+
+/** Low-level multi-sheet writer used by list + report exports. */
+export function downloadStyledWorkbook(filename: string, sheets: StyledSheetSpec[]): void {
+  const wb = XLSX.utils.book_new()
+  const freezeSplits: number[] = []
+
+  for (const sheet of sheets) {
+    const colCount = Math.max(0, ...sheet.aoa.map((r) => (Array.isArray(r) ? r.length : 0)))
+    const dateCols = new Set(sheet.dateCols ?? [])
+    const moneyCols = new Set(sheet.moneyCols ?? [])
+    const dataStart = sheet.headerRowIndex + 1
+    const dataEnd = sheet.lastDataRow ?? Math.max(dataStart, sheet.aoa.length - 1)
+    const sheetAoa = convertSheetDates(sheet.aoa, dateCols, dataStart, dataEnd)
+    const ws = XLSX.utils.aoa_to_sheet(sheetAoa)
+
+    if (colCount > 0) {
+      ws['!cols'] = Array.from({ length: colCount }, (_, i) => {
+        const vals = sheetAoa.map((row) => (Array.isArray(row) ? row[i] : ''))
+        return { wch: contentWidth(vals, dateCols.has(i) ? 16 : 10) }
+      })
+    }
+
+    if (sheet.freeze !== false && sheet.headerRowIndex >= 0) {
+      freezeSplits.push(sheet.headerRowIndex + 1)
+    } else {
+      freezeSplits.push(0)
+    }
+
+    if (dataEnd >= dataStart && colCount > 0) {
+      const endCol = XLSX.utils.encode_col(colCount - 1)
+      ws['!autofilter'] = {
+        ref: `A${sheet.headerRowIndex + 1}:${endCol}${dataEnd + 1}`,
+      }
+    }
+
+    if (sheet.headerRowIndex >= 0) {
+      applyHeaderStyle(ws, sheet.headerRowIndex, colCount)
+      for (let R = 0; R < sheet.headerRowIndex; R++) {
+        const addr = XLSX.utils.encode_cell({ r: R, c: 0 })
+        const cell = ws[addr] as (XLSX.CellObject & { s?: Record<string, unknown> }) | undefined
+        if (cell) cell.s = { ...(cell.s ?? {}), font: META_FONT }
+      }
+    }
+
+    // Totals row = first row after data with TOTAUX label
+    for (let R = dataEnd + 1; R < sheetAoa.length; R++) {
+      const row = sheetAoa[R]
+      if (!Array.isArray(row)) continue
+      if (!row.some((c) => c === 'TOTAUX')) continue
+      for (let C = 0; C < colCount; C++) {
+        const addr = XLSX.utils.encode_cell({ r: R, c: C })
+        const cell = ws[addr] as (XLSX.CellObject & { s?: Record<string, unknown> }) | undefined
+        if (!cell) continue
+        cell.s = { ...(cell.s ?? {}), font: { bold: true }, fill: TOTAL_FILL }
+      }
+    }
+
+    applyDateFormats(ws, dateCols, dataStart, Math.max(dataEnd, sheetAoa.length - 1))
+    applyMoneyFormats(ws, moneyCols, dataStart, Math.max(dataEnd, sheetAoa.length - 1))
+
+    const safeName = sheet.name.slice(0, 31).replace(/[\\/?*[\]:]/g, '_') || 'Feuille'
+    XLSX.utils.book_append_sheet(wb, ws, safeName)
+  }
+
+  const raw = XLSX.write(wb, { type: 'array', bookType: 'xlsx', cellStyles: true }) as Uint8Array
+  const patched = injectFreezePanes(new Uint8Array(raw), freezeSplits)
+  const outName = filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`
+  triggerDownload(outName, patched, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+}
+
 export function downloadTableCsv(
   filename: string,
   columns: ExportColumn[],
@@ -238,12 +441,19 @@ export function downloadTableCsv(
   meta: TableExportMeta,
   company: string,
 ): void {
-  const { aoa, headerRowIndex } = buildTableExportAoa(columns, dataRows, meta, company)
-  // CSV: dates as Abidjan labels (not Excel serials)
+  const { aoa, headerRowIndex, dataStartRow, dataEndRow } = buildTableExportAoa(
+    columns,
+    dataRows,
+    meta,
+    company,
+  )
   const csvAoa = aoa.map((row, ri) =>
     row.map((cell, ci) => {
-      const kind = ri > headerRowIndex ? columns[ci]?.kind : undefined
-      if (kind === 'date' && typeof cell === 'string' && cell) return formatReportDateTime(cell)
+      const kind = columns[ci]?.kind
+      const inData = ri >= dataStartRow && ri <= dataEndRow
+      if (inData && kind === 'date' && typeof cell === 'string' && ISO_DATE_RE.test(cell.trim())) {
+        return formatReportDateTime(cell.trim())
+      }
       if (cell instanceof Date) return formatReportDateTime(cell.toISOString())
       if (kind === 'money' && typeof cell === 'number') return exportCfaInt(cell)
       return cell
@@ -251,13 +461,12 @@ export function downloadTableCsv(
   )
   const lines = csvAoa.map((row) => row.map(escapeCsvCell).join(';'))
   const bom = '\uFEFF'
-  const blob = new Blob([bom + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename.endsWith('.csv') ? filename : `${filename}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
+  const bytes = new TextEncoder().encode(bom + lines.join('\r\n'))
+  triggerDownload(
+    filename.endsWith('.csv') ? filename : `${filename}.csv`,
+    bytes,
+    'text/csv;charset=utf-8',
+  )
 }
 
 export function downloadTableXlsx(
@@ -273,67 +482,18 @@ export function downloadTableXlsx(
     meta,
     company,
   )
-  // Convert date columns to Excel dates for the sheet only
-  const sheetAoa = aoa.map((row, ri) => {
-    if (ri <= headerRowIndex) return row
-    return row.map((cell, ci) => {
-      if (columns[ci]?.kind === 'date' && typeof cell === 'string' && cell) {
-        return exportExcelDate(cell)
-      }
-      return cell
-    })
-  })
-  const ws = XLSX.utils.aoa_to_sheet(sheetAoa)
-  const colCount = columns.length
-
-  // Content-based widths
-  ws['!cols'] = columns.map((col, i) => {
-    const vals = [col.header, ...dataRows.map((r) => r.cells[i])]
-    return { wch: contentWidth(vals, col.kind === 'date' ? 16 : 10) }
-  })
-
-  // Freeze below header
-  ws['!freeze'] = { xSplit: 0, ySplit: headerRowIndex + 1, topLeftCell: `A${headerRowIndex + 2}`, activePane: 'bottomLeft', state: 'frozen' }
-  // SheetJS views form (more compatible)
-  ws['!views'] = [{ state: 'frozen', ySplit: headerRowIndex + 1, topLeftCell: `A${headerRowIndex + 2}` }]
-
-  // AutoFilter on header + data (not totals)
-  if (dataEndRow >= dataStartRow) {
-    const endCol = XLSX.utils.encode_col(colCount - 1)
-    ws['!autofilter'] = {
-      ref: `A${headerRowIndex + 1}:${endCol}${dataEndRow + 1}`,
-    }
-  }
-
-  applyHeaderStyle(ws, headerRowIndex, colCount)
-
-  // Bold meta rows
-  for (let R = 0; R < headerRowIndex; R++) {
-    const addr = XLSX.utils.encode_cell({ r: R, c: 0 })
-    const cell = ws[addr] as (XLSX.CellObject & { s?: Record<string, unknown> }) | undefined
-    if (cell) cell.s = { ...(cell.s ?? {}), font: META_FONT }
-  }
-
-  // Totals row style
-  const totalsRow = dataEndRow + 1
-  if (aoa.length > totalsRow) {
-    for (let C = 0; C < colCount; C++) {
-      const addr = XLSX.utils.encode_cell({ r: totalsRow, c: C })
-      const cell = ws[addr] as (XLSX.CellObject & { s?: Record<string, unknown> }) | undefined
-      if (!cell) continue
-      cell.s = { ...(cell.s ?? {}), font: { bold: true }, fill: TOTAL_FILL }
-    }
-  }
-
-  const dateCols = new Set(columns.map((c, i) => (c.kind === 'date' ? i : -1)).filter((i) => i >= 0))
-  const moneyCols = new Set(columns.map((c, i) => (c.kind === 'money' ? i : -1)).filter((i) => i >= 0))
-  applyDateFormats(ws, dateCols, dataStartRow, Math.max(dataEndRow, totalsRow))
-  applyMoneyFormats(ws, moneyCols, dataStartRow, Math.max(dataEndRow, totalsRow))
-
-  const wb = XLSX.utils.book_new()
-  const safeName = meta.sheetName.slice(0, 31).replace(/[\\/?*[\]:]/g, '_') || 'Feuille'
-  XLSX.utils.book_append_sheet(wb, ws, safeName)
-  XLSX.writeFile(wb, filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`)
+  downloadStyledWorkbook(filename, [
+    {
+      name: meta.sheetName,
+      aoa,
+      headerRowIndex,
+      lastDataRow: dataEndRow,
+      dateCols: columns.map((c, i) => (c.kind === 'date' ? i : -1)).filter((i) => i >= 0),
+      moneyCols: columns.map((c, i) => (c.kind === 'money' ? i : -1)).filter((i) => i >= 0),
+      freeze: true,
+    },
+  ])
+  void dataStartRow
 }
 
 export async function exportTable(opts: {
@@ -349,6 +509,31 @@ export async function exportTable(opts: {
     return
   }
   downloadTableXlsx(opts.meta.basename, opts.columns, opts.rows, opts.meta, company)
+}
+
+/** Build meta + header + body AOA for report tabs that share list export chrome. */
+export async function buildReportExportAoa(opts: {
+  title: string
+  columns: ExportColumn[]
+  rows: TableExportRow[]
+  depotName?: string | null
+  filterLines?: string[]
+  companyName?: string | null
+}): Promise<{ aoa: unknown[][]; headerRowIndex: number; dataStartRow: number; dataEndRow: number; company: string }> {
+  const company = await resolveExportCompanyName(opts.companyName)
+  const built = buildTableExportAoa(
+    opts.columns,
+    opts.rows,
+    {
+      title: opts.title,
+      sheetName: opts.title,
+      basename: opts.title,
+      depotName: opts.depotName,
+      filterLines: opts.filterLines,
+    },
+    company,
+  )
+  return { ...built, company }
 }
 
 /** @deprecated Prefer exportTable — kept for gradual migration. */
