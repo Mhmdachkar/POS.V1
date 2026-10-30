@@ -439,8 +439,10 @@ export function salesExportPrintHtml(dataset: SalesExportDataset): string {
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Rapport des ventes</title>
 <style>
-  @page { margin: 14mm; }
-  body { font-family: system-ui, sans-serif; color: #111; font-size: 11px; }
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: system-ui, sans-serif; color: #111; font-size: 11px; margin: 0; padding: 12mm; }
   h1 { font-size: 18px; margin: 0 0 4px; }
   .sub { color: #667085; margin: 0 0 14px; font-size: 11px; }
   table { width: 100%; border-collapse: collapse; }
@@ -452,7 +454,6 @@ export function salesExportPrintHtml(dataset: SalesExportDataset): string {
   .sale-total td { font-weight: 700; background: #f9fafb; border-top: 1px solid #d0d5dd; }
   .total-row td { font-weight: 700; border-top: 2px solid #111; padding-top: 10px; }
   .muted { font-weight: 400; color: #667085; font-size: 10px; }
-  @media print { body { padding: 0; } }
 </style></head><body>
   <h1>Rapport des ventes</h1>
   <p class="sub">Période : ${escape(rangeLabel)} · Généré : ${escape(formatDateTime(dataset.generatedAt))} · Devise : CFA</p>
