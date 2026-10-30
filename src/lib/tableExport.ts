@@ -246,9 +246,10 @@ export function injectFreezePanes(xlsxBytes: Uint8Array, ySplitBySheetIndex: num
 }
 
 function triggerDownload(filename: string, bytes: Uint8Array, mime: string): void {
-  const blob = new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)], {
-    type: mime,
-  })
+  // Copy into a standalone ArrayBuffer so BlobPart typing accepts it under TS 5.x.
+  const copy = new Uint8Array(bytes.byteLength)
+  copy.set(bytes)
+  const blob = new Blob([copy.buffer], { type: mime })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
