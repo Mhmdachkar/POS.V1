@@ -1,6 +1,7 @@
 /**
  * Displayed client solde comes from customer_ledger running balance (signed).
- * customers.balance_owed_cfa stays debt-only (CHECK >= 0) for credit/RPC caps.
+ * customers.balance_owed_cfa stays debt-only (CHECK >= 0). After money RPCs
+ * it is synced to greatest(0, ledger). Caps use that same payable figure.
  */
 
 export function ledgerAccountBalanceCfa(

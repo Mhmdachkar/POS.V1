@@ -71,6 +71,18 @@ describe('computeReturnRefundPreview', () => {
     expect(preview.cashRefundCfa).toBe(100)
   })
 
+  it('displayed ledger debt 1400 wins over stale owed 1500', () => {
+    const preview = computeReturnRefundPreview({
+      refundAmountCfa: 19600,
+      customerId: 'cust-1',
+      saleBalanceAddedCfa: 2500,
+      customerBalanceOwedCfa: 1400,
+      previousReturns: [],
+    })
+    expect(preview.balanceAdjustmentCfa).toBe(1400)
+    expect(preview.cashRefundCfa).toBe(18200)
+  })
+
   it('owed lower than remaining credit → adj = owed', () => {
     const preview = computeReturnRefundPreview({
       refundAmountCfa: 500,

@@ -28,14 +28,15 @@
  *   remaining_credit = greatest(sale.balance_added_cfa - sum(prior return
  *                     balance_adjustment_cfa), 0)
  *   if customer_id is not null AND balance_added_cfa > 0:
- *     balance_adjustment = least(refund, remaining_credit, customer.balance_owed_cfa)
+ *     balance_adjustment = least(refund, remaining_credit, displayed_payable)
  *   else:
  *     balance_adjustment = 0
  *   cash_refund = refund - balance_adjustment
  *
  * This does not allocate customer payments to a sale. Only previous return
- * balance_adjustment_cfa values reduce remaining sale credit. Customer
- * balance_owed_cfa is the current pooled owed amount (null treated as 0).
+ * balance_adjustment_cfa values reduce remaining sale credit.
+ * displayed_payable is greatest(0, ledger running), falling back to
+ * customers.balance_owed_cfa when the ledger has not loaded (null treated as 0).
  *
  * The server still computes the authoritative refund on submit.
  */

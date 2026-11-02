@@ -15,6 +15,7 @@ import { formatCFA } from '@/lib/formatters'
 import { roundCfa2 } from '@/lib/returnRefundPreview'
 import { useAuthStore } from '@/stores/authStore'
 import { useOpenShifts, type ShiftListItem } from '@/hooks/useShifts'
+import { useCustomerLedgerBalance } from '@/hooks/useCustomerActivity'
 import type { SaleDetailData, SaleItemDetail } from '@/hooks/useSales'
 import type { Staff } from '@/types/database'
 import { SALES } from '@/lib/bilingual/sales'
@@ -32,6 +33,10 @@ vi.mock('@/hooks/useShifts', async (importOriginal) => {
     useOpenShifts: vi.fn(),
   }
 })
+
+vi.mock('@/hooks/useCustomerActivity', () => ({
+  useCustomerLedgerBalance: vi.fn(() => ({ data: undefined, isLoading: false })),
+}))
 
 vi.mock('sonner', () => ({
   toast: {
@@ -276,6 +281,10 @@ describe('ReturnModal', () => {
     vi.mocked(rpc.processReturn).mockReset()
     vi.mocked(toast.success).mockReset()
     vi.mocked(toast.error).mockReset()
+    vi.mocked(useCustomerLedgerBalance).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    } as never)
   })
 
   it('starts selected qty at 0 and shows already-returned / fully returned', () => {
@@ -380,6 +389,24 @@ describe('ReturnModal', () => {
     expect(onSuccess).toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
     expect(toast.success).toHaveBeenCalled()
+  })
+
+  it('caps credit reversal at displayed ledger debt when owed is stale', async () => {
+    const user = userEvent.setup()
+    vi.mocked(useCustomerLedgerBalance).mockReturnValue({
+      data: 1400,
+      isLoading: false,
+    } as never)
+    renderModal({
+      ...creditSale19600(),
+      customer_balance_owed_cfa: 1500,
+    })
+
+    await user.click(screen.getAllByRole('button', { name: /tout retourner|return all/i })[0])
+    await user.click(screen.getAllByRole('button', { name: /tout retourner|return all/i })[1])
+
+    expectFormattedCFA(1400)
+    expectFormattedCFA(18200)
   })
 
   it('submits walk-in return with p_cash_refund_cfa equal to full refund', async () => {

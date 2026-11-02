@@ -39,6 +39,8 @@ import {
   roundCfa2,
 } from '@/lib/returnRefundPreview'
 import { authorizedOpenShifts, clearStalePosShift, useOpenShifts } from '@/hooks/useShifts'
+import { useCustomerLedgerBalance } from '@/hooks/useCustomerActivity'
+import { payableClientDebtCfa } from '@/lib/customerAccountBalance'
 import { resolveRequiredShiftId } from '@/lib/posShiftContext'
 import { useAuthStore } from '@/stores/authStore'
 import type { SaleDetailData, SaleItemDetail } from '@/hooks/useSales'
@@ -423,6 +425,11 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
   const [isLoading, setIsLoading] = useState(false)
   const inFlight = useRef(false)
   const staff = useAuthStore((s) => s.staff)
+  const { data: ledgerBalance } = useCustomerLedgerBalance(sale.customer_id)
+  const payableOwedCfa = payableClientDebtCfa(
+    ledgerBalance,
+    sale.customer_balance_owed_cfa ?? 0,
+  )
   const { data: openShifts, isLoading: openShiftsLoading } = useOpenShifts()
   const effectiveShiftId = resolveRequiredShiftId(
     shiftId,
@@ -458,14 +465,14 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
         refundAmountCfa: estimatedRefundTotal,
         customerId: sale.customer_id,
         saleBalanceAddedCfa: sale.balance_added_cfa,
-        customerBalanceOwedCfa: sale.customer_balance_owed_cfa,
+        customerBalanceOwedCfa: payableOwedCfa,
         previousReturns: sale.returns,
       }),
     [
       estimatedRefundTotal,
       sale.customer_id,
       sale.balance_added_cfa,
-      sale.customer_balance_owed_cfa,
+      payableOwedCfa,
       sale.returns,
     ],
   )
