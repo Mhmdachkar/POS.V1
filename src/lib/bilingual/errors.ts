@@ -223,6 +223,16 @@ export function messageForCodeBilingual(
   code: VhmErrorCode,
   details?: Record<string, unknown>,
 ): BilingualPair {
+  if (code === 'PAYMENT_EXCEEDS_BALANCE') {
+    const payable = Number(details?.payable_cfa)
+    if (Number.isFinite(payable)) {
+      const label = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Math.round(payable))
+      return bi(
+        `Montant supérieur au solde dû (${label} CFA).`,
+        `Amount exceeds the balance due (${label} CFA).`,
+      )
+    }
+  }
   if (code === 'INVALID_AMOUNT' && details?.reason === CASH_REFUND_MISMATCH_REASON) {
     return CASH_REFUND_MISMATCH_BI
   }

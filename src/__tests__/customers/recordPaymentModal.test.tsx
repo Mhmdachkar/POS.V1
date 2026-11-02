@@ -8,6 +8,8 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RecordPaymentModal } from '@/pages/customers/components/RecordPaymentModal'
 import { useRecordPayment } from '@/hooks/useCustomers'
+import { useCustomerLedgerBalance } from '@/hooks/useCustomerActivity'
+import { formatCFA } from '@/lib/formatters'
 import { useOpenShifts, type ShiftListItem } from '@/hooks/useShifts'
 import { useAuthStore } from '@/stores/authStore'
 import type { Customer, Staff } from '@/types/database'
@@ -21,6 +23,10 @@ vi.mock('@/hooks/useCustomers', async (importOriginal) => {
     useRecordPayment: vi.fn(),
   }
 })
+
+vi.mock('@/hooks/useCustomerActivity', () => ({
+  useCustomerLedgerBalance: vi.fn(() => ({ data: null, isLoading: false })),
+}))
 
 vi.mock('@/hooks/useShifts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useShifts')>()
@@ -75,14 +81,14 @@ const customer: Customer = {
   updated_at: '2026-01-01T00:00:00Z',
 }
 
-function renderModal(shiftId: string | null = null) {
+function renderModal(shiftId: string | null = null, balanceOwedCfa = customer.balance_owed_cfa) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
       <RecordPaymentModal
         open
         onClose={vi.fn()}
-        customer={customer}
+        customer={{ ...customer, balance_owed_cfa: balanceOwedCfa }}
         shiftId={shiftId}
       />
     </QueryClientProvider>,
@@ -101,6 +107,7 @@ describe('RecordPaymentModal', () => {
       data: [openShift()],
       isLoading: false,
     } as never)
+    vi.mocked(useCustomerLedgerBalance).mockReturnValue({ data: null, isLoading: false } as never)
     vi.mocked(useRecordPayment).mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue({
         amount_cfa: 1000,
@@ -179,6 +186,24 @@ describe('RecordPaymentModal', () => {
     await user.type(screen.getByPlaceholderText('0'), '-25')
     expect(screen.getByPlaceholderText('0')).toHaveValue('-25')
     expect(screen.getByText(CUSTOMERS.paymentNegative.fr)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: CUSTOMERS.recordPayment.fr }))
+    expect(mutateAsync).not.toHaveBeenCalled()
+  })
+
+  it('shows the ledger cap and blocks 1 500 when the client owes 1 400', async () => {
+    const user = userEvent.setup()
+    const mutateAsync = vi.fn()
+    vi.mocked(useCustomerLedgerBalance).mockReturnValue({ data: 1400, isLoading: false } as never)
+    vi.mocked(useRecordPayment).mockReturnValue({
+      mutateAsync,
+      isPending: false,
+    } as never)
+    renderModal('shift-1', 1500)
+    const cap = CUSTOMERS.paymentCap(formatCFA(1400)).fr
+    const over = CUSTOMERS.paymentExceedsBalance(formatCFA(1400)).fr
+    expect(screen.getByText(cap, { collapseWhitespace: false })).toBeInTheDocument()
+    await user.type(screen.getByPlaceholderText('0'), '1500')
+    expect(screen.getByText(over, { collapseWhitespace: false })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: CUSTOMERS.recordPayment.fr }))
     expect(mutateAsync).not.toHaveBeenCalled()
   })

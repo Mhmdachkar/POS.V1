@@ -170,19 +170,21 @@ describe('roundCfa2 / computeReturnLineRefund / computeReturnRefundTotal', () =>
     expect(refund).toBe(ROUND_950_OVER_3)
   })
 
-  it('final residual: 950 - 2 * round(950 / 3, 2)', () => {
-    const residual = roundCfa2(NET_950 - 2 * ROUND_950_OVER_3)
-    expect(residual).toBe(316.66)
-    const refund = computeReturnLineRefund({
+  it('final piece value ignores an under-refund; sale pool absorbs the rounding penny', () => {
+    const line = {
       originalQty: 3,
       selectedQty: 1,
       netLineTotalCfa: NET_950,
       alreadyReturnedQty: 2,
       alreadyRefundedCfa: 2 * ROUND_950_OVER_3,
-    })
-    expect(refund).toBe(residual)
-    expect(refund).not.toBe(ROUND_950_OVER_3)
-    expect(refund).not.toBe(NET_950 / 3)
+    }
+    const prefix = roundCfa2((2 / 3) * NET_950)
+    const pieceValue = roundCfa2(NET_950 - prefix)
+    expect(pieceValue).toBe(316.67)
+    expect(computeReturnLineRefund(line)).toBe(pieceValue)
+    const saleRemaining = roundCfa2(NET_950 - 2 * ROUND_950_OVER_3)
+    expect(saleRemaining).toBe(316.66)
+    expect(computeReturnLineRefund(line, saleRemaining)).toBe(316.66)
   })
 
   it('sums mixed selected lines with round(2) on each non-final line', () => {
@@ -304,18 +306,18 @@ describe('roundCfa2 / computeReturnLineRefund / computeReturnRefundTotal', () =>
     expect(first + rest).not.toBe(950)
   })
 
-  it('QA: remaining piece is least(line remaining, sale remaining), not catalog leftover', () => {
+  it('MAIN-00000026: last piece is 2 500 after a 1 000 refund, not 4 000', () => {
     const line = {
       originalQty: 2,
       selectedQty: 1,
-      netLineTotalCfa: 3500,
+      netLineTotalCfa: 5000,
       alreadyReturnedQty: 1,
       alreadyRefundedCfa: 1000,
     }
     expect(computeReturnLineRefund(line)).toBe(2500)
-    expect(computeReturnLineRefund(line, 2250)).toBe(2250)
-    expect(computeReturnLineRefund(line, 2250)).not.toBe(3500)
-    expect(resolveLineRefund({ ...line, customRefundCfa: 3500 }, 2250)).toBe(2250)
+    expect(computeReturnLineRefund(line, 4000)).toBe(2500)
+    expect(resolveLineRefund({ ...line, customRefundCfa: 4000 }, 4000)).toBe(2500)
+    expect(computeReturnLineRefund(line, 4000)).not.toBe(4000)
   })
 
   it('QA: two lines in one submit share the remaining sale pool', () => {

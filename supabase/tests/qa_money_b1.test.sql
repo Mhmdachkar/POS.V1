@@ -263,3 +263,176 @@ begin
   raise notice 'B1-5 PASS: refund capped at cash + credit collected';
 end;
 $B1_5$;
+
+-- B1-6: MAIN-00000026 shape. 2 pieces at 2 500, cash 5 000.
+-- First piece refunded 1 000. Last piece cap is 2 500, not 4 000.
+do $B1_6$
+declare
+  sale_id uuid;
+  item_id uuid;
+  r1      jsonb;
+  r2      jsonb;
+  water   constant uuid := '00000000-0000-0000-0003-000000000001';
+  old_price numeric;
+begin
+  select selling_price_cfa into old_price
+  from product_units
+  where product_id = water and unit_level = 0;
+
+  update product_units
+  set selling_price_cfa = 2500
+  where product_id = water and unit_level = 0;
+
+  r1 := public.complete_sale(
+    p_depot_id            := '00000000-0000-0000-0001-000000000001',
+    p_customer_id         := null,
+    p_cart_items          := jsonb_build_array(
+      jsonb_build_object('product_id', water, 'unit_level', 0, 'quantity_in_unit', 2)
+    ),
+    p_amount_tendered_cfa := 5000,
+    p_display_currency    := 'CFA',
+    p_shift_id := current_setting('qa.shift_id')::uuid
+  );
+  sale_id := (r1->>'sale_id')::uuid;
+  if (r1->>'total_cfa')::numeric != 5000 then
+    raise exception 'B1-6 FAIL: sale total should be 5000, got %', r1->>'total_cfa';
+  end if;
+  select id into item_id from sale_items where sale_id = sale_id;
+
+  r1 := public.process_return(
+    p_sale_id         := sale_id,
+    p_items           := jsonb_build_array(
+      jsonb_build_object(
+        'sale_item_id', item_id,
+        'quantity_in_unit', 1,
+        'refund_amount_cfa', 1000
+      )
+    ),
+    p_cash_refund_cfa := 1000,
+    p_shift_id := current_setting('qa.shift_id')::uuid
+  );
+  if (r1->>'refund_amount_cfa')::numeric != 1000 then
+    raise exception 'B1-6 FAIL: first refund should be 1000, got %', r1->>'refund_amount_cfa';
+  end if;
+
+  begin
+    perform public.process_return(
+      p_sale_id         := sale_id,
+      p_items           := jsonb_build_array(
+        jsonb_build_object(
+          'sale_item_id', item_id,
+          'quantity_in_unit', 1,
+          'refund_amount_cfa', 4000
+        )
+      ),
+      p_cash_refund_cfa := 4000,
+      p_shift_id := current_setting('qa.shift_id')::uuid
+    );
+    raise exception 'B1-6 FAIL: 4000 on the last piece should be rejected';
+  exception
+    when sqlstate 'P0001' then
+      if sqlerrm not like '%INVALID_AMOUNT%' then
+        raise exception 'B1-6 FAIL: wrong error: %', sqlerrm;
+      end if;
+  end;
+
+  r2 := public.process_return(
+    p_sale_id         := sale_id,
+    p_items           := jsonb_build_array(
+      jsonb_build_object('sale_item_id', item_id, 'quantity_in_unit', 1)
+    ),
+    p_cash_refund_cfa := 2500,
+    p_shift_id := current_setting('qa.shift_id')::uuid
+  );
+  if (r2->>'refund_amount_cfa')::numeric != 2500 then
+    raise exception 'B1-6 FAIL: last piece full value should be 2500, got %', r2->>'refund_amount_cfa';
+  end if;
+
+  update product_units
+  set selling_price_cfa = old_price
+  where product_id = water and unit_level = 0;
+
+  raise notice 'B1-6 PASS: last piece capped at 2500 after a 1000 refund on a 5000 sale';
+exception
+  when others then
+    update product_units
+    set selling_price_cfa = old_price
+    where product_id = water and unit_level = 0;
+    raise;
+end;
+$B1_6$;
+
+-- Payment cap follows ledger debt, not a higher customers.balance_owed_cfa.
+-- Client owes 1 400 on the ledger; the column is inflated to 1 500.
+-- 1 500 must be rejected. 1 400 must be accepted.
+do $PAY_CAP$
+declare
+  cust_id uuid;
+  result  jsonb;
+  water   constant uuid := '00000000-0000-0000-0003-000000000001';
+  old_price numeric;
+begin
+  select selling_price_cfa into old_price
+  from product_units
+  where product_id = water and unit_level = 0;
+
+  update product_units
+  set selling_price_cfa = 1400
+  where product_id = water and unit_level = 0;
+
+  cust_id := ((public.create_customer(p_name := 'Pay Cap 1400'))->>'id')::uuid;
+
+  result := public.complete_sale(
+    p_depot_id            := '00000000-0000-0000-0001-000000000001',
+    p_customer_id         := cust_id,
+    p_cart_items          := jsonb_build_array(
+      jsonb_build_object('product_id', water, 'unit_level', 0, 'quantity_in_unit', 1)
+    ),
+    p_amount_tendered_cfa := 0,
+    p_display_currency    := 'CFA',
+    p_shift_id := current_setting('qa.shift_id')::uuid
+  );
+  if (result->>'balance_added_cfa')::numeric != 1400 then
+    raise exception 'PAY CAP FAIL: credit should be 1400, got %', result->>'balance_added_cfa';
+  end if;
+
+  update public.customers
+  set balance_owed_cfa = 1500
+  where id = cust_id;
+
+  begin
+    perform public.record_payment(
+      p_customer_id := cust_id,
+      p_amount_cfa := 1500,
+      p_shift_id := current_setting('qa.shift_id')::uuid
+    );
+    raise exception 'PAY CAP FAIL: 1500 should be rejected when ledger debt is 1400';
+  exception
+    when sqlstate 'P0001' then
+      if sqlerrm not like '%PAYMENT_EXCEEDS_BALANCE%' then
+        raise exception 'PAY CAP FAIL: wrong error: %', sqlerrm;
+      end if;
+  end;
+
+  result := public.record_payment(
+    p_customer_id := cust_id,
+    p_amount_cfa := 1400,
+    p_shift_id := current_setting('qa.shift_id')::uuid
+  );
+  if (result->>'amount_cfa')::numeric != 1400 then
+    raise exception 'PAY CAP FAIL: 1400 should be accepted, got %', result;
+  end if;
+
+  update product_units
+  set selling_price_cfa = old_price
+  where product_id = water and unit_level = 0;
+
+  raise notice 'PAY CAP PASS: 1500 rejected and 1400 accepted against ledger debt';
+exception
+  when others then
+    update product_units
+    set selling_price_cfa = old_price
+    where product_id = water and unit_level = 0;
+    raise;
+end;
+$PAY_CAP$;

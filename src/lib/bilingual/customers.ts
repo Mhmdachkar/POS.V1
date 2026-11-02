@@ -136,4 +136,10 @@ export const CUSTOMERS = {
   ),
   paymentExceedsBalance: (amount: string) =>
     bi(`Montant supérieur au solde dû (${amount}).`, `Amount exceeds balance due (${amount}).`),
+  paymentCap: (amount: string) =>
+    bi(`Maximum ${amount}`, `Maximum ${amount}`),
+  paymentCapLoading: bi(
+    'Solde en cours de chargement.',
+    'Balance is still loading.',
+  ),
 } as const

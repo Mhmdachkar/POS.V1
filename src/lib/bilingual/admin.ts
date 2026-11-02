@@ -167,8 +167,8 @@ export const ADMIN = {
   ),
   gpNotCalculable: bi('Marge non calculable', 'Margin not calculable'),
   gpNotCalculableHint: bi(
-    'Un ou plusieurs produits vendus aujourd’hui n’ont pas de prix d’achat. La marge n’est pas calculée pour ces lignes.',
-    'One or more products sold today have no cost price. Margin is not calculated for those lines.',
+    'La marge du jour n’est pas calculée : un article n’a pas de prix d’achat, ou le montant encore encaissé ne correspond plus à des articles restants.',
+    'Today’s margin is not calculated: an item has no cost price, or cash still kept no longer matches items left out.',
   ),
   allActions: bi('Toutes les actions', 'All actions'),
   allEntityTypes: bi('Tous les types', 'All types'),

@@ -147,17 +147,23 @@ export function DashboardPage() {
         <StatCard
           label={<BiTableHeader {...ADMIN.statGrossProfit} />}
           amount={
-            data.gross_profit_cfa == null || data.margin_status
+            data.gross_profit_cfa == null
+              || data.margin_status
+              || Number(data.lines_without_cost_count) > 0
               ? undefined
               : Number(data.gross_profit_cfa)
           }
           value={
-            data.gross_profit_cfa == null || data.margin_status
+            data.gross_profit_cfa == null
+              || data.margin_status
+              || Number(data.lines_without_cost_count) > 0
               ? t(ADMIN.gpNotCalculable)
               : undefined
           }
           description={
-            data.gross_profit_cfa == null || data.margin_status
+            data.gross_profit_cfa == null
+              || data.margin_status
+              || Number(data.lines_without_cost_count) > 0
               ? t(ADMIN.gpNotCalculableHint)
               : undefined
           }
