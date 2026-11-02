@@ -112,7 +112,11 @@ export async function fetchCustomer(id: string): Promise<Customer> {
   return data as Customer
 }
 
-export async function fetchCustomerList(params: CustomerListParams): Promise<{ data: Customer[]; count: number }> {
+export async function fetchCustomerList(params: CustomerListParams): Promise<{
+  data: Customer[]
+  count: number
+  displayedBalances: Record<string, number>
+}> {
   const { page, pageSize, search, filter } = params
   const from = page * pageSize
   const to = from + pageSize - 1
@@ -139,7 +143,7 @@ export async function fetchCustomerList(params: CustomerListParams): Promise<{ d
       const ids = (soldeRows as Array<{ customer_id: string }>)
         .map((row) => row.customer_id)
         .filter(Boolean)
-      if (ids.length === 0) return { data: [], count: 0 }
+      if (ids.length === 0) return { data: [], count: 0, displayedBalances: {} }
       q = q.in('id', ids)
     } else {
       q = q.gt('balance_owed_cfa', 0)
@@ -148,7 +152,22 @@ export async function fetchCustomerList(params: CustomerListParams): Promise<{ d
 
   const { data, error, count } = await q
   if (error) throw error
-  return { data: (data ?? []) as Customer[], count: count ?? 0 }
+  const rows = (data ?? []) as Customer[]
+  const displayedBalances: Record<string, number> = {}
+  if (rows.length > 0) {
+    const { data: balRows, error: balError } = await supabase.rpc(
+      'customer_displayed_balances',
+      { p_customer_ids: rows.map((c) => c.id) },
+    )
+    if (!balError && Array.isArray(balRows)) {
+      for (const row of balRows as Array<{ customer_id: string; displayed_balance_cfa: number | string }>) {
+        if (row?.customer_id != null && row.displayed_balance_cfa != null) {
+          displayedBalances[row.customer_id] = Number(row.displayed_balance_cfa)
+        }
+      }
+    }
+  }
+  return { data: rows, count: count ?? 0, displayedBalances }
 }
 
 async function fetchCustomerPayments(customerId: string): Promise<Payment[]> {

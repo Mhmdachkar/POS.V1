@@ -167,7 +167,10 @@ export const POS = {
   duplicateSaleReturned: bi('Vente déjà enregistrée', 'Sale already recorded'),
   saleSummary: bi('Résumé', 'Summary'),
   items: bi('Articles', 'Items'),
-  autoPrintHint: bi("Le ticket s'imprime automatiquement.", 'Receipt prints automatically.'),
+  autoPrintHint: bi(
+    "Ticket mis en file. Il n'atteint une imprimante que si l'agent d'impression du dépôt est ouvert sur ce PC.",
+    'Receipt is queued. It reaches a printer only if the depot print agent is open on this PC.',
+  ),
   grilleMode: bi('Grille', 'Grid'),
   saisieRapide: bi('Saisie rapide', 'Fast entry'),
   documentDate: bi('Date', 'Date'),

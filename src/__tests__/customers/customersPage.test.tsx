@@ -198,6 +198,8 @@ describe('CustomersPage', () => {
 
   beforeEach(() => {
     vi.mocked(supabase.from).mockReset()
+    vi.mocked(supabase.rpc).mockReset()
+    vi.mocked(supabase.rpc).mockResolvedValue({ data: null, error: null } as never)
     vi.mocked(useCustomerLedgerBalances).mockReturnValue({ data: {}, isLoading: false } as never)
     useAuthStore.setState({
       staff: adminStaff(),
@@ -265,29 +267,28 @@ describe('CustomersPage', () => {
     expect(node).toHaveClass('text-sm', 'financial-value', 'text-danger-foreground')
   })
 
-  it('shows Avoir for a negative ledger solde instead of an em dash', async () => {
-    vi.mocked(useCustomerLedgerBalances).mockReturnValue({
-      data: { 'cust-0': -100 },
-      isLoading: false,
+  it('shows Avoir from the list balance, not a delayed ellipsis', async () => {
+    vi.mocked(supabase.rpc).mockResolvedValue({
+      data: [{ customer_id: 'cust-0', displayed_balance_cfa: -100 }],
+      error: null,
     } as never)
     const { builder } = createFilterAwareFrom(catalog)
     vi.mocked(supabase.from).mockReturnValue(builder as never)
     renderCustomers()
     await screen.findByText('John Doe')
     expect(screen.getByText(`${CUSTOMERS.avoirPrefix.fr} ${formatCFA(100)}`)).toBeInTheDocument()
+    expect(screen.queryByText('…')).not.toBeInTheDocument()
   })
 
-  it('shows a loading placeholder for Solde dû while ledger balances load', async () => {
-    vi.mocked(useCustomerLedgerBalances).mockReturnValue({
-      data: undefined,
-      isLoading: true,
-    } as never)
+  it('shows the owed balance with the row when the batch solde is unavailable', async () => {
+    vi.mocked(supabase.rpc).mockResolvedValue({ data: null, error: null } as never)
     const { builder } = createFilterAwareFrom(catalog)
     vi.mocked(supabase.from).mockReturnValue(builder as never)
     renderCustomers()
-    await screen.findByText('John Doe')
-    expect(screen.getAllByText('…').length).toBeGreaterThan(0)
-    expect(screen.queryByText(`${CUSTOMERS.avoirPrefix.fr} ${formatCFA(100)}`)).not.toBeInTheDocument()
+    await screen.findByText('Customer 1')
+    expect(screen.queryByText('…')).not.toBeInTheDocument()
+    const owed = formatCFA(4500)
+    expect(screen.getAllByText((_, el) => el?.tagName === 'SPAN' && el.textContent === owed).length).toBeGreaterThan(0)
   })
 
   it('does not query on each keystroke; one or-filter after 300 ms idle', async () => {

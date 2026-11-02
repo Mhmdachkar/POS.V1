@@ -52,7 +52,7 @@ import {
 import { BilingualText } from '@/components/ui/BilingualText'
 import { t, bilingualAriaLabel, bilingualPlain } from '@/lib/bilingual/types'
 import { fetchCustomerList, useCustomerList, type CustomerListFilter } from '@/hooks/useCustomers'
-import { fetchCustomerLedgerBalance, useCustomerLedgerBalances } from '@/hooks/useCustomerActivity'
+import { fetchCustomerLedgerBalance } from '@/hooks/useCustomerActivity'
 import { displayedAccountBalanceCfa } from '@/lib/customerAccountBalance'
 import { useAuthStore } from '@/stores/authStore'
 import { exportTable, LIST_EXPORT_MAX_ROWS, type ExportColumn } from '@/lib/listExport'
@@ -153,10 +153,7 @@ export function CustomersPage() {
   const customers   = data?.data ?? []
   const totalCount  = data?.count ?? 0
   const totalPages  = Math.ceil(totalCount / pageSize)
-  const {
-    data: ledgerBalances,
-    isLoading: ledgerBalancesLoading,
-  } = useCustomerLedgerBalances(customers.map((c) => c.id))
+  const displayedBalances = data?.displayedBalances
 
   const handleSearchChange = (value: string) => {
     setSearch(value)
@@ -183,10 +180,13 @@ export function CustomersPage() {
         search: debouncedSearch,
         filter,
       })
-      const ledgerEntries = await Promise.all(
-        result.data.map(async (c) => [c.id, await fetchCustomerLedgerBalance(c.id)] as const),
-      )
-      const ledgerById = Object.fromEntries(ledgerEntries) as Record<string, number | null>
+      const ledgerById: Record<string, number | null> = { ...result.displayedBalances }
+      if (Object.keys(ledgerById).length === 0) {
+        const ledgerEntries = await Promise.all(
+          result.data.map(async (c) => [c.id, await fetchCustomerLedgerBalance(c.id)] as const),
+        )
+        Object.assign(ledgerById, Object.fromEntries(ledgerEntries))
+      }
       const filterLines: string[] = []
       if (filter !== 'all') filterLines.push(`Filtre : ${filter}`)
       if (debouncedSearch.trim()) filterLines.push(`Recherche : ${debouncedSearch.trim()}`)
@@ -317,13 +317,10 @@ export function CustomersPage() {
 
             {/* Rows */}
             {customers.map((customer, index) => {
-              const soldeLoading = ledgerBalancesLoading || ledgerBalances === undefined
-              const accountBalanceCfa = displayedAccountBalanceCfa(
-                ledgerBalances?.[customer.id],
-                customer.balance_owed_cfa,
-              )
+              const fromList = displayedBalances?.[customer.id]
+              const accountBalanceCfa = fromList ?? customer.balance_owed_cfa
               const tone = customerAccountTone({
-                balanceOwedCfa: soldeLoading ? customer.balance_owed_cfa : Math.max(0, accountBalanceCfa),
+                balanceOwedCfa: Math.max(0, accountBalanceCfa),
                 isActive: customer.is_active,
               })
               return (
@@ -345,7 +342,7 @@ export function CustomersPage() {
                 <span className="flex items-center gap-3 min-w-0">
                   <CustomerAvatar
                     name={customer.name}
-                    balanceOwedCfa={soldeLoading ? customer.balance_owed_cfa : Math.max(0, accountBalanceCfa)}
+                    balanceOwedCfa={Math.max(0, accountBalanceCfa)}
                     isActive={customer.is_active}
                   />
                   <span className="text-sm font-semibold text-text-primary truncate min-w-0">
@@ -359,7 +356,6 @@ export function CustomersPage() {
                   <LedgerSoldeAmount
                     amountCfa={accountBalanceCfa}
                     variant="compact"
-                    loading={soldeLoading}
                   />
                 </span>
                 <span className="min-w-0">

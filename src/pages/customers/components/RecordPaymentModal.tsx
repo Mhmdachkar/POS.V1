@@ -78,7 +78,10 @@ export function RecordPaymentModal({
   const { mutateAsync: recordPayment, isPending } = useRecordPayment()
   const { data: ledgerBalance, isLoading: ledgerLoading } = useCustomerLedgerBalance(customer.id)
   const displayedBalance = displayedAccountBalanceCfa(ledgerBalance, customer.balance_owed_cfa)
-  const payableDebt = payableClientDebtCfa(ledgerBalance, customer.balance_owed_cfa)
+  const capReady = !ledgerLoading && ledgerBalance !== undefined
+  const payableDebt = capReady
+    ? payableClientDebtCfa(ledgerBalance, customer.balance_owed_cfa)
+    : null
   const staff = useAuthStore((s) => s.staff)
   const currentDepotId = useDepotStore((s) => s.currentDepotId)
   const { data: openShifts, isLoading: openShiftsLoading } = useOpenShifts()
@@ -115,6 +118,10 @@ export function RecordPaymentModal({
       setAmountError(t(CUSTOMERS.paymentNegative))
       return
     }
+    if (payableDebt != null && !isNaN(amount) && amount > payableDebt) {
+      setAmountError(t(CUSTOMERS.paymentExceedsBalance(formatCFA(payableDebt))))
+      return
+    }
     setAmountError('')
   }
 
@@ -127,6 +134,10 @@ export function RecordPaymentModal({
     // Client-side validation (server also validates; these are UX guards only)
     if (!shiftGateReady || !hasOpenShift) {
       setGeneralError(t(SHIFT_COPY.openShiftRequired))
+      return
+    }
+    if (!capReady || payableDebt == null) {
+      setAmountError(t(CUSTOMERS.paymentCapLoading))
       return
     }
     if (!amountStr || isNaN(amount) || amount <= 0) {
@@ -264,6 +275,11 @@ export function RecordPaymentModal({
               placeholder="0"
               className={`w-full h-10 px-3 rounded-md border text-sm bg-surface text-text-primary tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary ${amountError ? 'border-danger' : 'border-border'}`}
             />
+            {payableDebt != null && (
+              <p className="text-xs text-text-secondary mt-1">
+                {t(CUSTOMERS.paymentCap(formatCFA(payableDebt)))}
+              </p>
+            )}
             {amountError && (
               <p className="text-xs text-danger-foreground mt-1">{amountError}</p>
             )}
@@ -298,7 +314,7 @@ export function RecordPaymentModal({
             <LoadingButton
               type="submit"
               loading={isPending}
-              disabled={!shiftGateReady || !hasOpenShift}
+              disabled={!shiftGateReady || !hasOpenShift || !capReady}
             >
               <BiButtonStack {...CUSTOMERS.recordPayment} />
             </LoadingButton>

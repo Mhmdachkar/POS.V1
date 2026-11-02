@@ -16,13 +16,16 @@
  *   else:
  *     line_basis = 0
  *
- * Per-line refund (C3 / residual) against line_basis:
- *   returnable = original_qty - already_returned_qty
- *   if selected >= returnable (final chunk of this sale_item):
- *     item_refund = line_basis - already_refunded_cfa
+ * Per-line refund against line_basis. The cap is the value of the
+ * quantity still out, not (line_basis − already refunded). An earlier
+ * under-refund does not raise the next piece.
+ *   prefix = round((already_returned / original_qty) * line_basis, 2)
+ *   remaining_value = line_basis − prefix
+ *   if selected covers every piece still out:
+ *     selected_value = remaining_value
  *   else:
- *     item_refund = round((selected / original_qty) * line_basis, 2)
- *   Then cap so SUM(refunds on the sale) <= refund_pool.
+ *     selected_value = min(round((selected / original_qty) * line_basis, 2), remaining_value)
+ *   item_refund = min(selected_value, sale remaining collected)
  *
  * C1 pooled-balance split (unchanged):
  *   remaining_credit = greatest(sale.balance_added_cfa - sum(prior return
@@ -141,10 +144,18 @@ function lineBasis(input: ReturnLineRefundInput): number {
   return input.refundBasisCfa ?? input.netLineTotalCfa
 }
 
+/** Full payable value of a quantity, as one prefix of the line basis. */
+export function fullValueOfQty(qty: number, originalQty: number, basisCfa: number): number {
+  const basis = Math.max(roundCfa2(basisCfa), 0)
+  if (qty <= 0 || originalQty <= 0 || basis <= 0) return 0
+  if (qty >= originalQty) return basis
+  return roundCfa2((qty / originalQty) * basis)
+}
+
 /**
  * Per-sale-item refund matching process_return.
- * Final return of a line uses residual so SUM(refunds) = line_basis.
- * Always least(line remaining, sale remaining) when a sale pool is passed.
+ * Cap is least(value of the pieces still being returned, sale remaining collected).
+ * alreadyRefundedCfa does not increase that value.
  */
 export function computeReturnLineRefund(
   input: ReturnLineRefundInput,
@@ -155,22 +166,23 @@ export function computeReturnLineRefund(
   if (selectedQty <= 0 || originalQty <= 0) return 0
 
   const alreadyReturnedQty = Math.max(input.alreadyReturnedQty, 0)
-  const alreadyRefundedCfa = Math.max(input.alreadyRefundedCfa, 0)
   const returnableQty = originalQty - alreadyReturnedQty
   if (returnableQty <= 0) return 0
 
   const basis = lineBasis(input)
-  const remainingRefundable = Math.max(roundCfa2(basis - alreadyRefundedCfa), 0)
+  const prefixFull = fullValueOfQty(alreadyReturnedQty, originalQty, basis)
+  const remainingLineValue = Math.max(roundCfa2(basis - prefixFull), 0)
   const cappedSelected = Math.min(selectedQty, returnableQty)
   const isFinalReturn = cappedSelected >= returnableQty
+  const selectedValue = isFinalReturn
+    ? remainingLineValue
+    : Math.min(
+        fullValueOfQty(cappedSelected, originalQty, basis),
+        remainingLineValue,
+      )
 
-  const itemRefund = isFinalReturn
-    ? remainingRefundable
-    : roundCfa2((cappedSelected / originalQty) * basis)
-
-  const lineCap = Math.min(itemRefund, remainingRefundable)
-  if (remainingSalePoolCfa == null) return lineCap
-  return Math.min(lineCap, Math.max(roundCfa2(remainingSalePoolCfa), 0))
+  if (remainingSalePoolCfa == null) return selectedValue
+  return Math.min(selectedValue, Math.max(roundCfa2(remainingSalePoolCfa), 0))
 }
 
 export function computeReturnRefundTotal(
