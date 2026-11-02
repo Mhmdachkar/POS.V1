@@ -260,10 +260,22 @@ export function SupplierDetailPage() {
                 <BiButtonStack {...COMMON.edit} />
               </Button>
               {supplier.balance_owed_cfa > 0 && (
-                <Button type="button" size="sm" onClick={() => setPayOpen(true)}>
-                  <Plus className="h-3.5 w-3.5 mr-1.5" />
-                  <BiButtonStack {...ACHATS.recordPayment} />
-                </Button>
+                <div className="flex flex-col items-end gap-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!depotId}
+                    onClick={() => setPayOpen(true)}
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1.5" />
+                    <BiButtonStack {...ACHATS.recordPayment} />
+                  </Button>
+                  {!depotId && (
+                    <p className="text-xs text-warning-foreground max-w-[16rem] text-right">
+                      {t(ACHATS.needDepotPaymentHint)}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -551,7 +563,7 @@ export function SupplierDetailPage() {
         supplier={editSupplier}
       />
       <RecordSupplierPaymentModal
-        open={payOpen}
+        open={payOpen && !!depotId}
         onClose={() => setPayOpen(false)}
         supplier={editSupplier}
       />

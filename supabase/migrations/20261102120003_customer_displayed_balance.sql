@@ -1,0 +1,53 @@
+-- Displayed client solde = last customer_ledger running balance (signed),
+-- falling back to customers.balance_owed_cfa. Used by the "with balance" filter.
+-- Idempotent. Does not write customer rows.
+
+CREATE OR REPLACE FUNCTION public.customer_displayed_balance_cfa(p_customer_id uuid)
+RETURNS numeric
+LANGUAGE plpgsql
+STABLE
+SECURITY INVOKER
+SET search_path = pg_catalog, public, private
+AS $$
+DECLARE
+  v_last numeric;
+  v_owed numeric;
+BEGIN
+  SELECT cl.running_balance_cfa
+  INTO v_last
+  FROM public.customer_ledger(p_customer_id) cl
+  ORDER BY cl.occurred_at DESC, cl.id DESC
+  LIMIT 1;
+
+  IF FOUND THEN
+    RETURN COALESCE(v_last, 0);
+  END IF;
+
+  SELECT c.balance_owed_cfa INTO v_owed
+  FROM public.customers c
+  WHERE c.id = p_customer_id;
+
+  RETURN COALESCE(v_owed, 0);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.customer_ids_with_displayed_balance()
+RETURNS TABLE (customer_id uuid, displayed_balance_cfa numeric)
+LANGUAGE sql
+STABLE
+SECURITY INVOKER
+SET search_path = pg_catalog, public, private
+AS $$
+  SELECT c.id, b.displayed
+  FROM public.customers c
+  CROSS JOIN LATERAL (
+    SELECT public.customer_displayed_balance_cfa(c.id) AS displayed
+  ) b
+  WHERE round(COALESCE(b.displayed, 0), 0) <> 0;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.customer_displayed_balance_cfa(uuid) FROM PUBLIC;
+GRANT  EXECUTE ON FUNCTION public.customer_displayed_balance_cfa(uuid) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.customer_ids_with_displayed_balance() FROM PUBLIC;
+GRANT  EXECUTE ON FUNCTION public.customer_ids_with_displayed_balance() TO authenticated;

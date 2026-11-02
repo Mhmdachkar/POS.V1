@@ -1,0 +1,150 @@
+-- Fully returned / voided sales: cancelled (non-actionable) fulfillment.
+-- Does not mark them released. Idempotent. Skips MAIN-00000001..00000007.
+
+ALTER TABLE public.sale_fulfillments
+  DROP CONSTRAINT IF EXISTS sale_fulfillments_status_check;
+
+ALTER TABLE public.sale_fulfillments
+  ADD CONSTRAINT sale_fulfillments_status_check
+  CHECK (status IN ('pending', 'released', 'cancelled'));
+
+ALTER TABLE public.sale_fulfillments
+  DROP CONSTRAINT IF EXISTS released_requires_actor;
+
+ALTER TABLE public.sale_fulfillments
+  ADD CONSTRAINT released_requires_actor
+  CHECK (
+    (status = 'pending' AND released_at IS NULL AND released_by IS NULL)
+    OR (status = 'released' AND released_at IS NOT NULL AND released_by IS NOT NULL)
+    OR (status = 'cancelled' AND released_at IS NULL AND released_by IS NULL)
+  );
+
+CREATE OR REPLACE FUNCTION private.trg_sale_fulfillment_cancel_on_terminal()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, private
+AS $$
+BEGIN
+  IF new.status IN ('returned', 'voided') THEN
+    UPDATE public.sale_fulfillments
+    SET status = 'cancelled'
+    WHERE sale_id = new.id
+      AND status = 'pending';
+  END IF;
+  RETURN new;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS sale_fulfillment_cancel_on_terminal ON public.sales;
+CREATE TRIGGER sale_fulfillment_cancel_on_terminal
+  AFTER UPDATE OF status ON public.sales
+  FOR EACH ROW
+  WHEN (new.status IN ('returned', 'voided'))
+  EXECUTE FUNCTION private.trg_sale_fulfillment_cancel_on_terminal();
+
+UPDATE public.sale_fulfillments f
+SET status = 'cancelled'
+FROM public.sales s
+WHERE f.sale_id = s.id
+  AND f.status = 'pending'
+  AND s.status IN ('returned', 'voided')
+  AND s.receipt_number NOT IN (
+    'MAIN-00000001', 'MAIN-00000002', 'MAIN-00000003', 'MAIN-00000004',
+    'MAIN-00000005', 'MAIN-00000006', 'MAIN-00000007'
+  );
+
+CREATE OR REPLACE FUNCTION public.release_sale_fulfillment(p_sale_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, private
+AS $$
+DECLARE
+  v_ctx private.caller_ctx;
+  v_sale record;
+  v_f public.sale_fulfillments%rowtype;
+BEGIN
+  v_ctx := private.get_caller_ctx(array['depot_staff', 'admin']);
+
+  IF p_sale_id IS NULL THEN
+    PERFORM private.raise_vhm_error('SALE_NOT_FOUND', '{"reason":"sale_id_required"}'::jsonb);
+  END IF;
+
+  SELECT * INTO v_sale FROM public.sales WHERE id = p_sale_id;
+  IF NOT FOUND THEN
+    PERFORM private.raise_vhm_error('SALE_NOT_FOUND',
+      jsonb_build_object('reason', 'not_found', 'sale_id', p_sale_id));
+  END IF;
+
+  IF v_sale.status = 'voided' THEN
+    PERFORM private.raise_vhm_error('SALE_NOT_FOUND',
+      jsonb_build_object('reason', 'sale_voided', 'sale_id', p_sale_id));
+  END IF;
+
+  IF v_sale.status = 'returned' THEN
+    PERFORM private.raise_vhm_error('SALE_FULLY_RETURNED',
+      jsonb_build_object('reason', 'sale_returned', 'sale_id', p_sale_id));
+  END IF;
+
+  IF v_ctx.role = 'depot_staff' AND v_sale.depot_id != v_ctx.depot_id THEN
+    PERFORM private.raise_vhm_error('INVALID_DEPOT',
+      jsonb_build_object('sale_depot', v_sale.depot_id, 'caller_depot', v_ctx.depot_id));
+  END IF;
+
+  SELECT * INTO v_f FROM public.sale_fulfillments WHERE sale_id = p_sale_id FOR UPDATE;
+  IF NOT FOUND THEN
+    PERFORM private.raise_vhm_error('SALE_NOT_FOUND',
+      jsonb_build_object('reason', 'fulfillment_missing', 'sale_id', p_sale_id));
+  END IF;
+
+  IF v_f.status = 'cancelled' THEN
+    PERFORM private.raise_vhm_error('SALE_NOT_FOUND',
+      jsonb_build_object('reason', 'fulfillment_cancelled', 'sale_id', p_sale_id));
+  END IF;
+
+  IF v_f.status = 'released' THEN
+    RETURN jsonb_build_object(
+      'sale_id', p_sale_id,
+      'status', 'released',
+      'released_at', v_f.released_at,
+      'released_by', v_f.released_by,
+      'idempotent', true
+    );
+  END IF;
+
+  UPDATE public.sale_fulfillments
+  SET status = 'released',
+      released_at = now(),
+      released_by = v_ctx.staff_id
+  WHERE sale_id = p_sale_id
+  RETURNING * INTO v_f;
+
+  PERFORM private.write_audit(
+    p_actor_id    := v_ctx.staff_id,
+    p_action      := 'release_sale_fulfillment',
+    p_entity_type := 'sale_fulfillment',
+    p_entity_id   := p_sale_id,
+    p_depot_id    := v_sale.depot_id,
+    p_before_val  := jsonb_build_object('status', 'pending'),
+    p_after_val   := jsonb_build_object(
+      'status', 'released',
+      'released_at', v_f.released_at,
+      'released_by', v_f.released_by
+    )
+  );
+
+  RETURN jsonb_build_object(
+    'sale_id', p_sale_id,
+    'status', 'released',
+    'released_at', v_f.released_at,
+    'released_by', v_f.released_by,
+    'idempotent', false
+  );
+EXCEPTION
+  WHEN sqlstate 'P0001' THEN RAISE;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.release_sale_fulfillment(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.release_sale_fulfillment(uuid) TO authenticated;

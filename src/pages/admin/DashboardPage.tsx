@@ -123,9 +123,45 @@ export function DashboardPage() {
         }
       />
 
+      {overnightOpenCount > 0 && (
+        <div
+          role="alert"
+          className="rounded-lg border-2 border-warning bg-warning-bg px-4 py-3 space-y-1 shadow-sm"
+        >
+          <p className="text-base font-semibold text-warning-foreground flex items-center gap-2">
+            <Clock className="h-5 w-5 flex-shrink-0" />
+            <BilingualText {...ADMIN.overnightOpenShifts(overnightOpenCount)} variant="body" />
+          </p>
+          <p className="text-sm text-text-primary">
+            <BilingualText {...ADMIN.overnightOpenShiftsHint} variant="caption" />
+            {' '}
+            <Link to="/shifts" className="text-primary font-semibold underline underline-offset-2">
+              {t(SHIFT_COPY.viewShifts)}
+            </Link>
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard label={<BiTableHeader {...ADMIN.statSales} />} amount={Number(data.sales_cfa)} />
-        <StatCard label={<BiTableHeader {...ADMIN.statGrossProfit} />} amount={Number(data.gross_profit_cfa)} />
+        <StatCard
+          label={<BiTableHeader {...ADMIN.statGrossProfit} />}
+          amount={
+            data.gross_profit_cfa == null || data.margin_status
+              ? undefined
+              : Number(data.gross_profit_cfa)
+          }
+          value={
+            data.gross_profit_cfa == null || data.margin_status
+              ? t(ADMIN.gpNotCalculable)
+              : undefined
+          }
+          description={
+            data.gross_profit_cfa == null || data.margin_status
+              ? t(ADMIN.gpNotCalculableHint)
+              : undefined
+          }
+        />
         <StatCard label={<BiTableHeader {...ADMIN.statTransactions} />} value={String(data.txn_count)} />
         <StatCard label={<BiTableHeader {...ADMIN.statAverageSale} />} amount={Number(data.avg_sale_cfa)} />
       </div>
@@ -195,21 +231,6 @@ export function DashboardPage() {
             )}
           </div>
           <div className="space-y-3">
-            {overnightOpenCount > 0 && (
-              <div className="rounded-md border border-warning/30 bg-warning-bg/40 px-3 py-2 space-y-1">
-                <p className="text-sm font-medium text-warning-foreground flex items-center gap-2">
-                  <Clock className="h-4 w-4 flex-shrink-0" />
-                  <BilingualText {...ADMIN.overnightOpenShifts(overnightOpenCount)} variant="body" />
-                </p>
-                <p className="text-xs text-text-secondary">
-                  <BilingualText {...ADMIN.overnightOpenShiftsHint} variant="caption" />
-                  {' '}
-                  <Link to="/shifts" className="text-primary underline underline-offset-2">
-                    {t(SHIFT_COPY.viewShifts)}
-                  </Link>
-                </p>
-              </div>
-            )}
             <p
               className={`text-sm flex items-center gap-2 ${
                 data.action_required.outstanding_balances_count > 0

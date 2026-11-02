@@ -1,0 +1,41 @@
+# Client balance reconciliation — proposal (do not apply)
+
+## Why two numbers exist
+
+- `customers.balance_owed_cfa` is **debt only** (`CHECK >= 0`). RPCs use it to cap credit sales and payment collection.
+- `customer_ledger` running balance is **signed**. Over-payment and cash-refund leftovers go negative. The POS now **displays** that signed figure everywhere (list, till picker, chip, payment dialog, “with balance” filter).
+
+So a client can show “Avoir 1 400 CFA” on screen while `balance_owed_cfa = 0` (or 1 500). That is not always a bug.
+
+## How to read the audit
+
+Run `docs/qa/balance-audit.sql` (read-only).
+
+| `issue` | Meaning | Action |
+| --- | --- | --- |
+| `debt_mismatch` | `owed` ≠ `greatest(ledger, 0)` | Real drift. Reconstruct from ledger events, then set owed to ledger debt. Never delete rows. |
+| `credit_on_ledger_owed_zero` | Ledger < 0, owed = 0 | Expected with the CHECK. Display already uses the ledger. Optional later: store credit table (see avoir spec). |
+| `match` | Filtered out | None |
+
+Skip MAIN-00000001..00000007. Do not re-run ELECTRO 2.
+
+## Proposed write (only after review)
+
+For each `debt_mismatch` row, after checking the ledger lines:
+
+```sql
+-- EXAMPLE ONLY. Do not run until the audit list is approved.
+-- UPDATE public.customers c
+-- SET balance_owed_cfa = round(GREATEST(ledger_debt, 0), 2)
+-- WHERE c.id = '...';
+```
+
+Do **not** push owed negative. Do **not** rewrite `sale_items` or payments. Do **not** insert balancing ledger rows unless a missing event is proven (voided sale still in the ledger, reversed payment not flagged, etc.).
+
+## Root cause of the testing-client 100 CFA gap
+
+`record_payment` / `complete_sale` / `process_return` used to increment `balance_owed_cfa` without re-reading the signed ledger. After MAIN-REG-00000001 took the reconstructed ledger to **-100** (CHECK floors owed at 0), MAIN-00000022 did `owed += 2500` from 0 while the ledger went **-100 + 2500 = 2400**. MAIN-REG-00000003 (QA, 1 000 CFA) then subtracted 1 000 from both, leaving **owed 1 500 / ledger 1 400**.
+
+From `20261102180001_sync_owed_from_ledger.sql`, those RPCs set `owed = greatest(0, ledger running)` after each event, and payment/return caps use that same payable figure as the UI.
+
+Historical rows are not rewritten. Align the QA client only with `docs/qa/align-testing-client-owed.sql` after review. Do not change any other client without a new audit review.

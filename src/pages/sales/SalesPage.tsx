@@ -153,6 +153,7 @@ function fulfillmentChips(): Array<{ value: FulfillmentStatus | 'all'; label: st
     { value: 'all', label: t(SALES.allFulfillment) },
     { value: 'pending', label: t(SALES.pendingRelease) },
     { value: 'released', label: t(SALES.released) },
+    { value: 'cancelled', label: t(SALES.fulfillmentCancelled) },
   ]
 }
 

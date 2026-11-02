@@ -2,13 +2,15 @@ import { useState, useRef, useEffect, useLayoutEffect, type CSSProperties } from
 import { createPortal } from 'react-dom'
 import { X, User, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import { formatCFA } from '@/lib/formatters'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { POS } from '@/lib/bilingual/pos'
 import { bilingualAriaLabel } from '@/lib/bilingual/types'
 import { useShallow } from 'zustand/react/shallow'
 import { usePOSStore } from '@/stores/posStore'
 import { CustomerDropdown } from '@/pages/pos/components/CustomerSelector'
+import { useCustomerLedgerBalance } from '@/hooks/useCustomerActivity'
+import { displayedAccountBalanceCfa, hasDisplayedClientBalance } from '@/lib/customerAccountBalance'
+import { LedgerSoldeAmount } from '@/pages/customers/components/LedgerSoldeAmount'
 import type { Customer } from '@/types/database'
 
 /**
@@ -30,6 +32,12 @@ export function CustomerChip() {
     setCustomer: s.setCustomer,
     setWalkIn: s.setWalkIn,
   })))
+  const { data: ledgerBalance, isLoading: ledgerLoading } = useCustomerLedgerBalance(
+    customer?.id ?? null,
+  )
+  const displayedBalance = customer
+    ? displayedAccountBalanceCfa(ledgerBalance, customer.balance_owed_cfa)
+    : 0
 
   useLayoutEffect(() => {
     if (!dropdownOpen || !wrapperRef.current) return
@@ -124,10 +132,13 @@ export function CustomerChip() {
               <BilingualText {...POS.walkIn} variant="body" layout="inline" />
             )}
           </span>
-          {customer && customer.balance_owed_cfa > 0 && (
-            <span className="text-xs text-text-secondary financial-value flex-shrink-0">
-              {formatCFA(customer.balance_owed_cfa)}
-            </span>
+          {customer && (ledgerLoading || hasDisplayedClientBalance(displayedBalance)) && (
+            <LedgerSoldeAmount
+              amountCfa={displayedBalance}
+              variant="compact"
+              loading={ledgerLoading || ledgerBalance === undefined}
+              className="flex-shrink-0 text-xs"
+            />
           )}
           <ChevronDown className="h-3.5 w-3.5 text-text-muted flex-shrink-0" />
         </button>

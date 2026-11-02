@@ -1,0 +1,38 @@
+-- Read-only: clients whose debt-only owed does not match ledger debt.
+-- Ledger running = last customer_ledger row in RPC order (via
+-- customer_displayed_balance_cfa after 20261102180001).
+-- Negative ledger (credit / avoir) with owed = 0 is listed separately and is
+-- expected under the current CHECK (balance_owed_cfa >= 0).
+-- Does not write. Does not touch MAIN-00000001..00000007.
+
+WITH ledger_last AS (
+  SELECT
+    c.id AS customer_id,
+    c.name,
+    c.phone,
+    c.is_active,
+    c.balance_owed_cfa,
+    public.customer_displayed_balance_cfa(c.id) AS ledger_running_cfa
+  FROM public.customers c
+)
+SELECT
+  customer_id,
+  name,
+  phone,
+  is_active,
+  round(balance_owed_cfa, 2) AS owed_cfa,
+  round(COALESCE(ledger_running_cfa, 0), 2) AS ledger_running_cfa,
+  round(GREATEST(COALESCE(ledger_running_cfa, 0), 0), 2) AS ledger_debt_cfa,
+  round(balance_owed_cfa - GREATEST(COALESCE(ledger_running_cfa, 0), 0), 2) AS owed_minus_ledger_debt,
+  CASE
+    WHEN COALESCE(ledger_running_cfa, 0) < 0 AND round(balance_owed_cfa, 2) = 0
+      THEN 'credit_on_ledger_owed_zero'
+    WHEN round(balance_owed_cfa, 2) IS DISTINCT FROM round(GREATEST(COALESCE(ledger_running_cfa, 0), 0), 2)
+      THEN 'debt_mismatch'
+    ELSE 'match'
+  END AS issue
+FROM ledger_last
+WHERE
+  round(balance_owed_cfa, 2) IS DISTINCT FROM round(GREATEST(COALESCE(ledger_running_cfa, 0), 0), 2)
+  OR COALESCE(ledger_running_cfa, 0) < 0
+ORDER BY issue, abs(balance_owed_cfa - GREATEST(COALESCE(ledger_running_cfa, 0), 0)) DESC, name;

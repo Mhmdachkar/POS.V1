@@ -43,6 +43,7 @@ import { resolveRequiredShiftId } from '@/lib/posShiftContext'
 import { SHIFT_COPY } from '@/lib/bilingual/shift'
 import { PROFORMAS } from '@/lib/bilingual/proformas'
 import { useCreateProforma } from '@/hooks/useProformas'
+import { clearPosDraft } from '@/lib/posDraft'
 import { LoadingButton } from '@/components/ui'
 import { BiButtonStack } from '@/lib/bilingual/ui'
 
@@ -90,6 +91,7 @@ export function PaymentPanel({ depotId, className, hideCustomerChip = false }: P
     setSubmitting,
     setSaleResult,
     setPriceExceptionReason,
+    startNewSale,
   } = usePOSStore(useShallow((s) => ({
     items:                s.items,
     customer:             s.customer,
@@ -109,6 +111,7 @@ export function PaymentPanel({ depotId, className, hideCustomerChip = false }: P
     setSubmitting:        s.setSubmitting,
     setSaleResult:        s.setSaleResult,
     setPriceExceptionReason: s.setPriceExceptionReason,
+    startNewSale:         s.startNewSale,
   })))
   void idempotencyKey
 
@@ -178,6 +181,8 @@ export function PaymentPanel({ depotId, className, hideCustomerChip = false }: P
         `${PROFORMAS.created.fr} ${num}`.trim(),
         `${PROFORMAS.created.en} ${num}`.trim(),
       )
+      startNewSale()
+      if (staff?.id && depotId) clearPosDraft(staff.id, depotId)
     } catch (err) {
       const parsed = parseError(err)
       toastErrorFromCode(parsed.code, parsed.details)
@@ -186,7 +191,7 @@ export function PaymentPanel({ depotId, className, hideCustomerChip = false }: P
     }
   }, [
     depotId, items, customer, isAdmin, documentDateYmd, externalRef,
-    discountType, discountValue, createProforma,
+    discountType, discountValue, createProforma, startNewSale, staff?.id,
   ])
 
   const handleCompleteSale = useCallback(async () => {

@@ -1,6 +1,7 @@
 /**
  * Displayed client solde comes from customer_ledger running balance (signed).
- * customers.balance_owed_cfa stays debt-only (CHECK >= 0) for credit/RPC caps.
+ * customers.balance_owed_cfa stays debt-only (CHECK >= 0). After money RPCs
+ * it is synced to greatest(0, ledger). Caps use that same payable figure.
  */
 
 export function ledgerAccountBalanceCfa(
@@ -29,4 +30,21 @@ export function displayedAccountBalanceCfa(
   balanceOwedCfa: number,
 ): number {
   return ledgerBalanceCfa ?? balanceOwedCfa
+}
+
+/** Non-zero displayed solde (due or credit) — used by the "with balance" filter. */
+export function hasDisplayedClientBalance(balanceCfa: number): boolean {
+  return Math.round(Number(balanceCfa) || 0) !== 0
+}
+
+/**
+ * Amount the payment dialog may collect. Same displayed solde as every other
+ * screen, floored at 0 (credit cannot be "paid").
+ */
+export function payableClientDebtCfa(
+  ledgerBalanceCfa: number | null | undefined,
+  balanceOwedCfa: number,
+): number {
+  const displayed = displayedAccountBalanceCfa(ledgerBalanceCfa, balanceOwedCfa)
+  return Math.max(0, Math.round(Number(displayed) || 0))
 }

@@ -175,10 +175,17 @@ export function PurchaseReceiptsPage() {
           <Button type="button" variant="secondary" size="sm" disabled={rows.length === 0} onClick={() => exportRows('xlsx')}>
             <BiButtonInline {...COMMON.exportXlsx} />
           </Button>
-          <Button type="button" onClick={() => setEditorOpen(true)}>
-            <Plus className="h-4 w-4 mr-1.5" />
-            <BiButtonStack {...ACHATS.newReceipt} />
-          </Button>
+          <div className="flex flex-col items-end gap-1">
+            <Button type="button" disabled={!depotId} onClick={() => setEditorOpen(true)}>
+              <Plus className="h-4 w-4 mr-1.5" />
+              <BiButtonStack {...ACHATS.newReceipt} />
+            </Button>
+            {!depotId && (
+              <p className="text-xs text-warning-foreground max-w-[16rem] text-right">
+                {t(ACHATS.needDepotHint)}
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -278,7 +285,7 @@ export function PurchaseReceiptsPage() {
         }}
       />
       <PurchaseReceiptEditorModal
-        open={editorOpen}
+        open={editorOpen && !!depotId}
         onClose={() => setEditorOpen(false)}
         onCreated={(id) => {
           setEditorOpen(false)

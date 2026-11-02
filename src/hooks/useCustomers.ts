@@ -102,7 +102,7 @@ async function fetchCustomerSearch(query: string, activeOnly: boolean): Promise<
   return (data ?? []) as Customer[]
 }
 
-async function fetchCustomer(id: string): Promise<Customer> {
+export async function fetchCustomer(id: string): Promise<Customer> {
   const { data, error } = await supabase
     .from('customers')
     .select('*')
@@ -132,7 +132,18 @@ export async function fetchCustomerList(params: CustomerListParams): Promise<{ d
   } else if (filter === 'inactive') {
     q = q.eq('is_active', false)
   } else if (filter === 'with_balance') {
-    q = q.gt('balance_owed_cfa', 0)
+    const { data: soldeRows, error: soldeError } = await supabase.rpc(
+      'customer_ids_with_displayed_balance',
+    )
+    if (!soldeError && Array.isArray(soldeRows)) {
+      const ids = (soldeRows as Array<{ customer_id: string }>)
+        .map((row) => row.customer_id)
+        .filter(Boolean)
+      if (ids.length === 0) return { data: [], count: 0 }
+      q = q.in('id', ids)
+    } else {
+      q = q.gt('balance_owed_cfa', 0)
+    }
   }
 
   const { data, error, count } = await q
@@ -433,6 +444,9 @@ export function useRecordPayment() {
       // Refresh payment lists
       queryClient.invalidateQueries({ queryKey: paymentKeys.all })
       queryClient.invalidateQueries({ queryKey: customerKeys.payments(variables.p_customer_id) })
+      void import('@/lib/refreshPosCustomer').then(({ refreshPosCustomer }) =>
+        refreshPosCustomer(variables.p_customer_id),
+      )
     },
   })
 }

@@ -71,6 +71,18 @@ describe('computeReturnRefundPreview', () => {
     expect(preview.cashRefundCfa).toBe(100)
   })
 
+  it('displayed ledger debt 1400 wins over stale owed 1500', () => {
+    const preview = computeReturnRefundPreview({
+      refundAmountCfa: 19600,
+      customerId: 'cust-1',
+      saleBalanceAddedCfa: 2500,
+      customerBalanceOwedCfa: 1400,
+      previousReturns: [],
+    })
+    expect(preview.balanceAdjustmentCfa).toBe(1400)
+    expect(preview.cashRefundCfa).toBe(18200)
+  })
+
   it('owed lower than remaining credit → adj = owed', () => {
     const preview = computeReturnRefundPreview({
       refundAmountCfa: 500,
@@ -290,6 +302,41 @@ describe('roundCfa2 / computeReturnLineRefund / computeReturnRefundTotal', () =>
     })
     expect(first + rest).toBe(475)
     expect(first + rest).not.toBe(950)
+  })
+
+  it('QA: remaining piece is least(line remaining, sale remaining), not catalog leftover', () => {
+    const line = {
+      originalQty: 2,
+      selectedQty: 1,
+      netLineTotalCfa: 3500,
+      alreadyReturnedQty: 1,
+      alreadyRefundedCfa: 1000,
+    }
+    expect(computeReturnLineRefund(line)).toBe(2500)
+    expect(computeReturnLineRefund(line, 2250)).toBe(2250)
+    expect(computeReturnLineRefund(line, 2250)).not.toBe(3500)
+    expect(resolveLineRefund({ ...line, customRefundCfa: 3500 }, 2250)).toBe(2250)
+  })
+
+  it('QA: two lines in one submit share the remaining sale pool', () => {
+    const lines = [
+      {
+        originalQty: 1,
+        selectedQty: 1,
+        netLineTotalCfa: 2000,
+        alreadyReturnedQty: 0,
+        alreadyRefundedCfa: 0,
+      },
+      {
+        originalQty: 1,
+        selectedQty: 1,
+        netLineTotalCfa: 1500,
+        alreadyReturnedQty: 0,
+        alreadyRefundedCfa: 0,
+      },
+    ]
+    expect(computeReturnRefundTotal(lines, 2250)).toBe(2250)
+    expect(computeReturnRefundTotal(lines)).toBe(3500)
   })
 
   it('B1: sale-level cap stops refunds above cash + credit collected', () => {

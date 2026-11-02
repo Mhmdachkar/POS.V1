@@ -10,8 +10,13 @@ import { useState, useRef, useEffect } from 'react'
 import { Search, User, UserPlus } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { Button, LoadingButton } from '@/components/ui'
-import { formatCFA } from '@/lib/formatters'
 import { useCustomerSearch, useCreateCustomer } from '@/hooks/useCustomers'
+import { useCustomerLedgerBalances } from '@/hooks/useCustomerActivity'
+import {
+  displayedAccountBalanceCfa,
+  hasDisplayedClientBalance,
+} from '@/lib/customerAccountBalance'
+import { LedgerSoldeAmount } from '@/pages/customers/components/LedgerSoldeAmount'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { COMMON } from '@/lib/bilingual/common'
 import { CUSTOMERS } from '@/lib/bilingual/customers'
@@ -143,6 +148,9 @@ export function CustomerDropdown({
   const { data: customers, isLoading } = useCustomerSearch(query, !showCreate, true)
 
   const results = customers ?? []
+  const { data: ledgerBalances, isLoading: ledgerLoading } = useCustomerLedgerBalances(
+    results.map((c) => c.id),
+  )
   const optionCount = 1 + results.length
   const activeId = showCreate
     ? undefined
@@ -290,6 +298,11 @@ export function CustomerDropdown({
               results.map((c, i) => {
                 const index = i + 1
                 const selected = selectedCustomerId === c.id
+                const displayed = displayedAccountBalanceCfa(
+                  ledgerBalances?.[c.id],
+                  c.balance_owed_cfa,
+                )
+                const soldeLoading = ledgerLoading || ledgerBalances === undefined
                 return (
                   <button
                     key={c.id}
@@ -303,13 +316,13 @@ export function CustomerDropdown({
                     className={cn(
                       'w-full text-left px-3 py-2 flex items-center gap-2.5 transition-colors',
                       activeIndex === index ? 'bg-surface-muted' : 'hover:bg-surface-muted',
-                      c.balance_owed_cfa > 0 && 'border-l-2 border-l-danger',
-                      c.balance_owed_cfa <= 0 && 'border-l-2 border-l-success',
+                      !soldeLoading && displayed > 0 && 'border-l-2 border-l-danger',
+                      !soldeLoading && displayed <= 0 && 'border-l-2 border-l-success',
                     )}
                   >
                     <CustomerAvatar
                       name={c.name}
-                      balanceOwedCfa={c.balance_owed_cfa}
+                      balanceOwedCfa={soldeLoading ? c.balance_owed_cfa : Math.max(0, displayed)}
                       isActive={c.is_active}
                       size="sm"
                     />
@@ -319,10 +332,13 @@ export function CustomerDropdown({
                         <p className="text-xs text-text-muted truncate">{c.phone}</p>
                       )}
                     </div>
-                    {c.balance_owed_cfa > 0 ? (
-                      <span className="text-xs font-semibold text-danger-foreground financial-value flex-shrink-0">
-                        {formatCFA(c.balance_owed_cfa)}
-                      </span>
+                    {soldeLoading || hasDisplayedClientBalance(displayed) ? (
+                      <LedgerSoldeAmount
+                        amountCfa={displayed}
+                        variant="compact"
+                        loading={soldeLoading}
+                        className="flex-shrink-0"
+                      />
                     ) : (
                       <span className="text-[11px] font-medium text-success-foreground flex-shrink-0">OK</span>
                     )}

@@ -450,7 +450,9 @@ export interface DashboardShiftDiscrepancy {
 
 export interface AdminDashboardSummary {
   sales_cfa: number
-  gross_profit_cfa: number
+  gross_profit_cfa: number | null
+  lines_without_cost_count?: number
+  margin_status?: string | null
   txn_count: number
   avg_sale_cfa: number
   top_products: DashboardTopProduct[]

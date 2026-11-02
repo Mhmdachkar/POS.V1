@@ -50,7 +50,7 @@ import { cn } from '@/lib/cn'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { t } from '@/lib/bilingual/types'
 import {
-  ActivityEventRow,
+  ActivityEventList,
   ActivityFilterTabs,
 } from './CustomerActivitySection'
 
@@ -324,15 +324,7 @@ export function CustomerDetailDrawer({ customerId, onClose }: CustomerDetailDraw
             ) : events.length === 0 ? (
               <p className="text-sm text-text-muted">{emptyActivityMessage(activityFilter)}</p>
             ) : (
-              <div className="rounded-md overflow-hidden border border-border">
-                {events.map((event) => (
-                  <ActivityEventRow
-                    key={`${event.type}-${event.id}`}
-                    event={event}
-                    onOpenSale={setSaleDetailId}
-                  />
-                ))}
-              </div>
+              <ActivityEventList events={events} onOpenSale={setSaleDetailId} />
             )}
 
             {actionError && (

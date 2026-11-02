@@ -162,8 +162,13 @@ export const ADMIN = {
       `${n} shift${n !== 1 ? 's' : ''} open since yesterday`,
     ),
   overnightOpenShiftsHint: bi(
-    'Fermez ou vérifiez ces services sur la page Services.',
-    'Close or review these shifts on the Shifts page.',
+    'Fermez ou vérifiez ces services sur la page Services. Les ventes restent rattachées au service ouvert.',
+    'Close or review these shifts on the Shifts page. Sales stay attached to the open shift.',
+  ),
+  gpNotCalculable: bi('Marge non calculable', 'Margin not calculable'),
+  gpNotCalculableHint: bi(
+    'Un ou plusieurs produits vendus aujourd’hui n’ont pas de prix d’achat. La marge n’est pas calculée pour ces lignes.',
+    'One or more products sold today have no cost price. Margin is not calculated for those lines.',
   ),
   allActions: bi('Toutes les actions', 'All actions'),
   allEntityTypes: bi('Tous les types', 'All types'),

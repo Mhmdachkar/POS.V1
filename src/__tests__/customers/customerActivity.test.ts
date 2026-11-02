@@ -18,6 +18,8 @@ import {
   fetchCustomerActivitySummary,
   formatActivityRange,
   formatReturnedItemsSummary,
+  groupActivityEventsByTicket,
+  mapCustomerLedgerRow,
   mergeActivityEvents,
   saleActivityDescription,
   withRunningBalances,
@@ -439,6 +441,52 @@ describe('activity cache invalidation', () => {
     client.setQueryData(key, { data: [], count: 0 })
     invalidateAfterSaleSettled(client, { saleId: 'sale-1', customerId: 'cust-1' })
     expect(client.getQueryState(key)?.isInvalidated).toBe(true)
+  })
+
+  it('labels cash_refund distinctly and groups events by ticket', () => {
+    const sale = mapCustomerLedgerRow({
+      id: 's1',
+      kind: 'sale',
+      occurred_at: '2026-09-12T10:00:00Z',
+      reference: 'DKR-00000010',
+      item_summary: null,
+      note: null,
+      amount_cfa: 5000,
+      running_balance_cfa: 5000,
+      sale_id: 'sale-1',
+      adds_credit: true,
+    })
+    const ret = mapCustomerLedgerRow({
+      id: 'r1',
+      kind: 'return',
+      occurred_at: '2026-09-12T11:00:00Z',
+      reference: 'DKR-00000010',
+      item_summary: '1 × Water',
+      note: null,
+      amount_cfa: -500,
+      running_balance_cfa: 4500,
+      sale_id: 'sale-1',
+      adds_credit: false,
+    })
+    const refund = mapCustomerLedgerRow({
+      id: 'cr1',
+      kind: 'cash_refund',
+      occurred_at: '2026-09-12T11:00:01Z',
+      reference: 'DKR-00000010',
+      item_summary: null,
+      note: null,
+      amount_cfa: 0,
+      running_balance_cfa: 4500,
+      sale_id: 'sale-1',
+      adds_credit: false,
+      cash_refunded_cfa: 2000,
+    })
+    expect(refund.ledgerKind).toBe('cash_refund')
+    expect(refund.description).toBe(bilingualPlain(CUSTOMERS.activityCashRefund))
+    expect(ret.type).toBe('return')
+    const groups = groupActivityEventsByTicket([refund, ret, sale])
+    expect(groups).toHaveLength(1)
+    expect(groups[0]?.events.map((e) => e.ledgerKind)).toEqual(['sale', 'return', 'cash_refund'])
   })
 
   it('invalidates activity after a standalone customer payment', async () => {

@@ -38,8 +38,8 @@ export const SHIFT_COPY = {
   closeShift: bi('Clôturer le service', 'Close shift'),
   viewShifts: bi('Voir les services', 'View shifts'),
   overnightBanner: bi(
-    'Un ou plusieurs services sont ouverts depuis la veille. Fermez-les ou vérifiez-les.',
-    'One or more shifts have been open since yesterday. Close or review them.',
+    'Attention : un ou plusieurs services sont ouverts depuis la veille. Fermez-les aujourd’hui — ils ne se ferment pas tout seuls.',
+    'Warning: one or more shifts have been open since yesterday. Close them today — they do not close automatically.',
   ),
   overnightBadge: bi('Depuis la veille', 'Since yesterday'),
   shiftClosed: bi('Service fermé', 'Shift closed'),

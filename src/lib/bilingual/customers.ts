@@ -78,6 +78,7 @@ export const CUSTOMERS = {
   activityFilterPayments: bi('Paiements', 'Payments'),
   activityTypeSale: bi('Vente', 'Sale'),
   activityTypeReturn: bi('Retour', 'Return'),
+  activityTypeCashRefund: bi('Remboursement espèces', 'Cash refund'),
   activityTypePayment: bi('Paiement', 'Payment'),
   activityCreditAdded: bi('Vente à crédit', 'Credit sale'),
   activityCashSale: bi('Vente au comptant', 'Cash sale'),

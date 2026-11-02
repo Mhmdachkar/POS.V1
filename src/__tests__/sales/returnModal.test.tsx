@@ -15,8 +15,10 @@ import { formatCFA } from '@/lib/formatters'
 import { roundCfa2 } from '@/lib/returnRefundPreview'
 import { useAuthStore } from '@/stores/authStore'
 import { useOpenShifts, type ShiftListItem } from '@/hooks/useShifts'
+import { useCustomerLedgerBalance } from '@/hooks/useCustomerActivity'
 import type { SaleDetailData, SaleItemDetail } from '@/hooks/useSales'
 import type { Staff } from '@/types/database'
+import { SALES } from '@/lib/bilingual/sales'
 
 vi.mock('@/lib/rpc', () => ({
   rpc: {
@@ -31,6 +33,10 @@ vi.mock('@/hooks/useShifts', async (importOriginal) => {
     useOpenShifts: vi.fn(),
   }
 })
+
+vi.mock('@/hooks/useCustomerActivity', () => ({
+  useCustomerLedgerBalance: vi.fn(() => ({ data: undefined, isLoading: false })),
+}))
 
 vi.mock('sonner', () => ({
   toast: {
@@ -275,6 +281,10 @@ describe('ReturnModal', () => {
     vi.mocked(rpc.processReturn).mockReset()
     vi.mocked(toast.success).mockReset()
     vi.mocked(toast.error).mockReset()
+    vi.mocked(useCustomerLedgerBalance).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    } as never)
   })
 
   it('starts selected qty at 0 and shows already-returned / fully returned', () => {
@@ -381,6 +391,24 @@ describe('ReturnModal', () => {
     expect(toast.success).toHaveBeenCalled()
   })
 
+  it('caps credit reversal at displayed ledger debt when owed is stale', async () => {
+    const user = userEvent.setup()
+    vi.mocked(useCustomerLedgerBalance).mockReturnValue({
+      data: 1400,
+      isLoading: false,
+    } as never)
+    renderModal({
+      ...creditSale19600(),
+      customer_balance_owed_cfa: 1500,
+    })
+
+    await user.click(screen.getAllByRole('button', { name: /tout retourner|return all/i })[0])
+    await user.click(screen.getAllByRole('button', { name: /tout retourner|return all/i })[1])
+
+    expectFormattedCFA(1400)
+    expectFormattedCFA(18200)
+  })
+
   it('submits walk-in return with p_cash_refund_cfa equal to full refund', async () => {
     const user = userEvent.setup()
     vi.mocked(rpc.processReturn).mockResolvedValue({
@@ -478,6 +506,40 @@ describe('ReturnModal', () => {
       messageForCodePlain('INVALID_AMOUNT', { reason: 'cash_refund_does_not_match_computed' }),
     )
     expect(toast.error).not.toHaveBeenCalledWith(ERROR_MESSAGES.INVALID_AMOUNT)
+  })
+
+  it('maps refund_exceeds_collected to a specific toast, not generic INVALID_AMOUNT', async () => {
+    const user = userEvent.setup()
+    vi.mocked(rpc.processReturn).mockResolvedValue({
+      data: null,
+      error: {
+        code: 'INVALID_AMOUNT',
+        message: ERROR_MESSAGES.INVALID_AMOUNT,
+        details: { reason: 'refund_exceeds_collected' },
+      },
+    })
+    renderModal()
+    await user.click(screen.getByRole('button', { name: /tout retourner|return all/i }))
+    await user.click(screen.getByRole('button', { name: /traiter un retour|process return/i }))
+
+    expectToastErrorFr(
+      toast.error,
+      messageForCodePlain('INVALID_AMOUNT', { reason: 'refund_exceeds_collected' }),
+    )
+    expect(toast.error).not.toHaveBeenCalledWith(ERROR_MESSAGES.INVALID_AMOUNT)
+  })
+
+  it('blocks a 0 refund with a French message and does not submit', async () => {
+    const user = userEvent.setup()
+    renderModal()
+    await user.click(screen.getByRole('button', { name: /tout retourner|return all/i }))
+    const refundInput = screen.getByLabelText(SALES.refundAmount.fr)
+    await user.clear(refundInput)
+    await user.type(refundInput, '0')
+    expect(screen.getByText(SALES.refundZeroNotAllowed.fr)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /traiter un retour|process return/i })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: /traiter un retour|process return/i }))
+    expect(rpc.processReturn).not.toHaveBeenCalled()
   })
 
   it('keeps generic INVALID_AMOUNT text when reason is absent', async () => {

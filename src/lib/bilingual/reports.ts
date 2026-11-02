@@ -108,7 +108,10 @@ export const REPORTS = {
   tipGross: bi('Total des ventes (hors annulées), total ajusté inclus.', 'Sales total (excl. voided), adjusted total included.'),
   tipReturns: bi('Total des remboursements de la période.', 'Total refunds in the period.'),
   tipNet: bi('Ventes brutes moins retours.', 'Gross sales minus returns.'),
-  tipCogs: bi("Coût des ventes moins coût des retours. Produits sans prix d'achat comptés à 0.", 'Cost of sales minus cost of returns. Products with no cost price count as 0.'),
+  tipCogs: bi(
+    "Coût des ventes moins coût des retours. Les produits sans prix d'achat sont exclus : la marge est « non calculable ».",
+    'Cost of sales minus cost of returns. Products with no cost price are excluded — margin shows as not calculable.',
+  ),
   tipMargin: bi('Ventes nettes moins coût des ventes.', 'Net sales minus cost of sales.'),
   tipTxn: bi('Ventes non annulées, retours compris.', 'Non-voided sales, returns included.'),
   tipAverage: bi('Ventes nettes ÷ nombre de ventes.', 'Net sales ÷ sale count.'),

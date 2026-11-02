@@ -92,6 +92,16 @@ export const ACHATS = {
   emptyPayments: bi('Aucun règlement.', 'No supplier payments yet.'),
   failedToLoad: bi('Impossible de charger les achats.', 'Could not load purchases.'),
   needDepot: bi('Sélectionnez un dépôt.', 'Select a depot.'),
+  needDepotHint: bi(
+    'Choisissez un dépôt en haut de l’écran pour créer un BR.',
+    'Choose a depot at the top of the screen to create a goods receipt.',
+  ),
+  needDepotPaymentHint: bi(
+    'Choisissez un dépôt en haut de l’écran pour enregistrer un règlement.',
+    'Choose a depot at the top of the screen to record a supplier payment.',
+  ),
+  emptyCatalog: bi('Aucun produit dans ce dépôt.', 'No products in this depot.'),
+  catalogLoading: bi('Chargement du catalogue…', 'Loading catalog…'),
   needSupplier: bi('Choisissez un fournisseur.', 'Choose a supplier.'),
   needItems: bi('Ajoutez au moins une ligne.', 'Add at least one line.'),
   needMethod: bi('Choisissez le moyen de paiement.', 'Choose a payment method.'),

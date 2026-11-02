@@ -40,9 +40,11 @@ vi.mock('@/hooks/usePrintJobs', () => ({
   requeuePrintJob: vi.fn(),
 }))
 
+const authState = vi.hoisted(() => ({ role: 'cashier' as string }))
+
 vi.mock('@/stores/authStore', () => ({
   useAuthStore: (selector: (s: { staff: { role: string } }) => unknown) =>
-    selector({ staff: { role: 'cashier' } }),
+    selector({ staff: { role: authState.role } }),
 }))
 
 function baseSale(overrides: Partial<SaleDetailData> = {}): SaleDetailData {
@@ -120,6 +122,7 @@ function renderDrawer(
 
 describe('SaleDetailDrawer', () => {
   beforeEach(() => {
+    authState.role = 'cashier'
     vi.mocked(useSaleDetail).mockReset()
     vi.mocked(rpc.customerLedger).mockResolvedValue({ data: [], error: null } as never)
   })
@@ -453,5 +456,66 @@ describe('SaleDetailDrawer', () => {
     expect(screen.getByRole('button', { name: SALES.browserPrintFallback.fr })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: SALES.returnTitle.fr })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: SALES.voidSale.fr })).toBeInTheDocument()
+  })
+
+  it('hides pick action and À préparer on a fully returned sale', () => {
+    authState.role = 'depot_staff'
+    renderDrawer(
+      baseSale({
+        status: 'returned',
+        fulfillment: {
+          sale_id: 'sale-1',
+          depot_id: 'depot-a',
+          status: 'pending',
+          released_at: null,
+          released_by: null,
+          released_by_name: null,
+          created_at: '2026-09-12T17:00:00Z',
+        },
+      }),
+    )
+    expect(screen.getByText(SALES.fulfillmentCancelled.fr)).toBeInTheDocument()
+    expect(screen.queryByText(SALES.pendingRelease.fr)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: SALES.releaseOrder.fr })).not.toBeInTheDocument()
+  })
+
+  it('hides pick action on a voided sale', () => {
+    authState.role = 'depot_staff'
+    renderDrawer(
+      baseSale({
+        status: 'voided',
+        fulfillment: {
+          sale_id: 'sale-1',
+          depot_id: 'depot-a',
+          status: 'pending',
+          released_at: null,
+          released_by: null,
+          released_by_name: null,
+          created_at: '2026-09-12T17:00:00Z',
+        },
+      }),
+    )
+    expect(screen.getByText(SALES.fulfillmentCancelled.fr)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: SALES.releaseOrder.fr })).not.toBeInTheDocument()
+  })
+
+  it('keeps pick flow for a partial return still pending', () => {
+    authState.role = 'depot_staff'
+    renderDrawer(
+      baseSale({
+        status: 'partially_returned',
+        fulfillment: {
+          sale_id: 'sale-1',
+          depot_id: 'depot-a',
+          status: 'pending',
+          released_at: null,
+          released_by: null,
+          released_by_name: null,
+          created_at: '2026-09-12T17:00:00Z',
+        },
+      }),
+    )
+    expect(screen.getByText(SALES.pendingRelease.fr)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: SALES.releaseOrder.fr })).toBeInTheDocument()
   })
 })

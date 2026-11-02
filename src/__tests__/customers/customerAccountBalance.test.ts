@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   clientSoldeKind,
   displayedAccountBalanceCfa,
+  hasDisplayedClientBalance,
   ledgerAccountBalanceCfa,
+  payableClientDebtCfa,
 } from '@/lib/customerAccountBalance'
 
 describe('customerAccountBalance', () => {
@@ -21,5 +23,15 @@ describe('customerAccountBalance', () => {
     expect(displayedAccountBalanceCfa(-100, 0)).toBe(-100)
     expect(displayedAccountBalanceCfa(undefined, 4500)).toBe(4500)
     expect(displayedAccountBalanceCfa(null, 4500)).toBe(4500)
+    expect(displayedAccountBalanceCfa(1400, 1500)).toBe(1400)
+  })
+
+  it('with-balance filter and payment cap use the same displayed solde', () => {
+    expect(hasDisplayedClientBalance(1400)).toBe(true)
+    expect(hasDisplayedClientBalance(-100)).toBe(true)
+    expect(hasDisplayedClientBalance(0)).toBe(false)
+    expect(payableClientDebtCfa(1400, 1500)).toBe(1400)
+    expect(payableClientDebtCfa(-100, 0)).toBe(0)
+    expect(payableClientDebtCfa(undefined, 1500)).toBe(1500)
   })
 })
