@@ -18,7 +18,9 @@ import type { CompleteSaleResult } from '@/types/rpc'
 import type { ProductWithUnits } from '@/types'
 import { NAV } from '@/lib/bilingual/nav'
 import { POS } from '@/lib/bilingual/pos'
+import { PROFORMAS } from '@/lib/bilingual/proformas'
 import { SHIFT_COPY } from '@/lib/bilingual/shift'
+import { posDraftStorageKey } from '@/lib/posDraft'
 import { useOpenShifts, type ShiftListItem } from '@/hooks/useShifts'
 import {
   bilingualAriaLabel,
@@ -50,6 +52,17 @@ vi.mock('@/hooks/useShifts', async (importOriginal) => {
     useOpenShifts: vi.fn(),
   }
 })
+
+const proformaMocks = vi.hoisted(() => ({
+  mutateAsync: vi.fn(),
+}))
+
+vi.mock('@/hooks/useProformas', () => ({
+  useCreateProforma: () => ({
+    mutateAsync: proformaMocks.mutateAsync,
+    isPending: false,
+  }),
+}))
 
 function openShift(): ShiftListItem {
   return {
@@ -184,6 +197,7 @@ describe('PaymentPanel', () => {
       authLoadState: 'authorized',
     })
     vi.mocked(rpc.completeSale).mockReset()
+    proformaMocks.mutateAsync.mockReset()
     vi.mocked(rpc.completeSale).mockResolvedValue({ data: saleResult, error: null })
     vi.mocked(useOpenShifts).mockReturnValue({
       data: [openShift()],
@@ -548,6 +562,7 @@ describe('PaymentPanel Enter-to-complete wiring', () => {
       authLoadState: 'authorized',
     })
     vi.mocked(rpc.completeSale).mockReset()
+    proformaMocks.mutateAsync.mockReset()
     vi.mocked(rpc.completeSale).mockResolvedValue({ data: saleResult, error: null })
     vi.mocked(useOpenShifts).mockReturnValue({
       data: [openShift()],
@@ -592,5 +607,23 @@ describe('PaymentPanel Enter-to-complete wiring', () => {
     document.dispatchEvent(event)
     expect(prevent).not.toHaveBeenCalled()
     expect(rpc.completeSale).not.toHaveBeenCalled()
+  })
+
+  it('resets cart, client, and saved draft after a successful proforma', async () => {
+    const user = userEvent.setup()
+    proformaMocks.mutateAsync.mockResolvedValue({ number: 'PF-0001' })
+    addLine()
+    usePOSStore.getState().setCustomer(namedCustomer())
+    localStorage.setItem(
+      posDraftStorageKey('cashier-1', 'depot-a'),
+      JSON.stringify({ items: [{ product_id: 'prod-001' }] }),
+    )
+    renderPanel()
+    await user.click(screen.getByRole('button', { name: PROFORMAS.createFromCart.fr }))
+    await waitFor(() => expect(proformaMocks.mutateAsync).toHaveBeenCalledTimes(1))
+    expect(usePOSStore.getState().items).toHaveLength(0)
+    expect(usePOSStore.getState().customer).toBeNull()
+    expect(usePOSStore.getState().isWalkIn).toBe(true)
+    expect(localStorage.getItem(posDraftStorageKey('cashier-1', 'depot-a'))).toBeNull()
   })
 })

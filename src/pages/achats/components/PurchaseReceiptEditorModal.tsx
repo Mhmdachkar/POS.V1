@@ -89,7 +89,11 @@ export function PurchaseReceiptEditorModal({ open, onClose, onCreated }: Props) 
   const [error, setError] = useState('')
   const [focusQtyToken, setFocusQtyToken] = useState(0)
 
-  const { data: products = [] } = usePOSProductCatalog(productQuery, depotId, !!depotId)
+  const {
+    data: products = [],
+    isLoading: catalogLoading,
+    isFetched: catalogFetched,
+  } = usePOSProductCatalog(productQuery, depotId, !!depotId)
   const suggestions = useMemo(
     () => rankAchatsProductHits(productQuery, products).slice(0, 12),
     [productQuery, products],
@@ -398,7 +402,13 @@ export function PurchaseReceiptEditorModal({ open, onClose, onCreated }: Props) 
                   <BiTableHeader {...ACHATS.code} />
                   <BiTableHeader {...ACHATS.description} />
                 </div>
-                {suggestions.length === 0 ? (
+                {!depotId ? (
+                  <p className="px-3 py-2 text-sm text-warning-foreground">{t(ACHATS.needDepotHint)}</p>
+                ) : catalogLoading || !catalogFetched ? (
+                  <p className="px-3 py-2 text-sm text-text-muted">{t(ACHATS.catalogLoading)}</p>
+                ) : products.length === 0 ? (
+                  <p className="px-3 py-2 text-sm text-text-muted">{t(ACHATS.emptyCatalog)}</p>
+                ) : suggestions.length === 0 ? (
                   <p className="px-3 py-2 text-sm text-text-muted">{t(COMMON.noResults)}</p>
                 ) : (
                   suggestions.map((hit, index) => {

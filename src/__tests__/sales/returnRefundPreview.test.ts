@@ -292,6 +292,41 @@ describe('roundCfa2 / computeReturnLineRefund / computeReturnRefundTotal', () =>
     expect(first + rest).not.toBe(950)
   })
 
+  it('QA: remaining piece is least(line remaining, sale remaining), not catalog leftover', () => {
+    const line = {
+      originalQty: 2,
+      selectedQty: 1,
+      netLineTotalCfa: 3500,
+      alreadyReturnedQty: 1,
+      alreadyRefundedCfa: 1000,
+    }
+    expect(computeReturnLineRefund(line)).toBe(2500)
+    expect(computeReturnLineRefund(line, 2250)).toBe(2250)
+    expect(computeReturnLineRefund(line, 2250)).not.toBe(3500)
+    expect(resolveLineRefund({ ...line, customRefundCfa: 3500 }, 2250)).toBe(2250)
+  })
+
+  it('QA: two lines in one submit share the remaining sale pool', () => {
+    const lines = [
+      {
+        originalQty: 1,
+        selectedQty: 1,
+        netLineTotalCfa: 2000,
+        alreadyReturnedQty: 0,
+        alreadyRefundedCfa: 0,
+      },
+      {
+        originalQty: 1,
+        selectedQty: 1,
+        netLineTotalCfa: 1500,
+        alreadyReturnedQty: 0,
+        alreadyRefundedCfa: 0,
+      },
+    ]
+    expect(computeReturnRefundTotal(lines, 2250)).toBe(2250)
+    expect(computeReturnRefundTotal(lines)).toBe(3500)
+  })
+
   it('B1: sale-level cap stops refunds above cash + credit collected', () => {
     const lines = [
       {

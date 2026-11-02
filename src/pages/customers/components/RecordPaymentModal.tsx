@@ -37,6 +37,13 @@ import { resolveRequiredShiftId } from '@/lib/posShiftContext'
 import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
 import { useRecordPayment } from '@/hooks/useCustomers'
+import { useCustomerLedgerBalance } from '@/hooks/useCustomerActivity'
+import {
+  displayedAccountBalanceCfa,
+  payableClientDebtCfa,
+} from '@/lib/customerAccountBalance'
+import { LedgerSoldeAmount } from './LedgerSoldeAmount'
+import { refreshPosCustomer } from '@/lib/refreshPosCustomer'
 import type { Customer } from '@/types/database'
 import { t } from '@/lib/bilingual/types'
 
@@ -69,6 +76,9 @@ export function RecordPaymentModal({
   const inFlight = useRef(false)
 
   const { mutateAsync: recordPayment, isPending } = useRecordPayment()
+  const { data: ledgerBalance, isLoading: ledgerLoading } = useCustomerLedgerBalance(customer.id)
+  const displayedBalance = displayedAccountBalanceCfa(ledgerBalance, customer.balance_owed_cfa)
+  const payableDebt = payableClientDebtCfa(ledgerBalance, customer.balance_owed_cfa)
   const staff = useAuthStore((s) => s.staff)
   const currentDepotId = useDepotStore((s) => s.currentDepotId)
   const { data: openShifts, isLoading: openShiftsLoading } = useOpenShifts()
@@ -123,8 +133,8 @@ export function RecordPaymentModal({
       setAmountError(t(CUSTOMERS.paymentAmountError))
       return
     }
-    if (amount > customer.balance_owed_cfa) {
-      setAmountError(t(CUSTOMERS.paymentExceedsBalance(formatCFA(customer.balance_owed_cfa))))
+    if (amount > payableDebt) {
+      setAmountError(t(CUSTOMERS.paymentExceedsBalance(formatCFA(payableDebt))))
       return
     }
 
@@ -144,6 +154,7 @@ export function RecordPaymentModal({
         amount_cfa:           result.amount_cfa,
         new_balance_owed_cfa: result.new_balance_owed_cfa,
       })
+      await refreshPosCustomer(customer.id)
       onSuccess?.(result.new_balance_owed_cfa)
     } catch (err) {
       const vhmErr = parseError(err)
@@ -213,9 +224,12 @@ export function RecordPaymentModal({
             )}
             <div className="flex items-baseline justify-between pt-1 border-t border-border">
               <span className="text-xs text-text-secondary">{t(CUSTOMERS.balanceOwedLabel)}</span>
-              <span className="text-base font-bold text-danger-foreground tabular-nums">
-                {formatCFA(customer.balance_owed_cfa)}
-              </span>
+              <LedgerSoldeAmount
+                amountCfa={displayedBalance}
+                variant="full"
+                size="medium"
+                loading={ledgerLoading || ledgerBalance === undefined}
+              />
             </div>
           </div>
 

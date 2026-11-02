@@ -56,6 +56,7 @@ function methodLabel(m: string) {
 }
 
 export function SupplierPaymentsPage() {
+  const depotId = useDepotStore((s) => s.currentDepotId)
   const depotName = useDepotStore((s) => s.currentDepotName)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -191,14 +192,21 @@ export function SupplierPaymentsPage() {
               </option>
             ))}
           </select>
-          <Button
-            type="button"
-            disabled={!selectedSupplier || selectedSupplier.balance_owed_cfa <= 0}
-            onClick={() => setPayOpen(true)}
-          >
-            <Plus className="h-4 w-4 mr-1.5" />
-            <BiButtonStack {...ACHATS.recordPayment} />
-          </Button>
+          <div className="flex flex-col items-end gap-1">
+            <Button
+              type="button"
+              disabled={!depotId || !selectedSupplier || selectedSupplier.balance_owed_cfa <= 0}
+              onClick={() => setPayOpen(true)}
+            >
+              <Plus className="h-4 w-4 mr-1.5" />
+              <BiButtonStack {...ACHATS.recordPayment} />
+            </Button>
+            {!depotId && (
+              <p className="text-xs text-warning-foreground max-w-[16rem] text-right">
+                {t(ACHATS.needDepotPaymentHint)}
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -277,7 +285,7 @@ export function SupplierPaymentsPage() {
       </div>
 
       <RecordSupplierPaymentModal
-        open={payOpen}
+        open={payOpen && !!depotId}
         onClose={() => setPayOpen(false)}
         supplier={selectedSupplier}
       />

@@ -143,8 +143,12 @@ function lineBasis(input: ReturnLineRefundInput): number {
 /**
  * Per-sale-item refund matching process_return.
  * Final return of a line uses residual so SUM(refunds) = line_basis.
+ * Always least(line remaining, sale remaining) when a sale pool is passed.
  */
-export function computeReturnLineRefund(input: ReturnLineRefundInput): number {
+export function computeReturnLineRefund(
+  input: ReturnLineRefundInput,
+  remainingSalePoolCfa?: number,
+): number {
   const originalQty = input.originalQty
   const selectedQty = input.selectedQty
   if (selectedQty <= 0 || originalQty <= 0) return 0
@@ -163,7 +167,9 @@ export function computeReturnLineRefund(input: ReturnLineRefundInput): number {
     ? remainingRefundable
     : roundCfa2((cappedSelected / originalQty) * basis)
 
-  return Math.min(itemRefund, remainingRefundable)
+  const lineCap = Math.min(itemRefund, remainingRefundable)
+  if (remainingSalePoolCfa == null) return lineCap
+  return Math.min(lineCap, Math.max(roundCfa2(remainingSalePoolCfa), 0))
 }
 
 export function computeReturnRefundTotal(
@@ -173,10 +179,7 @@ export function computeReturnRefundTotal(
   let sum = 0
   const pool = remainingSalePoolCfa ?? Number.POSITIVE_INFINITY
   for (const line of lines) {
-    const refund = Math.min(
-      computeReturnLineRefund(line),
-      Math.max(roundCfa2(pool - sum), 0),
-    )
+    const refund = computeReturnLineRefund(line, Math.max(roundCfa2(pool - sum), 0))
     sum += refund
   }
   return roundCfa2(sum)
@@ -213,13 +216,9 @@ export function resolveLineRefund(
   input: ResolveLineRefundInput,
   remainingSalePoolCfa?: number,
 ): number {
-  const computed = computeReturnLineRefund(input)
-  const uncapped =
-    input.customRefundCfa == null
-      ? computed
-      : clampCustomRefund(input.customRefundCfa, computed)
-  if (remainingSalePoolCfa == null) return uncapped
-  return Math.min(uncapped, Math.max(roundCfa2(remainingSalePoolCfa), 0))
+  const computed = computeReturnLineRefund(input, remainingSalePoolCfa)
+  if (input.customRefundCfa == null) return computed
+  return clampCustomRefund(input.customRefundCfa, computed)
 }
 
 export function computeReturnRefundPreview(

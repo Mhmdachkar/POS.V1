@@ -232,6 +232,12 @@ export function messageForCodeBilingual(
       'Refund amount exceeds the value of the selected items.',
     )
   }
+  if (code === 'INVALID_AMOUNT' && details?.reason === 'refund_exceeds_collected') {
+    return bi(
+      'Le remboursement dépasse ce qui a été encaissé sur cette vente.',
+      'Refund exceeds the amount collected on this sale.',
+    )
+  }
   if (code === 'INVALID_AMOUNT' && details?.reason === 'refund_amount_cannot_be_negative') {
     return bi(
       'Le montant du retour ne peut pas être négatif.',
@@ -242,6 +248,57 @@ export function messageForCodeBilingual(
     return bi(
       'Entrez un montant de retour valide.',
       'Enter a valid refund amount.',
+    )
+  }
+  if (code === 'INVALID_AMOUNT' && details?.reason === 'cash_refund_cannot_be_negative') {
+    return bi(
+      'Le remboursement espèces ne peut pas être négatif.',
+      'Cash refund cannot be negative.',
+    )
+  }
+  if (code === 'INVALID_INPUT' && details?.reason === 'duplicate_sale_item_id') {
+    return bi(
+      'Un article apparaît deux fois dans ce retour. Vérifiez les lignes.',
+      'An item appears twice in this return. Check the lines.',
+    )
+  }
+  if (code === 'SALE_NOT_FOUND' && details?.reason === 'sale_item_not_found_in_sale') {
+    return bi(
+      'Un article du retour n’appartient pas à cette vente.',
+      'A return line does not belong to this sale.',
+    )
+  }
+  if (code === 'SALE_NOT_FOUND' && details?.reason === 'sale_id_required') {
+    return bi('Vente introuvable.', 'Sale not found.')
+  }
+  if (code === 'SALE_NOT_FOUND' && details?.reason === 'sale_voided') {
+    return bi(
+      'Cette vente est annulée et ne peut plus être préparée.',
+      'This sale was cancelled and cannot be picked.',
+    )
+  }
+  if (code === 'SALE_NOT_FOUND' && details?.reason === 'fulfillment_cancelled') {
+    return bi(
+      'La préparation de cette vente a été annulée.',
+      'Picking for this sale was cancelled.',
+    )
+  }
+  if (code === 'SALE_FULLY_RETURNED' && details?.reason === 'sale_returned') {
+    return bi(
+      'Cette vente a été entièrement retournée. Elle ne peut plus être préparée.',
+      'This sale was fully returned and cannot be picked.',
+    )
+  }
+  if (code === 'CART_EMPTY' && details?.reason === 'return_items_required') {
+    return bi(
+      'Ajoutez au moins un article à retourner.',
+      'Add at least one item to return.',
+    )
+  }
+  if (code === 'INVALID_QUANTITY' && details?.reason === 'quantity_in_unit_must_be_positive') {
+    return bi(
+      'La quantité retournée doit être supérieure à zéro.',
+      'Return quantity must be greater than zero.',
     )
   }
   if (code === 'UNAUTHORIZED' && details?.reason === 'zero_total_requires_admin') {

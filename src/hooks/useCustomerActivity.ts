@@ -42,6 +42,44 @@ export interface CustomerActivityEvent {
   isReversed?: boolean
   /** After this event, newest-first. The first row equals Solde dû. */
   runningBalanceCfa?: number
+  ledgerKind?: CustomerLedgerRpcRow['kind']
+}
+
+export interface CustomerActivityTicketGroup {
+  key: string
+  saleId: string | null
+  reference: string
+  events: CustomerActivityEvent[]
+}
+
+/** Group newest-first events by ticket; within a ticket, oldest-first. */
+export function groupActivityEventsByTicket(
+  events: CustomerActivityEvent[],
+): CustomerActivityTicketGroup[] {
+  const groups = new Map<string, CustomerActivityEvent[]>()
+  const order: string[] = []
+  for (const event of events) {
+    const key = event.saleId ?? `solo:${event.id}`
+    if (!groups.has(key)) {
+      groups.set(key, [])
+      order.push(key)
+    }
+    groups.get(key)!.push(event)
+  }
+  return order.map((key) => {
+    const items = groups.get(key)!
+    const chronological = [...items].sort((a, b) => {
+      const byTime = a.occurredAt.localeCompare(b.occurredAt)
+      if (byTime !== 0) return byTime
+      return a.id.localeCompare(b.id)
+    })
+    return {
+      key,
+      saleId: items[0]?.saleId ?? null,
+      reference: items[0]?.reference ?? '',
+      events: chronological,
+    }
+  })
 }
 
 export interface CustomerActivityResult {
@@ -420,6 +458,7 @@ export function mapCustomerLedgerRow(row: CustomerLedgerRpcRow): CustomerActivit
       amountCfa,
       saleId: row.sale_id,
       runningBalanceCfa,
+      ledgerKind: row.kind,
     }
   }
   if (row.kind === 'cash_payment') {
@@ -432,6 +471,7 @@ export function mapCustomerLedgerRow(row: CustomerLedgerRpcRow): CustomerActivit
       amountCfa,
       saleId: row.sale_id,
       runningBalanceCfa,
+      ledgerKind: row.kind,
     }
   }
   if (row.kind === 'return') {
@@ -447,6 +487,7 @@ export function mapCustomerLedgerRow(row: CustomerLedgerRpcRow): CustomerActivit
       amountCfa,
       saleId: row.sale_id,
       runningBalanceCfa,
+      ledgerKind: row.kind,
     }
   }
   if (row.kind === 'cash_refund') {
@@ -459,6 +500,7 @@ export function mapCustomerLedgerRow(row: CustomerLedgerRpcRow): CustomerActivit
       amountCfa,
       saleId: row.sale_id,
       runningBalanceCfa,
+      ledgerKind: row.kind,
     }
   }
   return {
@@ -470,6 +512,7 @@ export function mapCustomerLedgerRow(row: CustomerLedgerRpcRow): CustomerActivit
     amountCfa,
     saleId: null,
     runningBalanceCfa,
+    ledgerKind: row.kind,
   }
 }
 

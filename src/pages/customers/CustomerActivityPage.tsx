@@ -33,6 +33,7 @@ import {
   CUSTOMER_ACTIVITY_PAGE_SIZE,
   emptyActivityMessage,
   formatActivityRange,
+  groupActivityEventsByTicket,
   useCustomerActivity,
   useCustomerActivitySummary,
   type CustomerActivityTypeFilter,
@@ -317,12 +318,19 @@ export function CustomerActivityPage() {
               </div>
             </div>
 
-            {rows.map((event) => {
+            {groupActivityEventsByTicket(rows).map((group) => (
+              <div key={group.key} className={group.events.length > 1 ? 'border-b border-border' : undefined}>
+                {group.saleId && group.events.length > 1 && (
+                  <p className="px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-text-muted bg-surface-muted">
+                    {group.reference}
+                  </p>
+                )}
+                {group.events.map((event) => {
               const clickable = Boolean(event.saleId && event.type !== 'payment')
               const cells = (
                 <>
                   <span className="min-w-0">
-                    <ActivityTypeBadge type={event.type} />
+                    <ActivityTypeBadge type={event.type} ledgerKind={event.ledgerKind} />
                   </span>
                   <span className="text-sm font-mono font-medium text-text-primary truncate min-w-0">
                     {event.reference}
@@ -375,7 +383,9 @@ export function CustomerActivityPage() {
                   {cells}
                 </div>
               )
-            })}
+                })}
+              </div>
+            ))}
 
             <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />
           </>

@@ -23,14 +23,11 @@ import { BilingualText } from '@/components/ui/BilingualText'
 import { formatDate } from '@/lib/formatters'
 
 import type {
-
   CustomerActivityEvent,
-
   CustomerActivityType,
-
   CustomerActivityTypeFilter,
-
 } from '@/hooks/useCustomerActivity'
+import { groupActivityEventsByTicket } from '@/hooks/useCustomerActivity'
 
 import { CUSTOMERS } from '@/lib/bilingual/customers'
 
@@ -67,9 +64,17 @@ const TYPE_BADGE: Record<CustomerActivityType, { pair: BilingualPair; variant: '
 
 
 
-export function ActivityTypeBadge({ type }: { type: CustomerActivityType }) {
-
-  const config = TYPE_BADGE[type]
+export function ActivityTypeBadge({
+  type,
+  ledgerKind,
+}: {
+  type: CustomerActivityType
+  ledgerKind?: CustomerActivityEvent['ledgerKind']
+}) {
+  const config =
+    ledgerKind === 'cash_refund'
+      ? { pair: CUSTOMERS.activityTypeCashRefund, variant: 'warning' as const }
+      : TYPE_BADGE[type]
 
   return (
 
@@ -225,7 +230,7 @@ export function ActivityEventRow({ event, onOpenSale }: ActivityEventRowProps) {
 
         <div className="flex items-center gap-2">
 
-          <ActivityTypeBadge type={event.type} />
+          <ActivityTypeBadge type={event.type} ledgerKind={event.ledgerKind} />
 
           <p className="font-mono text-sm font-semibold text-text-primary truncate">
 
@@ -303,5 +308,35 @@ export function ActivityEventRow({ event, onOpenSale }: ActivityEventRowProps) {
 
   return <div className={rowClass}>{content}</div>
 
+}
+
+export function ActivityEventList({
+  events,
+  onOpenSale,
+}: {
+  events: CustomerActivityEvent[]
+  onOpenSale?: (saleId: string) => void
+}) {
+  const groups = groupActivityEventsByTicket(events)
+  return (
+    <div className="space-y-2">
+      {groups.map((group) => (
+        <div key={group.key} className="rounded-md overflow-hidden border border-border">
+          {group.saleId && group.events.length > 1 && (
+            <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-text-muted bg-surface-muted">
+              {group.reference}
+            </p>
+          )}
+          {group.events.map((event) => (
+            <ActivityEventRow
+              key={`${event.type}-${event.id}`}
+              event={event}
+              onOpenSale={onOpenSale}
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  )
 }
 

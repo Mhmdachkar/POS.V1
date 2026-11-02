@@ -145,8 +145,8 @@ export function ShiftsPage() {
           />
           {hasOvernightOpen && (
             <div
-              className="rounded-md border border-warning/30 bg-warning-bg/40 px-3 py-2 text-sm text-warning-foreground"
-              role="status"
+              className="rounded-lg border-2 border-warning bg-warning-bg px-4 py-3 text-sm font-medium text-warning-foreground"
+              role="alert"
             >
               <BilingualText {...SHIFT_COPY.overnightBanner} variant="body" />
             </div>

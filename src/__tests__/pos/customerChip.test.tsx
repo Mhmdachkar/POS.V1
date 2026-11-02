@@ -7,6 +7,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CustomerChip } from '@/components/pos/CustomerChip'
 import { useCustomerSearch } from '@/hooks/useCustomers'
+import { useCustomerLedgerBalance, useCustomerLedgerBalances } from '@/hooks/useCustomerActivity'
 import { usePOSStore } from '@/stores/posStore'
 import type { Customer } from '@/types/database'
 import { POS } from '@/lib/bilingual/pos'
@@ -21,6 +22,11 @@ vi.mock('@/hooks/useCustomers', async (importOriginal) => {
     useCreateCustomer: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
   }
 })
+
+vi.mock('@/hooks/useCustomerActivity', () => ({
+  useCustomerLedgerBalance: vi.fn(() => ({ data: undefined, isLoading: false })),
+  useCustomerLedgerBalances: vi.fn(() => ({ data: {}, isLoading: false })),
+}))
 
 function customer(overrides: Partial<Customer> = {}): Customer {
   return {
@@ -50,6 +56,14 @@ beforeEach(() => {
         balance_owed_cfa: 0,
       }),
     ],
+    isLoading: false,
+  } as never)
+  vi.mocked(useCustomerLedgerBalance).mockReturnValue({
+    data: undefined,
+    isLoading: false,
+  } as never)
+  vi.mocked(useCustomerLedgerBalances).mockReturnValue({
+    data: {},
     isLoading: false,
   } as never)
 })
@@ -115,6 +129,17 @@ describe('CustomerChip picker', () => {
     await user.type(screen.getByRole('combobox'), '77')
 
     expect(useCustomerSearch).toHaveBeenCalledWith('77', true, true)
+  })
+
+  it('shows ledger solde on the chip, not the debt-only owed column', () => {
+    usePOSStore.getState().setCustomer(customer({ balance_owed_cfa: 1500 }))
+    vi.mocked(useCustomerLedgerBalance).mockReturnValue({
+      data: 1400,
+      isLoading: false,
+    } as never)
+    render(<CustomerChip />)
+    expect(screen.getByText(/1\s?400\s*CFA/)).toBeInTheDocument()
+    expect(screen.queryByText(/1\s?500\s*CFA/)).not.toBeInTheDocument()
   })
 
   it('closes on Escape without selecting', async () => {

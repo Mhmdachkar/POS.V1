@@ -85,17 +85,22 @@ export const SALES = {
   unitPrice: bi('Prix unitaire', 'Unit price'),
   lineDiscount: bi('Remise ligne', 'Line discount'),
   lineTotal: bi('Total ligne', 'Line total'),
-  soldOnReceipt: (qty: number, unit: string) =>
-    bi(`Vendu : ${qty} ${unit}`, `Sold: ${qty} ${unit}`),
+  soldOnReceipt: (qtyAndUnit: string) =>
+    bi(`Vendu : ${qtyAndUnit}`, `Sold: ${qtyAndUnit}`),
   returnQtyInUnit: (unit: string) =>
     bi(`Qté retour (${unit})`, `Return qty (${unit})`),
-  returningQty: (qty: number, unit: string) =>
-    bi(`Retour : ${qty} ${unit}`, `Returning: ${qty} ${unit}`),
-  returnLineRestored: (qty: number, unit: string) =>
+  returningQty: (qtyAndUnit: string) =>
+    bi(`Retour : ${qtyAndUnit}`, `Returning: ${qtyAndUnit}`),
+  returnLineRestored: (qtyAndUnit: string) =>
     bi(
-      `Le stock revient au dépôt pour ${qty} ${unit}.`,
-      `Stock returns to the depot for ${qty} ${unit}.`,
+      `Le stock revient au dépôt pour ${qtyAndUnit}.`,
+      `Stock returns to the depot for ${qtyAndUnit}.`,
     ),
+  refundZeroNotAllowed: bi(
+    'Un remboursement de 0 CFA n’est pas autorisé. Saisissez un montant supérieur à zéro.',
+    'A refund of CFA 0 is not allowed. Enter an amount greater than zero.',
+  ),
+  fulfillmentCancelled: bi('Préparation annulée', 'Picking cancelled'),
   payments: bi('Paiements', 'Payments'),
   returns: bi('Retours', 'Returns'),
   printReceipt: bi('Imprimer le ticket', 'Print receipt'),

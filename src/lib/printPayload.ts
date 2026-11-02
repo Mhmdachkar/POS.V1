@@ -62,7 +62,7 @@ export interface PrintJobRow {
   attempt_count: number
 }
 
-export type FulfillmentStatus = 'pending' | 'released'
+export type FulfillmentStatus = 'pending' | 'released' | 'cancelled'
 
 export interface SaleFulfillmentRow {
   sale_id: string

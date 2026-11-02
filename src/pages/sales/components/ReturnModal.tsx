@@ -28,6 +28,7 @@ import { BiButtonStack, BiModalTitle, BiTableHeader } from '@/lib/bilingual/ui'
 import { t, bilingualPlain } from '@/lib/bilingual/types'
 import { formatCFA, formatThousandsInput, parseCFAInput } from '@/lib/formatters'
 import { rpc } from '@/lib/rpc'
+import { refreshPosCustomer } from '@/lib/refreshPosCustomer'
 import {
   computeReturnLineRefund,
   computeReturnRefundPreview,
@@ -116,8 +117,27 @@ function lineRefundInput(ri: ReturnableItem, sale: SaleDetailData) {
   }
 }
 
-function computedLineRefund(ri: ReturnableItem, sale: SaleDetailData): number {
-  return computeReturnLineRefund(lineRefundInput(ri, sale))
+function remainingPoolBeforeItem(
+  items: ReturnableItem[],
+  sale: SaleDetailData,
+  itemId: string,
+): number {
+  const { remaining } = saleRefundContext(sale)
+  let used = 0
+  for (const ri of items) {
+    const leftover = Math.max(roundCfa2(remaining - used), 0)
+    if (ri.item.id === itemId) return leftover
+    if (ri.selected > 0) used += resolvedRefund(ri, sale, leftover)
+  }
+  return Math.max(roundCfa2(remaining - used), 0)
+}
+
+function computedLineRefund(
+  ri: ReturnableItem,
+  sale: SaleDetailData,
+  remainingSalePoolCfa?: number,
+): number {
+  return computeReturnLineRefund(lineRefundInput(ri, sale), remainingSalePoolCfa)
 }
 
 function customRefundFromDraft(draft: string | null): number | null {
@@ -181,15 +201,21 @@ function buildReturnableItems(
 interface ReturnItemRowProps {
   ri: ReturnableItem
   sale: SaleDetailData
+  maxRefund: number
   onChangeQty: (qty: number) => void
   onChangeRefund: (draft: string | null) => void
 }
 
-function ReturnItemRow({ ri, sale, onChangeQty, onChangeRefund }: ReturnItemRowProps) {
+function ReturnItemRow({ ri, sale, maxRefund, onChangeQty, onChangeRefund }: ReturnItemRowProps) {
   const { item, returnable, selected, alreadyReturned, refundDraft } = ri
-  const fullValue = selected > 0 ? computedLineRefund(ri, sale) : 0
-  const refund = selected > 0 ? resolvedRefund(ri, sale) : 0
+  const fullValue = selected > 0 ? maxRefund : 0
+  const refund = selected > 0 ? resolveLineRefund({
+    ...lineRefundInput(ri, sale),
+    customRefundCfa: customRefundFromDraft(ri.refundDraft),
+  }, maxRefund) : 0
   const isCustom = refundDraft != null && refund !== fullValue
+  const qtyLabel = formatSoldQuantity(item.quantity_in_unit, item.unit_name, item.unit_level)
+  const selectedLabel = formatSoldQuantity(selected, item.unit_name, item.unit_level)
   const unitLabel = resolvedSaleUnitName(item.unit_name, item.unit_level)
 
   return (
@@ -208,7 +234,7 @@ function ReturnItemRow({ ri, sale, onChangeQty, onChangeRefund }: ReturnItemRowP
             <SaleUnitBadge unitLevel={item.unit_level} unitName={item.unit_name} />
           </div>
           <p className="text-sm font-medium text-text-primary mt-1.5">
-            {t(SALES.soldOnReceipt(item.quantity_in_unit, unitLabel))}
+            {t(SALES.soldOnReceipt(qtyLabel))}
           </p>
           <p className="text-xs text-text-secondary mt-0.5">
             {formatCFA(item.unit_price_cfa)}{' '}
@@ -260,7 +286,7 @@ function ReturnItemRow({ ri, sale, onChangeQty, onChangeRefund }: ReturnItemRowP
             </span>
             {selected > 0 && (
               <p className="text-xs font-semibold text-primary">
-                {t(SALES.returningQty(selected, unitLabel))}
+                {t(SALES.returningQty(selectedLabel))}
               </p>
             )}
             <div className="flex items-center gap-2">
@@ -309,7 +335,7 @@ function ReturnItemRow({ ri, sale, onChangeQty, onChangeRefund }: ReturnItemRowP
             </div>
             {selected > 0 && (
               <p className="text-[11px] text-text-muted">
-                {t(SALES.returnLineRestored(selected, unitLabel))}
+                {t(SALES.returnLineRestored(selectedLabel))}
               </p>
             )}
           </div>
@@ -445,7 +471,13 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
   )
 
   const noItemsSelected = selectedItems.length === 0
-  const canSubmit = !noItemsSelected && !isLoading && shiftGateReady && hasOpenShift
+  const zeroRefundBlocked = !noItemsSelected && estimatedRefundTotal <= 0
+  const canSubmit =
+    !noItemsSelected &&
+    !zeroRefundBlocked &&
+    !isLoading &&
+    shiftGateReady &&
+    hasOpenShift
 
   const handleSubmit = async () => {
     if (inFlight.current) return
@@ -475,6 +507,7 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
 
       const data = result.data
       toastSuccessBi(SALES.returnProcessedCash(formatCFA(data.cash_refunded_cfa)))
+      await refreshPosCustomer(sale.customer_id)
       onSuccess()
       onClose()
     } finally {
@@ -494,12 +527,17 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
         const next = { ...ri, selected: qty }
         if (next.refundDraft == null) return next
         const parsed = customRefundFromDraft(next.refundDraft) ?? 0
+        const max = remainingPoolBeforeItem(
+          prev.map((row, j) => (j === idx ? next : row)),
+          sale,
+          next.item.id,
+        )
         return {
           ...next,
           refundDraft: formatThousandsInput(String(resolveLineRefund({
             ...lineRefundInput(next, sale),
             customRefundCfa: parsed,
-          }))),
+          }, max))),
         }
       }),
     )
@@ -510,12 +548,19 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
       prev.map((ri, i) => {
         if (i !== idx) return ri
         if (draft == null) return { ...ri, refundDraft: null }
-        const max = computedLineRefund({ ...ri, refundDraft: draft }, sale)
+        const max = computedLineRefund(
+          { ...ri, refundDraft: draft },
+          sale,
+          remainingPoolBeforeItem(prev, sale, ri.item.id),
+        )
         const parsed = customRefundFromDraft(draft) ?? 0
-        const clamped = resolveLineRefund({
-          ...lineRefundInput(ri, sale),
-          customRefundCfa: parsed,
-        })
+        const clamped = resolveLineRefund(
+          {
+            ...lineRefundInput(ri, sale),
+            customRefundCfa: parsed,
+          },
+          max,
+        )
         // Keep typing mid-edit unless the value exceeds the max.
         if (parsed > max) {
           return { ...ri, refundDraft: formatThousandsInput(String(clamped)) }
@@ -549,6 +594,15 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
               key={ri.item.id}
               ri={ri}
               sale={sale}
+              maxRefund={
+                ri.selected > 0
+                  ? computedLineRefund(
+                      ri,
+                      sale,
+                      remainingPoolBeforeItem(returnableItems, sale, ri.item.id),
+                    )
+                  : 0
+              }
               onChangeQty={(qty) => updateQty(idx, qty)}
               onChangeRefund={(draft) => updateRefund(idx, draft)}
             />
@@ -558,6 +612,12 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
         {noItemsSelected && (
           <p className="text-xs text-text-muted text-center">
             <BilingualText {...SALES.selectQtyHint} variant="caption" />
+          </p>
+        )}
+
+        {zeroRefundBlocked && (
+          <p className="text-xs text-danger-foreground bg-danger-bg border border-danger/20 rounded-md px-2.5 py-1.5">
+            <BilingualText {...SALES.refundZeroNotAllowed} variant="caption" />
           </p>
         )}
 

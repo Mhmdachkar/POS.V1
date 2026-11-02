@@ -129,6 +129,15 @@ function SaleFulfillmentPanel({ sale }: { sale: SaleDetailData }) {
   const canRelease =
     staff?.role === 'depot_staff' || staff?.role === 'admin'
   const fulfillment = sale.fulfillment
+  const saleTerminal = sale.status === 'returned' || sale.status === 'voided'
+  const uiStatus: 'released' | 'cancelled' | 'pending' | null =
+    fulfillment?.status === 'released'
+      ? 'released'
+      : fulfillment?.status === 'cancelled' || saleTerminal
+        ? 'cancelled'
+        : fulfillment
+          ? 'pending'
+          : null
   const depotJob = jobs?.find((j) => j.destination === 'depot')
   const cashierJob = jobs?.find((j) => j.destination === 'cashier')
 
@@ -163,8 +172,7 @@ function SaleFulfillmentPanel({ sale }: { sale: SaleDetailData }) {
   return (
     <>
       <SectionHeader title={<BiSectionTitle {...SALES.fulfillmentSection} />} />
-      {fulfillment ? (
-        fulfillment.status === 'released' ? (
+      {uiStatus === 'released' && fulfillment ? (
           <>
             <DetailRow
               label={t(SALES.releasedBy)}
@@ -180,14 +188,15 @@ function SaleFulfillmentPanel({ sale }: { sale: SaleDetailData }) {
               }
             />
           </>
-        ) : (
+      ) : uiStatus === 'cancelled' ? (
+          <DetailRow label={t(SALES.releaseStatus)} value={t(SALES.fulfillmentCancelled)} bold />
+      ) : uiStatus === 'pending' ? (
           <DetailRow label={t(SALES.releaseStatus)} value={t(SALES.pendingRelease)} bold />
-        )
       ) : (
         <p className="text-sm text-text-muted">{t(SALES.noFulfillmentRecord)}</p>
       )}
 
-      {canRelease && fulfillment?.status === 'pending' && (
+      {canRelease && uiStatus === 'pending' && (
         <div className="mt-2 space-y-2">
           <p className="text-xs text-text-muted leading-snug">{t(SALES.releaseOrderHint)}</p>
           <Button
@@ -690,7 +699,7 @@ export function SaleDetailDrawer({ saleId, shiftId, isOverRefund = false, onClos
               </>
             )}
 
-            {sale.status !== 'voided' && <SaleFulfillmentPanel sale={sale} />}
+            <SaleFulfillmentPanel sale={sale} />
 
             {(deliveryNotes?.rows?.length ?? 0) > 0 && (
               <>

@@ -51,6 +51,8 @@ export const RPC_SIGNATURES = {
   admin_refunds_over_payable: [],
   staff_display_names: ['p_ids'],
   customer_ledger: ['p_customer_id'],
+  customer_displayed_balance_cfa: ['p_customer_id'],
+  customer_ids_with_displayed_balance: [],
   create_proforma: ['p_depot_id', 'p_items'],
   update_proforma: ['p_proforma_id'],
   set_proforma_status: ['p_proforma_id', 'p_status'],

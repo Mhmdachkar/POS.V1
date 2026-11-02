@@ -44,9 +44,10 @@ export async function fetchDepotOverview(depotId: string): Promise<{
   const [pendingRes, releasedRes, productsRes] = await Promise.all([
     supabase
       .from('sale_fulfillments')
-      .select('sale_id', { count: 'exact' })
+      .select('sale_id, sales!inner(status)', { count: 'exact' })
       .eq('depot_id', depotId)
-      .eq('status', 'pending'),
+      .eq('status', 'pending')
+      .not('sales.status', 'in', '(voided,returned)'),
     supabase
       .from('sale_fulfillments')
       .select('sale_id', { count: 'exact' })
@@ -80,9 +81,10 @@ export async function fetchDepotOverview(depotId: string): Promise<{
 
   const pendingList = await supabase
     .from('sale_fulfillments')
-    .select('sale_id, created_at')
+    .select('sale_id, created_at, sales!inner(status)')
     .eq('depot_id', depotId)
     .eq('status', 'pending')
+    .not('sales.status', 'in', '(voided,returned)')
     .order('created_at', { ascending: false })
     .limit(8)
 
