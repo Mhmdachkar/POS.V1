@@ -155,7 +155,7 @@ export async function fetchCustomerList(params: CustomerListParams): Promise<{
   const rows = (data ?? []) as Customer[]
   const displayedBalances: Record<string, number> = {}
   if (rows.length > 0) {
-    const { data: balRows, error: balError } = await supabase.rpc(
+    const { data: balRows, error: balError } = await (supabase.rpc as any)(
       'customer_displayed_balances',
       { p_customer_ids: rows.map((c) => c.id) },
     )

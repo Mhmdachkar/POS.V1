@@ -445,7 +445,7 @@ export interface Database {
       }
       customer_displayed_balances: {
         Args: { p_customer_ids: string[] }
-        Returns: { customer_id: string; displayed_balance_cfa: number }[]
+        Returns: unknown
       }
       staff_display_names: {
         Args: { p_ids: string[] }
