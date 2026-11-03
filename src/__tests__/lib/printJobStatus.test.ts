@@ -12,6 +12,7 @@ describe('printJobStatus', () => {
     expect(printJobStatusLabel('claimed')).toBe('Pris en charge')
     expect(printJobStatusLabel('sent')).toBe("Envoyé à l'imprimante")
     expect(printJobStatusLabel('failed')).toBe('Échec')
+    expect(printJobStatusLabel('skipped')).toBe('Ignoré')
   })
 
   it('labels stale queued jobs as Non imprimé', () => {
@@ -29,5 +30,6 @@ describe('printJobStatus', () => {
     expect(canRequeuePrintJob('sent')).toBe(true)
     expect(canRequeuePrintJob('queued')).toBe(true)
     expect(canRequeuePrintJob('claimed')).toBe(false)
+    expect(canRequeuePrintJob('skipped')).toBe(true)
   })
 })

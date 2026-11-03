@@ -167,6 +167,7 @@ export const POS = {
   duplicateSaleReturned: bi('Vente déjà enregistrée', 'Sale already recorded'),
   saleSummary: bi('Résumé', 'Summary'),
   items: bi('Articles', 'Items'),
+  printAgentOffline: bi("Agent d'impression hors ligne", 'Print agent offline'),
   autoPrintHint: bi(
     "Ticket mis en file. Il n'atteint une imprimante que si l'agent d'impression du dépôt est ouvert sur ce PC.",
     'Receipt is queued. It reaches a printer only if the depot print agent is open on this PC.',

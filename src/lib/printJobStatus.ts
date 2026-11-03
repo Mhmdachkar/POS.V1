@@ -31,11 +31,13 @@ export function printJobStatusLabel(
       return 'Envoyé à l\'imprimante'
     case 'failed':
       return 'Échec'
+    case 'skipped':
+      return 'Ignoré'
     default:
       return status
   }
 }
 
 export function canRequeuePrintJob(status: PrintJobStatus): boolean {
-  return status === 'failed' || status === 'sent' || status === 'queued'
+  return status === 'failed' || status === 'sent' || status === 'queued' || status === 'skipped'
 }
