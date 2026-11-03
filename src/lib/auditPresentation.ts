@@ -330,6 +330,24 @@ export function auditEventSummary(row: AuditLogRow, units?: UnitLike[] | null): 
     return action
   }
 
+  if (row.action === 'record_payment' && after) {
+    const amount = num(after.amount_cfa)
+    const method = str(after.payment_method)
+    const methodLabel =
+      method === 'mobile'
+        ? bi('Paiement mobile', 'Mobile')
+        : method === 'bank'
+          ? bi('Banque', 'Bank')
+          : method === 'cash'
+            ? bi('Espèces', 'Cash')
+            : null
+    const amountBit = amount != null ? ` · ${formatCFA(amount)}` : ''
+    return bi(
+      `${action.fr}${amountBit}${methodLabel ? ` · ${methodLabel.fr}` : ''}`,
+      `${action.en}${amountBit}${methodLabel ? ` · ${methodLabel.en}` : ''}`,
+    )
+  }
+
   if (row.action === 'record_cash_movement' && after) {
     const amount = num(after.amount_cfa)
     const direction = str(after.direction)

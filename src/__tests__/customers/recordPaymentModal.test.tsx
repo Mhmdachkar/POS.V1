@@ -155,7 +155,28 @@ describe('RecordPaymentModal', () => {
       p_customer_id: 'cust-1',
       p_amount_cfa: 1000,
       p_shift_id: 'shift-1',
+      p_payment_method: 'cash',
     }))
+  })
+
+  it('sends mobile and does not treat it as drawer cash', async () => {
+    const user = userEvent.setup()
+    const mutateAsync = vi.fn().mockResolvedValue({
+      amount_cfa: 1000,
+      new_balance_owed_cfa: 4000,
+    })
+    vi.mocked(useRecordPayment).mockReturnValue({
+      mutateAsync,
+      isPending: false,
+    } as never)
+    renderModal(null)
+    await user.selectOptions(screen.getByLabelText(CUSTOMERS.paymentMethod.fr), 'mobile')
+    expect(screen.getByText(CUSTOMERS.methodNotInDrawer.fr)).toBeInTheDocument()
+    await user.type(screen.getByPlaceholderText('0'), '1000')
+    await user.click(screen.getByRole('button', { name: CUSTOMERS.recordPayment.fr }))
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith(expect.objectContaining({
+      p_payment_method: 'mobile',
+    })))
   })
 
   it('ignores a second rapid Record Payment submit', async () => {

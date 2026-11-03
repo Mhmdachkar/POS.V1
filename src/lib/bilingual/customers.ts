@@ -128,6 +128,14 @@ export const CUSTOMERS = {
   ),
   paymentPooledHint: bi('Paiement enregistré sur le solde.', 'Payment applied to balance.'),
   inactivePaymentAllowed: bi('Client inactif : il peut encore payer son solde.', 'Inactive customer: can still pay the balance.'),
+  paymentMethod: bi('Moyen de paiement', 'Payment method'),
+  methodCash: bi('Espèces', 'Cash'),
+  methodMobile: bi('Paiement mobile', 'Mobile'),
+  methodBank: bi('Banque', 'Bank'),
+  methodNotInDrawer: bi(
+    "Mobile et banque n'entrent pas dans l'attendu du service.",
+    'Mobile and bank do not count in the shift expected cash.',
+  ),
   amountToPay: bi('Montant reçu (CFA)', 'Amount received (CFA)'),
   noteOptional: bi('Note (facultatif)', 'Note (optional)'),
   notePlaceholder: bi(

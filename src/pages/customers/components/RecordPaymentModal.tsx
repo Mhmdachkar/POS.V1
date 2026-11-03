@@ -13,7 +13,7 @@
  *     receive a payment. Reactivation is NOT required to record a debt payment.
  *
  * Payment model:
- *   - Cash only (no payment method selection)
+ *   - Cash, mobile, or bank. Only cash counts in the shift expected cash.
  *   - Pooled balance — not allocated to a specific sale
  *   - new_balance_owed_cfa from server response is authoritative
  */
@@ -65,6 +65,7 @@ export function RecordPaymentModal({
   onSuccess,
 }: RecordPaymentModalProps) {
   const [amountStr, setAmountStr] = useState('')
+  const [method, setMethod] = useState<'cash' | 'mobile' | 'bank'>('cash')
   const [note, setNote] = useState('')
   const [amountError, setAmountError] = useState('')
   const [generalError, setGeneralError] = useState('')
@@ -98,6 +99,7 @@ export function RecordPaymentModal({
   useEffect(() => {
     if (open) {
       setAmountStr('')
+      setMethod('cash')
       setNote('')
       setAmountError('')
       setGeneralError('')
@@ -159,6 +161,7 @@ export function RecordPaymentModal({
         p_amount_cfa:  amount,
         p_shift_id:    effectiveShiftId,
         p_note:        note.trim() || null,
+        p_payment_method: method,
       })
 
       setSuccessResult({
@@ -260,6 +263,25 @@ export function RecordPaymentModal({
               </p>
             </div>
           )}
+
+          <div>
+            <label htmlFor="customer-payment-method" className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
+              {t(CUSTOMERS.paymentMethod)}
+            </label>
+            <select
+              id="customer-payment-method"
+              value={method}
+              onChange={(e) => setMethod(e.target.value as 'cash' | 'mobile' | 'bank')}
+              className="w-full h-10 px-3 rounded-md border border-border text-sm bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            >
+              <option value="cash">{t(CUSTOMERS.methodCash)}</option>
+              <option value="mobile">{t(CUSTOMERS.methodMobile)}</option>
+              <option value="bank">{t(CUSTOMERS.methodBank)}</option>
+            </select>
+            {method !== 'cash' && (
+              <p className="text-xs text-text-secondary mt-1">{t(CUSTOMERS.methodNotInDrawer)}</p>
+            )}
+          </div>
 
           {/* Amount */}
           <div>

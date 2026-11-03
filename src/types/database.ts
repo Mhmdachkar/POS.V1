@@ -325,6 +325,8 @@ export interface Payment {
   shift_id: string | null
   payment_type: PaymentType
   amount_cfa: number
+  /** customer_payment: cash, mobile, or bank. Null on sale_payment. Historical rows are cash. */
+  payment_method?: 'cash' | 'mobile' | 'bank' | null
   recorded_by: string
   recorded_at: string
   note: string | null
