@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ADMIN } from '@/lib/bilingual/admin'
+import { REPORTS } from '@/lib/bilingual/reports'
 import { DashboardPage } from '@/pages/admin/DashboardPage'
 import type { AdminDashboardSummary } from '@/types/rpc'
 import type { StockAlertsResult } from '@/hooks/useStockAlerts'
@@ -95,5 +97,46 @@ describe('Dashboard stock alerts', () => {
     expect(screen.getAllByText(/stock faible|low stock/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/rupture de stock|out of stock/i).length).toBeGreaterThan(0)
     expect(screen.queryByText('Should not render from RPC')).not.toBeInTheDocument()
+  })
+
+  it('shows the partial margin and the missing-cost note', () => {
+    vi.mocked(useDashboardSummary).mockReturnValue({
+      data: {
+        ...summary,
+        gross_profit_cfa: 5885,
+        lines_without_cost_count: 2,
+        margin_status: 'marge non calculable',
+      },
+      isLoading: false,
+      isError: false,
+    } as never)
+    vi.mocked(useStockAlerts).mockReturnValue({
+      data: { lowStock: [], lowStockCount: 0, outOfStock: [], outOfStockCount: 0 },
+      isLoading: false,
+      isError: false,
+    } as never)
+
+    wrap()
+
+    expect(screen.getByText(/5[\s\u202f\u00a0]885/)).toBeInTheDocument()
+    expect(screen.getByText(REPORTS.marginNotCalculable(2).fr)).toBeInTheDocument()
+    expect(screen.queryByText(ADMIN.gpNotCalculable.fr)).not.toBeInTheDocument()
+  })
+
+  it('keeps the not-calculable label only when the server sends no number', () => {
+    vi.mocked(useDashboardSummary).mockReturnValue({
+      data: { ...summary, gross_profit_cfa: null, lines_without_cost_count: 1 },
+      isLoading: false,
+      isError: false,
+    } as never)
+    vi.mocked(useStockAlerts).mockReturnValue({
+      data: { lowStock: [], lowStockCount: 0, outOfStock: [], outOfStockCount: 0 },
+      isLoading: false,
+      isError: false,
+    } as never)
+
+    wrap()
+
+    expect(screen.getByText(ADMIN.gpNotCalculable.fr)).toBeInTheDocument()
   })
 })
