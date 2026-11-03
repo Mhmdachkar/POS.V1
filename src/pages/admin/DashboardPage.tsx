@@ -4,6 +4,7 @@ import { NavPictogram } from '@/components/layout/NavPictogram'
 import { BiEmptyTitle, BiPageTitle, BiTableHeader } from '@/lib/bilingual/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { ADMIN } from '@/lib/bilingual/admin'
+import { REPORTS } from '@/lib/bilingual/reports'
 import { COMMON } from '@/lib/bilingual/common'
 import { SHIFT_COPY } from '@/lib/bilingual/shift'
 import { STOCK_STATUS } from '@/lib/bilingual/status'
@@ -146,26 +147,14 @@ export function DashboardPage() {
         <StatCard label={<BiTableHeader {...ADMIN.statSales} />} amount={Number(data.sales_cfa)} />
         <StatCard
           label={<BiTableHeader {...ADMIN.statGrossProfit} />}
-          amount={
-            data.gross_profit_cfa == null
-              || data.margin_status
-              || Number(data.lines_without_cost_count) > 0
-              ? undefined
-              : Number(data.gross_profit_cfa)
-          }
-          value={
-            data.gross_profit_cfa == null
-              || data.margin_status
-              || Number(data.lines_without_cost_count) > 0
-              ? t(ADMIN.gpNotCalculable)
-              : undefined
-          }
+          amount={data.gross_profit_cfa == null ? undefined : Number(data.gross_profit_cfa)}
+          value={data.gross_profit_cfa == null ? t(ADMIN.gpNotCalculable) : undefined}
           description={
             data.gross_profit_cfa == null
-              || data.margin_status
-              || Number(data.lines_without_cost_count) > 0
               ? t(ADMIN.gpNotCalculableHint)
-              : undefined
+              : Number(data.lines_without_cost_count) > 0
+                ? t(REPORTS.marginNotCalculable(Number(data.lines_without_cost_count)))
+                : undefined
           }
         />
         <StatCard label={<BiTableHeader {...ADMIN.statTransactions} />} value={String(data.txn_count)} />
