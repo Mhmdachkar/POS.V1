@@ -111,6 +111,11 @@ export const ACHATS = {
   cancelledOk: bi('BR annulé', 'Receipt cancelled'),
   paymentOk: bi('Règlement enregistré', 'Payment recorded'),
   printRgf: bi('Imprimer le RGF', 'Print payment slip'),
+  printQueued: bi('Impression en file d’attente', 'Print queued'),
+  printAgentOffline: bi(
+    "Agent d'impression hors ligne — le RGF est en file, mais n'imprimera pas tant que l'agent n'est pas ouvert sur ce PC.",
+    'Print agent offline — the slip is queued, but it will not print until the agent is open on this PC.',
+  ),
   paymentSavedWithRgf: (rgf: string) =>
     bi(`Règlement enregistré — ${rgf}`, `Payment recorded — ${rgf}`),
   searchProduct: bi('Rechercher un produit…', 'Search a product…'),

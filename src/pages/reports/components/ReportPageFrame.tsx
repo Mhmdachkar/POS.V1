@@ -31,7 +31,7 @@ export function ReportPageFrame({
   onExportPrint?: () => void
   children: ReactNode
 }) {
-  const search = useReportSearch()
+  const search = useReportSearch(report.defaultPreset ?? 'today')
   const depotId = useDepotStore((s) => s.currentDepotId)
   const depotName = useDepotStore((s) => s.currentDepotName)
   const { data: staffList } = useStaffList({ page: 0, pageSize: 200, search: '', status: 'active', role: 'all' })

@@ -12,6 +12,7 @@ import {
   canAccessShifts,
   canCloseShift,
   canSelectShiftForPos,
+  enrichListWithExpected,
   fetchShiftsList,
   invalidateAfterCloseShift,
   invalidateAfterOpenShift,
@@ -275,6 +276,46 @@ describe('shift helpers', () => {
     expect(detail?.expected_display_cfa).toBe(800)
     const moves = client.getQueryData<Array<{ id: string }>>([...shiftKeys.detail('sh-1'), 'cash-movements'])
     expect(moves?.map((row) => row.id)).toEqual(['mov-1'])
+  })
+
+  it('keeps closed-shift Attendu from the close snapshot, not the live cash rule', () => {
+    const closed: ShiftListItem = {
+      ...openShift('sh-closed'),
+      status: 'closed',
+      opening_float_cfa: 0,
+      expected_cash_cfa: -2500,
+      actual_cash_cfa: 0,
+      discrepancy_cfa: 2500,
+    }
+    const runningById = new Map([
+      ['sh-closed', {
+        sales_cash_cfa: 0,
+        customer_pmts_cfa: 0,
+        return_cash_cfa: 2500,
+        cash_in_cfa: 0,
+        cash_out_cfa: 0,
+        supplier_cash_cfa: 2039,
+      }],
+    ])
+    const [row] = enrichListWithExpected([closed], runningById)
+    expect(row.expected_display_cfa).toBe(-2500)
+    expect(row.discrepancy_cfa).toBe(2500)
+  })
+
+  it('still live-estimates Attendu on an open shift', () => {
+    const open = { ...openShift('sh-open'), opening_float_cfa: 0, expected_cash_cfa: null }
+    const runningById = new Map([
+      ['sh-open', {
+        sales_cash_cfa: 0,
+        customer_pmts_cfa: 0,
+        return_cash_cfa: 2500,
+        cash_in_cfa: 0,
+        cash_out_cfa: 0,
+        supplier_cash_cfa: 2039,
+      }],
+    ])
+    const [row] = enrichListWithExpected([open], runningById)
+    expect(row.expected_display_cfa).toBe(-4539)
   })
 
   it('invalidates list + open keys after open/close', () => {

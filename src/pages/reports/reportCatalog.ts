@@ -1,5 +1,6 @@
 import { REPORTS } from '@/lib/bilingual/reports'
 import type { BilingualPair } from '@/lib/bilingual/types'
+import type { ReportPreset } from '@/lib/reportDates'
 
 export type ReportFilterKey = 'cashier' | 'category' | 'product' | 'service'
 
@@ -31,6 +32,8 @@ export interface ReportDef {
   description: BilingualPair
   filters: ReportFilterKey[]
   exportTab: ReportId
+  /** When the URL has no ?preset=, Frame and the page share this default. */
+  defaultPreset?: ReportPreset
 }
 
 export const REPORT_GROUPS: Array<{ title: BilingualPair; items: ReportDef[] }> = [
@@ -79,7 +82,7 @@ export const REPORT_GROUPS: Array<{ title: BilingualPair; items: ReportDef[] }> 
   {
     title: REPORTS.groupControl,
     items: [
-      { id: 'control-audit', path: '/reports/control/audit', group: REPORTS.groupControl, title: REPORTS.audit, description: REPORTS.descAudit, filters: [], exportTab: 'control-audit' },
+      { id: 'control-audit', path: '/reports/control/audit', group: REPORTS.groupControl, title: REPORTS.audit, description: REPORTS.descAudit, filters: [], exportTab: 'control-audit', defaultPreset: 'this_week' },
     ],
   },
 ]

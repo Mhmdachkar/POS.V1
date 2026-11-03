@@ -47,8 +47,9 @@ export function AuthGuard() {
   if (authLoadState === 'booting') {
     return (
       <div
-        className="flex h-screen items-center justify-center bg-background"
+        className="flex h-screen flex-col items-center justify-center gap-4 bg-background"
         role="status"
+        aria-busy="true"
         aria-label={t(COMMON.loadingApp)}
       >
         <div className="space-y-3 w-56">
@@ -56,6 +57,7 @@ export function AuthGuard() {
           <Skeleton height={8} width="80%" className="rounded-full" />
           <Skeleton height={8} width="60%" className="rounded-full" />
         </div>
+        <p className="text-sm text-text-secondary">{t(COMMON.loadingApp)}</p>
       </div>
     )
   }
