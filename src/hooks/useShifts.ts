@@ -255,9 +255,9 @@ function enrichListWithExpected(
     const activity =
       running.sales_cash_cfa +
       running.customer_pmts_cfa +
-      running.cash_in_cfa -
+      (running.cash_in_cfa ?? 0) -
       running.return_cash_cfa -
-      running.cash_out_cfa
+      (running.cash_out_cfa ?? 0)
     const expectedLive = estimateExpectedCash(row.opening_float_cfa, running)
     return {
       ...row,
