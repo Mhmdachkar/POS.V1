@@ -265,6 +265,7 @@ export interface CloseShiftResult {
     return_cash_cfa: number
     cash_in_cfa?: number
     cash_out_cfa?: number
+    supplier_cash_cfa?: number
   }
 }
 

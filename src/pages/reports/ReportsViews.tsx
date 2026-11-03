@@ -613,7 +613,7 @@ export function StockTransfersPage() {
 }
 
 export function ControlAuditPage() {
-  const search = useReportSearch()
+  const search = useReportSearch('this_week')
   const exp = useExport('control-audit', {})
   return (
     <Frame id="control-audit" exp={exp}>

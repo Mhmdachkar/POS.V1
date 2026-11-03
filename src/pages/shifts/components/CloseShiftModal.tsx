@@ -128,6 +128,7 @@ export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) 
             <BreakdownRow label={`− ${t(SHIFT_COPY.returnCash)}`} value={result.breakdown.return_cash_cfa} />
             <BreakdownRow label={`+ ${t(SHIFT_COPY.cashIn)}`} value={result.breakdown.cash_in_cfa ?? 0} />
             <BreakdownRow label={`− ${t(SHIFT_COPY.cashOut)}`} value={result.breakdown.cash_out_cfa ?? 0} />
+            <BreakdownRow label={`− ${t(SHIFT_COPY.supplierCashOut)}`} value={result.breakdown.supplier_cash_cfa ?? 0} />
             <div className="border-t border-border pt-1.5">
               <BreakdownRow label={t(SHIFT_COPY.expectedCash)} value={result.expected_cash_cfa} emphasis />
             </div>
@@ -172,6 +173,7 @@ export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) 
             <BreakdownRow label={`− ${t(SHIFT_COPY.returnCash)}`} value={shift.running.return_cash_cfa} />
             <BreakdownRow label={`+ ${t(SHIFT_COPY.cashIn)}`} value={shift.running.cash_in_cfa ?? 0} />
             <BreakdownRow label={`− ${t(SHIFT_COPY.cashOut)}`} value={shift.running.cash_out_cfa ?? 0} />
+            <BreakdownRow label={`− ${t(SHIFT_COPY.supplierCashOut)}`} value={shift.running.supplier_cash_cfa ?? 0} />
             <BreakdownRow label={t(SHIFT_COPY.estimatedExpected)} value={estimatedExpected} emphasis />
             {estimatedDiscrepancy !== null && (
               <BreakdownRow
@@ -193,6 +195,12 @@ export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) 
               {t(SHIFT_COPY.unshiftedNotInReconciliation)} {t(SHIFT_COPY.unshiftedOpenPeriod)}
             </p>
           </div>
+
+          {estimatedExpected < 0 && (
+            <p className="text-sm text-warning-foreground bg-warning-bg border border-warning/20 rounded-md px-3 py-2">
+              {t(SHIFT_COPY.negativeExpectedHint)}
+            </p>
+          )}
 
           <Input
             label={t(SHIFT_COPY.actualCashInDrawer)}

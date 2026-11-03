@@ -75,6 +75,8 @@ export interface ShiftRunningTotals {
   return_cash_cfa: number
   cash_in_cfa?: number
   cash_out_cfa?: number
+  /** Cash supplier payments + cash-paid BRs in the shift window. */
+  supplier_cash_cfa?: number
 }
 
 export interface ShiftDetailData extends ShiftListItem {
@@ -156,24 +158,35 @@ export function estimateExpectedCash(
     running.customer_pmts_cfa +
     (running.cash_in_cfa ?? 0) -
     running.return_cash_cfa -
-    (running.cash_out_cfa ?? 0)
+    (running.cash_out_cfa ?? 0) -
+    (running.supplier_cash_cfa ?? 0)
   )
 }
 
 export function invalidateAfterOpenShift(
-  queryClient: { invalidateQueries: (opts: { queryKey: readonly unknown[] }) => unknown },
+  queryClient: {
+    invalidateQueries: (opts: {
+      queryKey: readonly unknown[]
+      refetchType?: 'active' | 'inactive' | 'all' | 'none'
+    }) => unknown
+  },
 ) {
-  queryClient.invalidateQueries({ queryKey: shiftKeys.lists() })
-  queryClient.invalidateQueries({ queryKey: shiftKeys.open() })
+  queryClient.invalidateQueries({ queryKey: shiftKeys.lists(), refetchType: 'active' })
+  queryClient.invalidateQueries({ queryKey: shiftKeys.open(), refetchType: 'active' })
 }
 
 export function invalidateAfterCloseShift(
-  queryClient: { invalidateQueries: (opts: { queryKey: readonly unknown[] }) => unknown },
+  queryClient: {
+    invalidateQueries: (opts: {
+      queryKey: readonly unknown[]
+      refetchType?: 'active' | 'inactive' | 'all' | 'none'
+    }) => unknown
+  },
   shiftId: string,
 ) {
-  queryClient.invalidateQueries({ queryKey: shiftKeys.detail(shiftId) })
-  queryClient.invalidateQueries({ queryKey: shiftKeys.lists() })
-  queryClient.invalidateQueries({ queryKey: shiftKeys.open() })
+  queryClient.invalidateQueries({ queryKey: shiftKeys.detail(shiftId), refetchType: 'active' })
+  queryClient.invalidateQueries({ queryKey: shiftKeys.lists(), refetchType: 'active' })
+  queryClient.invalidateQueries({ queryKey: shiftKeys.open(), refetchType: 'active' })
 }
 
 function mapListRow(row: Record<string, unknown>): ShiftListItem {
@@ -207,6 +220,7 @@ export function emptyShiftRunningTotals(): ShiftRunningTotals {
     return_cash_cfa: 0,
     cash_in_cfa: 0,
     cash_out_cfa: 0,
+    supplier_cash_cfa: 0,
   }
 }
 
@@ -235,6 +249,7 @@ export async function fetchShiftRunningTotalsBatch(
     return_cash_cfa: number | string
     cash_in_cfa: number | string
     cash_out_cfa: number | string
+    supplier_cash_cfa?: number | string
   }>) {
     if (!row?.shift_id) continue
     out.set(row.shift_id, {
@@ -243,6 +258,7 @@ export async function fetchShiftRunningTotalsBatch(
       return_cash_cfa: Number(row.return_cash_cfa ?? 0),
       cash_in_cfa: Number(row.cash_in_cfa ?? 0),
       cash_out_cfa: Number(row.cash_out_cfa ?? 0),
+      supplier_cash_cfa: Number(row.supplier_cash_cfa ?? 0),
     })
   }
   return out
@@ -259,7 +275,8 @@ function enrichListWithExpected(
       running.customer_pmts_cfa +
       (running.cash_in_cfa ?? 0) -
       running.return_cash_cfa -
-      (running.cash_out_cfa ?? 0)
+      (running.cash_out_cfa ?? 0) -
+      (running.supplier_cash_cfa ?? 0)
     const expectedLive = estimateExpectedCash(row.opening_float_cfa, running)
     return {
       ...row,

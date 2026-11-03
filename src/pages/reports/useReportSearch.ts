@@ -5,18 +5,18 @@ import { useDepotStore } from '@/stores/depotStore'
 
 const PRESETS: ReportPreset[] = ['today', 'yesterday', 'this_week', 'this_month', 'custom']
 
-function asPreset(value: string | null): ReportPreset {
-  return PRESETS.includes(value as ReportPreset) ? (value as ReportPreset) : 'today'
+function asPreset(value: string | null, defaultPreset: ReportPreset): ReportPreset {
+  return PRESETS.includes(value as ReportPreset) ? (value as ReportPreset) : defaultPreset
 }
 
-export function useReportSearch() {
+export function useReportSearch(defaultPreset: ReportPreset = 'today') {
   const [params, setParams] = useSearchParams()
   const depotId = useDepotStore((s) => s.currentDepotId)
   const depotName = useDepotStore((s) => s.currentDepotName)
   const setCurrentDepot = useDepotStore((s) => s.setCurrentDepot)
   const availableDepots = useDepotStore((s) => s.availableDepots)
 
-  const preset = asPreset(params.get('preset'))
+  const preset = asPreset(params.get('preset'), defaultPreset)
   const from = params.get('from') ?? ''
   const to = params.get('to') ?? ''
   const cashier = params.get('cashier') ?? ''

@@ -61,6 +61,11 @@ export const SHIFT_COPY = {
   alreadyClosed: bi('Ce service est déjà fermé.', 'This shift is already closed.'),
   closeIrreversible: bi('Cette action est irréversible.', 'This cannot be undone.'),
   actualCashError: bi('Doit être ≥ 0.', 'Must be zero or greater.'),
+  supplierCashOut: bi('Règlements fournisseurs (espèces)', 'Supplier cash payments'),
+  negativeExpectedHint: bi(
+    'L’attendu peut être négatif (remboursements ou règlements plus élevés que le fond). Comptez les espèces réellement dans le tiroir (0 ou plus). L’écart = compté − attendu.',
+    'Expected cash can be negative when refunds or supplier cash exceed the float. Count the notes actually in the drawer (0 or more). Difference = counted − expected.',
+  ),
   noShiftsMatch: bi(
     'Aucun service ne correspond aux filtres.',
     'No shifts match your filters.',

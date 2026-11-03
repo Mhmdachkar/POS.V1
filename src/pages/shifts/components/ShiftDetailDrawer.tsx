@@ -186,6 +186,19 @@ export function ShiftDetailDrawer({ shiftId, onClose }: ShiftDetailDrawerProps) 
                   />
                 }
               />
+              <CashRow
+                label={t(SHIFT_COPY.supplierCashOut)}
+                value={
+                  <MoneyDisplay
+                    amount={
+                      (shift.running.supplier_cash_cfa ?? 0) === 0
+                        ? 0
+                        : -Math.abs(shift.running.supplier_cash_cfa ?? 0)
+                    }
+                    size="small"
+                  />
+                }
+              />
             </div>
 
             <div className="mt-3 rounded-md bg-surface-muted px-3 py-2 space-y-1">

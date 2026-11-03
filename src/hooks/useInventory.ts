@@ -21,7 +21,11 @@ import {
   findProductIdsMatchingNameOrSerial,
   nameOrSerialOrFilter,
 } from '@/lib/productSearch'
-import { markReportsAndDashboardStale, type CacheInvalidator } from '@/lib/cacheInvalidation'
+import {
+  markReportsAndDashboardStale,
+  refreshPosCatalogStock,
+  type CacheInvalidator,
+} from '@/lib/cacheInvalidation'
 import { CACHE_GC, CACHE_STALE, keepPlaceholderWhen } from '@/lib/cachePolicy'
 import {
   type InventoryListFilters,
@@ -336,6 +340,7 @@ export function invalidateAfterStockMutation(
   queryClient.invalidateQueries({ queryKey: inventoryKeys.stockActivities() })
   queryClient.invalidateQueries({ queryKey: productKeys.searches() })
   queryClient.invalidateQueries({ queryKey: productKeys.stockAlertsAll() })
+  refreshPosCatalogStock(queryClient)
   markReportsAndDashboardStale(queryClient)
 }
 

@@ -444,6 +444,9 @@ describe('price and stock invalidation', () => {
     expect(keys).toContainEqual([...inventoryKeys.stockActivities()])
     expect(keys).toContainEqual([...productKeys.searches()])
     expect(keys).toContainEqual([...productKeys.stockAlertsAll()])
+    expect(keys).toContainEqual([...productKeys.all])
+    expect(keys).toContainEqual(['inventory', 'list'])
+    expect(keys).toContainEqual(['inventory', 'stock-activity'])
   })
 
   it('invalidates list, catalog searches, and stock alerts after create — not products.all or reports', () => {
@@ -478,7 +481,7 @@ describe('price and stock invalidation', () => {
     expect(keys).toContainEqual([...productKeys.detail('prod-1')])
     expect(keys).toContainEqual([...productKeys.searches()])
     expect(keys).toContainEqual([...productKeys.stockAlertsAll()])
-    expect(keys).not.toContainEqual([...productKeys.all])
+    expect(keys).toContainEqual([...productKeys.all])
   })
 })
 

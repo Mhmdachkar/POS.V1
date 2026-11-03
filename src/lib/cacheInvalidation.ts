@@ -3,6 +3,10 @@ export interface CacheInvalidator {
     queryKey: readonly unknown[]
     refetchType?: 'active' | 'inactive' | 'all' | 'none'
   }) => unknown
+  refetchQueries?: (opts: {
+    queryKey: readonly unknown[]
+    type?: 'active' | 'inactive' | 'all'
+  }) => Promise<unknown>
 }
 
 /** Mark reports/dashboard stale; refetch only mounted observers (14B-2). */
@@ -16,6 +20,7 @@ export function refreshPosCatalogStock(queryClient: CacheInvalidator) {
   queryClient.invalidateQueries({ queryKey: ['products'], refetchType: 'active' })
   queryClient.invalidateQueries({ queryKey: ['inventory', 'list'], refetchType: 'active' })
   queryClient.invalidateQueries({ queryKey: ['inventory', 'stock-activity'], refetchType: 'active' })
+  void queryClient.refetchQueries?.({ queryKey: ['products', 'search'], type: 'active' })
 }
 
 export function invalidateAfterSaleSettled(

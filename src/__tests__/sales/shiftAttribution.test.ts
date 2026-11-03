@@ -126,6 +126,7 @@ describe('unshifted totals vs expected cash', () => {
     const running = { sales_cash_cfa: 200, customer_pmts_cfa: 0, return_cash_cfa: 0 }
     const expected = estimateExpectedCash(1000, running)
     expect(estimateExpectedCash(1000, { ...running, cash_in_cfa: 1500 })).toBe(2700)
+    expect(estimateExpectedCash(0, { ...running, sales_cash_cfa: 0, return_cash_cfa: 2500, supplier_cash_cfa: 2039 })).toBe(-4539)
     const unshifted = sumUnshiftedSales([{ total_cfa: 47000, status: 'completed' }])
     expect(expected).toBe(1200)
     expect(expected + unshifted.total_cfa).not.toBe(expected)

@@ -34,6 +34,26 @@ export function buildCustomerReceiptText(payload) {
   return lines.join('\r\n')
 }
 
+export function buildSupplierPaymentRgfText(payload) {
+  const lines = [
+    '=== SUPPLIER PAYMENT (RGF) ===',
+    payload.business_name ?? 'VHM POS',
+    payload.depot_name ?? '',
+    payload.receipt_number ?? '',
+    payload.created_at ?? '',
+    `Supplier: ${payload.supplier_name ?? '—'}`,
+    `Recorded by: ${payload.cashier_name ?? '—'}`,
+    '---',
+    `Amount ${formatCfa(payload.amount_cfa)}`,
+    `Method ${payload.method ?? '—'}`,
+  ]
+  if (payload.note?.trim()) lines.push(`Note ${payload.note.trim()}`)
+  if (payload.new_balance_owed_cfa != null) {
+    lines.push(`Balance owed ${formatCfa(payload.new_balance_owed_cfa)}`)
+  }
+  return lines.join('\r\n')
+}
+
 export function buildDepotOrderText(payload) {
   const lines = [
     '=== DEPOT ORDER ===',
@@ -55,6 +75,9 @@ export function buildDepotOrderText(payload) {
 export function renderJobText(job) {
   if (job.document_type === 'depot_order') {
     return buildDepotOrderText(job.payload)
+  }
+  if (job.document_type === 'supplier_payment_rgf') {
+    return buildSupplierPaymentRgfText(job.payload)
   }
   return buildCustomerReceiptText(job.payload)
 }
