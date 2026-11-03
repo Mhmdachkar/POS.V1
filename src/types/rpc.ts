@@ -84,6 +84,8 @@ export interface RecordPaymentParams {
   p_amount_cfa: number     // > 0
   p_shift_id?: string | null
   p_note?: string | null
+  /** cash counts in the shift drawer. mobile and bank do not. */
+  p_payment_method?: 'cash' | 'mobile' | 'bank'
 }
 
 export interface RecordPaymentResult {

@@ -24,6 +24,7 @@ import { exportOuiNon } from '@/lib/exportLabels'
 import { exportCfaInt } from '@/lib/tableExport'
 import { resolveReportDateRange } from '@/lib/reportDates'
 import { COMMON } from '@/lib/bilingual/common'
+import { CUSTOMERS } from '@/lib/bilingual/customers'
 import { PAYMENTS } from '@/lib/bilingual/payments'
 import {
   BiButtonInline,
@@ -46,6 +47,7 @@ const PAYMENT_EXPORT_COLUMNS: ExportColumn[] = [
   { header: 'Client' },
   { header: 'Enregistré par' },
   { header: 'Montant CFA', kind: 'money', total: true },
+  { header: 'Moyen' },
   { header: 'Inversé', kind: 'bool' },
   { header: 'Note' },
 ]
@@ -142,6 +144,13 @@ export function PaymentsPage() {
             p.customer_name ?? '',
             p.recorded_by_name ?? '',
             exportCfaInt(p.amount_cfa),
+            bilingualPlain(
+              p.payment_method === 'mobile'
+                ? CUSTOMERS.methodMobile
+                : p.payment_method === 'bank'
+                  ? CUSTOMERS.methodBank
+                  : CUSTOMERS.methodCash,
+            ),
             exportOuiNon(p.is_reversed),
             p.note ?? '',
           ],
@@ -317,6 +326,15 @@ export function PaymentsPage() {
                     size="small"
                     className={payment.is_reversed ? 'line-through text-text-muted' : undefined}
                   />
+                  <p className="text-xs text-text-muted">
+                    {t(
+                      payment.payment_method === 'mobile'
+                        ? CUSTOMERS.methodMobile
+                        : payment.payment_method === 'bank'
+                          ? CUSTOMERS.methodBank
+                          : CUSTOMERS.methodCash,
+                    )}
+                  </p>
                 </span>
                 <span className="min-w-0 flex flex-wrap items-center gap-1">
                   {payment.is_reversed ? (

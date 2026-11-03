@@ -412,6 +412,7 @@ export function useRecordPayment() {
       p_amount_cfa: number
       p_shift_id?: string | null
       p_note?: string | null
+      p_payment_method?: 'cash' | 'mobile' | 'bank'
     }) => {
       const result = await rpc.recordPayment(input)
       if (result.error) throw result.error
