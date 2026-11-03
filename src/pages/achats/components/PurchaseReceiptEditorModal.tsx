@@ -8,6 +8,7 @@ import { BiButtonStack, BiModalTitle, BiTableHeader } from '@/lib/bilingual/ui'
 import { t } from '@/lib/bilingual/types'
 import { parseError } from '@/lib/errors'
 import { formatCfaIntInput, formatThousandsInput, parseCFAInput, roundCfaInt } from '@/lib/formatters'
+import { localizedUnitLabel } from '@/lib/localizedUnits'
 import {
   rankAchatsProductHits,
   resolveNearestAchatsProduct,
@@ -492,7 +493,7 @@ export function PurchaseReceiptEditorModal({ open, onClose, onCreated }: Props) 
                     </span>
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{line.product_name}</p>
-                      <p className="text-[11px] text-text-muted truncate">{line.unit_name}</p>
+                      <p className="text-[11px] text-text-muted truncate">{localizedUnitLabel(line.unit_name, line.unit_level)}</p>
                     </div>
                     <input
                       className="w-full h-9 px-1.5 rounded-md border border-border text-sm tabular-nums"

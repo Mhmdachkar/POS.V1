@@ -22,6 +22,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { FORM_GUIDANCE } from '@/lib/bilingual/formGuidance'
 import { Button, FormActionGuide, LoadingButton, Modal } from '@/components/ui'
 import { formatPieces } from '@/lib/formatters'
+import { localizedUnitLabel } from '@/lib/localizedUnits'
 import { parseError } from '@/lib/errors'
 import { useDepotOptions } from '@/hooks/useInventory'
 import { useProductSearch } from '@/hooks/useProducts'
@@ -319,7 +320,7 @@ export function CreateTransferModal({
                 >
                   {(source?.units ?? [{ unit_level: 0, unit_name: 'Piece' }]).map((u) => (
                     <option key={u.unit_level} value={u.unit_level}>
-                      {u.unit_name}
+                      {localizedUnitLabel(u.unit_name, u.unit_level)}
                     </option>
                   ))}
                 </select>

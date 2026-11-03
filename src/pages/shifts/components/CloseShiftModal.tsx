@@ -117,7 +117,6 @@ export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) 
       open={open}
       onClose={handleDismiss}
       title={result ? t(SHIFT_COPY.shiftClosed) : t(SHIFT_COPY.closeShift)}
-      description={t(SHIFT_COPY.closeIrreversible)}
       size="sm"
     >
       {result ? (

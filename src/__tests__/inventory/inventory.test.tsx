@@ -1072,6 +1072,13 @@ describe('RestockModal mutation error path', () => {
   })
 })
 
+describe('AdjustmentModal copy', () => {
+  it('uses a real apostrophe on the apply button', () => {
+    expect(INVENTORY.applyAdjustment.fr).toBe("Appliquer l'ajustement")
+    expect(INVENTORY.applyAdjustment.fr.includes('\\')).toBe(false)
+  })
+})
+
 describe('AdjustmentModal mutation error path', () => {
   beforeEach(() => {
     vi.mocked(rpc.adjustInventory).mockReset()

@@ -106,6 +106,7 @@ describe('CloseShiftModal', () => {
     const { mutateAsync } = renderModal()
 
     expect(screen.getByText('Estimé')).toBeInTheDocument()
+    expect(screen.getAllByText(SHIFT_COPY.closeIrreversible.fr)).toHaveLength(1)
     const submit = screen.getByRole('button', { name: /Close [Ss]hift|Fermer le service|Clôturer le service/i })
     expect(submit).toBeDisabled()
 
@@ -141,7 +142,7 @@ describe('CloseShiftModal', () => {
       p_shift_id: 'sh-1',
       p_actual_cash_cfa: 8500,
     })
-    expect(await screen.findByText(SHIFT_COPY.shiftClosed.fr)).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: SHIFT_COPY.shiftClosed.fr })).toBeInTheDocument()
     expect(screen.getByText(SHIFT_COPY.expectedCash.fr)).toBeInTheDocument()
   })
 
@@ -193,7 +194,7 @@ describe('CloseShiftModal', () => {
     await user.click(screen.getByRole('checkbox'))
     await user.click(screen.getByRole('button', { name: /Close [Ss]hift|Fermer le service|Clôturer le service/i }))
 
-    expect(await screen.findByText(SHIFT_COPY.shiftClosed.fr)).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: SHIFT_COPY.shiftClosed.fr })).toBeInTheDocument()
     expect(screen.getByText(SHIFT_COPY.expectedCash.fr)).toBeInTheDocument()
     expect(screen.getAllByText(spanWithText(formatCFA(8500))).length).toBeGreaterThan(0)
     expect(screen.getByText(spanWithText(`2 ventes · ${formatCFA(5000)}`))).toBeInTheDocument()

@@ -15,6 +15,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Button, FormActionGuide, LoadingButton } from '@/components/ui'
 import { BilingualText } from '@/components/ui/BilingualText'
 import { formatPieces } from '@/lib/formatters'
+import { localizedUnitLabel } from '@/lib/localizedUnits'
 import { parseError } from '@/lib/errors'
 import { guidanceStepsFromFieldErrors } from '@/lib/formSubmitGuidance'
 import {
@@ -169,8 +170,8 @@ export function AdjustmentModal({ open, onClose, product }: AdjustmentModalProps
           >
             {product.units.map((unit) => (
               <option key={unit.id} value={unit.unit_level}>
-                {unit.unit_name} (×{unit.conversion_to_base}{' '}
-                {product.units[0]?.unit_name ?? 'pieces'})
+                {localizedUnitLabel(unit.unit_name, unit.unit_level)} (×{unit.conversion_to_base}{' '}
+                {localizedUnitLabel(product.units[0]?.unit_name, 0)})
               </option>
             ))}
           </select>
