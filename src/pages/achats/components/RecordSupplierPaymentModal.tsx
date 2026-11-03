@@ -11,8 +11,8 @@ import { useDepotStore } from '@/stores/depotStore'
 import { cn } from '@/lib/cn'
 import { rpc } from '@/lib/rpc'
 import { supplierPaymentAmountIssue } from '@/lib/supplierPaymentAmount'
-import { toastErrorFromCode, toastSuccessBi } from '@/lib/bilingual/toast'
-import { wakeLocalPrintAgent } from '@/lib/printAgentWake'
+import { toastErrorBi, toastErrorFromCode, toastSuccessBi } from '@/lib/bilingual/toast'
+import { acknowledgePrintQueue } from '@/lib/printAgentWake'
 
 interface Props {
   open: boolean
@@ -118,7 +118,9 @@ export function RecordSupplierPaymentModal({ open, onClose, supplier }: Props) {
         toastErrorFromCode(result.error.code, result.error.details)
         return
       }
-      wakeLocalPrintAgent()
+      const feedback = await acknowledgePrintQueue()
+      if (feedback === 'queued') toastSuccessBi(ACHATS.printQueued)
+      else toastErrorBi(ACHATS.printAgentOffline)
     } finally {
       setPrinting(false)
     }

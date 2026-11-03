@@ -42,7 +42,7 @@ describe('auditEventSummary', () => {
     expect(text).not.toContain('proforma')
   })
 
-  it('shows client, amount, and receipt on a payment', () => {
+  it('shows client, amount, receipt, and payment method on a payment', () => {
     const text = bilingualPlain(auditEventSummary(row({
       action: 'record_payment',
       entity_type: 'payment',
@@ -50,11 +50,23 @@ describe('auditEventSummary', () => {
         customer_name: 'Kone',
         amount_cfa: 2500,
         receipt_number: 'RGF-9',
+        payment_method: 'mobile',
       },
     })))
     expect(text).toContain('Kone')
     expect(text).toContain('RGF-9')
+    expect(text).toContain('Paiement mobile')
     expect(text).toMatch(/2[\s\u202f\u00a0]500/)
+  })
+
+  it('shows the proforma number on create_proforma instead of only the entity type', () => {
+    const text = bilingualPlain(auditEventSummary(row({
+      action: 'create_proforma',
+      entity_type: 'proforma',
+      after_value: { number: 'PF-00000012', total_cfa: 1500 },
+    })))
+    expect(text).toContain('PF-00000012')
+    expect(text).not.toMatch(/Proforma créé · Proforma$/)
   })
 
   it('shows the adjustment reason and the cash-movement note', () => {

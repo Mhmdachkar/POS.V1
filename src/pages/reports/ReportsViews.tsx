@@ -86,7 +86,7 @@ const LEGACY_TAB: Record<ReportId, ReportTabId> = {
 }
 
 function useExport(id: ReportId, extra: Record<string, unknown>) {
-  const search = useReportSearch()
+  const search = useReportSearch(reportById(id).defaultPreset ?? 'today')
   const ctx = {
     tab: LEGACY_TAB[id],
     stamp: `${search.range.startDate}_${search.range.endDate}`,
@@ -613,7 +613,7 @@ export function StockTransfersPage() {
 }
 
 export function ControlAuditPage() {
-  const search = useReportSearch('this_week')
+  const search = useReportSearch(reportById('control-audit').defaultPreset ?? 'this_week')
   const exp = useExport('control-audit', {})
   return (
     <Frame id="control-audit" exp={exp}>

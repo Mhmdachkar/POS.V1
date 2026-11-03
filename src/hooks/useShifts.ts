@@ -62,7 +62,9 @@ export interface ShiftListItem {
    */
   shift_cash_activity_cfa?: number | null
   /**
-   * Expected drawer cash: always live estimate excluding voided sales.
+   * Expected drawer cash shown in the list.
+   * Open shifts: live estimate (voids + supplier cash).
+   * Closed shifts: snapshot written at close (`expected_cash_cfa`).
    */
   expected_display_cfa?: number | null
   /** Cash from non-voided sales only (for « dont ventes »). */
@@ -264,7 +266,7 @@ export async function fetchShiftRunningTotalsBatch(
   return out
 }
 
-function enrichListWithExpected(
+export function enrichListWithExpected(
   rows: ShiftListItem[],
   runningById: Map<string, ShiftRunningTotals>,
 ): ShiftListItem[] {
@@ -278,16 +280,13 @@ function enrichListWithExpected(
       (running.cash_out_cfa ?? 0) -
       (running.supplier_cash_cfa ?? 0)
     const expectedLive = estimateExpectedCash(row.opening_float_cfa, running)
+    const closed = row.status === 'closed'
     return {
       ...row,
       shift_cash_activity_cfa: activity,
       shift_sales_cash_cfa: running.sales_cash_cfa,
-      // Always exclude voided sales (live), including closed shifts.
-      expected_display_cfa: expectedLive,
-      discrepancy_cfa:
-        row.status === 'closed' && row.actual_cash_cfa != null
-          ? row.actual_cash_cfa - expectedLive
-          : row.discrepancy_cfa,
+      expected_display_cfa: closed ? (row.expected_cash_cfa ?? expectedLive) : expectedLive,
+      discrepancy_cfa: row.discrepancy_cfa,
     }
   })
 }
@@ -510,6 +509,7 @@ export function applyCashMovementToShiftCaches(
       ...page,
       data: page.data.map((row) => {
         if (row.id !== movement.shift_id) return row
+        if (row.status === 'closed') return row
         const base = row.expected_display_cfa ?? row.expected_cash_cfa ?? row.opening_float_cfa
         return {
           ...row,

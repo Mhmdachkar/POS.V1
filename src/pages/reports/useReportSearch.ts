@@ -5,8 +5,13 @@ import { useDepotStore } from '@/stores/depotStore'
 
 const PRESETS: ReportPreset[] = ['today', 'yesterday', 'this_week', 'this_month', 'custom']
 
-function asPreset(value: string | null, defaultPreset: ReportPreset): ReportPreset {
+export function reportPresetFromParam(value: string | null, defaultPreset: ReportPreset): ReportPreset {
   return PRESETS.includes(value as ReportPreset) ? (value as ReportPreset) : defaultPreset
+}
+
+/** Omit the URL param only for this report's default, so "today" stays explicit on Contrôle. */
+export function reportUrlPreset(value: ReportPreset, defaultPreset: ReportPreset): string | null {
+  return value === defaultPreset ? null : value
 }
 
 export function useReportSearch(defaultPreset: ReportPreset = 'today') {
@@ -16,7 +21,7 @@ export function useReportSearch(defaultPreset: ReportPreset = 'today') {
   const setCurrentDepot = useDepotStore((s) => s.setCurrentDepot)
   const availableDepots = useDepotStore((s) => s.availableDepots)
 
-  const preset = asPreset(params.get('preset'), defaultPreset)
+  const preset = reportPresetFromParam(params.get('preset'), defaultPreset)
   const from = params.get('from') ?? ''
   const to = params.get('to') ?? ''
   const cashier = params.get('cashier') ?? ''
@@ -66,7 +71,7 @@ export function useReportSearch(defaultPreset: ReportPreset = 'today') {
     depotName,
     range,
     setPreset: (value: ReportPreset) => patch({
-      preset: value === 'today' ? null : value,
+      preset: reportUrlPreset(value, defaultPreset),
       from: value === 'custom' ? from || range.startDate : null,
       to: value === 'custom' ? to || range.endDate : null,
     }),

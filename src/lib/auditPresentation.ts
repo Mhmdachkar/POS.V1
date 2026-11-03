@@ -330,9 +330,16 @@ export function auditEventSummary(row: AuditLogRow, units?: UnitLike[] | null): 
     const amount = num(after.amount_cfa)
     const who = str(after.customer_name)
     const receipt = str(after.receipt_number)
+    const method = auditPaymentMethodLabel(
+      str(after.payment_method) ?? str(after.method),
+    )
     return bi(
-      [action.fr, who, amount != null ? formatCFA(amount) : null, receipt].filter(Boolean).join(' · '),
-      [action.en, who, amount != null ? formatCFA(amount) : null, receipt].filter(Boolean).join(' · '),
+      [action.fr, method ? bilingualPlain(method) : null, who, amount != null ? formatCFA(amount) : null, receipt]
+        .filter(Boolean)
+        .join(' · '),
+      [action.en, method ? bilingualPlain(method) : null, who, amount != null ? formatCFA(amount) : null, receipt]
+        .filter(Boolean)
+        .join(' · '),
     )
   }
 
@@ -342,22 +349,6 @@ export function auditEventSummary(row: AuditLogRow, units?: UnitLike[] | null): 
     const suffix = auditSuffixParts([
       receiptNo,
       refund != null ? formatCFA(refund) : null,
-    ])
-    return bi(
-      `${action.fr}${suffix ? ` · ${suffix}` : ''}`,
-      `${action.en}${suffix ? ` · ${suffix}` : ''}`,
-    )
-  }
-
-  if (row.action === 'record_payment' && after) {
-    const amount = num(after.amount_cfa)
-    const method = auditPaymentMethodLabel(
-      str(after.payment_method) ?? str(after.method),
-    )
-    const suffix = auditSuffixParts([
-      method ? bilingualPlain(method) : null,
-      amount != null ? formatCFA(amount) : null,
-      str(after.receipt_number),
     ])
     return bi(
       `${action.fr}${suffix ? ` · ${suffix}` : ''}`,
@@ -396,21 +387,12 @@ export function auditEventSummary(row: AuditLogRow, units?: UnitLike[] | null): 
     return action
   }
 
-  if (row.action === 'record_payment' && after) {
-    const amount = num(after.amount_cfa)
-    const method = str(after.payment_method)
-    const methodLabel =
-      method === 'mobile'
-        ? bi('Paiement mobile', 'Mobile')
-        : method === 'bank'
-          ? bi('Banque', 'Bank')
-          : method === 'cash'
-            ? bi('Espèces', 'Cash')
-            : null
-    const amountBit = amount != null ? ` · ${formatCFA(amount)}` : ''
+  if (row.action === 'create_proforma' && after) {
+    const number = str(after.number)
+    const total = num(after.total_cfa)
     return bi(
-      `${action.fr}${amountBit}${methodLabel ? ` · ${methodLabel.fr}` : ''}`,
-      `${action.en}${amountBit}${methodLabel ? ` · ${methodLabel.en}` : ''}`,
+      [action.fr, number, total != null ? formatCFA(total) : null].filter(Boolean).join(' · '),
+      [action.en, number, total != null ? formatCFA(total) : null].filter(Boolean).join(' · '),
     )
   }
 

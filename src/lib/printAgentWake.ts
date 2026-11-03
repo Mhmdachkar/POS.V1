@@ -71,3 +71,15 @@ export async function wakeLocalPrintAgent(port = DEFAULT_PORT): Promise<void> {
     /* agent optional */
   })
 }
+
+export type PrintQueueFeedback = 'queued' | 'offline'
+
+/** After a print job is enqueued: wake if online, otherwise report the agent is down. */
+export async function acknowledgePrintQueue(port = DEFAULT_PORT): Promise<PrintQueueFeedback> {
+  const next = await refreshPrintAgentStatus(port)
+  if (next === 'online') {
+    void wakeLocalPrintAgent(port)
+    return 'queued'
+  }
+  return 'offline'
+}
