@@ -173,11 +173,11 @@ describe('Admin gates and copy', () => {
     expect(screen.queryByRole('button', { name: INVENTORY.addProduct.fr })).not.toBeInTheDocument()
   })
 
-  it('hides product admin mutations in All Depots', () => {
+  it('shows product admin mutations in All Depots', () => {
     depotState.currentDepotId = null
     wrap(<ProductDetailDrawer productId="p1" onClose={() => undefined} />)
-    expect(screen.queryByRole('button', { name: /modifier le produit|edit product/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /désactiver le produit|deactivate product/i })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /modifier le produit|edit product/i }).length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: /désactiver le produit|deactivate product/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /réapprovisionner|restock/i })).toBeInTheDocument()
   })
 })

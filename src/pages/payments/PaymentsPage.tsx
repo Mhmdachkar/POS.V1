@@ -117,6 +117,7 @@ export function PaymentsPage() {
   const payments = data?.data ?? []
   const totalCount = data?.count ?? 0
   const totalPages = Math.ceil(totalCount / pageSize)
+  const showInitialSkeleton = isLoading && !data
 
   async function handleExport(kind: 'csv' | 'xlsx') {
     try {
@@ -179,7 +180,7 @@ export function PaymentsPage() {
                 type="button"
                 variant="secondary"
                 size="sm"
-                disabled={totalCount === 0}
+                disabled={!data || totalCount === 0}
                 onClick={() => void handleExport('csv')}
               >
                 <BiButtonInline {...COMMON.exportCsv} />
@@ -188,7 +189,7 @@ export function PaymentsPage() {
                 type="button"
                 variant="secondary"
                 size="sm"
-                disabled={totalCount === 0}
+                disabled={!data || totalCount === 0}
                 onClick={() => void handleExport('xlsx')}
               >
                 <BiButtonInline {...COMMON.exportXlsx} />
@@ -210,7 +211,8 @@ export function PaymentsPage() {
               setShowReversed(value === 'including')
               setPage(0)
             }}
-            count={totalCount}
+            count={data?.count}
+            countLoading={!data}
           />
           <DatePresetFilter
             className="mt-3"
@@ -238,8 +240,22 @@ export function PaymentsPage() {
       </div>
 
       <div className="flex-1 min-w-0 overflow-x-auto overflow-y-auto">
-        {isLoading ? (
-          <TableSkeleton />
+        {showInitialSkeleton ? (
+          <>
+            <div className="sticky top-0 bg-surface-muted border-b border-border z-[1]">
+              <div className={cn('grid gap-4 px-4 py-2 items-center', PAYMENTS_GRID)}>
+                <BiTableHeader {...COMMON.date} />
+                <BiTableHeader {...COMMON.customer} />
+                <BiTableHeader {...PAYMENTS.recordedBy} />
+                <span className="text-right">
+                  <BiTableHeader {...PAYMENTS.amount} />
+                </span>
+                <BiTableHeader {...COMMON.status} />
+                <BiTableHeader {...PAYMENTS.colNote} />
+              </div>
+            </div>
+            <TableSkeleton />
+          </>
         ) : isError ? (
           <div className="p-8">
             <EmptyState

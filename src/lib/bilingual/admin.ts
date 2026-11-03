@@ -17,6 +17,10 @@ export const ADMIN = {
   failedCategories: bi('Impossible de charger les catégories', 'Failed to load categories'),
   noCategories: bi('Aucune catégorie', 'No categories yet'),
   deactivateCategory: bi('Désactiver la catégorie ?', 'Deactivate category?'),
+  deactivateCategoryBlocked: bi(
+    'Bloqué si cette catégorie a des sous-catégories ou produits actifs. Les produits ne sont pas désactivés en cascade.',
+    'Blocked if this category has active children or active products. Products are not cascade-deactivated.',
+  ),
   reactivateCategory: bi('Réactiver la catégorie ?', 'Reactivate category?'),
   reactivate: bi('Réactiver', 'Reactivate'),
   reactivateCategoryMessage: bi('Seule cette catégorie est réactivée.', 'Only this category is reactivated.'),
@@ -38,6 +42,11 @@ export const ADMIN = {
     depotId: bi('Réf. dépôt', 'Depot ref.'),
   },
   allDepotsIncludesGlobal: bi('Tous les dépôts (avec événements globaux)', 'All depots (incl. global)'),
+  depotEventsOnly: (name: string) =>
+    bi(`${name} — événements de ce dépôt uniquement`, `${name} — events for this depot only`),
+  unnamedDepot: bi('Dépôt', 'Depot'),
+  auditEventCount: (n: number) =>
+    bi(`${n} événement${n !== 1 ? 's' : ''}`, `${n} event${n !== 1 ? 's' : ''}`),
   auditLog: bi("Journal d'audit", 'Audit log'),
   auditDesc: bi('Historique des actions · admin', 'Action history · admin'),
   failedAudit: bi("Impossible de charger le journal", 'Failed to load audit log'),

@@ -127,6 +127,8 @@ export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) 
             <BreakdownRow label={`+ ${t(SHIFT_COPY.salesCash)}`} value={result.breakdown.sales_cash_cfa} />
             <BreakdownRow label={`+ ${t(SHIFT_COPY.customerPayments)}`} value={result.breakdown.customer_pmts_cfa} />
             <BreakdownRow label={`− ${t(SHIFT_COPY.returnCash)}`} value={result.breakdown.return_cash_cfa} />
+            <BreakdownRow label={`+ ${t(SHIFT_COPY.cashIn)}`} value={result.breakdown.cash_in_cfa ?? 0} />
+            <BreakdownRow label={`− ${t(SHIFT_COPY.cashOut)}`} value={result.breakdown.cash_out_cfa ?? 0} />
             <div className="border-t border-border pt-1.5">
               <BreakdownRow label={t(SHIFT_COPY.expectedCash)} value={result.expected_cash_cfa} emphasis />
             </div>
@@ -169,6 +171,8 @@ export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) 
             <BreakdownRow label={`+ ${t(SHIFT_COPY.salesCash)}`} value={shift.running.sales_cash_cfa} />
             <BreakdownRow label={`+ ${t(SHIFT_COPY.customerPayments)}`} value={shift.running.customer_pmts_cfa} />
             <BreakdownRow label={`− ${t(SHIFT_COPY.returnCash)}`} value={shift.running.return_cash_cfa} />
+            <BreakdownRow label={`+ ${t(SHIFT_COPY.cashIn)}`} value={shift.running.cash_in_cfa ?? 0} />
+            <BreakdownRow label={`− ${t(SHIFT_COPY.cashOut)}`} value={shift.running.cash_out_cfa ?? 0} />
             <BreakdownRow label={t(SHIFT_COPY.estimatedExpected)} value={estimatedExpected} emphasis />
             {estimatedDiscrepancy !== null && (
               <BreakdownRow
@@ -210,7 +214,7 @@ export function CloseShiftModal({ open, onClose, shift }: CloseShiftModalProps) 
               className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary/20"
             />
             <span className="text-sm text-text-secondary leading-snug">
-              Je comprends que ce service sera fermé et ne pourra pas être rouvert.
+              {t(SHIFT_COPY.closeConfirmCheck)}
             </span>
           </label>
 

@@ -95,6 +95,7 @@ export function ShiftsPage() {
   const shifts = data?.data ?? []
   const totalCount = data?.count ?? 0
   const totalPages = Math.ceil(totalCount / SHIFT_PAGE_SIZE)
+  const showInitialSkeleton = isLoading && !data
   const hasOvernightOpen = useMemo(
     () => shifts.some((s) => s.status === 'open' && isOvernightOpenShift(s.opened_at)),
     [shifts],
@@ -141,7 +142,8 @@ export function ShiftsPage() {
             chips={statusChips()}
             activeChip={statusFilter ?? 'all'}
             onChipChange={handleChipChange}
-            count={totalCount}
+            count={data?.count}
+            countLoading={!data}
           />
           {hasOvernightOpen && (
             <div
@@ -155,7 +157,7 @@ export function ShiftsPage() {
       </div>
 
       <div className="flex-1 min-w-0 overflow-x-auto overflow-y-auto">
-        {isLoading ? (
+        {showInitialSkeleton ? (
           <TableSkeleton showDepot={showDepot} />
         ) : isError ? (
           <div className="p-8">

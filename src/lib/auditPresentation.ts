@@ -1,5 +1,6 @@
 import { ADMIN } from '@/lib/bilingual/admin'
 import { INVENTORY } from '@/lib/bilingual/inventory'
+import { SHIFT_COPY } from '@/lib/bilingual/shift'
 import { bi, bilingualPlain, type BilingualPair } from '@/lib/bilingual/types'
 import { formatCFA, formatPieces } from '@/lib/formatters'
 import {
@@ -54,6 +55,7 @@ export const AUDIT_ACTION_LABELS: Record<string, BilingualPair> = {
   cancel_transfer: bi('Transfert annulé', 'Transfer cancelled'),
   open_shift: bi('Service ouvert', 'Shift opened'),
   close_shift: bi('Service fermé', 'Shift closed'),
+  record_cash_movement: bi('Mouvement de caisse', 'Cash movement'),
   create_customer: bi('Client créé', 'Customer created'),
   update_customer: bi('Client modifié', 'Customer updated'),
   deactivate_customer: bi('Client désactivé', 'Customer deactivated'),
@@ -310,6 +312,17 @@ export function auditEventSummary(row: AuditLogRow, units?: UnitLike[] | null): 
 
   if (row.action === 'release_sale_fulfillment') {
     return action
+  }
+
+  if (row.action === 'record_cash_movement' && after) {
+    const amount = num(after.amount_cfa)
+    const direction = str(after.direction)
+    const dirLabel =
+      direction === 'out' ? SHIFT_COPY.cashOut : SHIFT_COPY.cashIn
+    return bi(
+      `${dirLabel.fr}${amount != null ? ` · ${formatCFA(amount)}` : ''}`,
+      `${dirLabel.en}${amount != null ? ` · ${formatCFA(amount)}` : ''}`,
+    )
   }
 
   const entity = auditEntityLabel(row.entity_type)

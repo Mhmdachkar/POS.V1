@@ -82,6 +82,17 @@ describe('FilterBar', () => {
     expect(onChipChange).toHaveBeenCalledTimes(1)
     expect(onChipChange).toHaveBeenCalledWith('open')
   })
+
+  it('does not flash 0 while the count is still loading', () => {
+    render(
+      <FilterBar
+        chips={[{ value: 'all', label: 'All' }]}
+        activeChip="all"
+        countLoading
+      />,
+    )
+    expect(screen.queryByText('0')).not.toBeInTheDocument()
+  })
 })
 
 describe('Tabs', () => {

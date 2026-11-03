@@ -102,7 +102,7 @@ export function formatShiftTimeRange(
 ): string {
   if (!openedAt) return '—'
   const start = formatTime(openedAt)
-  if (!closedAt) return `${start}–open`
+  if (!closedAt) return `${start}–${bilingualPlain(SHIFT_COPY.openRangeSuffix)}`
   const sameDay = formatDate(openedAt) === formatDate(closedAt)
   const end = sameDay ? formatTime(closedAt) : `${formatDate(closedAt)} ${formatTime(closedAt)}`
   return `${start}–${end}`

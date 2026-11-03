@@ -177,6 +177,17 @@ export interface StockTransferItem {
   quantity_pieces: number
 }
 
+export interface ShiftCashMovement {
+  id: string
+  shift_id: string
+  depot_id: string
+  direction: 'in' | 'out'
+  amount_cfa: number
+  note: string
+  recorded_by: string
+  recorded_at: string
+}
+
 export interface Shift {
   id: string
   depot_id: string
@@ -394,6 +405,7 @@ export interface Database {
       stock_transfers: { Row: StockTransfer }
       stock_transfer_items: { Row: StockTransferItem }
       shifts: { Row: Shift }
+      shift_cash_movements: { Row: ShiftCashMovement }
       customers: { Row: Customer }
       sales: { Row: Sale }
       sale_items: { Row: SaleItem }
@@ -445,6 +457,30 @@ export interface Database {
       }
       customer_displayed_balances: {
         Args: { p_customer_ids: string[] }
+        Returns: unknown
+      }
+      shift_running_totals_batch: {
+        Args: { p_shift_ids: string[] }
+        Returns: unknown
+      }
+      list_customer_payments: {
+        Args: {
+          p_search?: string | null
+          p_include_reversed?: boolean
+          p_start_at?: string | null
+          p_end_at?: string | null
+          p_limit?: number
+          p_offset?: number
+        }
+        Returns: unknown
+      }
+      record_cash_movement: {
+        Args: {
+          p_shift_id: string
+          p_direction: string
+          p_amount_cfa: number
+          p_note: string
+        }
         Returns: unknown
       }
       staff_display_names: {

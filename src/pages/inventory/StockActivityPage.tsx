@@ -242,7 +242,8 @@ export function StockActivityPage() {
               setTransactionType(value === 'all' ? 'all' : (value as InventoryTransactionType))
               setPage(0)
             }}
-            count={totalCount}
+            count={data?.count}
+            countLoading={!data}
             rightSlot={
               <Select
                 aria-label={bilingualAriaLabel(INVENTORY.dateRange)}

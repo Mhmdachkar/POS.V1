@@ -26,6 +26,12 @@ jobs:
       - name: RPC signatures vs migrations
         run: node scripts/check-rpc-signatures.mjs
 
+      - name: Schema migration filenames (and remote drift when secrets exist)
+        run: node scripts/check-schema-drift.mjs
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+
       - name: French locale parity
         run: npx vitest run src/__tests__/i18n/frenchParity.test.ts
 

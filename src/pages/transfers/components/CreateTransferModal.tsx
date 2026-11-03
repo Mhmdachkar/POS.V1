@@ -214,7 +214,7 @@ export function CreateTransferModal({
               htmlFor="transfer-from-depot"
               className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5"
             >
-              Source depot
+              {t(TRANSFERS.sourceDepot)}
             </label>
             <select
               id="transfer-from-depot"
@@ -223,7 +223,7 @@ export function CreateTransferModal({
               disabled={sourceLocked || isPending}
               className="w-full h-9 px-3 rounded-md border border-border bg-surface text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-70"
             >
-              {!sourceLocked && <option value="">Select source…</option>}
+              {!sourceLocked && <option value="">{t(TRANSFERS.selectSource)}</option>}
               {(sourceLocked
                 ? activeDepots.filter((d) => d.id === fromDepotId)
                 : activeDepots
@@ -240,7 +240,7 @@ export function CreateTransferModal({
               htmlFor="transfer-to-depot"
               className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5"
             >
-              Destination depot
+              {t(TRANSFERS.destDepot)}
             </label>
             <select
               id="transfer-to-depot"
@@ -249,7 +249,7 @@ export function CreateTransferModal({
               disabled={isPending}
               className="w-full h-9 px-3 rounded-md border border-border bg-surface text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
             >
-              <option value="">Select destination…</option>
+              <option value="">{t(TRANSFERS.selectDestination)}</option>
               {destDepotOptions.map((depot) => (
                 <option key={depot.id} value={depot.id}>
                   {depot.name}
@@ -261,7 +261,7 @@ export function CreateTransferModal({
 
         <div className="space-y-2">
           <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">
-            Items
+            {t(TRANSFERS.lines)}
           </p>
           {lines.map((line) => {
             const source = (sourceProducts ?? []).find((p) => p.id === line.from_product_id)
@@ -283,7 +283,7 @@ export function CreateTransferModal({
                   disabled={!fromDepotId || isPending}
                   className="h-9 px-2 rounded-md border border-border bg-surface text-sm text-text-primary"
                 >
-                  <option value="">Source product…</option>
+                  <option value="">{t(TRANSFERS.selectSourceProduct)}</option>
                   {(sourceProducts ?? []).map((product) => (
                     <option
                       key={product.id}
@@ -302,7 +302,7 @@ export function CreateTransferModal({
                   disabled={!toDepotId || isPending}
                   className="h-9 px-2 rounded-md border border-border bg-surface text-sm text-text-primary"
                 >
-                  <option value="">Destination product…</option>
+                  <option value="">{t(TRANSFERS.selectDestProduct)}</option>
                   {(destProducts ?? []).map((product) => (
                     <option key={product.id} value={product.id}>
                       {product.name}
@@ -362,13 +362,13 @@ export function CreateTransferModal({
             disabled={isPending}
           >
             <Plus className="h-3.5 w-3.5" />
-            Add line
+            {t(TRANSFERS.addLine)}
           </Button>
         </div>
 
         <div>
           <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
-            Note (optional)
+            {t(CUSTOMERS.noteOptional)}
           </label>
           <input
             value={note}
@@ -386,10 +386,10 @@ export function CreateTransferModal({
 
         <div className="flex gap-3 justify-end">
           <Button type="button" variant="secondary" onClick={onClose} disabled={isPending}>
-            Close
+            {t(COMMON.close)}
           </Button>
           <LoadingButton type="submit" loading={isPending}>
-            Create Draft
+            {t(TRANSFERS.createDraft)}
           </LoadingButton>
         </div>
       </form>

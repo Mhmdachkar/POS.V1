@@ -268,7 +268,8 @@ export function CustomersPage() {
             chips={filterChips}
             activeChip={filter}
             onChipChange={(value) => handleFilterChange(value as CustomerListFilter)}
-            count={totalCount}
+            count={data?.count}
+            countLoading={!data}
           />
         </div>
       </div>

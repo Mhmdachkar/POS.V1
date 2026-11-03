@@ -128,12 +128,12 @@ describe('CreateTransferModal', () => {
     const { mutateAsync, onCreated } = renderModal()
     mutateAsync.mockResolvedValue({ transfer_id: 'tr-new' })
 
-    await user.selectOptions(screen.getByRole('combobox', { name: /source depot/i }), 'depot-a')
-    await user.selectOptions(screen.getByRole('combobox', { name: /destination depot/i }), 'depot-b')
+    await user.selectOptions(screen.getByRole('combobox', { name: /dépôt source|source depot/i }), 'depot-a')
+    await user.selectOptions(screen.getByRole('combobox', { name: /dépôt destination|destination depot/i }), 'depot-b')
     await user.selectOptions(screen.getByLabelText(TRANSFERS.sourceProductAria.fr), 'src-water')
     await user.selectOptions(screen.getByLabelText(TRANSFERS.destProductAria.fr), 'dst-water')
     await user.type(screen.getByLabelText(TRANSFERS.quantityAria.fr), '3')
-    await user.click(screen.getByRole('button', { name: /create draft/i }))
+    await user.click(screen.getByRole('button', { name: /créer le brouillon|create draft/i }))
 
     expect(mutateAsync).toHaveBeenCalledWith({
       p_from_depot_id: 'depot-a',
@@ -153,7 +153,7 @@ describe('CreateTransferModal', () => {
   it('locks source depot for depot staff', () => {
     useAuthStore.setState({ staff: depotStaff(), session: null, isLoading: false })
     renderModal()
-    const source = screen.getByRole('combobox', { name: /source depot/i })
+    const source = screen.getByRole('combobox', { name: /dépôt source|source depot/i })
     expect(source).toBeDisabled()
     expect(source).toHaveValue('depot-a')
   })
@@ -162,10 +162,10 @@ describe('CreateTransferModal', () => {
     const user = userEvent.setup()
     const { mutateAsync } = renderModal()
 
-    await user.selectOptions(screen.getByRole('combobox', { name: /source depot/i }), 'depot-a')
-    await user.selectOptions(screen.getByRole('combobox', { name: /destination depot/i }), 'depot-b')
+    await user.selectOptions(screen.getByRole('combobox', { name: /dépôt source|source depot/i }), 'depot-a')
+    await user.selectOptions(screen.getByRole('combobox', { name: /dépôt destination|destination depot/i }), 'depot-b')
     await user.selectOptions(screen.getByLabelText(TRANSFERS.sourceProductAria.fr), 'src-water')
-    await user.click(screen.getByRole('button', { name: /add line/i }))
+    await user.click(screen.getByRole('button', { name: /ajouter une ligne|add line/i }))
 
     const sourceSelects = screen.getAllByLabelText(TRANSFERS.sourceProductAria.fr)
     expect(sourceSelects[1].querySelector('option[value="src-water"]')).toHaveAttribute('disabled')
@@ -180,12 +180,12 @@ describe('CreateTransferModal', () => {
       message: ERROR_MESSAGES.DUPLICATE_TRANSFER_LINE,
     })
 
-    await user.selectOptions(screen.getByRole('combobox', { name: /source depot/i }), 'depot-a')
-    await user.selectOptions(screen.getByRole('combobox', { name: /destination depot/i }), 'depot-b')
+    await user.selectOptions(screen.getByRole('combobox', { name: /dépôt source|source depot/i }), 'depot-a')
+    await user.selectOptions(screen.getByRole('combobox', { name: /dépôt destination|destination depot/i }), 'depot-b')
     await user.selectOptions(screen.getByLabelText(TRANSFERS.sourceProductAria.fr), 'src-water')
     await user.selectOptions(screen.getByLabelText(TRANSFERS.destProductAria.fr), 'dst-water')
     await user.type(screen.getByLabelText(TRANSFERS.quantityAria.fr), '1')
-    await user.click(screen.getByRole('button', { name: /create draft/i }))
+    await user.click(screen.getByRole('button', { name: /créer le brouillon|create draft/i }))
 
     expect(
       await screen.findByText(messageForCodePlain('DUPLICATE_TRANSFER_LINE'), { exact: false }),

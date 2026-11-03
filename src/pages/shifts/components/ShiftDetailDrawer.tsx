@@ -12,18 +12,20 @@ import { useState, type ReactNode } from 'react'
 import { SHIFT_COPY } from '@/lib/bilingual/shift'
 import { COMMON } from '@/lib/bilingual/common'
 import { BiButtonStack, BiModalTitle as BiSectionTitle } from '@/lib/bilingual/ui'
-import { DoorClosed } from 'lucide-react'
+import { Banknote, DoorClosed } from 'lucide-react'
 import { Button, Drawer, MoneyDisplay, ShiftStatusBadge, Skeleton } from '@/components/ui'
 import { formatDateTime, formatMoney, formatShortId } from '@/lib/formatters'
 import { cn } from '@/lib/cn'
 import {
   canCloseShift,
   estimateExpectedCash,
+  useShiftCashMovements,
   useShiftDetail,
 } from '@/hooks/useShifts'
 import { useUnshiftedSalesForShiftWindow } from '@/hooks/useSales'
 import { formatShiftTimeRange } from '@/lib/shiftAttribution'
 import { useAuthStore } from '@/stores/authStore'
+import { CashMovementModal } from './CashMovementModal'
 import { CloseShiftModal } from './CloseShiftModal'
 import { t } from '@/lib/bilingual/types'
 
@@ -86,8 +88,10 @@ interface ShiftDetailDrawerProps {
 
 export function ShiftDetailDrawer({ shiftId, onClose }: ShiftDetailDrawerProps) {
   const [showClose, setShowClose] = useState(false)
+  const [showCash, setShowCash] = useState(false)
   const staff = useAuthStore((s) => s.staff)
   const { data: shift, isLoading, isError } = useShiftDetail(shiftId)
+  const { data: cashMoves } = useShiftCashMovements(shiftId)
   const { data: unshifted } = useUnshiftedSalesForShiftWindow(
     shift
       ? { cashierId: shift.cashier_id, openedAt: shift.opened_at, closedAt: shift.closed_at }
@@ -160,6 +164,23 @@ export function ShiftDetailDrawer({ shiftId, onClose }: ShiftDetailDrawerProps) 
                       shift.running.return_cash_cfa === 0
                         ? 0
                         : -Math.abs(shift.running.return_cash_cfa)
+                    }
+                    size="small"
+                  />
+                }
+              />
+              <CashRow
+                label={t(SHIFT_COPY.cashIn)}
+                value={<MoneyDisplay amount={shift.running.cash_in_cfa ?? 0} size="small" />}
+              />
+              <CashRow
+                label={t(SHIFT_COPY.cashOut)}
+                value={
+                  <MoneyDisplay
+                    amount={
+                      (shift.running.cash_out_cfa ?? 0) === 0
+                        ? 0
+                        : -Math.abs(shift.running.cash_out_cfa ?? 0)
                     }
                     size="small"
                   />
@@ -245,10 +266,40 @@ export function ShiftDetailDrawer({ shiftId, onClose }: ShiftDetailDrawerProps) 
             )}
             <DetailRow label={t(SHIFT_COPY.shiftId)} value={formatShortId(shift.id)} mono />
 
+            <SectionHeader title={<BiSectionTitle {...SHIFT_COPY.cashMovement} />} />
+            {(cashMoves ?? []).length === 0 ? (
+              <p className="text-sm text-text-muted">{t(SHIFT_COPY.noCashMovements)}</p>
+            ) : (
+              <div className="space-y-1 mb-2">
+                {(cashMoves ?? []).map((move) => (
+                  <div key={move.id} className="flex items-start justify-between gap-3 text-sm py-1">
+                    <div className="min-w-0">
+                      <p className="font-medium text-text-primary">
+                        {t(move.direction === 'in' ? SHIFT_COPY.cashIn : SHIFT_COPY.cashOut)}
+                      </p>
+                      <p className="text-xs text-text-secondary break-words">{move.note}</p>
+                    </div>
+                    <MoneyDisplay
+                      amount={move.direction === 'out' ? -Math.abs(move.amount_cfa) : move.amount_cfa}
+                      size="small"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
             {canClose && (
               <>
                 <SectionHeader title={<BiSectionTitle {...COMMON.actions} />} />
                 <div className="space-y-2">
+                  <Button
+                    variant="secondary"
+                    className="w-full gap-2"
+                    onClick={() => setShowCash(true)}
+                  >
+                    <Banknote className="h-4 w-4" />
+                    <BiButtonStack {...SHIFT_COPY.cashMovement} />
+                  </Button>
                   <Button
                     variant="primary"
                     className="w-full gap-2"
@@ -269,6 +320,13 @@ export function ShiftDetailDrawer({ shiftId, onClose }: ShiftDetailDrawerProps) 
           open={showClose}
           onClose={() => setShowClose(false)}
           shift={shift}
+        />
+      )}
+      {shift && (
+        <CashMovementModal
+          open={showCash}
+          onClose={() => setShowCash(false)}
+          shiftId={shift.id}
         />
       )}
     </>

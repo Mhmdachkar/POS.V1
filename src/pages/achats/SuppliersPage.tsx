@@ -119,7 +119,8 @@ export function SuppliersPage() {
               search={search}
               onSearchChange={setSearch}
               searchPlaceholder={bilingualPlain(ACHATS.searchPlaceholder)}
-              count={data?.count ?? 0}
+              count={data?.count}
+              countLoading={!data}
             />
           </div>
         </div>

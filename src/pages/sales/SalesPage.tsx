@@ -349,7 +349,8 @@ export function SalesPage() {
             chips={statusFilterChips()}
             activeChip={statusFilter ?? 'all'}
             onChipChange={handleChipChange}
-            count={totalCount}
+            count={data?.count}
+            countLoading={!data}
           />
           <DatePresetFilter
             className="mt-3"

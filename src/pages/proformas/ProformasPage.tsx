@@ -226,7 +226,8 @@ export function ProformasPage() {
             search={search}
             onSearchChange={setSearch}
             searchPlaceholder={bilingualPlain(PROFORMAS.searchPlaceholder)}
-            count={totalCount}
+            count={data?.count}
+            countLoading={!data}
           />
           <DatePresetFilter
             className="mt-3"

@@ -24,7 +24,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { rpc } from '@/lib/rpc'
-import { fetchStaffDisplayNameMap } from '@/lib/staffDisplayNames'
 import { parseError } from '@/lib/errors'
 import { CACHE_STALE } from '@/lib/cachePolicy'
 import type { Customer, Payment } from '@/types/database'
@@ -197,68 +196,31 @@ export async function fetchPaymentList(
   params: PaymentListParams,
 ): Promise<{ data: Array<Payment & { customer_name: string | null; recorded_by_name: string | null }>; count: number }> {
   const { page, pageSize, customerSearch, showReversed, startDate, endDate } = params
-  const from = page * pageSize
-  const to = from + pageSize - 1
 
-  // If filtering by customer name, first resolve matching customer IDs.
-  // PostgREST does not support filtering on embedded resource columns directly.
-  let customerIdFilter: string[] | null = null
-  if (customerSearch.trim()) {
-    const { data: matching } = await supabase
-      .from('customers')
-      .select('id')
-      .ilike('name', `%${customerSearch.trim()}%`)
-      .limit(200)
-    customerIdFilter = (matching ?? []).map((c: any) => c.id)
-    // If no matching customers, return empty result immediately
-    if (customerIdFilter.length === 0) {
-      return { data: [], count: 0 }
-    }
-  }
-
-  let q = supabase
-    .from('payments')
-    .select('*, customers(name)', { count: 'exact' })
-    .eq('payment_type', 'customer_payment')
-
-  if (!showReversed) {
-    q = q.eq('is_reversed', false)
-  }
-
-  if (customerIdFilter !== null) {
-    q = q.in('customer_id', customerIdFilter)
-  }
-
-  if (startDate) {
-    q = q.gte('recorded_at', `${startDate}T00:00:00.000Z`)
-  }
-
-  if (endDate) {
-    q = q.lte('recorded_at', `${endDate}T23:59:59.999Z`)
-  }
-
-  const { data, error, count } = await q
-    .order('recorded_at', { ascending: false })
-    .range(from, to)
+  const { data, error } = await (supabase.rpc as any)('list_customer_payments', {
+    p_search: customerSearch.trim() || null,
+    p_include_reversed: showReversed,
+    p_start_at: startDate ? `${startDate}T00:00:00.000Z` : null,
+    p_end_at: endDate ? `${endDate}T23:59:59.999Z` : null,
+    p_limit: pageSize,
+    p_offset: page * pageSize,
+  })
   if (error) throw error
 
-  // Flatten join
-  const rows = ((data ?? []) as any[]).map((p: any) => ({
-    ...p,
-    customer_name: p.customers?.name ?? null,
-    recorded_by_name: null,
-    customers: undefined,
-  }))
-
-  const recorderIds = [...new Set(rows.map((p) => p.recorded_by).filter(Boolean))] as string[]
-  if (recorderIds.length > 0) {
-    const byId = await fetchStaffDisplayNameMap(recorderIds)
-    for (const row of rows) {
-      row.recorded_by_name = byId.get(row.recorded_by) ?? null
-    }
+  const payload = (data ?? {}) as {
+    count?: number
+    rows?: Array<Payment & { customer_name: string | null; recorded_by_name: string | null }>
   }
-
-  return { data: rows, count: count ?? 0 }
+  const rows = Array.isArray(payload.rows) ? payload.rows : []
+  return {
+    data: rows.map((p) => ({
+      ...p,
+      amount_cfa: Number(p.amount_cfa),
+      customer_name: p.customer_name ?? null,
+      recorded_by_name: p.recorded_by_name ?? null,
+    })),
+    count: Number(payload.count ?? 0),
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -333,7 +295,7 @@ export function useCustomerPayments(customerId: string | null) {
 
 /**
  * usePaymentList — paginated customer_payment list for the /payments page.
- * Depot isolation is enforced by the payments RLS policy (Phase 6 amendment).
+ * Depot isolation is enforced inside list_customer_payments (SECURITY DEFINER).
  */
 export function usePaymentList(params: PaymentListParams) {
   return useQuery({

@@ -17,6 +17,7 @@ export const AUDIT_ACTIONS = [
   'cancel_transfer',
   'open_shift',
   'close_shift',
+  'record_cash_movement',
   'create_customer',
   'update_customer',
   'deactivate_customer',

@@ -45,90 +45,35 @@ function buildCatalog(): PaymentRow[] {
   return Array.from({ length: 40 }, (_, i) => makePayment(i))
 }
 
-function createPaymentsFrom(allRows: PaymentRow[]) {
-  const calls: string[] = []
-  let filtered = [...allRows]
-  let range: [number, number] | null = null
-  let table = 'payments'
-
-  const builder: Record<string, unknown> = {}
-
-  builder.select = (...args: unknown[]) => {
-    calls.push(`${table}:select:${JSON.stringify(args[1] ?? {})}`)
-    if (table === 'payments') {
-      filtered = [...allRows]
-      range = null
+function mockPaymentList(allRows: PaymentRow[]) {
+  const calls: Record<string, unknown>[] = []
+  vi.mocked(supabase.rpc).mockImplementation((name: string, params: Record<string, unknown> = {}) => {
+    if (name !== 'list_customer_payments') {
+      return Promise.resolve({ data: null, error: null })
     }
-    return builder
-  }
-  builder.order = (col: unknown) => {
-    calls.push(`${table}:order:${String(col)}`)
-    return builder
-  }
-  builder.eq = (col: unknown, val: unknown) => {
-    calls.push(`${table}:eq:${String(col)}:${String(val)}`)
-    if (table === 'payments') {
-      filtered = filtered.filter((r) => r[String(col)] === val)
+    calls.push(params)
+    let rows = allRows.filter((r) => r.payment_type === 'customer_payment')
+    if (!params.p_include_reversed) rows = rows.filter((r) => !r.is_reversed)
+    if (params.p_search) {
+      const q = String(params.p_search).toLowerCase()
+      rows = rows.filter((r) => (r.customers?.name ?? '').toLowerCase().includes(q))
     }
-    return builder
-  }
-  builder.ilike = (col: unknown, val: unknown) => {
-    calls.push(`${table}:ilike:${String(col)}:${String(val)}`)
-    return builder
-  }
-  builder.in = (col: unknown, vals: unknown) => {
-    const ids = vals as string[]
-    calls.push(`${table}:in:${String(col)}:${ids.join(',')}`)
-    if (table === 'payments') {
-      filtered = filtered.filter((r) => ids.includes(String(r[String(col)])))
+    if (params.p_start_at) {
+      rows = rows.filter((r) => r.recorded_at >= String(params.p_start_at))
     }
-    return builder
-  }
-  builder.limit = (n: unknown) => {
-    calls.push(`${table}:limit:${String(n)}`)
-    return builder
-  }
-  builder.range = (from: unknown, to: unknown) => {
-    calls.push(`${table}:range:${from}-${to}`)
-    range = [Number(from), Number(to)]
-    return builder
-  }
-  builder.gte = (col: unknown, val: unknown) => {
-    calls.push(`${table}:gte:${String(col)}:${String(val)}`)
-    return builder
-  }
-  builder.lte = (col: unknown, val: unknown) => {
-    calls.push(`${table}:lte:${String(col)}:${String(val)}`)
-    return builder
-  }
-
-  const execute = () => {
-    if (table === 'customers') {
-      // Customer name search stub — return matching ids from payment catalog names
-      const names = new Map<string, string>()
-      for (const row of allRows) {
-        const name = row.customers?.name
-        if (name) names.set(row.customer_id, name)
-      }
-      const data = [...names.entries()].map(([id, name]) => ({ id, name }))
-      return Promise.resolve({ data, error: null, count: data.length })
+    if (params.p_end_at) {
+      rows = rows.filter((r) => r.recorded_at <= String(params.p_end_at))
     }
-
-    const count = filtered.length
-    const page = range ? filtered.slice(range[0], range[1] + 1) : filtered
-    return Promise.resolve({ data: page, error: null, count })
-  }
-
-  builder.then = (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) =>
-    execute().then(resolve, reject)
-
-  function from(name: string) {
-    table = name
-    calls.push(`from:${name}`)
-    return builder
-  }
-
-  return { from, calls, builder }
+    const offset = Number(params.p_offset ?? 0)
+    const limit = Number(params.p_limit ?? 30)
+    const page = rows.slice(offset, offset + limit).map((p) => ({
+      ...p,
+      customer_name: p.customers?.name ?? null,
+      recorded_by_name: null,
+    }))
+    return Promise.resolve({ data: { count: rows.length, rows: page }, error: null })
+  })
+  return { calls }
 }
 
 function renderPayments() {
@@ -146,12 +91,11 @@ describe('PaymentsPage (13E-C)', () => {
   const catalog = buildCatalog()
 
   beforeEach(() => {
-    vi.mocked(supabase.from).mockReset()
+    vi.mocked(supabase.rpc).mockReset()
+    mockPaymentList(catalog)
   })
 
   it('renders Customer Payments heading and exact persistent description', async () => {
-    const { from } = createPaymentsFrom(catalog)
-    vi.mocked(supabase.from).mockImplementation(from as never)
     renderPayments()
 
     expect(
@@ -173,8 +117,6 @@ describe('PaymentsPage (13E-C)', () => {
   })
 
   it('never renders the old depot-isolation caption alongside populated rows', async () => {
-    const { from } = createPaymentsFrom(catalog)
-    vi.mocked(supabase.from).mockImplementation(from as never)
     renderPayments()
 
     expect(await screen.findByText('John Doe')).toBeInTheDocument()
@@ -188,8 +130,6 @@ describe('PaymentsPage (13E-C)', () => {
   })
 
   it('shows SearchInput, reversed chips, and FilterBar count', async () => {
-    const { from } = createPaymentsFrom(catalog)
-    vi.mocked(supabase.from).mockImplementation(from as never)
     renderPayments()
 
     expect(await screen.findByPlaceholderText(PAYMENTS.searchCustomer.fr)).toBeInTheDocument()
@@ -203,8 +143,6 @@ describe('PaymentsPage (13E-C)', () => {
   })
 
   it('keeps Date / Customer / Amount / Status / Note columns and omits method/sale UI', async () => {
-    const { from } = createPaymentsFrom(catalog)
-    vi.mocked(supabase.from).mockImplementation(from as never)
     renderPayments()
 
     await screen.findByText('John Doe')
@@ -223,8 +161,6 @@ describe('PaymentsPage (13E-C)', () => {
   })
 
   it('renders amounts with MoneyDisplay small', async () => {
-    const { from } = createPaymentsFrom(catalog)
-    vi.mocked(supabase.from).mockImplementation(from as never)
     renderPayments()
 
     await screen.findByText('John Doe')
@@ -240,8 +176,6 @@ describe('PaymentsPage (13E-C)', () => {
   })
 
   it('rows remain non-clickable', async () => {
-    const { from } = createPaymentsFrom(catalog)
-    vi.mocked(supabase.from).mockImplementation(from as never)
     renderPayments()
 
     const name = await screen.findByText('John Doe')
@@ -253,22 +187,19 @@ describe('PaymentsPage (13E-C)', () => {
   })
 
   it('queries only customer_payment and excludes reversed by default', async () => {
-    const { from, calls } = createPaymentsFrom(catalog)
-    vi.mocked(supabase.from).mockImplementation(from as never)
+    const { calls } = mockPaymentList(catalog)
     renderPayments()
 
     await screen.findByText('John Doe')
-    expect(calls).toContain('payments:eq:payment_type:customer_payment')
-    expect(calls).toContain('payments:eq:is_reversed:false')
-    expect(calls.some((c) => c.includes('sale_payment'))).toBe(false)
-    expect(calls.some((c) => c.startsWith('payments:gte:recorded_at:'))).toBe(false)
-    expect(calls.some((c) => c.startsWith('payments:lte:recorded_at:'))).toBe(false)
+    expect(calls[0]?.p_include_reversed).toBe(false)
+    expect(calls[0]?.p_search).toBeNull()
+    expect(calls[0]?.p_start_at).toBeNull()
+    expect(calls[0]?.p_end_at).toBeNull()
   })
 
   it('shows date chips unselected by default and applies yesterday when chosen', async () => {
     const user = userEvent.setup()
-    const { from, calls } = createPaymentsFrom(catalog)
-    vi.mocked(supabase.from).mockImplementation(from as never)
+    const { calls } = mockPaymentList(catalog)
     renderPayments()
 
     await screen.findByText('John Doe')
@@ -276,16 +207,14 @@ describe('PaymentsPage (13E-C)', () => {
     calls.length = 0
     await user.click(screen.getByRole('button', { name: COMMON.yesterday.fr }))
     await waitFor(() => {
-      expect(calls.some((c) => c.startsWith('payments:gte:recorded_at:'))).toBe(true)
-      expect(calls.some((c) => c.startsWith('payments:lte:recorded_at:'))).toBe(true)
+      expect(calls.some((c) => c.p_start_at != null && c.p_end_at != null)).toBe(true)
     })
     expect(screen.getByRole('button', { name: COMMON.yesterday.fr })).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('Showing reversed removes the is_reversed filter while keeping customer_payment', async () => {
     const user = userEvent.setup()
-    const { from, calls } = createPaymentsFrom(catalog)
-    vi.mocked(supabase.from).mockImplementation(from as never)
+    const { calls } = mockPaymentList(catalog)
     renderPayments()
 
     await screen.findByText('John Doe')
@@ -296,15 +225,13 @@ describe('PaymentsPage (13E-C)', () => {
     )
 
     await waitFor(() => {
-      expect(calls).toContain('payments:eq:payment_type:customer_payment')
+      expect(calls.some((c) => c.p_include_reversed === true)).toBe(true)
     })
-    expect(calls).not.toContain('payments:eq:is_reversed:false')
   })
 
   it('search is immediate and filters by customer name', async () => {
     const user = userEvent.setup()
-    const { from, calls } = createPaymentsFrom(catalog)
-    vi.mocked(supabase.from).mockImplementation(from as never)
+    const { calls } = mockPaymentList(catalog)
     renderPayments()
 
     await screen.findByText('John Doe')
@@ -313,8 +240,7 @@ describe('PaymentsPage (13E-C)', () => {
     await user.type(screen.getByPlaceholderText(/Customer name|Nom du client/i), 'John')
 
     await waitFor(() => {
-      expect(calls.some((c) => c.startsWith('from:customers'))).toBe(true)
+      expect(calls.some((c) => String(c.p_search ?? '').includes('John'))).toBe(true)
     })
-    expect(calls.some((c) => c.includes('ilike:name:%John%'))).toBe(true)
   })
 })
