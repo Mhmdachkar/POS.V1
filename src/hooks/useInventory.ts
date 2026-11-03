@@ -407,6 +407,26 @@ export async function fetchInventoryList(
   }
 }
 
+/** One server round trip for the inventory page and its Excel export. */
+export async function fetchInventoryPage(
+  filters: InventoryListFilters,
+): Promise<InventoryListResult> {
+  const result = await rpc.listInventoryPage({
+    p_depot_id: filters.depotId,
+    p_search: filters.search.trim() || null,
+    p_category_id: filters.categoryId,
+    p_stock_status: filters.stockStatus,
+    p_limit: filters.pageSize,
+    p_offset: filters.page * filters.pageSize,
+  })
+  if (result.error) throw result.error
+  const payload = result.data ?? { count: 0, rows: [] }
+  return {
+    data: (payload.rows ?? []).map(mapProductRow),
+    count: Number(payload.count ?? 0),
+  }
+}
+
 export async function fetchInventoryActivity(
   productId: string,
 ): Promise<InventoryActivityRow[]> {
@@ -423,6 +443,7 @@ export async function fetchInventoryActivity(
     (row) => ({
       ...row,
       staff_name: row.staff?.full_name ?? null,
+      stock_after: row.stock_after == null ? null : Number(row.stock_after),
     }),
   )
 }
@@ -449,6 +470,7 @@ function mapStockActivityRow(row: StockActivityQueryRow): StockActivityRow {
     product_is_active: product?.is_active !== false,
     depot_name: depot?.name ?? null,
     depot_code: depot?.code ?? null,
+    stock_after: rest.stock_after == null ? null : Number(rest.stock_after),
   }
 }
 
@@ -547,7 +569,7 @@ export function useInventoryList(filters: InventoryListFilters) {
 
   return useQuery({
     queryKey: inventoryKeys.list(queryFilters),
-    queryFn: () => fetchInventoryList(queryFilters),
+    queryFn: () => fetchInventoryPage(queryFilters),
     staleTime: CACHE_STALE.operational,
     placeholderData: keepPlaceholderWhen((prevKey) => {
       const prev = prevKey[2] as InventoryListFilters | undefined

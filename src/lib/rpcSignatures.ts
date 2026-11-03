@@ -15,6 +15,15 @@ export const RPC_SIGNATURES = {
   close_shift: ['p_shift_id'],
   record_cash_movement: ['p_shift_id', 'p_direction', 'p_amount_cfa', 'p_note'],
   shift_running_totals_batch: ['p_shift_ids'],
+  list_inventory_page: [
+    'p_depot_id',
+    'p_search',
+    'p_category_id',
+    'p_stock_status',
+    'p_limit',
+    'p_offset',
+  ],
+  get_sale_detail: ['p_sale_id'],
   list_customer_payments: [
     'p_search',
     'p_include_reversed',

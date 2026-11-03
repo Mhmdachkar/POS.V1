@@ -527,6 +527,23 @@ export const rpc = {
 
   customerLedger: (customerId: string): Promise<RpcResult<CustomerLedgerRpcRow[]>> =>
     callRpc('customer_ledger', { p_customer_id: customerId }),
+
+  listInventoryPage: (params: {
+    p_depot_id: string | null
+    p_search: string | null
+    p_category_id: string | null
+    p_stock_status: string
+    p_limit: number
+    p_offset: number
+  }): Promise<RpcResult<{ count: number; rows: Record<string, unknown>[] }>> =>
+    callRpc('list_inventory_page', params),
+
+  getSaleDetail: (saleId: string): Promise<RpcResult<{
+    sale: Record<string, unknown>
+    items: unknown[]
+    returns: unknown[]
+    payments: unknown[]
+  }>> => callRpc('get_sale_detail', { p_sale_id: saleId }),
 } as const
 
 export interface CustomerLedgerRpcRow {

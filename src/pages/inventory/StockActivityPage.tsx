@@ -174,13 +174,20 @@ function ActivityRow({
           )}
         </Badge>
       </span>
-      <span
-        className={cn(
-          'text-sm font-semibold tabular-nums text-right',
-          positive ? 'text-success-foreground' : 'text-danger-foreground',
+      <span className="text-right">
+        <span
+          className={cn(
+            'block text-sm font-semibold tabular-nums',
+            positive ? 'text-success-foreground' : 'text-danger-foreground',
+          )}
+        >
+          {formatSignedPieces(row.quantity_pieces)}
+        </span>
+        {row.stock_after != null && (
+          <span className="block text-xs text-text-muted tabular-nums">
+            {t(INVENTORY.stockAfter)} {formatPieces(row.stock_after)}
+          </span>
         )}
-      >
-        {formatSignedPieces(row.quantity_pieces)}
       </span>
       <span className="text-sm text-text-muted truncate min-w-0">
         {detail ?? '—'}
