@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { ymdInDisplayTimeZone } from '@/lib/formatters'
 import { supabase } from '@/lib/supabase'
 import { useDepotStore } from '@/stores/depotStore'
 
@@ -30,16 +31,16 @@ interface PendingFulfillmentRow {
   created_at: string
 }
 
-function startOfTodayUtc(): string {
-  const d = new Date()
-  return `${d.toISOString().slice(0, 10)}T00:00:00.000Z`
+/** Start of the shop day. Africa/Abidjan is UTC+0, so the bound is that calendar midnight. */
+export function startOfShopToday(now: Date = new Date()): string {
+  return `${ymdInDisplayTimeZone(now)}T00:00:00.000Z`
 }
 
 export async function fetchDepotOverview(depotId: string): Promise<{
   metrics: DepotOverviewMetrics
   pendingSaleIds: string[]
 }> {
-  const todayStart = startOfTodayUtc()
+  const todayStart = startOfShopToday()
 
   const [pendingRes, releasedRes, productsRes] = await Promise.all([
     supabase

@@ -3,10 +3,12 @@ import {
   formatDateTime,
   formatMoney,
   formatThousandsInput,
+  formatTime,
   isNegativeMoneyDraft,
   MINUS_SIGN,
   parseCFAInput,
 } from '@/lib/formatters'
+import { startOfShopToday } from '@/hooks/useDepotOverview'
 import { useLocaleStore } from '@/stores/localeStore'
 
 describe('formatThousandsInput', () => {
@@ -62,5 +64,12 @@ describe('formatDateTime', () => {
   it('renders French dates in Africa/Abidjan', () => {
     useLocaleStore.setState({ locale: 'fr' })
     expect(formatDateTime('2026-10-26T22:31:00.000Z')).toBe('26 oct. 2026, 22:31')
+  })
+
+  it('keeps a late Abidjan clock even when the browser is ahead of UTC', () => {
+    useLocaleStore.setState({ locale: 'fr' })
+    expect(formatTime('2026-11-02T23:51:00.000Z')).toBe('23:51')
+    expect(formatDateTime('2026-11-02T23:51:00.000Z')).toBe('2 nov. 2026, 23:51')
+    expect(startOfShopToday(new Date('2026-11-02T23:30:00.000Z'))).toBe('2026-11-02T00:00:00.000Z')
   })
 })
