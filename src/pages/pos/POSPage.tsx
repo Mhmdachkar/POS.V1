@@ -18,6 +18,7 @@ import { APP_BUSINESS_FALLBACK } from '@/lib/formatters'
 import { CategoryRail } from '@/components/pos/CategoryRail'
 import { ProductGrid } from '@/components/pos/ProductGrid'
 import { CartPanel } from '@/components/pos/CartPanel'
+import { PrintAgentBadge } from '@/components/pos/PrintAgentBadge'
 import { PaymentPanel } from '@/components/pos/PaymentPanel'
 import { FastEntryPanel } from '@/components/pos/FastEntryPanel'
 import { PosStockProvider } from '@/components/pos/PosStockProvider'
@@ -152,6 +153,7 @@ export function POSPage() {
   return (
     <PosStockProvider products={catalogQuery.data}>
       <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-background no-print">
+        <PrintAgentBadge />
         {/* Mobile workspace tabs — full-height panes instead of 50/50 stack */}
         <div
           role="tablist"

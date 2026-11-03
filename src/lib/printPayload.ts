@@ -41,7 +41,7 @@ export interface PrintJobPayload {
   items: PrintPayloadLine[]
 }
 
-export type PrintJobStatus = 'queued' | 'claimed' | 'sent' | 'failed'
+export type PrintJobStatus = 'queued' | 'claimed' | 'sent' | 'failed' | 'skipped'
 export type PrintDestination = 'cashier' | 'depot'
 export type PrintDocumentType = 'customer_receipt' | 'depot_order'
 
