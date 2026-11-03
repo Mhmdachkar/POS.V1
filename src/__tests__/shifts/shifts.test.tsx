@@ -7,6 +7,7 @@ import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import {
+  applyCashMovementToShiftCaches,
   authorizedOpenShifts,
   canAccessShifts,
   canCloseShift,
@@ -221,6 +222,49 @@ describe('shift helpers', () => {
     expect(canCloseShift(cashierStaff(), openShift('x', 'depot-a'))).toBe(true)
     expect(canCloseShift(cashierStaff(), openShift('x', 'depot-b'))).toBe(false)
     expect(canCloseShift(cashierStaff(), { ...openShift(), status: 'closed' })).toBe(false)
+  })
+
+  it('updates only the affected shift after a cash movement', () => {
+    const client = new QueryClient()
+    const listKey = shiftKeys.list({ depotId: null, status: null, page: 0, pageSize: 30 })
+    client.setQueryData(listKey, {
+      data: [
+        { ...openShift('sh-1'), opening_float_cfa: 1000, expected_display_cfa: 1000, shift_cash_activity_cfa: 0 },
+        { ...openShift('sh-2'), opening_float_cfa: 500, expected_display_cfa: 500, shift_cash_activity_cfa: 0 },
+      ],
+      count: 2,
+    })
+    client.setQueryData(shiftKeys.detail('sh-1'), {
+      ...openShift('sh-1'),
+      opening_float_cfa: 1000,
+      running: {
+        sales_cash_cfa: 0,
+        customer_pmts_cfa: 0,
+        return_cash_cfa: 0,
+        cash_in_cfa: 0,
+        cash_out_cfa: 0,
+      },
+    })
+    client.setQueryData([...shiftKeys.detail('sh-1'), 'cash-movements'], [])
+
+    applyCashMovementToShiftCaches(client, {
+      movement_id: 'mov-1',
+      shift_id: 'sh-1',
+      direction: 'out',
+      amount_cfa: 200,
+      note: 'banque',
+    })
+
+    const list = client.getQueryData<{ data: ShiftListItem[] }>(listKey)
+    expect(list?.data.find((row) => row.id === 'sh-1')?.expected_display_cfa).toBe(800)
+    expect(list?.data.find((row) => row.id === 'sh-2')?.expected_display_cfa).toBe(500)
+    const detail = client.getQueryData<{ running: { cash_out_cfa: number }; expected_display_cfa: number }>(
+      shiftKeys.detail('sh-1'),
+    )
+    expect(detail?.running.cash_out_cfa).toBe(200)
+    expect(detail?.expected_display_cfa).toBe(800)
+    const moves = client.getQueryData<Array<{ id: string }>>([...shiftKeys.detail('sh-1'), 'cash-movements'])
+    expect(moves?.map((row) => row.id)).toEqual(['mov-1'])
   })
 
   it('invalidates list + open keys after open/close', () => {

@@ -620,6 +620,7 @@ export function useSaleDetail(id: string | null) {
     queryFn:  () => fetchSaleDetail(id!),
     enabled:  !!id,
     staleTime: CACHE_STALE.salesDetail,
+    placeholderData: keepPlaceholderWhen((prevKey) => prevKey[2] === id),
   })
 }
 
