@@ -11,6 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { embedOne } from '@/lib/embed'
 import { fillCashierNames } from '@/lib/staffDisplayNames'
 import { supabase } from '@/lib/supabase'
+import { rpc } from '@/lib/rpc'
 import { invalidateAfterSaleSettled } from '@/lib/cacheInvalidation'
 import { CACHE_STALE, keepPlaceholderWhen } from '@/lib/cachePolicy'
 import { sumUnshiftedSales, type ShiftFilter, type UnshiftedSalesTotals } from '@/lib/shiftAttribution'
@@ -446,53 +447,13 @@ export async function fetchSalesListForExport(
 }
 
 export async function fetchSaleDetail(id: string): Promise<SaleDetailData> {
-  const [saleRes, itemsRes, returnsRes, paymentsRes] = await Promise.all([
-    supabase
-      .from('sales')
-      .select(
-        `
-        *,
-        customers!customer_id(name, phone, balance_owed_cfa),
-        staff!cashier_id(full_name, role),
-        sale_fulfillments(
-          status,
-          released_at,
-          released_by,
-          depot_id,
-          created_at,
-          released_by_staff:staff!sale_fulfillments_released_by_fkey(full_name)
-        ),
-        ${SALE_SHIFT_EMBED}
-        `,
-      )
-      .eq('id', id)
-      .single(),
-    supabase
-      .from('sale_items')
-      .select(
-        `
-        *,
-        products!product_id(name, product_units(unit_level, unit_name, serial_number))
-        `,
-      )
-      .eq('sale_id', id)
-      .order('id'),
-    supabase
-      .from('sale_returns')
-      .select(`*, sale_return_items(*)`)
-      .eq('sale_id', id)
-      .order('created_at'),
-    supabase
-      .from('payments')
-      .select('*')
-      .eq('sale_id', id)
-      .order('recorded_at'),
-  ])
-
-  if (saleRes.error) throw saleRes.error
-  if (itemsRes.error) throw itemsRes.error
-  if (returnsRes.error) throw returnsRes.error
-  if (paymentsRes.error) throw paymentsRes.error
+  const payload = await rpc.getSaleDetail(id)
+  if (payload.error) throw payload.error
+  const saleRes = { data: payload.data?.sale ?? null }
+  const itemsRes = { data: payload.data?.items ?? [] }
+  const returnsRes = { data: payload.data?.returns ?? [] }
+  const paymentsRes = { data: payload.data?.payments ?? [] }
+  if (!saleRes.data) throw new Error('Sale not found')
 
   const items: SaleItemDetail[] = (itemsRes.data ?? []).map((item: any) => {
     const product = embedOne(item.products)

@@ -29,7 +29,7 @@ import { formatStockCompact } from '@/lib/stockQuantityDisplay'
 import { getProductStockStatus, type StockStatus } from '@/types'
 import { productPerfMark } from '@/lib/productPerf'
 import {
-  fetchInventoryList,
+  fetchInventoryPage,
   INVENTORY_PAGE_SIZE,
   primarySellingUnit,
   useCategories,
@@ -179,7 +179,7 @@ export function InventoryPage() {
 
   async function handleExport(kind: 'csv' | 'xlsx') {
     try {
-      const result = await fetchInventoryList({
+      const result = await fetchInventoryPage({
         page: 0,
         pageSize: LIST_EXPORT_MAX_ROWS,
         search,

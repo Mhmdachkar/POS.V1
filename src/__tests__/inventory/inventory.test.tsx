@@ -36,6 +36,7 @@ import {
   categoryKeys,
   fetchInventoryActivity,
   fetchInventoryList,
+  fetchInventoryPage,
   fetchStockActivity,
   formatDerivedUnitQuantity,
   invalidateAfterStockMutation,
@@ -59,6 +60,7 @@ vi.mock('@/lib/rpc', () => ({
   rpc: {
     restockProduct: vi.fn(),
     adjustInventory: vi.fn(),
+    listInventoryPage: vi.fn(),
   },
 }))
 
@@ -1117,5 +1119,49 @@ describe('clampInventoryPage', () => {
 
   it('leaves a valid page unchanged', () => {
     expect(clampInventoryPage(1, 3)).toBe(1)
+  })
+})
+
+describe('fetchInventoryPage', () => {
+  it('asks the server for one page and maps units and category', async () => {
+    vi.mocked(rpc.listInventoryPage).mockResolvedValue({
+      data: {
+        count: 12,
+        rows: [{
+          id: 'p1',
+          depot_id: 'depot-a',
+          category_id: 'cat-1',
+          name: 'Cable',
+          current_stock_pieces: 4,
+          product_units: [
+            { unit_level: 1, unit_name: 'Paquet' },
+            { unit_level: 0, unit_name: 'Piece' },
+          ],
+          categories: { name: 'Elec' },
+        }],
+      },
+      error: null,
+    })
+
+    const result = await fetchInventoryPage({
+      page: 1,
+      pageSize: 30,
+      search: ' cab ',
+      categoryId: 'cat-1',
+      stockStatus: 'healthy',
+      depotId: 'depot-a',
+    })
+
+    expect(rpc.listInventoryPage).toHaveBeenCalledWith({
+      p_depot_id: 'depot-a',
+      p_search: 'cab',
+      p_category_id: 'cat-1',
+      p_stock_status: 'healthy',
+      p_limit: 30,
+      p_offset: 30,
+    })
+    expect(result.count).toBe(12)
+    expect(result.data[0].category_name).toBe('Elec')
+    expect(result.data[0].units.map((unit) => unit.unit_name)).toEqual(['Piece', 'Paquet'])
   })
 })

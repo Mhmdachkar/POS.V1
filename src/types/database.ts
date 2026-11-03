@@ -385,6 +385,8 @@ export interface InventoryTransaction {
   created_by: string
   created_at: string
   metadata: Record<string, unknown> | null
+  /** Pieces left after this movement. Null on rows written before the column existed. */
+  stock_after?: number | null
 }
 
 // ─────────────────────────────────────────────────────────────────

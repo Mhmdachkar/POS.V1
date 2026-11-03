@@ -422,13 +422,20 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
                           </p>
                         )}
                       </div>
-                      <span
-                        className={`font-semibold tabular-nums flex-shrink-0 ${
-                          positive ? 'text-success-foreground' : 'text-danger-foreground'
-                        }`}
-                      >
-                        {positive ? '+' : ''}
-                        {formatPieces(row.quantity_pieces)}
+                      <span className="text-right flex-shrink-0">
+                        <span
+                          className={`block font-semibold tabular-nums ${
+                            positive ? 'text-success-foreground' : 'text-danger-foreground'
+                          }`}
+                        >
+                          {positive ? '+' : ''}
+                          {formatPieces(row.quantity_pieces)}
+                        </span>
+                        {row.stock_after != null && (
+                          <span className="block text-xs text-text-muted tabular-nums">
+                            {t(INVENTORY.stockAfter)} {formatPieces(row.stock_after)}
+                          </span>
+                        )}
                       </span>
                     </div>
                   )

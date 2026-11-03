@@ -18,6 +18,7 @@ export const INVENTORY = {
   stockActivityDesc: bi('Mouvements du dépôt', 'Depot stock movements'),
   failedStockActivity: bi("Impossible de charger l'activité", 'Failed to load stock activity'),
   noMovements: bi('Aucun mouvement de stock', 'No stock movements'),
+  stockAfter: bi('Stock après', 'Stock after'),
   noMovementsHint: bi('Aucune transaction sur la période ou les filtres.', 'No transactions for this period or filters.'),
   selectDepot: bi('Sélectionnez un dépôt', 'Select a depot'),
   selectDepotHint: bi(
