@@ -161,19 +161,29 @@ export function estimateExpectedCash(
 }
 
 export function invalidateAfterOpenShift(
-  queryClient: { invalidateQueries: (opts: { queryKey: readonly unknown[] }) => unknown },
+  queryClient: {
+    invalidateQueries: (opts: {
+      queryKey: readonly unknown[]
+      refetchType?: 'active' | 'inactive' | 'all' | 'none'
+    }) => unknown
+  },
 ) {
-  queryClient.invalidateQueries({ queryKey: shiftKeys.lists() })
-  queryClient.invalidateQueries({ queryKey: shiftKeys.open() })
+  queryClient.invalidateQueries({ queryKey: shiftKeys.lists(), refetchType: 'active' })
+  queryClient.invalidateQueries({ queryKey: shiftKeys.open(), refetchType: 'active' })
 }
 
 export function invalidateAfterCloseShift(
-  queryClient: { invalidateQueries: (opts: { queryKey: readonly unknown[] }) => unknown },
+  queryClient: {
+    invalidateQueries: (opts: {
+      queryKey: readonly unknown[]
+      refetchType?: 'active' | 'inactive' | 'all' | 'none'
+    }) => unknown
+  },
   shiftId: string,
 ) {
-  queryClient.invalidateQueries({ queryKey: shiftKeys.detail(shiftId) })
-  queryClient.invalidateQueries({ queryKey: shiftKeys.lists() })
-  queryClient.invalidateQueries({ queryKey: shiftKeys.open() })
+  queryClient.invalidateQueries({ queryKey: shiftKeys.detail(shiftId), refetchType: 'active' })
+  queryClient.invalidateQueries({ queryKey: shiftKeys.lists(), refetchType: 'active' })
+  queryClient.invalidateQueries({ queryKey: shiftKeys.open(), refetchType: 'active' })
 }
 
 function mapListRow(row: Record<string, unknown>): ShiftListItem {

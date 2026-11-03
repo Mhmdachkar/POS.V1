@@ -147,6 +147,7 @@ export function PaymentPanel({ depotId, className, hideCustomerChip = false }: P
     hasOpenShift
 
   const handleCreateProforma = useCallback(async () => {
+    if (inFlight.current || creatingProforma) return
     if (!depotId) {
       toastErrorBi(PROFORMAS.needDepot)
       return
@@ -155,6 +156,7 @@ export function PaymentPanel({ depotId, className, hideCustomerChip = false }: P
       toastErrorBi(PROFORMAS.needItems)
       return
     }
+    inFlight.current = true
     setCreatingProforma(true)
     try {
       const result = await createProforma.mutateAsync({
@@ -176,10 +178,10 @@ export function PaymentPanel({ depotId, className, hideCustomerChip = false }: P
             : {}),
         })),
       })
-      const num = result?.number ?? ''
+      const num = result?.number?.trim() ?? ''
       toastSuccessMessage(
-        `${PROFORMAS.created.fr} ${num}`.trim(),
-        `${PROFORMAS.created.en} ${num}`.trim(),
+        num ? `${PROFORMAS.created.fr} — ${num}` : PROFORMAS.created.fr,
+        num ? `${PROFORMAS.created.en} — ${num}` : PROFORMAS.created.en,
       )
       startNewSale()
       if (staff?.id && depotId) clearPosDraft(staff.id, depotId)
@@ -187,10 +189,11 @@ export function PaymentPanel({ depotId, className, hideCustomerChip = false }: P
       const parsed = parseError(err)
       toastErrorFromCode(parsed.code, parsed.details)
     } finally {
+      inFlight.current = false
       setCreatingProforma(false)
     }
   }, [
-    depotId, items, customer, isAdmin, documentDateYmd, externalRef,
+    creatingProforma, depotId, items, customer, isAdmin, documentDateYmd, externalRef,
     discountType, discountValue, createProforma, startNewSale, staff?.id,
   ])
 

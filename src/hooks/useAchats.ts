@@ -369,6 +369,16 @@ function invalidateAchats(qc: ReturnType<typeof useQueryClient>) {
   markReportsAndDashboardStale(qc)
 }
 
+function invalidateAfterPurchaseReceiptValidated(
+  qc: ReturnType<typeof useQueryClient>,
+  receiptId: string,
+) {
+  void qc.invalidateQueries({ queryKey: ['achats', 'receipts'], refetchType: 'active' })
+  void qc.invalidateQueries({ queryKey: achatsKeys.receipt(receiptId), refetchType: 'active' })
+  refreshPosCatalogStock(qc)
+  markReportsAndDashboardStale(qc)
+}
+
 export function useCreateSupplier() {
   const qc = useQueryClient()
   return useMutation({
@@ -437,9 +447,7 @@ export function useValidatePurchaseReceipt() {
       return result.data
     },
     onSuccess: (_d, vars) => {
-      invalidateAchats(qc)
-      refreshPosCatalogStock(qc)
-      void qc.invalidateQueries({ queryKey: achatsKeys.receipt(vars.p_purchase_receipt_id) })
+      invalidateAfterPurchaseReceiptValidated(qc, vars.p_purchase_receipt_id)
     },
   })
 }

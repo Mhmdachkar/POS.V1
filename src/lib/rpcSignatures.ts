@@ -112,6 +112,7 @@ export const RPC_SIGNATURES = {
     'p_end_at',
   ],
   record_supplier_payment: ['p_supplier_id', 'p_amount_cfa', 'p_method'],
+  enqueue_supplier_payment_print: ['p_supplier_payment_id'],
   list_supplier_payments: ['p_supplier_id', 'p_limit', 'p_offset', 'p_search', 'p_start_at', 'p_end_at'],
   admin_report_purchases: [
     'p_depot_id',

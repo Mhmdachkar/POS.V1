@@ -110,6 +110,9 @@ export const ACHATS = {
   validatedOk: bi('BR validé', 'Receipt validated'),
   cancelledOk: bi('BR annulé', 'Receipt cancelled'),
   paymentOk: bi('Règlement enregistré', 'Payment recorded'),
+  printRgf: bi('Imprimer le RGF', 'Print payment slip'),
+  paymentSavedWithRgf: (rgf: string) =>
+    bi(`Règlement enregistré — ${rgf}`, `Payment recorded — ${rgf}`),
   searchProduct: bi('Rechercher un produit…', 'Search a product…'),
   recordedAt: bi('Enregistré le', 'Recorded at'),
   email: bi('E-mail', 'Email'),

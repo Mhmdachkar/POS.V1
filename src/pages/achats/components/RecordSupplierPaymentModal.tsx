@@ -9,10 +9,10 @@ import { parseError } from '@/lib/errors'
 import { useRecordSupplierPayment, type SupplierRow } from '@/hooks/useAchats'
 import { useDepotStore } from '@/stores/depotStore'
 import { cn } from '@/lib/cn'
-import { fetchBusinessSettings } from '@/hooks/useBusinessSettings'
-import { printSupplierPaymentSlip } from '@/lib/supplierPaymentDocument'
+import { rpc } from '@/lib/rpc'
 import { supplierPaymentAmountIssue } from '@/lib/supplierPaymentAmount'
 import { toastErrorFromCode, toastSuccessBi } from '@/lib/bilingual/toast'
+import { wakeLocalPrintAgent } from '@/lib/printAgentWake'
 
 interface Props {
   open: boolean
@@ -26,11 +26,19 @@ const METHODS = [
   { value: 'bank' as const, label: ACHATS.bank },
 ]
 
+interface SavedPayment {
+  id: string
+  receiptNumber: string
+  amountCfa: number
+}
+
 export function RecordSupplierPaymentModal({ open, onClose, supplier }: Props) {
   const [amountStr, setAmountStr] = useState('')
   const [method, setMethod] = useState<'cash' | 'mobile' | 'bank'>('cash')
   const [note, setNote] = useState('')
   const [error, setError] = useState('')
+  const [saved, setSaved] = useState<SavedPayment | null>(null)
+  const [printing, setPrinting] = useState(false)
   const amountRef = useRef<HTMLInputElement>(null)
   const record = useRecordSupplierPayment()
   const depotId = useDepotStore((s) => s.currentDepotId)
@@ -41,6 +49,8 @@ export function RecordSupplierPaymentModal({ open, onClose, supplier }: Props) {
     setMethod('cash')
     setNote('')
     setError('')
+    setSaved(null)
+    setPrinting(false)
     const tmr = setTimeout(() => amountRef.current?.focus(), 50)
     return () => clearTimeout(tmr)
   }, [open, supplier?.id])
@@ -54,11 +64,11 @@ export function RecordSupplierPaymentModal({ open, onClose, supplier }: Props) {
       : amountIssue === 'invalid'
         ? t(ACHATS.amount)
         : error
-  const canSubmit = amountIssue === null
+  const canSubmit = amountIssue === null && !saved
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!supplier || !canSubmit) return
+    if (!supplier || !canSubmit || record.isPending) return
     const amount = Number(amountStr.trim().replace(/\s/g, '').replace(',', '.'))
     try {
       const result = await record.mutateAsync({
@@ -68,37 +78,27 @@ export function RecordSupplierPaymentModal({ open, onClose, supplier }: Props) {
         p_note: note.trim() || null,
         p_depot_id: depotId,
       })
-      toastSuccessBi(ACHATS.paymentOk)
-      if (result.receipt_number) {
-        try {
-          const settings = await fetchBusinessSettings()
-          printSupplierPaymentSlip({
-            receiptNumber: result.receipt_number,
-            amountCfa: Number(result.amount_cfa ?? amount),
-            methodLabel: t(
-              method === 'mobile' ? ACHATS.mobile : method === 'bank' ? ACHATS.bank : ACHATS.cash,
-            ),
-            recordedAt: new Date().toISOString(),
-            note: note.trim() || null,
-            newBalanceOwedCfa: result.new_balance_owed_cfa,
-            supplier: {
-              name: supplier.name,
-              phone: supplier.phone,
-              address: supplier.address,
-            },
-            header: {
-              businessName: settings.business_name,
-              logoUrl: settings.logo_url,
-              phone: settings.phone,
-              businessAddress: settings.address,
-            },
-          })
-        } catch (printErr) {
-          const parsed = parseError(printErr)
-          toastErrorFromCode(parsed.code, parsed.details)
-        }
+      const data = result as {
+        id?: string
+        receipt_number?: string
+        amount_cfa?: number
       }
-      onClose()
+      const receiptNumber = data.receipt_number?.trim() ?? ''
+      const paymentId = data.id ?? ''
+      if (receiptNumber) {
+        toastSuccessBi(ACHATS.paymentSavedWithRgf(receiptNumber))
+      } else {
+        toastSuccessBi(ACHATS.paymentOk)
+      }
+      if (paymentId && receiptNumber) {
+        setSaved({
+          id: paymentId,
+          receiptNumber,
+          amountCfa: Number(data.amount_cfa ?? amount),
+        })
+      } else {
+        onClose()
+      }
     } catch (err) {
       const parsed = parseError(err)
       if (parsed.code === 'INVALID_AMOUNT' && parsed.details?.reason === 'exceeds_supplier_balance') {
@@ -109,9 +109,52 @@ export function RecordSupplierPaymentModal({ open, onClose, supplier }: Props) {
     }
   }
 
+  async function handlePrintRgf() {
+    if (!saved) return
+    setPrinting(true)
+    try {
+      const result = await rpc.enqueueSupplierPaymentPrint(saved.id)
+      if (result.error) {
+        toastErrorFromCode(result.error.code, result.error.details)
+        return
+      }
+      wakeLocalPrintAgent()
+    } finally {
+      setPrinting(false)
+    }
+  }
+
+  function handleDone() {
+    onClose()
+  }
+
   return (
     <Modal open={open} onClose={onClose} title={<BiModalTitle {...ACHATS.recordPayment} />}>
-      {supplier && (
+      {supplier && saved ? (
+        <div className="space-y-4">
+          <div className="rounded-md bg-surface-muted px-3 py-3 text-sm space-y-2">
+            <p className="font-medium text-text-primary">{supplier.name}</p>
+            <p className="text-text-secondary">
+              {t(ACHATS.number)} {saved.receiptNumber}
+            </p>
+            <MoneyDisplay amount={saved.amountCfa} className="text-base font-semibold" />
+          </div>
+          <div className="flex flex-wrap justify-end gap-2 pt-2">
+            <Button type="button" variant="ghost" onClick={handleDone}>
+              <BiButtonStack {...COMMON.close} />
+            </Button>
+            <LoadingButton
+              type="button"
+              variant="secondary"
+              loading={printing}
+              disabled={printing}
+              onClick={() => void handlePrintRgf()}
+            >
+              <BiButtonStack {...ACHATS.printRgf} />
+            </LoadingButton>
+          </div>
+        </div>
+      ) : supplier ? (
         <form onSubmit={submit} className="space-y-4">
           <div className="rounded-md bg-surface-muted px-3 py-2 text-sm">
             <p className="font-medium text-text-primary">{supplier.name}</p>
@@ -182,7 +225,7 @@ export function RecordSupplierPaymentModal({ open, onClose, supplier }: Props) {
             </LoadingButton>
           </div>
         </form>
-      )}
+      ) : null}
     </Modal>
   )
 }

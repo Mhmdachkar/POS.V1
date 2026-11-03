@@ -140,7 +140,7 @@ export function useCreateProforma() {
       return result.data
     },
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: proformaKeys.all })
+      void qc.invalidateQueries({ queryKey: ['proformas', 'list'], refetchType: 'active' })
     },
   })
 }

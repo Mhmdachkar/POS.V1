@@ -1,4 +1,5 @@
 import { ADMIN } from '@/lib/bilingual/admin'
+import { ACHATS } from '@/lib/bilingual/achats'
 import { INVENTORY } from '@/lib/bilingual/inventory'
 import { SHIFT_COPY } from '@/lib/bilingual/shift'
 import { bi, bilingualPlain, type BilingualPair } from '@/lib/bilingual/types'
@@ -31,6 +32,18 @@ function str(v: unknown): string | null {
   if (v == null) return null
   const s = String(v).trim()
   return s || null
+}
+
+function auditPaymentMethodLabel(method: string | null): BilingualPair | null {
+  if (!method) return null
+  if (method === 'mobile') return ACHATS.mobile
+  if (method === 'bank') return ACHATS.bank
+  if (method === 'cash') return ACHATS.cash
+  return bi(method, method)
+}
+
+function auditSuffixParts(parts: (string | null | undefined)[]): string {
+  return parts.filter(Boolean).join(' · ')
 }
 
 const ADJUSTMENT_TYPE: Record<string, BilingualPair> = {
@@ -227,6 +240,11 @@ const L = {
   saleTotal: bi('Total vente', 'Sale total'),
   status: bi('Statut', 'Status'),
   refund: bi('Remboursement', 'Refund amount'),
+  receipt: bi('Reçu', 'Receipt'),
+  paymentMethod: bi('Moyen de paiement', 'Payment method'),
+  supplier: ACHATS.supplier,
+  document: bi('Document', 'Document'),
+  amount: ACHATS.amount,
   customerName: bi('Client', 'Customer'),
   staffName: bi('Nom', 'Name'),
   depotName: bi('Dépôt', 'Depot'),
@@ -320,9 +338,57 @@ export function auditEventSummary(row: AuditLogRow, units?: UnitLike[] | null): 
 
   if (row.action === 'process_return' && after) {
     const refund = num(after.refund_amount_cfa)
+    const receiptNo = str(after.sale_receipt_number)
+    const suffix = auditSuffixParts([
+      receiptNo,
+      refund != null ? formatCFA(refund) : null,
+    ])
     return bi(
-      `${action.fr}${refund != null ? ` · ${formatCFA(refund)}` : ''}`,
-      `${action.en}${refund != null ? ` · ${formatCFA(refund)}` : ''}`,
+      `${action.fr}${suffix ? ` · ${suffix}` : ''}`,
+      `${action.en}${suffix ? ` · ${suffix}` : ''}`,
+    )
+  }
+
+  if (row.action === 'record_payment' && after) {
+    const amount = num(after.amount_cfa)
+    const method = auditPaymentMethodLabel(
+      str(after.payment_method) ?? str(after.method),
+    )
+    const suffix = auditSuffixParts([
+      method ? bilingualPlain(method) : null,
+      amount != null ? formatCFA(amount) : null,
+      str(after.receipt_number),
+    ])
+    return bi(
+      `${action.fr}${suffix ? ` · ${suffix}` : ''}`,
+      `${action.en}${suffix ? ` · ${suffix}` : ''}`,
+    )
+  }
+
+  if (row.action === 'record_supplier_payment' && after) {
+    const amount = num(after.amount_cfa)
+    const method = auditPaymentMethodLabel(str(after.method))
+    const suffix = auditSuffixParts([
+      str(after.supplier_name),
+      method ? bilingualPlain(method) : null,
+      amount != null ? formatCFA(amount) : null,
+    ])
+    return bi(
+      `${action.fr}${suffix ? ` · ${suffix}` : ''}`,
+      `${action.en}${suffix ? ` · ${suffix}` : ''}`,
+    )
+  }
+
+  if (row.action === 'validate_purchase_receipt' && after) {
+    const total = num(after.total_cfa)
+    const suffix = auditSuffixParts([
+      str(after.supplier_name),
+      str(after.number),
+      total != null ? formatCFA(total) : null,
+    ])
+    return bi(
+      `${action.fr}${suffix ? ` · ${suffix}` : ''}`,
+      `${action.en}${suffix ? ` · ${suffix}` : ''}`,
     )
   }
 
@@ -432,9 +498,63 @@ export function auditDetailChanges(row: AuditLogRow, units?: UnitLike[] | null):
   }
 
   if (row.action === 'process_return') {
+    const receiptNo = str(after?.sale_receipt_number)
+    if (receiptNo) {
+      lines.push({ label: L.receipt, value: bi(receiptNo, receiptNo) })
+    }
     const refund = num(after?.refund_amount_cfa)
     if (refund != null) {
       lines.push({ label: L.refund, value: bi(formatCFA(refund), formatCFA(refund)) })
+    }
+    return lines
+  }
+
+  if (row.action === 'record_payment' && after) {
+    const method = auditPaymentMethodLabel(
+      str(after.payment_method) ?? str(after.method),
+    )
+    if (method) {
+      lines.push({ label: L.paymentMethod, value: method })
+    }
+    const amount = num(after.amount_cfa)
+    if (amount != null) {
+      lines.push({ label: L.amount, value: bi(formatCFA(amount), formatCFA(amount)) })
+    }
+    const receiptNo = str(after.receipt_number)
+    if (receiptNo) {
+      lines.push({ label: L.receipt, value: bi(receiptNo, receiptNo) })
+    }
+    return lines
+  }
+
+  if (row.action === 'record_supplier_payment' && after) {
+    const supplier = str(after.supplier_name)
+    if (supplier) {
+      lines.push({ label: L.supplier, value: bi(supplier, supplier) })
+    }
+    const method = auditPaymentMethodLabel(str(after.method))
+    if (method) {
+      lines.push({ label: L.paymentMethod, value: method })
+    }
+    const amount = num(after.amount_cfa)
+    if (amount != null) {
+      lines.push({ label: L.amount, value: bi(formatCFA(amount), formatCFA(amount)) })
+    }
+    return lines
+  }
+
+  if (row.action === 'validate_purchase_receipt' && after) {
+    const supplier = str(after.supplier_name)
+    if (supplier) {
+      lines.push({ label: L.supplier, value: bi(supplier, supplier) })
+    }
+    const number = str(after.number)
+    if (number) {
+      lines.push({ label: L.document, value: bi(number, number) })
+    }
+    const total = num(after.total_cfa)
+    if (total != null) {
+      lines.push({ label: L.amount, value: bi(formatCFA(total), formatCFA(total)) })
     }
     return lines
   }

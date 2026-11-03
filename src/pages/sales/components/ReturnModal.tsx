@@ -17,6 +17,8 @@
  */
 
 import { useState, useMemo, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { refreshPosCatalogStock } from '@/lib/cacheInvalidation'
 import { toastSuccessBi, toastErrorFromCode } from '@/lib/bilingual/toast'
 import { SALES } from '@/lib/bilingual/sales'
 import { Minus, Plus } from 'lucide-react'
@@ -418,6 +420,7 @@ interface ReturnModalProps {
 }
 
 export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnModalProps) {
+  const queryClient = useQueryClient()
   const [returnableItems, setReturnableItems] = useState<ReturnableItem[]>(() =>
     buildReturnableItems(sale.items, sale.returns),
   )
@@ -515,6 +518,7 @@ export function ReturnModal({ open, onClose, sale, onSuccess, shiftId }: ReturnM
       const data = result.data
       toastSuccessBi(SALES.returnProcessedCash(formatCFA(data.cash_refunded_cfa)))
       await refreshPosCustomer(sale.customer_id)
+      refreshPosCatalogStock(queryClient)
       onSuccess()
       onClose()
     } finally {

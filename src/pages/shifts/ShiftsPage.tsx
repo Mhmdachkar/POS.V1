@@ -28,6 +28,7 @@ import {
 } from '@/components/ui'
 import { SHIFT_STATUS } from '@/lib/bilingual/status'
 import { formatDate, formatMoney, formatTime, ymdInDisplayTimeZone } from '@/lib/formatters'
+import { formatShiftTimeRange } from '@/lib/shiftAttribution'
 import { isOvernightOpenShift } from '@/lib/overnightShift'
 import {
   SHIFT_PAGE_SIZE,
@@ -247,8 +248,10 @@ export function ShiftsPage() {
                   </span>
                 )}
                 <span className="flex flex-col leading-tight">
-                  <span className="text-sm text-text-primary tabular-nums">
-                    {formatTime(shift.opened_at)}
+                  <span className="text-sm text-text-primary tabular-nums whitespace-nowrap">
+                    {shift.status === 'closed' && shift.closed_at
+                      ? formatShiftTimeRange(shift.opened_at, shift.closed_at)
+                      : formatTime(shift.opened_at)}
                   </span>
                   <span className="text-xs text-text-secondary whitespace-nowrap">
                     {formatDate(shift.opened_at)}

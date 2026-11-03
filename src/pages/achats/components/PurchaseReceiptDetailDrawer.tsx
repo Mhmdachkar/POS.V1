@@ -17,6 +17,7 @@ import { parseError } from '@/lib/errors'
 import { toastErrorBi, toastErrorFromCode, toastSuccessBi } from '@/lib/bilingual/toast'
 import { bilingualPlain, t } from '@/lib/bilingual/types'
 import { cn } from '@/lib/cn'
+import { localizedUnitLabel } from '@/lib/localizedUnits'
 import { FileText } from 'lucide-react'
 import { fetchBusinessSettings } from '@/hooks/useBusinessSettings'
 import { printPurchaseReceiptPdf } from '@/lib/purchaseReceiptDocument'
@@ -208,7 +209,9 @@ export function PurchaseReceiptDetailDrawer({ receiptId, onClose }: Props) {
                 >
                   <div className="min-w-0">
                     <p className="truncate font-medium">{item.product_name}</p>
-                    <p className="text-xs text-text-muted">{item.unit_name}</p>
+                    <p className="text-xs text-text-muted">
+                      {localizedUnitLabel(item.unit_name, item.unit_level)}
+                    </p>
                   </div>
                   <span className="tabular-nums">{item.quantity_in_unit}</span>
                   <MoneyDisplay amount={item.unit_cost_cfa} className="text-sm" />
@@ -224,9 +227,7 @@ export function PurchaseReceiptDetailDrawer({ receiptId, onClose }: Props) {
             {isDraft && (
               <div className="space-y-3 border-t border-border pt-4">
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-text-secondary">
-                    {t(ACHATS.method)} — {t(ACHATS.paid)}
-                  </p>
+                  <p className="text-sm font-medium text-text-secondary">{t(ACHATS.paymentMode)}</p>
                   <p className="text-xs text-text-muted">{t(ACHATS.choosePaymentMethod)}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">

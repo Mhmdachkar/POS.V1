@@ -280,10 +280,19 @@ describe('shift helpers', () => {
   it('invalidates list + open keys after open/close', () => {
     const invalidateQueries = vi.fn()
     invalidateAfterOpenShift({ invalidateQueries })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: shiftKeys.lists() })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: shiftKeys.open() })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: shiftKeys.lists(),
+      refetchType: 'active',
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: shiftKeys.open(),
+      refetchType: 'active',
+    })
     invalidateAfterCloseShift({ invalidateQueries }, 'sh-1')
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: shiftKeys.detail('sh-1') })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: shiftKeys.detail('sh-1'),
+      refetchType: 'active',
+    })
   })
 })
 

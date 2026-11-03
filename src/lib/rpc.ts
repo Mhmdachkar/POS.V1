@@ -255,6 +255,11 @@ export const rpc = {
   }): Promise<RpcResult<unknown>> =>
     callRpc('record_supplier_payment', params),
 
+  enqueueSupplierPaymentPrint: (
+    p_supplier_payment_id: string,
+  ): Promise<RpcResult<{ job_id: string; receipt_number: string }>> =>
+    callRpc('enqueue_supplier_payment_print', { p_supplier_payment_id }),
+
   listSupplierPayments: (params: {
     p_supplier_id?: string | null
     p_limit?: number
