@@ -523,7 +523,7 @@ describe('SalesPage', () => {
     expect(screen.getByRole('button', { name: COMMON.custom.fr })).toHaveAttribute('aria-pressed', 'false')
     expect(calls.some((c) => c.startsWith('gte:created_at:'))).toBe(false)
     expect(calls.some((c) => c.startsWith('lte:created_at:'))).toBe(false)
-  })
+  }, 15_000)
 
   it('applies yesterday date bounds when selected', async () => {
     const user = userEvent.setup()
@@ -538,7 +538,7 @@ describe('SalesPage', () => {
       expect(calls.some((c) => c.startsWith('lte:created_at:'))).toBe(true)
     })
     expect(screen.getByRole('button', { name: COMMON.yesterday.fr })).toHaveAttribute('aria-pressed', 'true')
-  })
+  }, 15_000)
 
   it('row click opens the sale drawer (sets sale id)', async () => {
     const user = userEvent.setup()

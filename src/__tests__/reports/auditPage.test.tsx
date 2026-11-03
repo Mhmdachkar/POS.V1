@@ -140,14 +140,14 @@ describe('AuditPage', () => {
     depotState.currentDepotId = 'depot-a'
     depotState.currentDepotName = 'Depot Dakar'
     render(<AuditPage />)
-    expect(screen.getByText(/events for this depot only/)).toBeInTheDocument()
+    expect(screen.getByText(/événements de ce dépôt uniquement|events for this depot only/i)).toBeInTheDocument()
     expect(lastFilters?.depotId).toBe('depot-a')
   })
 
   it('paginates when more than one page of events exists', async () => {
     const user = userEvent.setup()
     render(<AuditPage />)
-    expect(screen.getByText('100 events')).toBeInTheDocument()
+    expect(screen.getByText(/100 événements|100 events/i)).toBeInTheDocument()
     expect(screen.getByText('1 / 2')).toBeInTheDocument()
     expect(lastFilters?.page).toBe(0)
     await user.click(screen.getByRole('button', { name: COMMON.next.fr }))

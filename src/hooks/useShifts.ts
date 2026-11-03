@@ -13,7 +13,13 @@ import { supabase } from '@/lib/supabase'
 import { rpc } from '@/lib/rpc'
 import { CACHE_STALE, keepPlaceholderWhen } from '@/lib/cachePolicy'
 import type { ShiftStatus, Staff } from '@/types/database'
-import type { CloseShiftParams, CloseShiftResult, OpenShiftParams } from '@/types/rpc'
+import type {
+  CloseShiftParams,
+  CloseShiftResult,
+  OpenShiftParams,
+  RecordCashMovementParams,
+  RecordCashMovementResult,
+} from '@/types/rpc'
 
 export const SHIFT_PAGE_SIZE = 30
 
@@ -65,6 +71,8 @@ export interface ShiftRunningTotals {
   sales_cash_cfa: number
   customer_pmts_cfa: number
   return_cash_cfa: number
+  cash_in_cfa?: number
+  cash_out_cfa?: number
 }
 
 export interface ShiftDetailData extends ShiftListItem {
@@ -140,7 +148,14 @@ export function estimateExpectedCash(
   openingFloat: number,
   running: ShiftRunningTotals,
 ): number {
-  return openingFloat + running.sales_cash_cfa + running.customer_pmts_cfa - running.return_cash_cfa
+  return (
+    openingFloat +
+    running.sales_cash_cfa +
+    running.customer_pmts_cfa +
+    (running.cash_in_cfa ?? 0) -
+    running.return_cash_cfa -
+    (running.cash_out_cfa ?? 0)
+  )
 }
 
 export function invalidateAfterOpenShift(
@@ -183,70 +198,51 @@ function mapListRow(row: Record<string, unknown>): ShiftListItem {
   }
 }
 
-export async function fetchShiftRunningTotals(shiftId: string): Promise<ShiftRunningTotals> {
-  const map = await fetchShiftRunningTotalsBatch([shiftId])
-  return map.get(shiftId) ?? { sales_cash_cfa: 0, customer_pmts_cfa: 0, return_cash_cfa: 0 }
-}
-
-/** Batch running cash activity for many shifts (list enrichment). */
-export async function fetchShiftRunningTotalsBatch(
-  shiftIds: string[],
-): Promise<Map<string, ShiftRunningTotals>> {
-  const empty = (): ShiftRunningTotals => ({
+export function emptyShiftRunningTotals(): ShiftRunningTotals {
+  return {
     sales_cash_cfa: 0,
     customer_pmts_cfa: 0,
     return_cash_cfa: 0,
-  })
+    cash_in_cfa: 0,
+    cash_out_cfa: 0,
+  }
+}
+
+export async function fetchShiftRunningTotals(shiftId: string): Promise<ShiftRunningTotals> {
+  const map = await fetchShiftRunningTotalsBatch([shiftId])
+  return map.get(shiftId) ?? emptyShiftRunningTotals()
+}
+
+/** Server-side SUM per shift — do not download sale/payment/return rows. */
+export async function fetchShiftRunningTotalsBatch(
+  shiftIds: string[],
+): Promise<Map<string, ShiftRunningTotals>> {
   const out = new Map<string, ShiftRunningTotals>()
-  for (const id of shiftIds) out.set(id, empty())
+  for (const id of shiftIds) out.set(id, emptyShiftRunningTotals())
   if (shiftIds.length === 0) return out
 
-  const [salesRes, paymentsRes, returnsRes] = await Promise.all([
-    supabase.from('sales').select('shift_id, amount_applied_cfa, status').in('shift_id', shiftIds),
-    supabase
-      .from('payments')
-      .select('shift_id, amount_cfa, payment_type, is_reversed')
-      .in('shift_id', shiftIds),
-    supabase.from('sale_returns').select('shift_id, cash_refunded_cfa').in('shift_id', shiftIds),
-  ])
+  const { data, error } = await (supabase.rpc as any)('shift_running_totals_batch', {
+    p_shift_ids: shiftIds,
+  })
+  if (error) throw error
 
-  if (salesRes.error) throw salesRes.error
-  if (paymentsRes.error) throw paymentsRes.error
-  if (returnsRes.error) throw returnsRes.error
-
-  for (const row of (salesRes.data ?? []) as Array<{
+  for (const row of (Array.isArray(data) ? data : []) as Array<{
     shift_id: string
-    amount_applied_cfa: number
-    status: string
+    sales_cash_cfa: number | string
+    customer_pmts_cfa: number | string
+    return_cash_cfa: number | string
+    cash_in_cfa: number | string
+    cash_out_cfa: number | string
   }>) {
-    if (row.status === 'voided' || !row.shift_id) continue
-    const cur = out.get(row.shift_id) ?? empty()
-    cur.sales_cash_cfa += Number(row.amount_applied_cfa ?? 0)
-    out.set(row.shift_id, cur)
+    if (!row?.shift_id) continue
+    out.set(row.shift_id, {
+      sales_cash_cfa: Number(row.sales_cash_cfa ?? 0),
+      customer_pmts_cfa: Number(row.customer_pmts_cfa ?? 0),
+      return_cash_cfa: Number(row.return_cash_cfa ?? 0),
+      cash_in_cfa: Number(row.cash_in_cfa ?? 0),
+      cash_out_cfa: Number(row.cash_out_cfa ?? 0),
+    })
   }
-
-  for (const row of (paymentsRes.data ?? []) as Array<{
-    shift_id: string
-    amount_cfa: number
-    payment_type: string
-    is_reversed: boolean
-  }>) {
-    if (row.payment_type !== 'customer_payment' || row.is_reversed || !row.shift_id) continue
-    const cur = out.get(row.shift_id) ?? empty()
-    cur.customer_pmts_cfa += Number(row.amount_cfa ?? 0)
-    out.set(row.shift_id, cur)
-  }
-
-  for (const row of (returnsRes.data ?? []) as Array<{
-    shift_id: string
-    cash_refunded_cfa: number
-  }>) {
-    if (!row.shift_id) continue
-    const cur = out.get(row.shift_id) ?? empty()
-    cur.return_cash_cfa += Number(row.cash_refunded_cfa ?? 0)
-    out.set(row.shift_id, cur)
-  }
-
   return out
 }
 
@@ -255,12 +251,13 @@ function enrichListWithExpected(
   runningById: Map<string, ShiftRunningTotals>,
 ): ShiftListItem[] {
   return rows.map((row) => {
-    const running = runningById.get(row.id) ?? {
-      sales_cash_cfa: 0,
-      customer_pmts_cfa: 0,
-      return_cash_cfa: 0,
-    }
-    const activity = running.sales_cash_cfa + running.customer_pmts_cfa - running.return_cash_cfa
+    const running = runningById.get(row.id) ?? emptyShiftRunningTotals()
+    const activity =
+      running.sales_cash_cfa +
+      running.customer_pmts_cfa +
+      (running.cash_in_cfa ?? 0) -
+      running.return_cash_cfa -
+      (running.cash_out_cfa ?? 0)
     const expectedLive = estimateExpectedCash(row.opening_float_cfa, running)
     return {
       ...row,
@@ -398,6 +395,53 @@ export function useCloseShift() {
     },
     onSuccess: (data) => {
       invalidateAfterCloseShift(queryClient, data.shift_id)
+    },
+  })
+}
+
+export interface ShiftCashMovementRow {
+  id: string
+  shift_id: string
+  direction: 'in' | 'out'
+  amount_cfa: number
+  note: string
+  recorded_at: string
+}
+
+export async function fetchShiftCashMovements(shiftId: string): Promise<ShiftCashMovementRow[]> {
+  const { data, error } = await supabase
+    .from('shift_cash_movements')
+    .select('id, shift_id, direction, amount_cfa, note, recorded_at')
+    .eq('shift_id', shiftId)
+    .order('recorded_at', { ascending: true })
+  if (error) throw error
+  return ((data ?? []) as ShiftCashMovementRow[]).map((row) => ({
+    ...row,
+    amount_cfa: Number(row.amount_cfa),
+  }))
+}
+
+export function useShiftCashMovements(shiftId: string | null) {
+  return useQuery({
+    queryKey: [...shiftKeys.detail(shiftId ?? ''), 'cash-movements'] as const,
+    queryFn: () => fetchShiftCashMovements(shiftId!),
+    enabled: !!shiftId,
+    staleTime: CACHE_STALE.shiftsDetail,
+  })
+}
+
+export function useRecordCashMovement() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (params: RecordCashMovementParams): Promise<RecordCashMovementResult> => {
+      const result = await rpc.recordCashMovement(params)
+      if (result.error) throw result.error
+      return result.data
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: shiftKeys.detail(data.shift_id) })
+      queryClient.invalidateQueries({ queryKey: shiftKeys.lists() })
     },
   })
 }

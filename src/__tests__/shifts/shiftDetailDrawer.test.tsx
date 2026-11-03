@@ -19,6 +19,7 @@ vi.mock('@/hooks/useShifts', async (importOriginal) => {
   return {
     ...actual,
     useShiftDetail: vi.fn(),
+    useShiftCashMovements: vi.fn(() => ({ data: [], isLoading: false })),
   }
 })
 

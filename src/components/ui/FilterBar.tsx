@@ -3,6 +3,7 @@ import { FILTERS } from '@/lib/bilingual/common'
 import { t } from '@/lib/bilingual/types'
 import { cn } from '@/lib/cn'
 import { SearchInput } from './SearchInput'
+import { Skeleton } from './Skeleton'
 
 export interface FilterBarChip {
   value: string
@@ -19,6 +20,8 @@ export interface FilterBarProps {
   onSearchChange?: (value: string) => void
   searchPlaceholder?: string
   count?: number
+  /** True while the first count is unknown — never flash a fake 0. */
+  countLoading?: boolean
   rightSlot?: ReactNode
   className?: string
 }
@@ -37,6 +40,7 @@ export function FilterBar({
   onSearchChange,
   searchPlaceholder,
   count,
+  countLoading,
   rightSlot,
   className,
 }: FilterBarProps) {
@@ -80,11 +84,13 @@ export function FilterBar({
         </div>
       )}
 
-      {(count != null || rightSlot) && (
+      {(count != null || countLoading || rightSlot) && (
         <div className="flex items-center gap-2 sm:ml-auto">
-          {count != null && (
+          {count != null ? (
             <span className="text-sm text-text-secondary tabular-nums">{count}</span>
-          )}
+          ) : countLoading ? (
+            <Skeleton className="h-4 w-8" aria-hidden />
+          ) : null}
           {rightSlot && <div className="flex items-center gap-2">{rightSlot}</div>}
         </div>
       )}

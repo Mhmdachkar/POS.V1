@@ -41,6 +41,8 @@ import type {
   OpenShiftResult,
   CloseShiftParams,
   CloseShiftResult,
+  RecordCashMovementParams,
+  RecordCashMovementResult,
   CreateCustomerParams,
   CreateCustomerResult,
   UpdateCustomerParams,
@@ -386,6 +388,11 @@ export const rpc = {
    */
   closeShift: (params: CloseShiftParams): Promise<RpcResult<CloseShiftResult>> =>
     callRpc<CloseShiftResult>('close_shift', params),
+
+  recordCashMovement: (
+    params: RecordCashMovementParams,
+  ): Promise<RpcResult<RecordCashMovementResult>> =>
+    callRpc<RecordCashMovementResult>('record_cash_movement', params),
 
   // ── Customer management (Phase 6) ──────────────────────────────
 

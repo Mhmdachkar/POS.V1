@@ -149,7 +149,8 @@ export function PurchaseReceiptsPage() {
               search={search}
               onSearchChange={setSearch}
               searchPlaceholder={bilingualPlain(ACHATS.searchReceiptsPlaceholder)}
-              count={data?.count ?? 0}
+              count={data?.count}
+              countLoading={!data}
             />
           </div>
           <DatePresetFilter

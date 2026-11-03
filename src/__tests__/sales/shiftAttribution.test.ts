@@ -33,7 +33,7 @@ describe('formatShiftTimeRange', () => {
 
   it('shows opened–open when the shift is still open', () => {
     expect(formatShiftTimeRange('2026-09-13T08:00:00.000Z', null)).toBe(
-      `${formatTime('2026-09-13T08:00:00.000Z')}–open`,
+      `${formatTime('2026-09-13T08:00:00.000Z')}–ouvert`,
     )
   })
 })
@@ -125,6 +125,7 @@ describe('unshifted totals vs expected cash', () => {
   it('does not add unshifted total_cfa into estimateExpectedCash', () => {
     const running = { sales_cash_cfa: 200, customer_pmts_cfa: 0, return_cash_cfa: 0 }
     const expected = estimateExpectedCash(1000, running)
+    expect(estimateExpectedCash(1000, { ...running, cash_in_cfa: 1500 })).toBe(2700)
     const unshifted = sumUnshiftedSales([{ total_cfa: 47000, status: 'completed' }])
     expect(expected).toBe(1200)
     expect(expected + unshifted.total_cfa).not.toBe(expected)
@@ -135,7 +136,7 @@ describe('unshifted totals vs expected cash', () => {
 describe('formatTime is used by the range helper', () => {
   it('stays aligned with the shared formatter', () => {
     expect(formatShiftTimeRange('2026-09-13T08:00:00.000Z', null)).toBe(
-      `${formatTime('2026-09-13T08:00:00.000Z')}–open`,
+      `${formatTime('2026-09-13T08:00:00.000Z')}–ouvert`,
     )
   })
 })

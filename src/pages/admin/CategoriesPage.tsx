@@ -150,7 +150,7 @@ export function CategoriesPage() {
         onClose={() => setDeactivateId(null)}
         onConfirm={handleDeactivate}
         title={<BiModalTitle {...ADMIN.deactivateCategory} />}
-        message="Blocked if this category has active children or active products. Products are not cascade-deactivated."
+        message={t(ADMIN.deactivateCategoryBlocked)}
         confirmLabel={t(ADMIN.deactivate)}
         isLoading={deactivating}
       />

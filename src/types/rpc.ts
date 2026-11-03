@@ -261,7 +261,24 @@ export interface CloseShiftResult {
     sales_cash_cfa: number
     customer_pmts_cfa: number
     return_cash_cfa: number
+    cash_in_cfa?: number
+    cash_out_cfa?: number
   }
+}
+
+export interface RecordCashMovementParams {
+  p_shift_id: string
+  p_direction: 'in' | 'out'
+  p_amount_cfa: number
+  p_note: string
+}
+
+export interface RecordCashMovementResult {
+  movement_id: string
+  shift_id: string
+  direction: 'in' | 'out'
+  amount_cfa: number
+  note: string
 }
 
 // ─── create_customer ────────────────────────────────────────────

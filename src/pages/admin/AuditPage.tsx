@@ -162,7 +162,7 @@ export function AuditPage() {
 
           <p className="text-xs text-text-muted">
             {depotId
-              ? `${depotName ?? 'Depot'} — events for this depot only`
+              ? t(ADMIN.depotEventsOnly(depotName ?? t(ADMIN.unnamedDepot)))
               : t(ADMIN.allDepotsIncludesGlobal)}
           </p>
 
@@ -277,7 +277,7 @@ export function AuditPage() {
 
       {totalPages > 1 && (
         <div className="px-6 py-3 border-t border-border flex items-center justify-between text-sm">
-          <span className="text-text-muted">{total} events</span>
+          <span className="text-text-muted">{t(ADMIN.auditEventCount(total))}</span>
           <div className="flex gap-2">
             <button
               type="button"

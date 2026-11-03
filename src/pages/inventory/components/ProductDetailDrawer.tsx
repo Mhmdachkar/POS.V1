@@ -3,7 +3,7 @@ import { localizedUnitLabel, localizedUnitLabelForCount } from '@/lib/localizedU
  * ProductDetailDrawer — product identity, stock, units, activity, and actions.
  *
  * Depot is always the product's concrete depot_id.
- * Mutations receive product.id only. All Depots context is never read here.
+ * Edit / Deactivate are admin-only and do not depend on the All Depots switcher.
  * Inactive products: Restock and Adjust are disabled with "Product is inactive".
  */
 
@@ -32,7 +32,6 @@ import { hasDisplayableProductPhoto, resolveProductPhotoUrl } from '@/lib/produc
 import { ProductPhotoFrame } from '@/components/pos/ProductPhotoFrame'
 import { useDeactivateProduct, useReactivateProduct } from '@/hooks/useAdminProducts'
 import { useAuthStore } from '@/stores/authStore'
-import { useDepotStore } from '@/stores/depotStore'
 import { STOCK_TXN_TYPE } from '@/lib/bilingual/inventory'
 import { adjustmentTypeLabel, stockMovementReasonLabel } from '@/lib/auditPresentation'
 import { RestockModal } from './RestockModal'
@@ -71,8 +70,7 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
   const [adminError, setAdminError] = useState('')
 
   const isAdmin = useAuthStore((s) => s.staff?.role === 'admin')
-  const currentDepotId = useDepotStore((s) => s.currentDepotId)
-  const canMutateProduct = isAdmin && currentDepotId !== null
+  const canMutateProduct = isAdmin
   const { mutateAsync: deactivateProduct, isPending: deactivating } = useDeactivateProduct()
   const { mutateAsync: reactivateProduct, isPending: reactivating } = useReactivateProduct()
 
@@ -100,6 +98,76 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
         title={isLoading ? t(INVENTORY.productDetails) : (product?.name ?? t(INVENTORY.productDetails))}
         description={inactive ? INACTIVE_PRODUCT_MESSAGE : undefined}
         width="lg"
+        footer={
+          product && !isLoading ? (
+            <div className="space-y-2">
+              {inactive && (
+                <p className="text-sm text-warning-foreground">{INACTIVE_PRODUCT_MESSAGE}</p>
+              )}
+              {adminError && (
+                <div className="rounded-md bg-danger-bg border border-danger/20 px-3 py-2">
+                  <p className="text-sm text-danger-foreground">{adminError}</p>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                {canMutateProduct && (
+                  <Button variant="secondary" className="w-full gap-2" onClick={() => setShowEdit(true)}>
+                    <Pencil className="h-4 w-4" />
+                    {t(INVENTORY.editProduct)}
+                  </Button>
+                )}
+                <Button
+                  className="w-full gap-2"
+                  onClick={() => setShowRestock(true)}
+                  disabled={inactive}
+                  title={inactive ? INACTIVE_PRODUCT_MESSAGE : undefined}
+                >
+                  <PackagePlus className="h-4 w-4" />
+                  {t(INVENTORY.restock)}
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="w-full gap-2"
+                  onClick={() => setShowAdjust(true)}
+                  disabled={inactive}
+                  title={inactive ? INACTIVE_PRODUCT_MESSAGE : undefined}
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                  {t(INVENTORY.adjustTitle)}
+                </Button>
+                {canMutateProduct && product.is_active && (
+                  <LoadingButton
+                    variant="ghost"
+                    className="w-full gap-2 text-warning-foreground hover:bg-warning-bg"
+                    onClick={() => setConfirmDeactivate(true)}
+                    loading={deactivating}
+                  >
+                    <UserX className="h-4 w-4" />
+                    {t(INVENTORY.deactivateProductAction)}
+                  </LoadingButton>
+                )}
+                {canMutateProduct && !product.is_active && (
+                  <LoadingButton
+                    variant="ghost"
+                    className="w-full gap-2 text-success-foreground hover:bg-success-bg"
+                    onClick={async () => {
+                      setAdminError('')
+                      try {
+                        await reactivateProduct(product.id)
+                      } catch (err) {
+                        setAdminError(parseError(err).message)
+                      }
+                    }}
+                    loading={reactivating}
+                  >
+                    <UserCheck className="h-4 w-4" />
+                    {t(INVENTORY.reactivateProduct)}
+                  </LoadingButton>
+                )}
+              </div>
+            </div>
+          ) : undefined
+        }
       >
         {isLoading ? (
           <div className="space-y-3">
@@ -131,7 +199,20 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
                   {categoryName} · {depotName}
                 </p>
               </div>
-              <ActiveBadge isActive={product.is_active} />
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <ActiveBadge isActive={product.is_active} />
+                {canMutateProduct && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => setShowEdit(true)}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    {t(INVENTORY.editProduct)}
+                  </Button>
+                )}
+              </div>
             </div>
 
             <SectionHeader title={<BiSectionTitle {...INVENTORY.stockSection} />} />
@@ -355,70 +436,6 @@ export function ProductDetailDrawer({ productId, onClose }: ProductDetailDrawerP
               </div>
             )}
 
-            <div className="mt-6 pt-4 border-t border-border space-y-2">
-              {inactive && (
-                <p className="text-sm text-warning-foreground">{INACTIVE_PRODUCT_MESSAGE}</p>
-              )}
-              {adminError && (
-                <div className="rounded-md bg-danger-bg border border-danger/20 px-3 py-2">
-                  <p className="text-sm text-danger-foreground">{adminError}</p>
-                </div>
-              )}
-              {canMutateProduct && (
-                <Button variant="secondary" className="w-full gap-2" onClick={() => setShowEdit(true)}>
-                  <Pencil className="h-4 w-4" />
-                  {t(INVENTORY.editProduct)}
-                </Button>
-              )}
-              <Button
-                className="w-full gap-2"
-                onClick={() => setShowRestock(true)}
-                disabled={inactive}
-                title={inactive ? INACTIVE_PRODUCT_MESSAGE : undefined}
-              >
-                <PackagePlus className="h-4 w-4" />
-                {t(INVENTORY.restock)}
-              </Button>
-              <Button
-                variant="secondary"
-                className="w-full gap-2"
-                onClick={() => setShowAdjust(true)}
-                disabled={inactive}
-                title={inactive ? INACTIVE_PRODUCT_MESSAGE : undefined}
-              >
-                <SlidersHorizontal className="h-4 w-4" />
-                {t(INVENTORY.adjustTitle)}
-              </Button>
-              {canMutateProduct && product.is_active && (
-                <LoadingButton
-                  variant="ghost"
-                  className="w-full gap-2 text-warning-foreground hover:bg-warning-bg"
-                  onClick={() => setConfirmDeactivate(true)}
-                  loading={deactivating}
-                >
-                  <UserX className="h-4 w-4" />
-                  <BilingualText fr="Désactiver le produit" en="Deactivate product" variant="body" layout="inline" />
-                </LoadingButton>
-              )}
-              {canMutateProduct && !product.is_active && (
-                <LoadingButton
-                  variant="ghost"
-                  className="w-full gap-2 text-success-foreground hover:bg-success-bg"
-                  onClick={async () => {
-                    setAdminError('')
-                    try {
-                      await reactivateProduct(product.id)
-                    } catch (err) {
-                      setAdminError(parseError(err).message)
-                    }
-                  }}
-                  loading={reactivating}
-                >
-                  <UserCheck className="h-4 w-4" />
-                  {t(INVENTORY.reactivateProduct)}
-                </LoadingButton>
-              )}
-            </div>
           </div>
         )}
       </Drawer>

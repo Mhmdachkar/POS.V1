@@ -87,5 +87,22 @@ export const SHIFT_COPY = {
   estimatedDiscrepancy: bi('Écart (estimé)', 'Difference (est.)'),
   actualCashInDrawer: bi('Espèces comptées (CFA)', 'Counted cash (CFA)'),
   closeShiftTitle: bi('Clôturer le service', 'Close shift'),
-  closeConfirmCheck: bi('Je confirme la clôture (définitive).', 'I confirm closing (final).'),
+  closeConfirmCheck: bi(
+    'Je comprends que ce service sera fermé et ne pourra pas être rouvert.',
+    'I understand this shift will close and cannot be reopened.',
+  ),
+  cashMovement: bi('Mouvement de caisse', 'Cash movement'),
+  cashIn: bi('Entrée de caisse', 'Cash in'),
+  cashOut: bi('Sortie de caisse', 'Cash out'),
+  cashMovementNote: bi('Motif (obligatoire)', 'Reason (required)'),
+  cashMovementAmount: bi('Montant (CFA)', 'Amount (CFA)'),
+  recordCashMovement: bi('Enregistrer le mouvement', 'Record movement'),
+  cashInToast: bi('Entrée de caisse enregistrée.', 'Cash in recorded.'),
+  cashOutToast: bi('Sortie de caisse enregistrée.', 'Cash out recorded.'),
+  cashMovementHint: bi(
+    'Corrige le fond de caisse du service ouvert. Le montant entre dans l’attendu. Les ventes et retours ne sont pas modifiés.',
+    'Adjusts cash on the open shift. The amount is added to expected cash. Sales and returns are not changed.',
+  ),
+  noCashMovements: bi('Aucun mouvement de caisse.', 'No cash movements.'),
+  openRangeSuffix: bi('ouvert', 'open'),
 } as const

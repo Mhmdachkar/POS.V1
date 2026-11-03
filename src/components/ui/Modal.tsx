@@ -183,6 +183,8 @@ export interface DrawerProps {
   title: ReactNode
   description?: ReactNode
   children: React.ReactNode
+  /** Pinned below the scrollable body so actions stay visible */
+  footer?: React.ReactNode
   width?: 'sm' | 'md' | 'lg'
 }
 
@@ -198,6 +200,7 @@ export function Drawer({
   title,
   description,
   children,
+  footer,
   width = 'md',
 }: DrawerProps) {
   return (
@@ -247,6 +250,11 @@ export function Drawer({
           <div className="flex-1 overflow-y-auto p-5 scrollbar-thin">
             {children}
           </div>
+          {footer && (
+            <div className="flex-shrink-0 border-t border-border bg-surface px-5 py-4">
+              {footer}
+            </div>
+          )}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

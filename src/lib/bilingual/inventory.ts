@@ -73,6 +73,7 @@ export const INVENTORY = {
   newProduct: bi('Nouveau produit', 'New product'),
   serialRequiredHint: bi('Un n° de série par unité. Le niveau 0 est la pièce.', 'One serial number per unit. Level 0 is the piece.'),
   editProduct: bi('Modifier le produit', 'Edit product'),
+  deactivateProductAction: bi('Désactiver le produit', 'Deactivate product'),
   productDetails: bi('Détails du produit', 'Product details'),
   unitsAndPricing: bi('Unités et tarifs', 'Units & pricing'),
   stockLevels: bi('Niveaux de stock', 'Stock levels'),
