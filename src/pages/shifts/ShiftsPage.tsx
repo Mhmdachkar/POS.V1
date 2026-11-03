@@ -27,7 +27,7 @@ import {
   type FilterBarChip,
 } from '@/components/ui'
 import { SHIFT_STATUS } from '@/lib/bilingual/status'
-import { formatDate, formatMoney, formatTime } from '@/lib/formatters'
+import { formatDate, formatMoney, formatTime, ymdInDisplayTimeZone } from '@/lib/formatters'
 import { isOvernightOpenShift } from '@/lib/overnightShift'
 import {
   SHIFT_PAGE_SIZE,
@@ -48,6 +48,7 @@ function statusChips(): FilterBarChip[] {
     { value: 'all', label: t(COMMON.all) },
     { value: 'open', label: t(SHIFT_STATUS.open) },
     { value: 'closed', label: t(SHIFT_STATUS.closed) },
+    { value: 'closed_today', label: t(SHIFT_COPY.closedToday) },
   ]
 }
 
@@ -68,6 +69,7 @@ function TableSkeleton({ showDepot }: { showDepot: boolean }) {
 
 export function ShiftsPage() {
   const [statusFilter, setStatusFilter] = useState<ShiftStatus | null>(null)
+  const [closedOn, setClosedOn] = useState<string | null>(null)
   const [page, setPage] = useState(0)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [showOpen, setShowOpen] = useState(false)
@@ -88,6 +90,7 @@ export function ShiftsPage() {
     depotId,
     cashierId: staff?.role === 'cashier' ? staff.id : null,
     status: statusFilter,
+    closedOn,
     page,
     pageSize: SHIFT_PAGE_SIZE,
   })
@@ -108,7 +111,13 @@ export function ShiftsPage() {
   }, [isLoading, page, totalPages])
 
   const handleChipChange = (value: string) => {
-    setStatusFilter(value === 'all' ? null : (value as ShiftStatus))
+    if (value === 'closed_today') {
+      setStatusFilter('closed')
+      setClosedOn(ymdInDisplayTimeZone(new Date()))
+    } else {
+      setClosedOn(null)
+      setStatusFilter(value === 'all' ? null : (value as ShiftStatus))
+    }
     setPage(0)
   }
 
@@ -140,7 +149,7 @@ export function ShiftsPage() {
         <div className="px-3 sm:px-6 pb-3 sm:pb-4 space-y-3">
           <FilterBar
             chips={statusChips()}
-            activeChip={statusFilter ?? 'all'}
+            activeChip={closedOn ? 'closed_today' : (statusFilter ?? 'all')}
             onChipChange={handleChipChange}
             count={data?.count}
             countLoading={!data}
@@ -244,6 +253,11 @@ export function ShiftsPage() {
                   <span className="text-xs text-text-secondary whitespace-nowrap">
                     {formatDate(shift.opened_at)}
                   </span>
+                  {shift.closed_at && (
+                    <span className="text-xs text-text-secondary whitespace-nowrap">
+                      {t(SHIFT_COPY.closedAt)} {formatDate(shift.closed_at)}
+                    </span>
+                  )}
                 </span>
                 <span className="text-right">
                   <MoneyDisplay amount={shift.opening_float_cfa} size="small" />

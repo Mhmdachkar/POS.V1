@@ -35,6 +35,8 @@ export interface ShiftListFilters {
   /** When set (cashiers), list only this cashier's shifts. */
   cashierId?: string | null
   status?: ShiftStatus | null
+  /** Inclusive Africa/Abidjan day (YYYY-MM-DD) matched on closed_at. */
+  closedOn?: string | null
   page: number
   pageSize: number
 }
@@ -293,6 +295,13 @@ export async function fetchShiftsList(
 
   if (filters.status) {
     q = q.eq('status', filters.status)
+  }
+
+  if (filters.closedOn) {
+    const from = `${filters.closedOn}T00:00:00.000Z`
+    const next = new Date(from)
+    next.setUTCDate(next.getUTCDate() + 1)
+    q = q.gte('closed_at', from).lt('closed_at', next.toISOString())
   }
 
   const { data, error, count } = await q

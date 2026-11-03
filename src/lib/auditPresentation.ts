@@ -265,9 +265,11 @@ export function auditEventSummary(row: AuditLogRow, units?: UnitLike[] | null): 
     const deltaText = delta != null ? formatDeltaInUnits(delta, units ?? null) : null
     const range = stockRange(beforeStock, afterStock, units)
     const deltaSuffix = deltaText != null ? ` (${bilingualPlain(deltaText)})` : ''
+    const reason = str(after.reason)
+    const reasonSuffix = reason ? ` · ${reason}` : ''
     return bi(
-      `${action.fr} · ${typeLabel.fr} · ${bilingualPlain(range)}${deltaSuffix}`,
-      `${action.en} · ${typeLabel.en} · ${bilingualPlain(range)}${deltaSuffix}`,
+      `${action.fr} · ${typeLabel.fr} · ${bilingualPlain(range)}${deltaSuffix}${reasonSuffix}`,
+      `${action.en} · ${typeLabel.en} · ${bilingualPlain(range)}${deltaSuffix}${reasonSuffix}`,
     )
   }
 
@@ -295,10 +297,24 @@ export function auditEventSummary(row: AuditLogRow, units?: UnitLike[] | null): 
   }
 
   if (row.action === 'complete_sale' && after) {
-    const total = num(after.total_cfa)
+    const total = num(after.final_total_cfa) ?? num(after.total_cfa) ?? num(after.calculated_total_cfa)
+    const receipt = str(after.receipt_number)
+    const converted = after.proforma_id
+      ? bi('converti depuis proforma', 'converted from proforma')
+      : null
     return bi(
-      `${action.fr}${total != null ? ` · ${formatCFA(total)}` : ''}`,
-      `${action.en}${total != null ? ` · ${formatCFA(total)}` : ''}`,
+      [action.fr, receipt, total != null ? formatCFA(total) : null, converted?.fr].filter(Boolean).join(' · '),
+      [action.en, receipt, total != null ? formatCFA(total) : null, converted?.en].filter(Boolean).join(' · '),
+    )
+  }
+
+  if (row.action === 'record_payment' && after) {
+    const amount = num(after.amount_cfa)
+    const who = str(after.customer_name)
+    const receipt = str(after.receipt_number)
+    return bi(
+      [action.fr, who, amount != null ? formatCFA(amount) : null, receipt].filter(Boolean).join(' · '),
+      [action.en, who, amount != null ? formatCFA(amount) : null, receipt].filter(Boolean).join(' · '),
     )
   }
 
@@ -319,9 +335,10 @@ export function auditEventSummary(row: AuditLogRow, units?: UnitLike[] | null): 
     const direction = str(after.direction)
     const dirLabel =
       direction === 'out' ? SHIFT_COPY.cashOut : SHIFT_COPY.cashIn
+    const note = str(after.note)
     return bi(
-      `${dirLabel.fr}${amount != null ? ` · ${formatCFA(amount)}` : ''}`,
-      `${dirLabel.en}${amount != null ? ` · ${formatCFA(amount)}` : ''}`,
+      [dirLabel.fr, amount != null ? formatCFA(amount) : null, note].filter(Boolean).join(' · '),
+      [dirLabel.en, amount != null ? formatCFA(amount) : null, note].filter(Boolean).join(' · '),
     )
   }
 

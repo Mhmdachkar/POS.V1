@@ -98,6 +98,16 @@ function createFilterAwareFrom(allRows: ShiftRow[]) {
     filtered = filtered.filter((r) => r[String(col)] === val)
     return builder
   }
+  builder.gte = (col: unknown, val: unknown) => {
+    calls.push(`gte:${String(col)}:${String(val)}`)
+    filtered = filtered.filter((r) => String(r[String(col)] ?? '') >= String(val))
+    return builder
+  }
+  builder.lt = (col: unknown, val: unknown) => {
+    calls.push(`lt:${String(col)}:${String(val)}`)
+    filtered = filtered.filter((r) => String(r[String(col)] ?? '') < String(val))
+    return builder
+  }
   builder.range = (from: unknown, to: unknown) => {
     calls.push(`range:${from}-${to}`)
     range = [Number(from), Number(to)]
@@ -249,6 +259,22 @@ describe('fetchShiftsList', () => {
     expect(calls.some((c) => c.startsWith('eq:status:open'))).toBe(true)
     expect(calls.some((c) => c.startsWith('order:opened_at'))).toBe(true)
     expect(result.data.every((s) => s.status === 'open' && s.depot_id === 'depot-a')).toBe(true)
+  })
+
+  it('filters closed_at to one Abidjan day when closedOn is set', async () => {
+    const { builder, calls } = createFilterAwareFrom(buildCatalog())
+    vi.mocked(supabase.from).mockReturnValue(builder as never)
+
+    await fetchShiftsList({
+      depotId: null,
+      status: 'closed',
+      closedOn: '2026-09-12',
+      page: 0,
+      pageSize: 30,
+    })
+
+    expect(calls.some((c) => c.startsWith('gte:closed_at:2026-09-12T00:00:00.000Z'))).toBe(true)
+    expect(calls.some((c) => c.startsWith('lt:closed_at:2026-09-13T00:00:00.000Z'))).toBe(true)
   })
 })
 
