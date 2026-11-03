@@ -13,9 +13,9 @@ export function markReportsAndDashboardStale(queryClient: CacheInvalidator) {
 
 /** Refresh POS catalog / product stock after concurrent stock change. */
 export function refreshPosCatalogStock(queryClient: CacheInvalidator) {
-  queryClient.invalidateQueries({ queryKey: ['products'] })
-  queryClient.invalidateQueries({ queryKey: ['inventory', 'list'] })
-  queryClient.invalidateQueries({ queryKey: ['inventory', 'stock-activity'] })
+  queryClient.invalidateQueries({ queryKey: ['products'], refetchType: 'active' })
+  queryClient.invalidateQueries({ queryKey: ['inventory', 'list'], refetchType: 'active' })
+  queryClient.invalidateQueries({ queryKey: ['inventory', 'stock-activity'], refetchType: 'active' })
 }
 
 export function invalidateAfterSaleSettled(
@@ -24,12 +24,12 @@ export function invalidateAfterSaleSettled(
     saleId?: string | null
     customerId?: string | null
     shiftId?: string | null
+    proformaId?: string | null
   },
 ) {
   refreshPosCatalogStock(queryClient)
-  queryClient.invalidateQueries({ queryKey: ['sales', 'list'] })
-  queryClient.invalidateQueries({ queryKey: ['print_jobs'] })
-  queryClient.invalidateQueries({ queryKey: ['depot', 'overview'] })
+  queryClient.invalidateQueries({ queryKey: ['sales', 'list'], refetchType: 'active' })
+  queryClient.invalidateQueries({ queryKey: ['depot', 'overview'], refetchType: 'active' })
   if (opts?.saleId) {
     queryClient.invalidateQueries({
       queryKey: ['sales', 'detail', opts.saleId],
@@ -37,17 +37,27 @@ export function invalidateAfterSaleSettled(
     })
     queryClient.invalidateQueries({ queryKey: ['print_jobs', 'sale', opts.saleId] })
   }
-  queryClient.invalidateQueries({ queryKey: ['customers'] })
   if (opts?.customerId) {
-    queryClient.invalidateQueries({ queryKey: ['customers', 'detail', opts.customerId] })
+    const id = opts.customerId
+    queryClient.invalidateQueries({ queryKey: ['customers', 'detail', id] })
+    queryClient.invalidateQueries({ queryKey: ['customers', 'activity', id] })
+    queryClient.invalidateQueries({ queryKey: ['customers', 'activity-summary', id] })
+    queryClient.invalidateQueries({ queryKey: ['customers', 'ledger-balance', id] })
+    queryClient.invalidateQueries({ queryKey: ['customers', 'payments', id] })
+    queryClient.invalidateQueries({ queryKey: ['customers', 'list'], refetchType: 'active' })
+    queryClient.invalidateQueries({ queryKey: ['customers', 'search'], refetchType: 'active' })
+    queryClient.invalidateQueries({ queryKey: ['payments'], refetchType: 'active' })
   }
-  queryClient.invalidateQueries({ queryKey: ['shifts', 'list'] })
-  queryClient.invalidateQueries({ queryKey: ['shifts', 'open'] })
+  queryClient.invalidateQueries({ queryKey: ['shifts', 'open'], refetchType: 'active' })
   if (opts?.shiftId) {
     queryClient.invalidateQueries({ queryKey: ['shifts', 'detail', opts.shiftId] })
+    queryClient.invalidateQueries({ queryKey: ['shifts', 'list'], refetchType: 'active' })
   }
   markReportsAndDashboardStale(queryClient)
-  queryClient.invalidateQueries({ queryKey: ['proformas'] })
+  if (opts?.proformaId) {
+    queryClient.invalidateQueries({ queryKey: ['proformas'], refetchType: 'active' })
+    queryClient.invalidateQueries({ queryKey: ['proformas', 'detail', opts.proformaId] })
+  }
 }
 
 export function invalidateAfterFulfillmentRelease(

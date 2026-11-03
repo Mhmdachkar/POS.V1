@@ -439,6 +439,90 @@ export function useShiftCashMovements(shiftId: string | null) {
   })
 }
 
+function bumpShiftRunning(
+  running: ShiftRunningTotals,
+  direction: 'in' | 'out',
+  amount: number,
+): ShiftRunningTotals {
+  if (direction === 'in') {
+    return { ...running, cash_in_cfa: (running.cash_in_cfa ?? 0) + amount }
+  }
+  return { ...running, cash_out_cfa: (running.cash_out_cfa ?? 0) + amount }
+}
+
+/** Update the open shift in memory. A cash movement does not refetch the shift list. */
+export function applyCashMovementToShiftCaches(
+  queryClient: {
+    setQueryData: (
+      key: readonly unknown[],
+      updater: (current: unknown) => unknown,
+    ) => unknown
+    setQueriesData: (
+      filters: { queryKey: readonly unknown[] },
+      updater: (current: unknown) => unknown,
+    ) => unknown
+  },
+  movement: {
+    movement_id: string
+    shift_id: string
+    direction: 'in' | 'out'
+    amount_cfa: number
+    note: string
+  },
+) {
+  const amount = Number(movement.amount_cfa)
+  const delta = movement.direction === 'in' ? amount : -amount
+
+  queryClient.setQueryData(shiftKeys.detail(movement.shift_id), (current) => {
+    if (!current || typeof current !== 'object' || !('running' in current)) return current
+    const detail = current as ShiftDetailData
+    const running = bumpShiftRunning(detail.running, movement.direction, amount)
+    return {
+      ...detail,
+      running,
+      shift_cash_activity_cfa: (detail.shift_cash_activity_cfa ?? 0) + delta,
+      expected_display_cfa: estimateExpectedCash(detail.opening_float_cfa, running),
+    }
+  })
+
+  queryClient.setQueriesData({ queryKey: shiftKeys.lists() }, (current) => {
+    if (!current || typeof current !== 'object' || !('data' in current)) return current
+    const page = current as { data: ShiftListItem[] }
+    if (!Array.isArray(page.data)) return current
+    return {
+      ...page,
+      data: page.data.map((row) => {
+        if (row.id !== movement.shift_id) return row
+        const base = row.expected_display_cfa ?? row.expected_cash_cfa ?? row.opening_float_cfa
+        return {
+          ...row,
+          shift_cash_activity_cfa: (row.shift_cash_activity_cfa ?? 0) + delta,
+          expected_display_cfa: base + delta,
+        }
+      }),
+    }
+  })
+
+  queryClient.setQueryData(
+    [...shiftKeys.detail(movement.shift_id), 'cash-movements'],
+    (current) => {
+      if (!Array.isArray(current)) return current
+      if (current.some((row) => row?.id === movement.movement_id)) return current
+      return [
+        ...current,
+        {
+          id: movement.movement_id,
+          shift_id: movement.shift_id,
+          direction: movement.direction,
+          amount_cfa: amount,
+          note: movement.note,
+          recorded_at: new Date().toISOString(),
+        },
+      ]
+    },
+  )
+}
+
 export function useRecordCashMovement() {
   const queryClient = useQueryClient()
 
@@ -449,8 +533,7 @@ export function useRecordCashMovement() {
       return result.data
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: shiftKeys.detail(data.shift_id) })
-      queryClient.invalidateQueries({ queryKey: shiftKeys.lists() })
+      applyCashMovementToShiftCaches(queryClient, data)
     },
   })
 }

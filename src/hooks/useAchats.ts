@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { rpc } from '@/lib/rpc'
-import { CACHE_STALE } from '@/lib/cachePolicy'
+import { CACHE_STALE, keepPlaceholderWhen } from '@/lib/cachePolicy'
 import { markReportsAndDashboardStale, refreshPosCatalogStock } from '@/lib/cacheInvalidation'
 import { asSupplierLedgerRows } from '@/lib/supplierLedger'
 
@@ -170,6 +170,9 @@ export function useSupplierList(
       return result.data as { rows: SupplierRow[]; count: number }
     },
     staleTime: CACHE_STALE.customerDetail,
+    placeholderData: keepPlaceholderWhen(
+      (prevKey) => prevKey[2] === activeOnly && prevKey[4] === sortBy && prevKey[5] === sortDir,
+    ),
   })
 }
 
@@ -197,6 +200,9 @@ export function usePurchaseReceiptList(
       return result.data as { rows: PurchaseReceiptRow[]; count: number }
     },
     staleTime: CACHE_STALE.customerDetail,
+    placeholderData: keepPlaceholderWhen(
+      (prevKey) => prevKey[2] === depotId && prevKey[3] === status,
+    ),
   })
 }
 
@@ -221,6 +227,7 @@ export function usePurchaseReceiptDetail(id: string | null) {
       }
     },
     enabled: !!id,
+    placeholderData: keepPlaceholderWhen((prevKey) => prevKey[2] === id),
   })
 }
 
@@ -246,6 +253,7 @@ export function useSupplierPaymentList(
       return result.data as { rows: SupplierPaymentRow[]; count: number }
     },
     staleTime: CACHE_STALE.customerDetail,
+    placeholderData: keepPlaceholderWhen((prevKey) => prevKey[2] === supplierId),
   })
 }
 
@@ -471,6 +479,26 @@ export function useRecordSupplierPayment() {
         amount_cfa?: number
       }
     },
-    onSuccess: () => invalidateAchats(qc),
+    onSuccess: (data, vars) => {
+      const balance = Number(data.new_balance_owed_cfa)
+      qc.setQueriesData({ queryKey: ['achats', 'suppliers'] }, (current) => {
+        if (!current || typeof current !== 'object' || !('rows' in current)) return current
+        const page = current as { rows: SupplierRow[] }
+        if (!Array.isArray(page.rows)) return current
+        return {
+          ...page,
+          rows: page.rows.map((row) =>
+            row.id === vars.p_supplier_id ? { ...row, balance_owed_cfa: balance } : row,
+          ),
+        }
+      })
+      qc.setQueryData(achatsKeys.supplier(vars.p_supplier_id), (current) => {
+        if (!current || typeof current !== 'object' || !('balance_owed_cfa' in current)) return current
+        return { ...(current as SupplierRow), balance_owed_cfa: balance }
+      })
+      void qc.invalidateQueries({ queryKey: achatsKeys.ledger(vars.p_supplier_id) })
+      void qc.invalidateQueries({ queryKey: ['achats', 'payments', vars.p_supplier_id] })
+      markReportsAndDashboardStale(qc)
+    },
   })
 }

@@ -298,11 +298,18 @@ describe('SaleDetailDrawer', () => {
     expect(invalidateSpy).toHaveBeenCalledWith(
       expect.objectContaining({ queryKey: saleKeys.detail('sale-1') }),
     )
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: saleKeys.lists() })
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: productKeys.all })
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: customerKeys.all })
+    expect(invalidateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: saleKeys.lists(), refetchType: 'active' }),
+    )
+    expect(invalidateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: productKeys.all, refetchType: 'active' }),
+    )
+    expect(invalidateSpy).not.toHaveBeenCalledWith({ queryKey: customerKeys.all })
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: customerKeys.detail('cust-1') })
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['inventory', 'list'] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: customerKeys.activitySummary('cust-1') })
+    expect(invalidateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: ['inventory', 'list'], refetchType: 'active' }),
+    )
     expect(invalidateSpy).toHaveBeenCalledWith(
       expect.objectContaining({ queryKey: ['reports'], refetchType: 'active' }),
     )

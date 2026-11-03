@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { rpc } from '@/lib/rpc'
 import { supabase } from '@/lib/supabase'
-import { CACHE_STALE } from '@/lib/cachePolicy'
+import { CACHE_STALE, keepPlaceholderWhen } from '@/lib/cachePolicy'
 
 export const proformaKeys = {
   all: ['proformas'] as const,
@@ -116,6 +116,9 @@ export function useProformaList(
     queryKey: proformaKeys.list(depotId, status, search, startAt, endAt),
     queryFn: () => fetchProformaList(depotId, status, search, startAt, endAt, limit),
     staleTime: CACHE_STALE.customerDetail,
+    placeholderData: keepPlaceholderWhen(
+      (prevKey) => prevKey[2] === depotId && prevKey[3] === status,
+    ),
   })
 }
 
@@ -124,6 +127,7 @@ export function useProformaDetail(id: string | null) {
     queryKey: proformaKeys.detail(id ?? ''),
     queryFn: () => fetchProformaDetail(id!),
     enabled: !!id,
+    placeholderData: keepPlaceholderWhen((prevKey) => prevKey[2] === id),
   })
 }
 

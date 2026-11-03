@@ -273,6 +273,7 @@ export function PaymentPanel({ depotId, className, hideCustomerChip = false }: P
         saleId: result.data?.sale_id,
         customerId: customer?.id,
         shiftId: processingShiftId,
+        proformaId: usePOSStore.getState().pendingProformaId,
       })
       wakeLocalPrintAgent()
     } finally {

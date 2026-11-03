@@ -123,20 +123,37 @@ describe('invalidateAfterSaleSettled', () => {
       customerId: 'cust-1',
       shiftId: 'shift-1',
     })
-    expect(keys).toContainEqual({ queryKey: ['products'] })
-    expect(keys).toContainEqual({ queryKey: ['inventory', 'list'] })
-    expect(keys).toContainEqual({ queryKey: ['inventory', 'stock-activity'] })
-    expect(keys).toContainEqual({ queryKey: ['sales', 'list'] })
+    expect(keys).toContainEqual({ queryKey: ['products'], refetchType: 'active' })
+    expect(keys).toContainEqual({ queryKey: ['inventory', 'list'], refetchType: 'active' })
+    expect(keys).toContainEqual({ queryKey: ['inventory', 'stock-activity'], refetchType: 'active' })
+    expect(keys).toContainEqual({ queryKey: ['sales', 'list'], refetchType: 'active' })
     expect(keys).toContainEqual(
       expect.objectContaining({ queryKey: ['sales', 'detail', 'sale-1'] }),
     )
-    expect(keys).toContainEqual({ queryKey: ['customers'] })
+    expect(keys).not.toContainEqual({ queryKey: ['customers'] })
+    expect(keys).not.toContainEqual({ queryKey: ['proformas'] })
+    expect(keys).not.toContainEqual({ queryKey: ['print_jobs'] })
     expect(keys).toContainEqual({ queryKey: ['customers', 'detail', 'cust-1'] })
-    expect(keys).toContainEqual({ queryKey: ['shifts', 'list'] })
-    expect(keys).toContainEqual({ queryKey: ['shifts', 'open'] })
+    expect(keys).toContainEqual({ queryKey: ['customers', 'activity', 'cust-1'] })
+    expect(keys).toContainEqual({ queryKey: ['shifts', 'list'], refetchType: 'active' })
+    expect(keys).toContainEqual({ queryKey: ['shifts', 'open'], refetchType: 'active' })
     expect(keys).toContainEqual({ queryKey: ['shifts', 'detail', 'shift-1'] })
     expect(keys).toContainEqual({ queryKey: ['reports'], refetchType: 'active' })
     expect(keys).toContainEqual({ queryKey: ['dashboard'], refetchType: 'active' })
+  })
+
+  it('refreshes proformas only when the sale converted one', () => {
+    const keys: Array<{ queryKey: readonly unknown[] }> = []
+    invalidateAfterSaleSettled(
+      {
+        invalidateQueries: (opts: { queryKey: readonly unknown[] }) => {
+          keys.push(opts)
+        },
+      },
+      { saleId: 'sale-1', proformaId: 'pro-1' },
+    )
+    expect(keys).toContainEqual({ queryKey: ['proformas'], refetchType: 'active' })
+    expect(keys).toContainEqual({ queryKey: ['proformas', 'detail', 'pro-1'] })
   })
 })
 
