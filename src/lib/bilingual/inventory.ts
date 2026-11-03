@@ -54,7 +54,7 @@ export const INVENTORY = {
   adjustmentTypeExpiry: bi('Péremption', 'Expiry'),
   adjustmentTypeOther: bi('Autre', 'Other'),
   adjustmentTypeLabel: bi('Type d\'ajustement', 'Adjustment type'),
-  applyAdjustment: bi("Appliquer l\\'ajustement", 'Apply adjustment'),
+  applyAdjustment: bi("Appliquer l'ajustement", 'Apply adjustment'),
   estimateDisclaimer: bi("Estimation. Le stock réel est confirmé à l'enregistrement.", 'Estimate. Final stock is set on save.'),
   stockWillEmpty: bi('Cela videra le stock.', 'This will empty the stock.'),
   restockProductTitle: (name: string) => bi(`Entrée de stock — ${name}`, `Stock in — ${name}`),
