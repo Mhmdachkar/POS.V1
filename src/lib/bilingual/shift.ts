@@ -3,6 +3,7 @@ import { bi } from './types'
 export const SHIFT_COPY = {
   openedAt: bi('Ouvert le', 'Opened at'),
   closedAt: bi('Fermé le', 'Closed at'),
+  closedToday: bi("Fermés aujourd'hui", 'Closed today'),
   openingFloat: bi('Fond de caisse', 'Opening float'),
   expectedCash: bi('Attendu', 'Expected'),
   actualCash: bi('Compté', 'Counted'),

@@ -63,11 +63,15 @@ const REPORT_PRESETS: ReportPreset[] = ['today', 'yesterday', 'this_week', 'this
 
 function reportSearchState() {
   const q = new URLSearchParams(window.location.search)
-  const tab = q.get('tab')
-  const preset = q.get('preset')
+  const tabRaw = q.get('tab')
+  const tab = (REPORT_TABS.includes(tabRaw as ReportTabId) ? tabRaw : 'overview') as ReportTabId
+  const presetRaw = q.get('preset')
+  const presetFromUrl = REPORT_PRESETS.includes(presetRaw as ReportPreset)
+    ? (presetRaw as ReportPreset)
+    : null
   return {
-    tab: (REPORT_TABS.includes(tab as ReportTabId) ? tab : 'overview') as ReportTabId,
-    preset: (REPORT_PRESETS.includes(preset as ReportPreset) ? preset : 'today') as ReportPreset,
+    tab,
+    preset: (presetFromUrl ?? (tab === 'audit' ? 'this_week' : 'today')) as ReportPreset,
     customStart: q.get('from') ?? '',
     customEnd: q.get('to') ?? '',
     cashierId: q.get('cashier') ?? '',
@@ -294,7 +298,17 @@ export function ReportsPage() {
             <BiPageTitle {...REPORTS.pageTitle} />
           </p>
         </div>
-        <ReportNav tabs={TAB_ITEMS} active={tab} onChange={(v) => setTab(v as ReportTabId)} />
+        <ReportNav
+          tabs={TAB_ITEMS}
+          active={tab}
+          onChange={(v) => {
+            const next = v as ReportTabId
+            setTab(next)
+            if (next === 'audit' && !new URLSearchParams(window.location.search).get('preset')) {
+              setPreset('this_week')
+            }
+          }}
+        />
       </aside>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
