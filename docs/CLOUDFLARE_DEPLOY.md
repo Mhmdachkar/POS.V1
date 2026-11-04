@@ -39,8 +39,7 @@ Depot PC  → local print agent → depot printer
   },
   "routes": [
     { "pattern": "aquilux-pos.online", "custom_domain": true },
-    { "pattern": "www.aquilux-pos.online", "custom_domain": true },
-    { "pattern": "vhm-pos.com", "custom_domain": true }
+    { "pattern": "www.aquilux-pos.online", "custom_domain": true }
   ]
 }
 ```

@@ -4,8 +4,11 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "prebuild": "node scripts/check-client.mjs",
+    "check-client": "node scripts/check-client.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "db:push": "node scripts/check-client.mjs --require-linked && supabase db push",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
     "type-check": "tsc --noEmit",

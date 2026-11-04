@@ -57,11 +57,16 @@ rather than deleted. Historical records remain intact and attributed.
 
 ## Environment Setup
 
+See **CLIENT.md** for this repository’s client name, Supabase project ref, and production domain.
+
 ```bash
+# 0. Once per clone — keep client-specific files when merging sibling repos
+git config merge.ours.driver true
+
 # 1. Copy the environment file
 cp .env.example .env
 
-# 2. Fill in your Supabase credentials:
+# 2. Fill in your Supabase credentials (never commit .env):
 #    VITE_SUPABASE_URL=https://your-project-ref.supabase.co
 #    VITE_SUPABASE_ANON_KEY=your-anon-key-here
 
@@ -71,6 +76,16 @@ npm install
 # 4. Start the development server
 npm run dev
 ```
+
+### Database migrations (remote)
+
+Never run `supabase db push` directly. Always:
+
+```bash
+npm run db:push
+```
+
+This runs the client guard and verifies the linked Supabase project before pushing.
 
 ---
 
