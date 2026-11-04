@@ -6,7 +6,7 @@
 #   supabase db reset      → resets DB and applies migrations + seed
 #   supabase migration new <name>  → creates a new migration file
 #   supabase link --project-ref <ref>  → links to your remote project
-#   supabase db push       → pushes local migrations to remote
+#   npm run db:push        → client guard + pushes local migrations to remote
 #
 # Replace 'replace-with-your-project-ref' before linking.
 # ================================================================

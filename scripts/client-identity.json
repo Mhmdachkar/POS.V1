@@ -1,0 +1,11 @@
+{
+  "clientName": "Aquilux POS (POS.V1)",
+  "expectedSupabaseRef": "qamzrijkhjduktcokzjj",
+  "primaryDomain": "aquilux-pos.online",
+  "allowedRoutePatterns": [
+    "aquilux-pos.online",
+    "www.aquilux-pos.online"
+  ],
+  "otherSupabaseRef": "slrakslfyxbihbivzrhn",
+  "otherDomains": ["vhm-pos.com", "www.vhm-pos.com"]
+}
