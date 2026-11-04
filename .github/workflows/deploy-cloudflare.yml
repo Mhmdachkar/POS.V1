@@ -30,6 +30,9 @@ jobs:
 
       - name: Verify client identity
         run: node scripts/check-client.mjs
+        env:
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
 
       - name: Build
         run: npm run build

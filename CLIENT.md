@@ -9,6 +9,9 @@
 
 Do not point this repo at VHM (`slrakslfyxbihbivzrhn`, `vhm-pos.com`). Builds and `npm run db:push` run `scripts/check-client.mjs` to enforce this.
 
+
+**CI/CD:** GitHub Actions ci.yml and deploy-cloudflare.yml run the same guard (and validate SUPABASE_PROJECT_REF / VITE_SUPABASE_URL when repo secrets are set).
+
 After cloning, run once:
 
 ```bash

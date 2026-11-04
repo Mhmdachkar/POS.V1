@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 /**
  * Client identity guard — blocks build and db push if this repo points at the wrong Supabase project or domain.
  * Never logs secret values (anon keys, passwords).
@@ -141,6 +141,21 @@ function main() {
     console.log(
       '[client-guard] note: VITE_SUPABASE_URL not set (config.toml + wrangler still checked)',
     )
+  }
+
+  const ciProjectRef = process.env.SUPABASE_PROJECT_REF?.trim()
+  if (ciProjectRef) {
+    if (ciProjectRef === otherSupabaseRef) {
+      fail(
+        `SUPABASE_PROJECT_REF is the other client's Supabase project (${otherSupabaseRef}). This repo is ${clientName}.`,
+      )
+    }
+    if (ciProjectRef !== expectedSupabaseRef) {
+      fail(
+        `SUPABASE_PROJECT_REF "${ciProjectRef}" must be "${expectedSupabaseRef}" for ${clientName}.`,
+      )
+    }
+    ok(`SUPABASE_PROJECT_REF ${ciProjectRef}`)
   }
 
   const linkedPath = path.join(ROOT, 'supabase/.temp/project-ref')
