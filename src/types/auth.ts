@@ -43,6 +43,7 @@
  */
 export type AuthLoadState =
   | 'booting'           // Initial: checking session on mount
+  | 'boot_failed'       // Initial auth step timed out — show Réessayer
   | 'unauthenticated'   // No session, or explicit sign-out
   | 'deactivated'       // Session valid but staff.is_active = false
   | 'authorized'        // Session valid + is_active = true

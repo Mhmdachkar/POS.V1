@@ -1,5 +1,12 @@
 import { useEffect, useRef, useCallback } from 'react'
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
+import {
+  BootTimeoutError,
+  fetchStaffForBoot,
+  getSessionForBoot,
+  signOutAfterBootAuthFailure,
+} from '@/lib/authBoot'
+import { bootMark, bootEnd, bootLog } from '@/lib/bootTiming'
 import { supabase } from '@/lib/supabase'
 import { clearPersistedAdminDepot } from '@/lib/depotContextPersistence'
 import { startCatalogPersistence, stopCatalogPersistence } from '@/lib/queryPersistence'
@@ -65,8 +72,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthorized,
     setDeactivated,
     setAuthLoadState,
+    setBootFailed,
     clear,
   } = useAuthStore()
+  const bootAttempt = useAuthStore((s) => s.bootAttempt)
   const authLoadState = useAuthStore((s) => s.authLoadState)
   const staff = useAuthStore((s) => s.staff)
 
@@ -118,7 +127,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return false
     }
 
-    const staff = await fetchStaff(session.user.id)
+    const useBootTimeout = useAuthStore.getState().authLoadState === 'booting'
+    const staff = useBootTimeout
+      ? await fetchStaffForBoot(session.user.id)
+      : await fetchStaff(session.user.id)
 
     // Guard: discard result if component unmounted or a newer auth event fired
     if (!mountedRef.current) return false
@@ -183,24 +195,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     lastValidated.current = Date.now()
   }, [setDeactivated, clear, clearDepot])
 
-  // ── Effect: subscribe to auth state + periodic validation ─────
+  // ── Effect: cold-start session restore (re-runs after Réessayer) ──
   useEffect(() => {
     mountedRef.current = true
+    let cancelled = false
 
-    // 1. Check existing session on mount (handles page refresh / cold start)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      handleSession(session).finally(() => {
-        // Only set unauthenticated if still in booting (session was null)
+    async function runInitialBoot() {
+      bootMark('boot.total')
+      bootLog('initial boot start', { bootAttempt })
+      try {
+        const { session, recoverableError } = await getSessionForBoot()
+        if (cancelled || !mountedRef.current) return
+
+        if (recoverableError) {
+          await signOutAfterBootAuthFailure()
+          if (!mountedRef.current) return
+          clearUnauthenticatedLocalState(clear, clearDepot)
+          return
+        }
+
+        await handleSession(session)
+      } catch (err) {
+        if (err instanceof BootTimeoutError) {
+          bootLog('boot timed out', err.step)
+          if (mountedRef.current) setBootFailed()
+          return
+        }
+        throw err
+      } finally {
+        bootEnd('boot.total')
         if (mountedRef.current) {
           const { authLoadState } = useAuthStore.getState()
           if (authLoadState === 'booting') {
             setAuthLoadState('unauthenticated')
           }
         }
-      })
-    })
+      }
+    }
 
-    // 2. Subscribe to all auth state changes
+    void runInitialBoot()
+
+    return () => {
+      cancelled = true
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bootAttempt])
+
+  // ── Effect: subscribe to auth state + periodic validation ─────
+  useEffect(() => {
+    mountedRef.current = true
+
+    // Subscribe to all auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, session: Session | null) => {
         if (!mountedRef.current) return
