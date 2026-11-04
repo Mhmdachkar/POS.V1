@@ -2,9 +2,10 @@ import { COMMON } from '@/lib/bilingual/common'
 import { t } from '@/lib/bilingual/types'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuthStore, selectAuthLoadState } from '@/stores/authStore'
-import { Skeleton } from '@/components/ui'
 import { PosShiftPersistence } from '@/components/pos/PosShiftPersistence'
 import { DeactivatedPage } from '@/pages/DeactivatedPage'
+import { BootLoadingScreen } from '@/components/auth/BootLoadingScreen'
+import { LoadingButton } from '@/components/ui'
 
 /**
  * AuthGuard — controls access to all protected routes.
@@ -40,24 +41,25 @@ import { DeactivatedPage } from '@/pages/DeactivatedPage'
  */
 export function AuthGuard() {
   const authLoadState = useAuthStore(selectAuthLoadState)
+  const retryBoot = useAuthStore((s) => s.retryBoot)
   const location = useLocation()
 
   // BOOTING: Session check still running. Show neutral skeleton.
   // Never redirect or render protected content during this state.
   if (authLoadState === 'booting') {
+    return <BootLoadingScreen />
+  }
+
+  if (authLoadState === 'boot_failed') {
     return (
       <div
-        className="flex h-screen flex-col items-center justify-center gap-4 bg-background"
-        role="status"
-        aria-busy="true"
-        aria-label={t(COMMON.loadingApp)}
+        className="flex h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center"
+        role="alert"
       >
-        <div className="space-y-3 w-56">
-          <Skeleton height={8} className="rounded-full" />
-          <Skeleton height={8} width="80%" className="rounded-full" />
-          <Skeleton height={8} width="60%" className="rounded-full" />
-        </div>
-        <p className="text-sm text-text-secondary">{t(COMMON.loadingApp)}</p>
+        <p className="max-w-md text-sm text-text-secondary">{t(COMMON.bootFailed)}</p>
+        <LoadingButton type="button" onClick={() => retryBoot()}>
+          {t(COMMON.retry)}
+        </LoadingButton>
       </div>
     )
   }

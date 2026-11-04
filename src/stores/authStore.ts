@@ -53,6 +53,11 @@ interface AuthState {
    * clears all session state.
    */
   clear: () => void
+
+  /** Incremented to re-run the cold-start session check after boot_failed. */
+  bootAttempt: number
+  setBootFailed: () => void
+  retryBoot: () => void
 }
 
 /**
@@ -86,6 +91,18 @@ export const useAuthStore = create<AuthState>()((set) => ({
 
   clear: () =>
     set({ authLoadState: 'unauthenticated', session: null, staff: null, isLoading: false }),
+
+  bootAttempt: 0,
+
+  setBootFailed: () =>
+    set({ authLoadState: 'boot_failed', isLoading: false }),
+
+  retryBoot: () =>
+    set((s) => ({
+      authLoadState: 'booting',
+      isLoading: true,
+      bootAttempt: s.bootAttempt + 1,
+    })),
 }))
 
 // ─────────────────────────────────────────────────────────────────
@@ -95,6 +112,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
 export const selectAuthLoadState  = (s: AuthState) => s.authLoadState
 export const selectIsAuthorized   = (s: AuthState) => s.authLoadState === 'authorized'
 export const selectIsBooting      = (s: AuthState) => s.authLoadState === 'booting'
+export const selectIsBootFailed   = (s: AuthState) => s.authLoadState === 'boot_failed'
 export const selectIsDeactivated  = (s: AuthState) => s.authLoadState === 'deactivated'
 export const selectRole           = (s: AuthState) => s.staff?.role
 export const selectDepotId        = (s: AuthState) => s.staff?.depot_id

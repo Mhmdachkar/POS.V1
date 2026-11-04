@@ -6,6 +6,7 @@
   "scripts": {
     "prebuild": "node scripts/check-client.mjs",
     "check-client": "node scripts/check-client.mjs",
+    "verify:bundle": "node scripts/verify-production-bundle.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "db:push": "node scripts/check-client.mjs --require-linked && supabase db push",

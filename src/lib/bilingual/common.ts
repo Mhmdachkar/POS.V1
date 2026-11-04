@@ -13,6 +13,10 @@ export const COMMON = {
   search: bi('Rechercher', 'Search'),
   loading: bi('Chargement…', 'Loading…'),
   loadingApp: bi('Chargement…', 'Loading…'),
+  bootFailed: bi(
+    'La connexion met trop de temps. Vérifiez le réseau ou réessayez.',
+    'Connection is taking too long. Check your network or try again.',
+  ),
   updating: bi('Mise à jour…', 'Updating…'),
   error: bi('Erreur', 'Error'),
   noResults: bi('Aucun résultat', 'No results'),
