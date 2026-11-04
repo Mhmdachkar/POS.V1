@@ -42,6 +42,9 @@ jobs:
           VITE_APP_NAME: ${{ secrets.VITE_APP_NAME }}
           VITE_ENABLE_QUERY_DEVTOOLS: 'false'
 
+      - name: Verify production bundle (Aquilux Supabase only)
+        run: node scripts/verify-production-bundle.mjs
+
       # Vite Cloudflare plugin writes the deployable config to dist/wrangler.json
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
