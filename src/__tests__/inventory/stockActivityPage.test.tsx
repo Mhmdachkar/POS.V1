@@ -9,7 +9,9 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { StockActivityPage, STOCK_ACTIVITY_DESCRIPTION, formatSignedPieces } from '@/pages/inventory/StockActivityPage'
-import { AppRoutes } from '@/routes'
+// AppRoutes lazy-loads this tree behind Suspense; render it eagerly so a cold
+// chunk load does not outlast findBy's timeout.
+import AuthenticatedRoutes from '@/routes/authenticatedRoutes'
 import { useAuthStore } from '@/stores/authStore'
 import { useDepotStore } from '@/stores/depotStore'
 import {
@@ -256,7 +258,7 @@ function renderApp(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <QueryClientProvider client={client}>
-        <AppRoutes />
+        <AuthenticatedRoutes />
       </QueryClientProvider>
     </MemoryRouter>,
   )
