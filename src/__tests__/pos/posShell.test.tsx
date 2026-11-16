@@ -9,7 +9,9 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AppRoutes } from '@/routes'
+// AppRoutes lazy-loads this tree behind Suspense; render it eagerly so the
+// synchronous shell assertions below see the routed page on first render.
+import AuthenticatedRoutes from '@/routes/authenticatedRoutes'
 import { AppRail } from '@/components/layout/AppRail'
 import { ShiftChip } from '@/components/pos/ShiftChip'
 import { useAuthStore } from '@/stores/authStore'
@@ -140,7 +142,7 @@ function renderApp(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <QueryClientProvider client={client}>
-        <AppRoutes />
+        <AuthenticatedRoutes />
       </QueryClientProvider>
     </MemoryRouter>,
   )
