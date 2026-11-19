@@ -3,7 +3,7 @@
  * Shares cart + PaymentPanel; open shift still required.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { BilingualText } from '@/components/ui/BilingualText'
@@ -12,7 +12,8 @@ import { ProductThumb } from '@/components/product/ProductThumb'
 import { formatCFA } from '@/lib/formatters'
 import { POS } from '@/lib/bilingual/pos'
 import { toastErrorBi } from '@/lib/bilingual/toast'
-import { t } from '@/lib/bilingual/types'
+import { bilingualAriaLabel, t } from '@/lib/bilingual/types'
+import { todayYmdAbidjan } from '@/lib/supplierDueDate'
 import {
   rankAchatsProductHits,
   resolveNearestAchatsProduct,
@@ -20,11 +21,12 @@ import {
 } from '@/lib/achatsProductResolve'
 import { preventQtyEmptyOnDelete, sanitizeQtyInput } from '@/lib/qtyInput'
 import { localizedUnitLabel } from '@/lib/localizedUnits'
-import { tryAddCartItem, tryUpdateCartQuantity } from '@/lib/posCartActions'
+import { tryAddCartItem, tryChangeCartUnit, tryUpdateCartQuantity } from '@/lib/posCartActions'
 import { usePosCatalogStock } from '@/hooks/usePosCatalogStock'
 import { usePOSProductCatalog } from '@/hooks/useProducts'
 import { effectiveFinalTotal, usePOSStore } from '@/stores/posStore'
 import { useAuthStore } from '@/stores/authStore'
+import type { ProductUnit } from '@/types/database'
 
 interface FastEntryPanelProps {
   depotId: string | null
@@ -37,6 +39,47 @@ function lineKey(productId: string, unitLevel: number) {
 
 function unitCode(hit: AchatsResolveHit): string {
   return hit.unit.serial_number?.trim() || '—'
+}
+
+function unitsForProduct(product: { units: ProductUnit[] } | undefined): ProductUnit[] {
+  return [...(product?.units ?? [])].sort((a, b) => a.unit_level - b.unit_level)
+}
+
+function FastEntryUnitSelect({
+  productName,
+  units,
+  unitLevel,
+  unitName,
+  onChange,
+  className,
+}: {
+  productName: string
+  units: ProductUnit[]
+  unitLevel: number
+  unitName: string
+  onChange: (unit: ProductUnit) => void
+  className?: string
+}) {
+  if (units.length === 0) {
+    return <span>{localizedUnitLabel(unitName, unitLevel)}</span>
+  }
+  return (
+    <select
+      aria-label={bilingualAriaLabel(POS.selectUnitAria(productName))}
+      value={unitLevel}
+      onChange={(e) => {
+        const next = units.find((unit) => unit.unit_level === Number(e.target.value))
+        if (next) onChange(next)
+      }}
+      className={className ?? 'h-9 max-w-[8.5rem] rounded-md border border-border bg-background px-2 text-sm text-text-primary'}
+    >
+      {units.map((unit) => (
+        <option key={unit.unit_level} value={unit.unit_level}>
+          {localizedUnitLabel(unit.unit_name, unit.unit_level)}
+        </option>
+      ))}
+    </select>
+  )
 }
 
 function serialForCartLine(
@@ -57,12 +100,14 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
   const qtyRef = useRef<HTMLInputElement>(null)
   const [code, setCode] = useState('')
   const [entryQty, setEntryQty] = useState('1')
+  const [entryUnitLevel, setEntryUnitLevel] = useState<number | null>(null)
   const [lockedHit, setLockedHit] = useState<AchatsResolveHit | null>(null)
   const [focusQtyToken, setFocusQtyToken] = useState(0)
   const [qtyDrafts, setQtyDrafts] = useState<Record<string, string>>({})
   const [searchOpen, setSearchOpen] = useState(false)
 
   const { data: catalogHits = [] } = usePOSProductCatalog(code, depotId, !!depotId)
+  const { data: fullCatalog = [] } = usePOSProductCatalog('', depotId, !!depotId)
   const suggestions = useMemo(
     () => rankAchatsProductHits(code, catalogHits).slice(0, 12),
     [code, catalogHits],
@@ -72,6 +117,24 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
     [code, catalogHits],
   )
   const activeHit = lockedHit ?? liveHit
+  const entryProduct = useMemo(() => {
+    if (!activeHit) return null
+    return fullCatalog.find((product) => product.id === activeHit.product.id) ?? activeHit.product
+  }, [activeHit, fullCatalog])
+  const entryUnits = useMemo(() => unitsForProduct(entryProduct ?? undefined), [entryProduct])
+  const entryUnit = useMemo(() => {
+    if (!activeHit) return null
+    if (entryUnitLevel == null) return activeHit.unit
+    return entryUnits.find((unit) => unit.unit_level === entryUnitLevel) ?? activeHit.unit
+  }, [activeHit, entryUnitLevel, entryUnits])
+
+  useEffect(() => {
+    if (!activeHit) {
+      setEntryUnitLevel(null)
+      return
+    }
+    setEntryUnitLevel(activeHit.unit.unit_level)
+  }, [activeHit?.product.id, activeHit?.unit.unit_level])
 
   const {
     items,
@@ -124,6 +187,10 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
   const netBeforeOverride = Math.max(0, grossTotal - totalRemise)
   const net = effectiveFinalTotal(netBeforeOverride, isAdmin ? overrideTotalCfa : null)
 
+  useLayoutEffect(() => {
+    if (!documentDateYmd) setDocumentDateYmd(todayYmdAbidjan())
+  }, [documentDateYmd, setDocumentDateYmd])
+
   useEffect(() => {
     if (!focusQtyToken) return
     const tmr = setTimeout(() => {
@@ -151,7 +218,10 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
       setFocusQtyToken((n) => n + 1)
       return
     }
-    const { product, unit } = hit
+    const { product } = hit
+    const unit = entryUnit && entryUnit.unit_level != null && product.id === hit.product.id
+      ? entryUnit
+      : hit.unit
     const stock = product.current_stock_pieces
     const result = tryAddCartItem(
       {
@@ -274,23 +344,36 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
             autoFocus
           />
         </label>
-        <label className="flex flex-col gap-1 w-24">
+        <div className="flex flex-col gap-1">
           <span className="text-xs text-text-secondary">{t(POS.qtyCol)}</span>
-          <input
-            ref={qtyRef}
-            inputMode="decimal"
-            value={entryQty}
-            onChange={(e) => setEntryQty(sanitizeQtyInput(e.target.value))}
-            onKeyDown={(e) => {
-              preventQtyEmptyOnDelete(e, entryQty, setEntryQty)
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                submitEntry()
-              }
-            }}
-            className="h-11 w-full rounded-md border border-border bg-background px-2 text-right tabular-nums text-sm"
-          />
-        </label>
+          <div className="flex items-center gap-1">
+            <input
+              ref={qtyRef}
+              inputMode="decimal"
+              aria-label={t(POS.qtyCol)}
+              value={entryQty}
+              onChange={(e) => setEntryQty(sanitizeQtyInput(e.target.value))}
+              onKeyDown={(e) => {
+                preventQtyEmptyOnDelete(e, entryQty, setEntryQty)
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  submitEntry()
+                }
+              }}
+              className="h-11 w-20 rounded-md border border-border bg-background px-2 text-right tabular-nums text-sm"
+            />
+            {activeHit && entryUnit && (
+              <FastEntryUnitSelect
+                productName={activeHit.product.name}
+                units={entryUnits.length > 0 ? entryUnits : [entryUnit]}
+                unitLevel={entryUnit.unit_level}
+                unitName={entryUnit.unit_name}
+                onChange={(unit) => setEntryUnitLevel(unit.unit_level)}
+                className="h-11 min-w-[7.5rem] rounded-md border border-border bg-background px-2 text-sm text-text-primary"
+              />
+            )}
+          </div>
+        </div>
         <button
           type="button"
           className="h-11 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium"
@@ -304,7 +387,7 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
             <div className="min-w-0">
               <p className="font-medium text-text-primary truncate">{activeHit.product.name}</p>
               <p className="text-xs truncate font-mono">
-                {unitCode(activeHit)} · {localizedUnitLabel(activeHit.unit.unit_name, activeHit.unit.unit_level)}
+                {(entryUnit?.serial_number?.trim() || unitCode(activeHit))} · {localizedUnitLabel(entryUnit?.unit_name ?? activeHit.unit.unit_name, entryUnit?.unit_level ?? activeHit.unit.unit_level)}
                 <span className="ml-2 text-[10px] font-sans text-text-muted">Tab</span>
               </p>
             </div>
@@ -366,9 +449,31 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
                   <td className="px-2 py-1.5">
                     <ProductThumb photoUrl={row.product_photo_url} name={row.product_name} size="md" />
                   </td>
-                  <td className="px-2 py-1.5 font-mono text-xs text-text-secondary">{serialForCartLine(row.product_id, row.unit_level, catalogHits)}</td>
+                  <td className="px-2 py-1.5 font-mono text-xs text-text-secondary">{serialForCartLine(row.product_id, row.unit_level, fullCatalog)}</td>
                   <td className="px-2 py-1.5 font-medium">{row.product_name}</td>
-                  <td className="px-2 py-1.5">{localizedUnitLabel(row.unit_name, row.unit_level)}</td>
+                  <td className="px-2 py-1.5">
+                    <FastEntryUnitSelect
+                      productName={row.product_name}
+                      units={unitsForProduct(fullCatalog.find((product) => product.id === row.product_id))}
+                      unitLevel={row.unit_level}
+                      unitName={row.unit_name}
+                      onChange={(unit) => {
+                        const result = tryChangeCartUnit(
+                          row.product_id,
+                          row.unit_level,
+                          {
+                            unit_level: unit.unit_level as 0 | 1 | 2,
+                            unit_name: unit.unit_name,
+                            unit_price_cfa: unit.selling_price_cfa,
+                            cost_price_cfa: unit.cost_price_cfa,
+                            conversion_to_base: unit.conversion_to_base,
+                          },
+                          stock ?? null,
+                        )
+                        if (!result.ok) toastErrorBi(POS.remainingStock(result.remainingPieces))
+                      }}
+                    />
+                  </td>
                   <td className="px-2 py-1.5 text-right">
                     <input
                       inputMode="decimal"
