@@ -45,6 +45,14 @@ function unitsForProduct(product: { units: ProductUnit[] } | undefined): Product
   return [...(product?.units ?? [])].sort((a, b) => a.unit_level - b.unit_level)
 }
 
+/** Catalog pieces expressed in the unit chosen for this line. */
+function availableInSelectedUnit(pieces: number | null, conversionToBase: number): string {
+  if (pieces == null) return '—'
+  const conversion = Number(conversionToBase) > 0 ? Number(conversionToBase) : 1
+  const qty = parseFloat((pieces / conversion).toFixed(3))
+  return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 3 }).format(qty)
+}
+
 function FastEntryUnitSelect({
   productName,
   units,
@@ -520,8 +528,11 @@ export function FastEntryPanel({ depotId, onRequestPay }: FastEntryPanelProps) {
                   <td className="px-2 py-1.5 text-right tabular-nums font-medium">
                     {formatCFA(row.line_total_cfa)}
                   </td>
-                  <td className="px-2 py-1.5 text-right tabular-nums text-text-secondary">
-                    {stock == null ? '—' : formatCFA(stock).replace(' CFA', '')}
+                  <td
+                    className="px-2 py-1.5 text-right tabular-nums text-text-secondary"
+                    aria-label={t(POS.stockAvailableCol)}
+                  >
+                    {availableInSelectedUnit(stock, row.conversion_to_base)}
                   </td>
                   <td className="px-1 py-1.5">
                     <button

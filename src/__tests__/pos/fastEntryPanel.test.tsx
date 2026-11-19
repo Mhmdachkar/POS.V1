@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { FastEntryPanel } from '@/components/pos/FastEntryPanel'
+import { PosStockProvider } from '@/components/pos/PosStockProvider'
 import { usePOSProductCatalog } from '@/hooks/useProducts'
 import { usePOSStore } from '@/stores/posStore'
 import { POS } from '@/lib/bilingual/pos'
@@ -69,7 +70,9 @@ function renderPanel() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <FastEntryPanel depotId="depot-main" onRequestPay={() => {}} />
+      <PosStockProvider products={[product()]}>
+        <FastEntryPanel depotId="depot-main" onRequestPay={() => {}} />
+      </PosStockProvider>
     </QueryClientProvider>,
   )
 }
@@ -121,10 +124,12 @@ describe('FastEntryPanel', () => {
       bilingualAriaLabel(POS.selectUnitAria('Folding Table — Z-178')),
     )
     expect((gridUnit as HTMLSelectElement).value).toBe('1')
+    expect(screen.getByLabelText('Stock dispo').textContent).toBe('10')
     await user.selectOptions(gridUnit, '0')
 
     const updated = usePOSStore.getState().items[0]
     expect(updated.unit_level).toBe(0)
+    expect(screen.getByLabelText('Stock dispo').textContent).toBe('40')
     expect(updated.unit_name).toBe('Piece')
     expect(updated.unit_price_cfa).toBe(18000)
   })
